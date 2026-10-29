@@ -10,6 +10,18 @@
 import { getDocs } from '../../src/docs/index.js';
 import { type Ecosystem } from '../../src/ecosystems.js';
 
+/** Strings that only the current major's docs contain, per task. */
+export const MARKERS: Record<string, RegExp[]> = {
+  'next16-proxy': [/proxy\.(ts|js)/, /export (default )?(async )?function proxy/, /await cookies\(\)/, /revalidateTag\([^)]*,/],
+  'tailwind4-vite': [/@import ["']tailwindcss["']/, /@theme/, /@utility/, /@custom-variant/, /@tailwindcss\/vite/],
+  'zod4-schema': [/z\.email\(\)/, /strictObject/, /prettifyError|treeifyError/, /z\.record\(z\.string\(\),/, /\berror:/],
+  'ai-sdk7-chat': [/isStepCount/, /createUIMessageStreamResponse/, /toUIMessageStream\(/, /instructions:/, /inputSchema/, /sendMessage/],
+  'express5-api': [/\*splat|\{\*\w+\}/, /\{\.:\w+\}|\{\/:\w+\}/],
+  'eslint10-flat': [/eslint\.config\.(js|mjs|ts)/, /defineConfig/, /globalIgnores|ignores:/],
+  'pydantic2-models': [/field_validator/, /model_validator/, /ConfigDict/, /from_attributes/, /pattern=/, /model_dump/],
+  'langchain1-agent': [/create_agent/, /system_prompt/],
+};
+
 export interface Probe {
   task: string;
   ecosystem: Ecosystem;
