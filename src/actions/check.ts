@@ -108,6 +108,12 @@ export interface ActionReport {
   pinTo?: string;
   /** Why the check is incomplete (source down, version unknown). Never reported as clean. */
   unverified?: string;
+  /**
+   * The advisory check itself is incomplete: OSV did not answer, or advisories exist for the
+   * action and the release behind the ref could not be told. An audit fails on these; a
+   * GitHub hiccup for an action OSV has nothing on does not set it.
+   */
+  advisoriesUnknown?: boolean;
   checkedAt: string;
 }
 
@@ -143,6 +149,7 @@ export async function checkAction(use: ActionUse): Promise<ActionReport> {
     vulns = await actionAdvisories(name);
   } catch (err) {
     report.unverified = `osv.dev did not answer (${(err as Error).message})`;
+    report.advisoriesUnknown = true;
   }
 
   try {
@@ -176,8 +183,9 @@ export async function checkAction(use: ActionUse): Promise<ActionReport> {
           url: `https://osv.dev/vulnerability/${v.id}`,
         })),
       );
-    } else if (!report.unverified) {
-      report.unverified = `${vulns.length} advisor${vulns.length === 1 ? 'y exists' : 'ies exist'} for ${name} and the release behind "${use.ref}" could not be told`;
+    } else {
+      report.unverified ??= `${vulns.length} advisor${vulns.length === 1 ? 'y exists' : 'ies exist'} for ${name} and the release behind "${use.ref}" could not be told`;
+      report.advisoriesUnknown = true;
     }
   }
 
@@ -261,6 +269,8 @@ export interface ActionsAudit {
   vulnerable: number;
   unpinned: number;
   unverified: number;
+  /** Actions whose advisories could not be checked (see ActionReport.advisoriesUnknown): they fail the audit. */
+  advisoriesUnknown: number;
   missing: number;
   bySeverity: Record<'critical' | 'high' | 'moderate' | 'low' | 'unknown', number>;
   malicious: number;
@@ -307,6 +317,7 @@ export async function auditActions(files: { file: string; uses: ActionUse[] }[])
     vulnerable: findings.filter((f) => f.advisories.length).length,
     unpinned: findings.filter((f) => !f.pinned).length,
     unverified: findings.filter((f) => f.unverified && !f.advisories.length).length,
+    advisoriesUnknown: findings.filter((f) => f.advisoriesUnknown && !f.advisories.length).length,
     missing: findings.filter((f) => !f.exists).length,
     bySeverity,
     malicious: 0,
@@ -350,10 +361,14 @@ export function formatActionsAudit(a: ActionsAudit, maxFindings = 50): string {
   return lines.join('\n');
 }
 
-/** For the CLI exit code: findings at or above the floor; unpinned refs only when pinning is enforced. */
+/**
+ * For the CLI exit code: findings at or above the floor, refs that do not exist, actions whose
+ * advisories could not be checked (never a pass without verifying); unpinned refs only when
+ * pinning is enforced.
+ */
 export function actionsAuditFails(a: ActionsAudit, floor: number, levels: string[]): boolean {
   const s = a.bySeverity as Record<string, number>;
   if (levels.slice(floor).some((l) => s[l] > 0) || (floor === 0 && s.unknown > 0)) return true;
-  if (a.missing) return true;
+  if (a.missing || a.advisoriesUnknown) return true;
   return process.env.SAFECTX_ACTIONS_PIN === 'enforce' && a.unpinned > 0;
 }

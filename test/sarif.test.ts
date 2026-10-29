@@ -80,6 +80,7 @@ function actionsAudit(): ActionsAudit {
     vulnerable: 1,
     unpinned: 2,
     unverified: 0,
+    advisoriesUnknown: 0,
     missing: 0,
     bySeverity: { critical: 0, high: 1, moderate: 0, low: 0, unknown: 0 },
     malicious: 0,

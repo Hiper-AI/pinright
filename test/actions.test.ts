@@ -40,7 +40,7 @@ vi.mock('../src/http.js', async () => {
 });
 
 const { parseUses, changedUses, isWorkflowFile } = await import('../src/actions/workflow.js');
-const { affects, checkAction, decideActions, auditActions, formatActionsAudit } = await import('../src/actions/check.js');
+const { actionsAuditFails, affects, checkAction, decideActions, auditActions, formatActionsAudit } = await import('../src/actions/check.js');
 const { actionUsesFromToolInput } = await import('../src/hook/run.js');
 
 const tjVuln = {
@@ -205,6 +205,18 @@ describe('checkAction and the hook', () => {
 });
 
 describe('audit', () => {
+  it('an action whose advisories could not be checked fails the audit (security review F6)', async () => {
+    const levels = ['low', 'moderate', 'high', 'critical'];
+    refs.set('tj-actions/changed-files@main', SHA('e'));
+    let a = await auditActions([{ file: 'ci.yml', uses: parseUses('- uses: tj-actions/changed-files@main', 'ci.yml') }]);
+    expect(a).toMatchObject({ vulnerable: 0, unverified: 1, advisoriesUnknown: 1 });
+    expect(actionsAuditFails(a, levels.indexOf('high'), levels)).toBe(true);
+    osvDown = true;
+    a = await auditActions([{ file: 'ci.yml', uses: parseUses('- uses: actions/checkout@v4', 'ci.yml') }]);
+    expect(a.advisoriesUnknown).toBe(1);
+    expect(actionsAuditFails(a, levels.indexOf('critical'), levels)).toBe(true);
+  });
+
   it('reports every action across files, worst first', async () => {
     const a = await auditActions([{ file: 'ci.yml', uses: parseUses(wf, 'ci.yml').slice(0, 2) }, { file: 'other.yml', uses: parseUses('- uses: actions/checkout@v4', 'other.yml') }]);
     expect(a).toMatchObject({ actions: 2, vulnerable: 1, unpinned: 2, bySeverity: { high: 1 } });
