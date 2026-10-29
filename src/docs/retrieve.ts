@@ -285,16 +285,16 @@ export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk
 }
 
 /** Ranks file paths before downloading them: we cannot fetch 500 docs pages per question. */
-export function rankPaths<T extends { path: string }>(files: T[], query: string, extraTerms: string[] = []): (T & { score: number })[] {
+export function rankPaths<T extends { path: string }>(files: T[], query: string, extraTerms: string[] = []): (T & { score: number; terms: string[] })[] {
   const q = new Set([...tokenize(query), ...extraTerms.flatMap(tokenize)]);
   const tokens = files.map((f) => tokenize(f.path.replace(/\.(mdx?|rst|txt|d\.ts)$/i, '')));
   // In a large tree a term found in a handful of paths ("middleware") says more than one found in hundreds
-  // ("routes", "redirect"): weigh hits by rarity, between ~0.3 and 2. Small lists keep a flat weight of 1.
+  // ("routes", "redirect"): weigh hits by rarity, between 0.5 and 1.5. Small lists keep a flat weight of 1.
   const weight = new Map<string, number>();
   const n = files.length;
   for (const t of q) {
     const df = tokens.filter((toks) => toks.includes(t)).length;
-    weight.set(t, n < 20 || !df ? 1 : Math.max(0.3, (2 * Math.log((n + 1) / df)) / Math.log(n + 1)));
+    weight.set(t, n < 20 || !df ? 1 : 0.5 + Math.log((n + 1) / df) / Math.log(n + 1));
   }
   return files
     .map((f, i) => {
@@ -303,7 +303,26 @@ export function rankPaths<T extends { path: string }>(files: T[], query: string,
       for (const t of toks) if (q.has(t)) s += weight.get(t) ?? 1;
       // Shallow, docs-like paths beat deep ones with the same hits.
       s -= f.path.split('/').length * 0.02;
-      return { ...f, score: s };
+      return { ...f, score: s, terms: [...new Set(toks.filter((t) => q.has(t)))] };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+/**
+ * The best `max` path hits, covering as many query terms as possible first: a question about
+ * "ConfigDict, extra, field_validator" must not get twelve pydantic_extra_types_* pages.
+ * Each pick takes the highest-scoring file that adds a term not covered yet; the rest by score.
+ */
+export function coverPaths<T extends { score: number; terms: string[] }>(ranked: T[], max: number): T[] {
+  const out: T[] = [];
+  const covered = new Set<string>();
+  const left = [...ranked];
+  while (out.length < max && left.length) {
+    const i = left.findIndex((f) => f.terms.some((t) => !covered.has(t)));
+    if (i < 0) break;
+    const [f] = left.splice(i, 1);
+    f.terms.forEach((t) => covered.add(t));
+    out.push(f);
+  }
+  return [...out, ...left.slice(0, max - out.length)];
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkFile, chunkMarkdown, chunkTypes, rank, rankPaths, select, tidy, tokenize, type DocFile } from '../src/docs/retrieve.js';
+import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, rank, rankPaths, select, tidy, tokenize, type DocFile } from '../src/docs/retrieve.js';
 import { parseLlmsIndex, tagCandidates } from '../src/docs/sources.js';
 import { ecosystemHint, formatLibraryId, nameVariants, parseLibraryRef } from '../src/search.js';
 
@@ -68,6 +68,16 @@ describe('ranking', () => {
     expect(r[0].path).toMatch(/middleware\.mdx$/);
     // Small lists keep the flat weight: two hits beat one.
     expect(rankPaths([{ path: 'a/redirect-routes.md' }, { path: 'a/middleware.md' }], 'middleware redirect routes')[0].path).toBe('a/redirect-routes.md');
+  });
+
+  it('coverPaths covers every matched query term before taking more of the same', () => {
+    const extra = Array.from({ length: 12 }, (_, i) => ({ path: `docs/api/pydantic_extra_types_${i}.md` }));
+    const files = [...extra, { path: 'docs/concepts/config.md' }, { path: 'docs/concepts/validators.md' }];
+    const ranked = rankPaths(files, 'ConfigDict extra forbid, validators, config');
+    const picked = coverPaths(ranked.filter((f) => f.score > 0), 4).map((f) => f.path);
+    expect(picked).toContain('docs/concepts/config.md');
+    expect(picked).toContain('docs/concepts/validators.md');
+    expect(picked.filter((p) => p.includes('extra_types'))).toHaveLength(2);
   });
 
   it('select skips near-duplicate sections (the same step in several framework guides)', () => {

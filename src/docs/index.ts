@@ -9,7 +9,7 @@ import { packageMeta, type PackageMeta } from '../registry.js';
 import { docsSourceFor } from '../data/docsRepos.js';
 import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
-import { chunkFile, rank, rankPaths, select, type Chunk, type DocFile } from './retrieve.js';
+import { chunkFile, coverPaths, rank, rankPaths, select, type Chunk, type DocFile } from './retrieve.js';
 import {
   docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
 } from './sources.js';
@@ -23,7 +23,7 @@ export interface DocsResult {
 }
 
 const UPGRADE_TERMS = /\b(upgrad|migrat|breaking|changelog|what'?s new|deprecat)/i;
-const MD_FILES = 8;
+const MD_FILES = 12;
 const MAX_PROSE_FILES = 40;
 const MAX_PROSE_BYTES = 1_200_000;
 /** docs/ru/..., docs/zh-hant/..., i18n/...: translations of the English pages. */
@@ -65,7 +65,7 @@ function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUp
     hit: f.score > 0,
     score: f.score + (f.inPackageDir ? 0.5 : 0) + (/(^|\/)docs?\//.test(f.path) ? 0.3 : 0),
   }));
-  const hits = scored.filter((f) => f.hit).sort((a, b) => b.score - a.score).slice(0, MD_FILES);
+  const hits = coverPaths(scored.filter((f) => f.hit).sort((a, b) => b.score - a.score), MD_FILES);
   const fill = scored.filter((f) => !f.hit && (f.fill ?? /(^|\/)(docs?|guides?|documentation)\//i.test(f.path))).sort((a, b) => b.score - a.score);
   const rankedProse: RemoteFile[] = [...hits];
   let bytes = hits.reduce((a, f) => a + (f.size ?? 20_000), 0);
