@@ -76,7 +76,9 @@ export function jsImports(source: string): string[] {
   const text = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:\\'"`])\/\/.*$/gm, '$1');
   const out = new Set<string>();
   const patterns = [
-    /\b(?:import|export)\s+(?:type\s+)?(?:[\w*{}\s,$]+?\s+from\s+)?['"]([^'"\n]+)['"]/g,
+    // The clause starts at a non-space and ends at a word-boundary "from": with "\s+from" after a
+    // lazy class that also matches spaces, "import" plus 10k spaces backtracked cubically.
+    /\b(?:import|export)(?:\s+type\b)?\s*(?:[\w*{},$][\w*{}\s,$]*?\bfrom\s*)?['"]([^'"\n]+)['"]/g,
     /\b(?:require|import)\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g,
   ];
   for (const re of patterns) {

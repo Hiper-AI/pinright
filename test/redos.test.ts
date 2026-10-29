@@ -12,6 +12,7 @@ import { pyStatements } from '../src/docs/pyapi.js';
 import { parseChangelog, tidy } from '../src/upgrade/changelog.js';
 import { cleanMdx } from '../src/upgrade/index.js';
 import { parseFile } from '../src/tree/lockfiles.js';
+import { jsImports } from '../src/hook/imports.js';
 
 const BUDGET_MS = 1500;
 
@@ -35,6 +36,21 @@ describe('no catastrophic backtracking on hostile text', () => {
     expect(fast(() => parseFile('build.gradle', gradle))).toBeLessThan(BUDGET_MS);
     const vars = parseFile('build.gradle', "val okhttpVersion = \"4.12.0\"\ndependencies { implementation \"com.squareup.okhttp3:okhttp:$okhttpVersion\" }\n");
     expect(vars.declared?.[0]).toMatchObject({ name: 'com.squareup.okhttp3:okhttp', spec: '4.12.0' });
+  });
+
+  it('JS sources the hook scans (was cubic: "import" plus 4k spaces took 45 s)', () => {
+    expect(fast(() => jsImports(`import${' '.repeat(100_000)}!`))).toBeLessThan(BUDGET_MS);
+    expect(fast(() => jsImports(`import {${' a,'.repeat(30_000)}`))).toBeLessThan(BUDGET_MS);
+    const src = `import a, { b as c } from 'left-pad';
+export * from "chalk";
+import type { T } from 'zod';
+import'side-effect';
+import {
+  x,
+  y,
+} from 'react';
+`;
+    expect(jsImports(src).sort()).toEqual(['chalk', 'left-pad', 'react', 'side-effect', 'zod']);
   });
 
   it('Composer constraints with long whitespace runs', () => {
