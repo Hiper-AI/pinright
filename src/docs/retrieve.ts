@@ -37,7 +37,7 @@ export function tokenize(s: string): string[] {
     .filter((t) => t.length > 1 && !STOP.has(t));
 }
 
-const MAX_CHUNK = 2800;
+const MAX_CHUNK = 2400;
 
 function splitLong(title: string, body: string): { title: string; text: string }[] {
   if (body.length <= MAX_CHUNK) return [{ title, text: body }];
@@ -174,12 +174,45 @@ export function chunkPython(content: string): { title: string; text: string }[] 
   return out;
 }
 
+/**
+ * Drops what costs the agent tokens and teaches it nothing: the heading line the
+ * title already carries, images, HTML comments, bare JSX component tags, and the
+ * targets of site-relative links. Code fences are left untouched.
+ */
+export function tidy(text: string): string {
+  const out: string[] = [];
+  let inFence = false;
+  let first = true;
+  for (const line of text.replace(/<!--[\s\S]*?-->/g, '').split('\n')) {
+    if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
+    if (inFence || /^\s*(```|~~~)/.test(line)) {
+      out.push(line);
+      first = false;
+      continue;
+    }
+    if (first && /^#{1,6}\s/.test(line)) {
+      first = false;
+      continue;
+    }
+    if (/^\s*<\/?[A-Z][\w.]*(\s[^>]*)?\/?>\s*$/.test(line)) continue;
+    const l = line
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/\[([^\]]+)\]\((?:\/|\.{1,2}\/|#)[^)]*\)/g, '$1');
+    if (first && !l.trim()) continue;
+    first = false;
+    out.push(l);
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export function chunkFile(file: DocFile): Chunk[] {
   const parts =
     file.kind === 'types'
       ? file.lang === 'python' ? chunkPython(file.content) : chunkTypes(file.content)
       : chunkMarkdown(file.content, /\.rst$/i.test(file.url));
-  return parts.map((p) => ({ file, title: p.title, text: p.text, score: 0 }));
+  return parts
+    .map((p) => ({ file, title: p.title, text: file.kind === 'types' ? p.text : tidy(p.text), score: 0 }))
+    .filter((c) => c.text);
 }
 
 /** BM25 over the chunks; title and file path count twice. */
@@ -214,7 +247,7 @@ export function rank(chunks: Chunk[], query: string): Chunk[] {
 }
 
 /** Best chunks that fit the budget, at most `perFile` from one file so one long page cannot crowd out the rest. */
-export function select(ranked: Chunk[], budgetChars: number, perFile = 4): Chunk[] {
+export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk[] {
   const out: Chunk[] = [];
   const count = new Map<string, number>();
   let used = 0;

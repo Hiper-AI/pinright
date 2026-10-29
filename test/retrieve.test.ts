@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkMarkdown, chunkTypes, rank, rankPaths, select, tokenize, type DocFile } from '../src/docs/retrieve.js';
+import { chunkFile, chunkMarkdown, chunkTypes, rank, rankPaths, select, tidy, tokenize, type DocFile } from '../src/docs/retrieve.js';
 import { parseLlmsIndex, tagCandidates } from '../src/docs/sources.js';
 import { ecosystemHint, formatLibraryId, nameVariants, parseLibraryRef } from '../src/search.js';
 
@@ -23,6 +23,20 @@ describe('chunking', () => {
     const c = chunkTypes(dts);
     expect(c.map((x) => x.title)).toEqual(['function createServer', 'interface Opts']);
     expect(c[0].text).toContain('Creates a server');
+  });
+});
+
+describe('tidy', () => {
+  it('drops the repeated heading, images, comments, JSX tags and relative link targets, never inside code', () => {
+    const md = '## Matcher\n\n<!-- hidden -->\n![diagram](/img/a.png)\n<Tabs>\nSee [Middleware](/docs/middleware) and [spec](https://x.dev/spec).\n</Tabs>\n\n\n\n```js\n// [keep](/this) <Tabs>\n## not a heading\n```';
+    expect(tidy(md)).toBe('See Middleware and [spec](https://x.dev/spec).\n\n```js\n// [keep](/this) <Tabs>\n## not a heading\n```');
+  });
+
+  it('applies to markdown chunks only, and drops chunks left empty', () => {
+    const md = chunkFile(file('a.md', '# Title\n![x](/x.png)\n## Usage\nrun it'));
+    expect(md.map((c) => [c.title, c.text])).toEqual([['Title > Usage', 'run it']]);
+    const types = chunkFile(file('i.d.ts', '/** [a](/b) */\nexport declare function f(): void;', 'types'));
+    expect(types[0].text).toContain('[a](/b)');
   });
 });
 

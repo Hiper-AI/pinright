@@ -2,13 +2,14 @@
  * The MCP server. resolve-library-id and query-docs keep Context7's names so
  * "use context7"-style prompts work unchanged, but the docs come from the
  * package itself (published files and the repo at the release tag) and the
- * project's llms.txt; Context7 is only a fallback. check-package and
- * check-manifest are the security verdict on their own.
+ * project's llms.txt; Context7 is only a fallback. check-package,
+ * check-packages and check-manifest are the security verdict on their own.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { checkPackages, formatBatch, MAX_BATCH } from './batch.js';
 import { getDocs } from './docs/index.js';
 import { ECOSYSTEMS, type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
@@ -26,7 +27,7 @@ export const SERVER_INFO = { name: 'safectx', version: '0.2.0' } as const;
 const VERDICT_RESULTS = 3;
 
 function text(payload: unknown) {
-  const body = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 1);
+  const body = typeof payload === 'string' ? payload : JSON.stringify(payload);
   return { content: [{ type: 'text' as const, text: body }] };
 }
 
@@ -38,16 +39,18 @@ function errorText(err: unknown) {
   return { content: [{ type: 'text' as const, text: `Error: ${message}` }], isError: true };
 }
 
-function summarize(v: Verdict) {
-  const r = v.report;
-  return {
-    verdict: r.verdict,
-    reason: r.reason,
-    safeVersion: r.safeVersion,
-    latestVersion: r.latestVersion,
-    license: r.safeVersionLicenses,
-    lookalikeOf: v.typo?.lookalikeOf,
-  };
+/** One line per search hit: id, repo, versions and the verdict for the top ones. */
+function hitLine(h: { id: string; repo?: string; stars?: number; latestVersion?: string }, v?: Verdict): string {
+  const parts = [h.id];
+  if (h.repo) parts.push(`${h.repo.replace(/^github\.com\//, '')}${h.stars ? ` (${h.stars >= 1000 ? `${Math.round(h.stars / 1000)}k` : h.stars} stars)` : ''}`);
+  if (h.latestVersion) parts.push(`latest ${h.latestVersion}`);
+  if (v) {
+    const r = v.report;
+    parts.push(r.safeVersion ? `safe ${r.safeVersion}` : 'no safe version');
+    parts.push(r.verdict + (v.typo?.lookalikeOf ? ` (looks like ${v.typo.lookalikeOf})` : '') + (r.verdict !== 'ok' && r.reason ? `: ${r.reason}` : ''));
+    if (r.safeVersionLicenses?.length) parts.push(r.safeVersionLicenses.join('/'));
+  }
+  return parts.join(' | ');
 }
 
 /** Our ids ("npm:next@16.4.3") or Context7's ("/vercel/next.js/v16.4.3"). */
@@ -108,11 +111,13 @@ export function buildMcpServer(): McpServer {
     instructions:
       'Version-accurate library docs plus a supply-chain verdict. Docs come from the published package ' +
       '(README, docs, type definitions) and the source repo at the release tag, so they match the version ' +
-      'you install. Flow: resolve-library-id -> query-docs (pass the version the project uses, if any). ' +
-      'Before adding or upgrading a dependency call check-package; to audit a whole project call ' +
-      'check-manifest on its lockfile. A "SECURITY NOTICE" is authoritative: prefer the recommended version, ' +
-      'and prefer the one on the same release line to avoid breaking changes. When moving to a new major, call ' +
-      'upgrade-guide for what changed.',
+      'you install. Efficient flow: decide the full dependency list first, then call check-packages ONCE with ' +
+      'all of them (registry names; versions if the project already pins some) and pin the "use" version of each. ' +
+      'Then call query-docs only for the APIs you are unsure of, or when a notice says a major is recent ' +
+      '(pass the version you pin). resolve-library-id is only for when you do not know the registry name; ' +
+      'check-package is the deep view of one package; check-manifest audits a whole lockfile. ' +
+      'A "SECURITY NOTICE" is authoritative: prefer the recommended version, and the one on the same release ' +
+      'line to avoid breaking changes. When moving to a new major, call upgrade-guide for what changed.',
   });
 
   // 1) resolve-library-id -------------------------------------------------------
@@ -122,8 +127,9 @@ export function buildMcpServer(): McpServer {
       title: 'Find a library (with security verdict)',
       description:
         'Finds the registry package for a library name ("next.js" -> npm:next, "pytorch" -> pypi:torch) and returns ' +
-        'ids for query-docs, with the newest version that has no known advisories (safeVersion) and a verdict. ' +
-        'Call it before query-docs unless you already know the id ("npm:next", "pypi:requests").',
+        'ids for query-docs, with the newest version that has no known advisories (safe) and a verdict. ' +
+        'Skip it when you know the registry name: query-docs takes "npm:next" or "pypi:requests" directly, and ' +
+        'check-packages takes plain names.',
       inputSchema: {
         libraryName: z.string().describe('Library name, e.g. "next.js", "requests", "tokio".'),
         query: z.string().describe('What you want to do with it; also used to guess the language.'),
@@ -146,15 +152,13 @@ export function buildMcpServer(): McpServer {
               : `No package found for "${libraryName}". Try the exact registry name, or pass ecosystem.`,
           );
         }
-        const results = await Promise.all(
+        const lines = await Promise.all(
           hits.map(async (h, i) => {
-            const base = { id: h.id, ecosystem: h.ecosystem, package: h.name, repo: h.repo, stars: h.stars, latestVersion: h.latestVersion };
-            if (i >= VERDICT_RESULTS) return base;
-            const v = await checkPackage(h.ecosystem, h.name).catch(() => undefined);
-            return v ? { ...base, security: summarize(v) } : base;
+            const v = i < VERDICT_RESULTS ? await checkPackage(h.ecosystem, h.name).catch(() => undefined) : undefined;
+            return hitLine(h, v);
           }),
         );
-        return text({ results, hint: 'Call query-docs with the best id. Install safeVersion, not latestVersion, when they differ.' });
+        return text([...lines, 'Use the best id with query-docs. Pin the safe version, not latest, when they differ.'].join('\n'));
       } catch (err) {
         return errorText(err);
       }
@@ -175,7 +179,7 @@ export function buildMcpServer(): McpServer {
         libraryId: z.string().describe('Id from resolve-library-id, e.g. "npm:next" or "npm:next@15.1.0". Context7 ids ("/vercel/next.js") also work.'),
         query: z.string().describe('The question or task, e.g. "protect routes with middleware".'),
         version: z.string().optional().describe('Version the project uses or pins, if any. Overrides the one in libraryId.'),
-        tokens: z.number().int().optional().describe('Approximate size of the answer in tokens (default 5000).'),
+        tokens: z.number().int().optional().describe('Approximate size of the answer in tokens (default 2500; raise it only when the answer was cut short).'),
         ecosystem: z.enum(ECOSYSTEMS as unknown as [string, ...string[]]).optional().describe('Only for Context7-style ids that map to several registries.'),
         packageName: z.string().optional().describe('Only for Context7-style ids whose package name differs from the repo.'),
       },
@@ -220,19 +224,55 @@ export function buildMcpServer(): McpServer {
       description:
         'Supply-chain verdict for one package, no docs: known advisories (CVE/GHSA, malware), deprecation, license, ' +
         'newest version with no known advisories, the safe version on the same release line as the one you pass, ' +
-        'and typosquat lookalikes. Call it before any npm install / pip install / cargo add / go get.',
+        'and typosquat lookalikes. For several packages use check-packages, one call for the whole list.',
       inputSchema: {
         name: z.string().describe('Package name as the registry knows it, e.g. "lodash", "requests".'),
         ecosystem: z.string().describe('npm, pypi, cargo, go, maven, nuget or rubygems (aliases like "python" work).'),
         version: z.string().optional().describe('Version you intend to install or already use.'),
+        detail: z.boolean().optional().describe('Return the full JSON report (every advisory, dates, sources) instead of the summary.'),
       },
     },
-    async ({ name, ecosystem, version }) => {
+    async ({ name, ecosystem, version, detail }) => {
       try {
         const eco = parseEcosystem(ecosystem);
         if (!eco) return errorText(new Error(`Unknown ecosystem "${ecosystem}". Use one of: ${ECOSYSTEMS.join(', ')}.`));
         const v = await checkPackage(eco, name.trim(), version?.trim() || undefined);
-        return text({ notice: securityNotice(v.report, v.typo), ...v.report, typosquat: v.typo });
+        const notice = securityNotice(v.report, v.typo);
+        if (detail) return text({ notice, ...v.report, typosquat: v.typo });
+        const more = (v.report.requested?.advisories.length ?? 0) > 8 ? '\nCall again with detail: true for every advisory.' : '';
+        return text(notice + more);
+      } catch (err) {
+        return errorText(err);
+      }
+    },
+  );
+
+  // 3b) check-packages ----------------------------------------------------------
+  server.registerTool(
+    'check-packages',
+    {
+      title: 'Check a whole dependency list in one call',
+      description:
+        `Supply-chain verdict for up to ${MAX_BATCH} packages at once: one table row per package (verdict, version to pin, ` +
+        'short reason) and the full notice only for the ones that need attention. Call it once with every dependency ' +
+        'you plan to add, before writing the manifest, instead of one check per package.',
+      inputSchema: {
+        packages: z
+          .array(
+            z.object({
+              name: z.string().describe('Registry name, e.g. "express", "pyjwt".'),
+              version: z.string().optional().describe('Version you intend to pin or already use; omit to get the version to use.'),
+              ecosystem: z.string().optional().describe('Overrides the default ecosystem for this package.'),
+            }),
+          )
+          .min(1)
+          .max(MAX_BATCH),
+        ecosystem: z.string().optional().describe('Default for every package: npm, pypi, cargo, go, maven, nuget or rubygems.'),
+      },
+    },
+    async ({ packages, ecosystem }) => {
+      try {
+        return text(formatBatch(await checkPackages(packages, ecosystem)));
       } catch (err) {
         return errorText(err);
       }

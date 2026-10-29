@@ -73,7 +73,7 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport): s
     lines.push(
       `Recommended version: ${report.safeVersion}` +
         (report.latestVersion && report.latestVersion !== report.safeVersion
-          ? ` (latest is ${report.latestVersion}, which is either newer than the cooldown window, pre-release or has an advisory)`
+          ? ` (latest ${report.latestVersion} is inside the cooldown window, a pre-release or has an advisory)`
           : ' (latest)') +
         (isUpgrade ? `. Upgrade: ${cmd(report.safeVersion)}` : '.'),
     );
@@ -95,5 +95,11 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport): s
   }
 
   lines.push(`Verified against ${report.sources.join(' + ')} on ${report.checkedAt.slice(0, 10)}.`);
+  if (report.verdict === 'ok') {
+    // Nothing to warn about: the routine lines fit on one; anything else keeps its own line.
+    const routine = /^(Security check:|Recommended version:|License:|Verified against )/;
+    const one = lines.filter((l) => routine.test(l)).map((l) => l.replace(/\.$/, '')).join(' | ');
+    return [one, ...lines.filter((l) => !routine.test(l))].join('\n');
+  }
   return lines.join('\n');
 }

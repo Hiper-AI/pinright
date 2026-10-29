@@ -106,14 +106,15 @@ function dedupe(chunks: Chunk[]): Chunk[] {
 function format(meta: PackageMeta, chunks: Chunk[], header: string[]): string {
   const parts = [...header, ''];
   for (const c of chunks) {
-    parts.push(`### ${c.title || c.file.label}`);
-    parts.push(`Source: ${c.file.label}${c.file.versionAccurate ? ` (${meta.name}@${meta.version})` : ' (current site docs)'} ${c.file.url}`);
-    parts.push('');
+    // The label says where it comes from; the full URL is listed once per file at the end.
+    parts.push(`### ${c.title || c.file.label} [${c.file.label}${c.file.versionAccurate ? '' : ', current site docs'}]`);
     // Python docstrings often hold ``` examples: fence them with a longer run of backticks.
     const fence = c.file.lang === 'python' && c.text.includes('```') ? '````' : '```';
     parts.push(c.file.kind === 'types' ? fence + (c.file.lang ?? 'ts') + '\n' + c.text + '\n' + fence : c.text);
     parts.push('');
   }
+  const urls = [...new Set(chunks.map((c) => c.file.url))];
+  parts.push(`Sources (${meta.name}@${meta.version}): ${urls.join(' ')}`);
   return parts.join('\n');
 }
 
@@ -215,8 +216,10 @@ export async function getDocs(opts: {
   const picked = select(ranked, budget);
   const accurate = picked.filter((c) => c.file.versionAccurate).length;
   const header = [
-    `Docs for ${meta.name}@${meta.version} (${opts.ecosystem})${meta.description ? `: ${meta.description}` : ''}.`,
-    `${picked.length} sections, ${accurate} from the published package or the repo at its release tag; the rest from the project's current site docs, which may describe a newer version.`,
+    `Docs for ${meta.name}@${meta.version} (${opts.ecosystem}), ${picked.length} sections` +
+      (accurate === picked.length
+        ? ', all from the published package or the repo at its release tag.'
+        : `: ${accurate} from the package or the repo at its release tag, ${picked.length - accurate} from the current site docs (may describe a newer version).`),
     ...notesFor(picked.map((c) => c.text).join('\n')),
   ];
   return { meta, via: 'local', sources, text: format(meta, picked, header) };

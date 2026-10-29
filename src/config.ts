@@ -23,7 +23,7 @@ export const config = {
   /** "fallback" (default): Context7 only when local docs are thin. "off": never call it. */
   context7Mode: (process.env.SAFECTX_CONTEXT7 === "off" ? "off" : "fallback") as "off" | "fallback",
   /** Characters of documentation returned per query-docs call (about 4 per token). */
-  docsBudgetChars: intEnv("SAFECTX_DOCS_BUDGET", 20_000),
+  docsBudgetChars: intEnv("SAFECTX_DOCS_BUDGET", 10_000),
   context7BaseUrl: process.env.CONTEXT7_BASE_URL ?? 'https://context7.com',
   depsDevBaseUrl: process.env.DEPSDEV_BASE_URL ?? 'https://api.deps.dev',
   osvBaseUrl: process.env.OSV_BASE_URL ?? 'https://api.osv.dev',

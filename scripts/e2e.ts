@@ -24,6 +24,7 @@ await call('query-docs', { libraryId: 'npm:next@15.1.0', query: 'protect routes 
 await call('query-docs', { libraryId: '/vercel/next.js', query: 'middleware redirect' }, 500);
 await call('query-docs', { libraryId: 'pypi:requests', query: 'retry with backoff' }, 900);
 await call('check-package', { name: 'jsonwebtoken', ecosystem: 'npm', version: '8.5.1' }, 700);
+await call('check-packages', { ecosystem: 'npm', packages: [{ name: 'express' }, { name: 'jsonwebtoken', version: '8.5.1' }, { name: 'expresss' }] }, 1200);
 await call('resolve-library-id', { libraryName: 'reqeusts', query: 'python http' });
 if (process.argv[2]) await call('check-manifest', { path: process.argv[2] }, 2500);
 

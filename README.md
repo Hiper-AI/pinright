@@ -91,8 +91,9 @@ safectx blocked this dependency change:
 |---|---|
 | `resolve-library-id` | Library name to registry package (`next.js` to `npm:next`, `pytorch` to `pypi:torch`), ranked by repo stars, with the safe version and a verdict. Suggests the real name for a misspelled one. |
 | `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the safe one; with a vulnerable one it documents the same-line fix. Context7 ids (`/vercel/next.js`) work too. |
-| `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes. |
 | `upgrade-guide` | What changes between two versions: breaking changes, removed or renamed APIs, config and default changes, packages that split off, deprecations, and the advisories the move fixes. Without `to` it targets the recommended version. |
+| `check-packages` | The verdict for up to 50 packages in one call: one table row each (verdict, version to pin, short reason), and the full notice only for the ones that need attention. The cheap way to vet a dependency list. |
+| `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes. `detail: true` returns the full JSON report. |
 | `check-manifest` | Whole-tree audit of `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `Cargo.lock`, `go.mod`, `Gemfile.lock`, `packages.lock.json`, or a bare `package.json` / `pyproject.toml` / `Cargo.toml` resolved through deps.dev. Each finding comes with its chain and fix. |
 
 Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `unknown-package`,
@@ -190,7 +191,7 @@ before deps.dev mirrors them.
 4. Context7, only when the three above return nothing relevant. `SAFECTX_CONTEXT7=off` disables it.
 
 Sections are ranked locally with BM25 against the question, and the answer is capped at about
-5,000 tokens (`tokens` argument, or `SAFECTX_DOCS_BUDGET` in characters).
+2,500 tokens (`tokens` argument, or `SAFECTX_DOCS_BUDGET` in characters).
 
 ## CLI
 
@@ -210,7 +211,7 @@ npx safectx upgrade npm zod 3.25.76 4.6.7  # what changes between two versions
 | `SAFECTX_CONTEXT7` | `fallback` | `off` never calls Context7. |
 | `CONTEXT7_API_KEY` | none | Raises Context7's rate limit when it is used. |
 | `GITHUB_TOKEN` / `GH_TOKEN` | none | Raises GitHub's rate limit for repo docs. Read-only use. |
-| `SAFECTX_DOCS_BUDGET` | `20000` | Characters of docs per answer. |
+| `SAFECTX_DOCS_BUDGET` | `10000` | Characters of docs per answer. |
 | `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Disk cache (docs 7 days, advisories 24 h). |
 | `SAFECTX_NO_CACHE` | unset | `1` disables the cache. |
 | `SAFECTX_TIMEOUT_MS` | `15000` | Per-request timeout. |

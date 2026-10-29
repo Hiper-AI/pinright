@@ -32,6 +32,15 @@ describe('securityNotice', () => {
     const text = securityNotice(base);
     expect(text).toMatch(/^Security check: next \(npm\) has no known advisories/);
     expect(text).not.toContain('Upgrade:');
+    expect(text).toBe('Security check: next (npm) has no known advisories | Recommended version: 16.4.3 (latest) | License: MIT | Verified against deps.dev + osv.dev on 2026-10-29');
+  });
+
+  it('keeps any other line of an ok verdict on its own line', () => {
+    const text = securityNotice({ ...base, recentMajor: { line: '16.x', since: '2026-02-01' } });
+    const lines = text.split('\n');
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toMatch(/^Security check: .* \| Verified against/);
+    expect(lines[1]).toMatch(/^Heads-up: next 16.x is a recent major/);
   });
 
   it('never says ok when a source was down', () => {
