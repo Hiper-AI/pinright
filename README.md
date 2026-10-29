@@ -94,7 +94,7 @@ safectx blocked this dependency change:
 | Tool | What it does |
 |---|---|
 | `resolve-library-id` | Library name to registry package (`next.js` to `npm:next`, `pytorch` to `pypi:torch`), ranked by repo stars, with the safe version and a verdict. Hits the project already depends on carry `installedVersion` and `installedIn`. Suggests the real name for a misspelled one. |
-| `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the one installed in the project, or the safe one when the project does not use the package; with a vulnerable one it documents the same-line fix. Context7 ids (`/vercel/next.js`) work too. |
+| `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the one installed in the project, or the safe one when the project does not use the package; with a vulnerable one it documents the same-line fix. GitHub repo ids (`/vercel/next.js`) work too. |
 | `upgrade-guide` | What changes between two versions: breaking changes, removed or renamed APIs, config and default changes, packages that split off, deprecations, and the advisories the move fixes. Without `to` it targets the recommended version. |
 | `check-packages` | The verdict for up to 50 packages in one call: one table row each (verdict, version to pin, short reason), and the full notice only for the ones that need attention. The cheap way to vet a dependency list. |
 | `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes, and team policy violations. Without a version it checks the installed one. |
@@ -375,9 +375,8 @@ before deps.dev mirrors them.
    `src/data/docsRepos.ts`. For LangChain's split packages, the answer lists the sibling packages
    the question needs that are not dependencies (`langchain-text-splitters`, `langchain-community`).
 
-safectx does not call Context7 or any other docs index: everything comes from the sources above,
-with no account or key. Library ids in Context7's format (`/vercel/next.js`) are still accepted
-and mapped to the package, so existing prompts keep working.
+safectx does not call any docs index: everything comes from the sources above, with no account
+or key. A GitHub repo id (`/vercel/next.js`) also works and is mapped to the package.
 
 Sections are ranked locally with BM25 against the question, and the answer is capped at about
 2,500 tokens (`tokens` argument, or `SAFECTX_DOCS_BUDGET` in characters).
@@ -539,14 +538,14 @@ versions, twice per arm. Each project is then audited with `npm audit` or `pip-a
 nothing with safectx, and installed and built for real. Run of 2026-10-29, full report in
 [bench/AGENTS.md](bench/AGENTS.md):
 
-| | No docs | Context7 | safectx MCP | Hook only | MCP + hook |
-|---|---|---|---|---|---|
-| Direct deps with a known advisory | 41% | 40% | 0% | 0% | 0% |
-| Whole-tree alerts, 24 projects | 749 | 761 | 2 | 10 | 2 |
-| Critical + high alerts (npm) | 181 | 192 | 0 | 4 | 0 |
-| Projects that install and build | 24 | 24 | 23 | 22 | 23 |
-| Turns per run | 3.9 | 6.4 | 6.3 | 5.7 | 6.6 |
-| Cost per run (USD) | 0.03 | 0.04 | 0.05 | 0.04 | 0.05 |
+| | No docs | safectx MCP | Hook only | MCP + hook |
+|---|---|---|---|---|
+| Direct deps with a known advisory | 41% | 0% | 0% | 0% |
+| Whole-tree alerts, 24 projects | 749 | 2 | 10 | 2 |
+| Critical + high alerts (npm) | 181 | 0 | 4 | 0 |
+| Projects that install and build | 24 | 23 | 22 | 23 |
+| Turns per run | 3.9 | 6.3 | 5.7 | 6.6 |
+| Cost per run (USD) | 0.03 | 0.05 | 0.04 | 0.05 |
 
 Against the previous run (v0.2), MCP + hook went from 6 to 2 alerts, from 11.1 to 6.6 turns and
 from USD 0.07 to 0.05 per run, mostly thanks to `check-packages`. The two remaining alerts are a
@@ -555,8 +554,8 @@ Nuxt advisory with no fixed release yet. The builds that fail are `next-auth` 4 
 declared. The hook-only arm of two Python tasks was rerun after fixing a pin-matching bug the run
 exposed (`idna==3.10` against the `3.10.0` deps.dev lists).
 
-The safectx arms ran with Context7 turned off. On the same 132 lockfiles, `check-manifest` flagged
-the same vulnerable packages as `npm audit` and `pip-audit` (mean Jaccard 0.95 for npm, 1.00 for PyPI).
+On the same 108 lockfiles, `check-manifest` flagged the same vulnerable packages as `npm audit`
+and `pip-audit` (mean Jaccard 0.94 for npm, 1.00 for PyPI).
 These numbers come from one model, one day and tasks we wrote; they are not a guarantee.
 
 ## Development

@@ -1,5 +1,5 @@
 /**
- * Library search without Context7: turn "next.js" or "pytorch" into registry
+ * Library search with no docs index: turn "next.js" or "pytorch" into registry
  * packages. Registries have no good fuzzy search (npm's ranks "next.js" the
  * package above "next"), so we generate likely names, check which exist, and
  * rank them by the stars of their source repository on deps.dev.

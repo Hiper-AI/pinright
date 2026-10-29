@@ -1,5 +1,5 @@
 /**
- * A Context7 library id is a GitHub repo ("/vercel/next.js"), not a package.
+ * A library id like "/vercel/next.js" is a GitHub repo, not a package.
  * This module turns it into a (ecosystem, package) pair.
  *
  * Strategy, in order:
@@ -55,7 +55,7 @@ export function guessNames(owner: string, repo: string, title?: string): string[
   out.add(`@${owner.toLowerCase()}/${bare}`);
   if (bare.startsWith(`${owner.toLowerCase()}-`)) out.add(bare.slice(owner.length + 1));
   if (title) {
-    // Context7's title is often the package name with branding: "Vue.js", "Chart.js", "scikit-learn".
+    // A library's display title is often the package name with branding: "Vue.js", "Chart.js", "scikit-learn".
     const t = title.toLowerCase().replace(/\.js$|\s+js$/, '').trim();
     if (/^[a-z0-9@][a-z0-9._/-]*$/.test(t)) out.add(t);
     const firstWord = t.split(/\s+/)[0];

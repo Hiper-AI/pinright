@@ -1,8 +1,7 @@
 /**
- * Runs each task with a real coding agent (Claude Code, headless) under three arms:
+ * Runs each task with a real coding agent (Claude Code, headless) under these arms:
  *   no-docs   : no MCP server, no web; the agent pins versions from memory
- *   context7  : the official Context7 MCP server
- *   safectx   : this server (Context7 off)
+ *   safectx   : this server
  *   hook-only : no MCP server, only the safectx pre-install hook
  *   safectx+hook : both
  * Built-in tools are limited to Write and Read in every arm, so the only
@@ -24,7 +23,7 @@ const model = opt('model', 'sonnet');
 const reps = Number(opt('reps', '2'));
 const concurrency = Number(opt('concurrency', '4'));
 const only = opt('only', '').split(',').filter(Boolean);
-const armsOpt = opt('arms', 'no-docs,context7,safectx,hook-only,safectx+hook').split(',');
+const armsOpt = opt('arms', 'no-docs,safectx,hook-only,safectx+hook').split(',');
 const stamp = opt('stamp', new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19));
 
 const root = resolve(import.meta.dirname, '..', '..');
@@ -34,7 +33,6 @@ const cli = join(root, 'dist', 'cli.js');
 const safectxServer = { safectx: { command: 'node', args: [cli] } };
 const MCP: Record<string, object> = {
   'no-docs': { mcpServers: {} },
-  context7: { mcpServers: { context7: { command: 'npx', args: ['-y', '@upstash/context7-mcp'] } } },
   safectx: { mcpServers: safectxServer },
   'hook-only': { mcpServers: {} },
   'safectx+hook': { mcpServers: safectxServer },
@@ -73,7 +71,7 @@ function runOne(job: Job): Promise<number> {
   mkdirSync(work, { recursive: true });
   const mcpPath = join(dir, 'mcp.json');
   writeFileSync(mcpPath, JSON.stringify(MCP[job.arm], null, 2));
-  const allowed = ['Write', 'Read', 'mcp__context7', 'mcp__safectx'];
+  const allowed = ['Write', 'Read', 'mcp__safectx'];
   const cliArgs = [
     '-p', job.prompt,
     '--model', model,
@@ -95,8 +93,7 @@ function runOne(job: Job): Promise<number> {
   const err = createWriteStream(join(dir, 'stderr.log'));
   const started = Date.now();
   return new Promise((res) => {
-    // safectx arms run with Context7 off: this run measures safectx's own docs.
-    const env = { ...process.env, SAFECTX_NO_CACHE: '', SAFECTX_CONTEXT7: 'off' };
+    const env = { ...process.env, SAFECTX_NO_CACHE: '' };
     const child = spawn('claude', cliArgs, { cwd: work, env, windowsHide: true });
     child.stdout.pipe(out);
     child.stderr.pipe(err);

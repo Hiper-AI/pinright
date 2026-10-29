@@ -100,7 +100,7 @@ export async function getAdvisory(id: string): Promise<DepsDevAdvisory | undefin
 
 /**
  * Package versions that deps.dev links to a source repository, e.g.
- * "github.com/vercel/next.js". This is how a Context7 id becomes a package.
+ * "github.com/vercel/next.js". This is how a GitHub repo id becomes a package.
  */
 export async function getProjectPackageVersions(
   projectId: string,

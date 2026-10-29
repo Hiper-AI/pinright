@@ -33,7 +33,7 @@ const onlyTasks = (args[args.indexOf('--only') + 1] ?? '').split(',').filter((s)
 const onlyArms = (args[args.indexOf('--arms') + 1] ?? '').split(',').filter((s) => args.includes('--arms') && s);
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
-export const ARMS = ['no-docs', 'context7', 'safectx', 'hook-only', 'safectx+hook', 'latest'];
+export const ARMS = ['no-docs', 'safectx', 'hook-only', 'safectx+hook', 'latest'];
 const DAY = 86_400_000;
 
 interface Dep { name: string; spec: string; version: string; exact: boolean }

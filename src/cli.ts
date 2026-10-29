@@ -252,7 +252,7 @@ async function main(): Promise<number> {
       console.log(PKG_VERSION);
       return 0;
     default:
-      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor] | cache clear [context7]]');
+      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor] | cache clear]');
       return 2;
   }
 }

@@ -56,7 +56,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "test": "vitest run",
-    "bench": "tsx bench/run.ts",
     "bench:agents": "tsx bench/agents/run.ts",
     "coverage:ecosystem": "tsx scripts/coverage.ts",
     "prepack": "npm run clean && npm run build",

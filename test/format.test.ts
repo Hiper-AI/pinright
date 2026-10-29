@@ -56,7 +56,7 @@ describe('securityNotice', () => {
   });
 });
 
-describe('context7 ids', () => {
+describe('GitHub repo ids', () => {
   it('parses ids with and without a version', () => {
     expect(parseLibraryId('/vercel/next.js')).toEqual({ owner: 'vercel', repo: 'next.js', version: undefined, base: '/vercel/next.js' });
     expect(parseLibraryId('/vercel/next.js/v15.1.8').version).toBe('v15.1.8');

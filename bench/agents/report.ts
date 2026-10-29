@@ -15,10 +15,9 @@ const runDir = join(root, 'bench', 'agents', 'runs', stamp);
 const scores: RunScore[] = JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8'));
 const config = JSON.parse(readFileSync(join(runDir, 'config.json'), 'utf8'));
 
-const ARMS = ['no-docs', 'context7', 'safectx', 'hook-only', 'safectx+hook', 'latest'];
+const ARMS = ['no-docs', 'safectx', 'hook-only', 'safectx+hook', 'latest'];
 const LABEL: Record<string, string> = {
   'no-docs': 'No docs',
-  context7: 'Context7',
   safectx: 'safectx MCP',
   'hook-only': 'safectx hook only',
   'safectx+hook': 'safectx MCP + hook',
@@ -78,12 +77,12 @@ for (const arm of ARMS) {
 const arms = ARMS.filter((a) => stats[a]);
 const rows = Object.keys(stats[arms[0]]);
 const lines: string[] = [];
-lines.push('# Agent benchmark: no docs vs Context7 vs safectx', '');
+lines.push('# Agent benchmark: no docs vs safectx', '');
 lines.push(
   `Run \`${stamp}\`, model \`${scores.find((s) => s.model)?.model ?? config.model}\`, ${config.reps} repetition(s) of ${TASKS.length} tasks per arm ` +
     `(${TASKS.filter((t) => t.ecosystem === 'npm').length} npm, ${TASKS.filter((t) => t.ecosystem === 'pypi').length} PyPI). ` +
     'Each run is Claude Code in headless mode with only Write and Read as built-in tools (no shell, no web). The prompt is identical in every arm and asks for exact pinned versions. ' +
-    'Arms differ only in what is attached: nothing, the Context7 MCP server, the safectx MCP server (with Context7 turned off, so its docs come from the packages themselves), the safectx pre-install hook alone, or both.',
+    'Arms differ only in what is attached: nothing, the safectx MCP server (its docs come from the packages themselves), the safectx pre-install hook alone, or both.',
   '',
 );
 lines.push(
@@ -127,7 +126,7 @@ for (const a of arms.filter((x) => x !== 'latest')) {
 }
 
 // safectx check-manifest against npm audit / pip-audit on the very same files.
-const pairs = scores.filter((s) => s.tree?.resolved && s.tree.safectx && s.tree.auditNames);
+const pairs = scores.filter((s) => ARMS.includes(s.arm) && s.tree?.resolved && s.tree.safectx && s.tree.auditNames);
 if (pairs.length) {
   const agree = pairs.map((s) => {
     const A = new Set(s.tree!.auditNames);

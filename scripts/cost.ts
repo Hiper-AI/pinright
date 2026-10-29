@@ -45,7 +45,7 @@ const CALLS: Call[] = [
 interface Row { chars: number; calls: number; ms: number; error?: boolean }
 
 async function measure(cli: string): Promise<Row[]> {
-  const env = { ...process.env, SAFECTX_CONTEXT7: 'off' } as Record<string, string>;
+  const env = { ...process.env } as Record<string, string>;
   const client = new Client({ name: 'cost', version: '0.0.0' });
   await client.connect(new StdioClientTransport({ command: 'node', args: [cli], env }));
   const tools = new Set((await client.listTools()).tools.map((t) => t.name));

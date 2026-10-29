@@ -1,5 +1,5 @@
 /**
- * How many popular Context7 ids map to a registry package? This is the number
+ * How many popular GitHub repo ids ("/vercel/next.js") map to a registry package? This is the number
  * that decides whether the verdict is useful. Run: npm run coverage:ecosystem
  * Hits the real APIs (cached on disk afterwards).
  */

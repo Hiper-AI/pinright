@@ -1,5 +1,5 @@
 /**
- * Where documentation comes from, without Context7:
+ * Where documentation comes from, with no docs index in between:
  *   1. the published package at the exact version (jsDelivr mirrors npm tarballs):
  *      README, bundled docs and the .d.ts type definitions;
  *   2. the source repository at the release tag (GitHub tree + raw files):
