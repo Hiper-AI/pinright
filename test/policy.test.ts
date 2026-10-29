@@ -58,6 +58,16 @@ beforeEach(() => {
 });
 
 describe('decide', () => {
+  it('denies malware of the requested version whatever the package-wide verdict says (security review F3)', async () => {
+    versions.set('evil', ['1.0.0', '1.0.1']);
+    for (const headline of ['vulnerable', 'unknown'] as const) {
+      reports.set('evil@1.0.1', { verdict: headline, requested: { version: '1.0.1', verdict: 'malicious', advisories: [{ id: 'MAL-2026-7', aliases: [], url: '' }] } });
+      const d = await decide([{ ecosystem: 'npm', name: 'evil', spec: '1.0.1', source: 'npm i' }]);
+      expect(d.action).toBe('deny');
+      expect(d.problems[0]).toContain('MALWARE (MAL-2026-7)');
+    }
+  });
+
   it('denies a vulnerable pin and points to the same release line first', async () => {
     versions.set('axios', ['1.7.9', '1.20.0', '2.0.0']);
     reports.set('axios@1.7.9', {

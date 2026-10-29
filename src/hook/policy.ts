@@ -183,7 +183,8 @@ function judge(c: Checked, p: Policy): Outcome {
   const v = c.v as Verdict;
   const r = v.report;
   const fix = (to: string | undefined, why: string) => (to ? ` ${why} ${to}: ${installCommand(i.ecosystem, i.name, to)}` : '');
-  switch (r.verdict) {
+  // Malware in the version being installed blocks whatever the package-wide verdict is.
+  switch (r.requested?.verdict === 'malicious' ? 'malicious' : r.verdict) {
     case 'malicious':
       return { action: 'deny', problem: `${label}: flagged as MALWARE (${r.requested?.advisories.find((a) => a.id.startsWith('MAL-'))?.id ?? 'OSV'}). Do not install it.` };
     case 'possible-typosquat':
