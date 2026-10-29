@@ -110,7 +110,7 @@ Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `
 
 ## The hook
 
-`safectx hook claude` (a `PreToolUse` hook on `Bash|Write|Edit|MultiEdit`) and `safectx hook cursor`
+`safectx hook claude` (a `PreToolUse` hook on `Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit`) and `safectx hook cursor`
 (`beforeShellExecution` and `preToolUse`) read what the agent is about to do:
 
 - installs: `npm`/`pnpm`/`yarn`/`bun add|install`, `npx`/`pnpm dlx`/`bunx`, `pip install` (also `-r file`),
@@ -121,6 +121,20 @@ Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `
   dependencies that are new or changed version count, so editing an old project does not re-open
   every old dependency;
 - writes to `.github/workflows/*.yml` and `action.yml`: new or re-pointed `uses:` lines.
+
+The command reader follows what a command runs: `bash -c`, `eval`, `$(…)`, `cmd /c`, `powershell
+-Command`, wrappers like `sudo`, `env` and `xargs`, aliases and variables set in the same line, and
+scripts run by name (`npm run`, lifecycle scripts, `make`, `just`, `sh script.sh`). Shell writes to a
+manifest (`echo >>`, `tee`, `cat <<EOF >`, `cp`) are read like a Write, and notebook cells with
+`!pip install` like a command. Lockfiles, registry settings (`.npmrc`, `pip.conf`, `--index-url`) and
+`overrides`/`resolutions` count too.
+
+What the hook cannot check (a package name in a variable, a git or URL source, another registry, a
+manifest rewritten by `sed -i`) is *unverifiable*: it asks by default (`SAFECTX_HOOK_UNVERIFIABLE`).
+Changes to `.safectx.json` or to the hook's entry in the agent settings always ask a human. The hook is
+a guardrail, not a sandbox: [docs/HOOK-THREAT-MODEL.md](docs/HOOK-THREAT-MODEL.md) lists what it covers,
+what it does not, and each bypass we tried. After upgrading, run `safectx init` again to pick up the
+new matcher.
 
 It blocks malware, typosquats, packages or versions that do not exist, versions with known advisories
 when a clean one exists, deprecated versions with a maintained successor, and dependencies whose
@@ -157,7 +171,8 @@ override the file:
 | Variable | Default | Meaning |
 |---|---|---|
 | `SAFECTX_ALLOW` | none | Comma list of names that skip the hook, `*` wildcard (`@acme/*`). Added to the file's `allow`. For private packages. |
-| `SAFECTX_HOOK_ON_ERROR` | `allow` | What to do when deps.dev or OSV cannot be reached: `allow`, `ask` or `deny`. |
+| `SAFECTX_HOOK_ON_ERROR` | `allow` | What to do when deps.dev or OSV cannot be reached: `allow`, `ask` or `deny`. A name one edit away from a popular package asks even with `allow`. |
+| `SAFECTX_HOOK_UNVERIFIABLE` | `ask` | What safectx cannot check (git or URL sources, another registry, a command or file it cannot read): `allow`, `ask` or `deny`. |
 | `SAFECTX_HOOK_NO_FIX` | `severity` | When no clean version exists: `severity` asks for high/critical and allows the rest; or `allow`, `ask`, `deny` for all. |
 | `SAFECTX_HOOK_COOLDOWN` | `warn` | `enforce` blocks an unpinned install whose newest version is inside the cooldown window. |
 | `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check; on timeout it behaves as `SAFECTX_HOOK_ON_ERROR`. |
@@ -277,6 +292,7 @@ the same rules. It is JSON with `//` comments allowed. Every key is optional:
   "cooldown": "enforce",                      // warn | enforce
   "noFix": "severity",                        // severity | allow | ask | deny
   "onError": "ask",                           // allow | ask | deny
+  "unverifiable": "ask",                      // allow | ask | deny (git/URL sources, other registries)
   "actionsPin": "warn"                        // off | warn | enforce (GitHub Actions pinned to a SHA)
 }
 ```
@@ -288,15 +304,15 @@ the same rules. It is JSON with `//` comments allowed. Every key is optional:
 | `licenses` | A version whose license expression has no acceptable alternative is denied (`MIT OR AGPL-3.0` passes a deny on `AGPL-*`). A missing or non-SPDX license is a note. | Same, for the version checked; direct dependencies in `check-manifest`. |
 | `severityThreshold` | When every advisory of a version is rated below it, the hook allows with a note. Unrated advisories and malware always count. Applies to transitive findings too. | Not applied: the tools report every advisory. |
 | `cooldownDays`, `cooldown` | As `SAFECTX_COOLDOWN_DAYS` and `SAFECTX_HOOK_COOLDOWN`. | `cooldownDays` changes the recommended version. |
-| `noFix`, `onError` | As `SAFECTX_HOOK_NO_FIX` and `SAFECTX_HOOK_ON_ERROR`. | |
+| `noFix`, `onError`, `unverifiable` | As `SAFECTX_HOOK_NO_FIX`, `SAFECTX_HOOK_ON_ERROR` and `SAFECTX_HOOK_UNVERIFIABLE`. | |
 
 Precedence is built-in defaults, then the file, then environment variables. Lists merge
 (`SAFECTX_ALLOW` adds to `allow`); single values from the environment replace the file's.
 
 A file that is not valid JSON, or has an unknown key or a wrong value, does not count as "no policy":
 the hook denies every dependency change with the error until someone fixes the file, and the MCP tools
-start their answer with `POLICY ERROR`. Editing `.safectx.json` itself is not a dependency change, so
-the agent can fix it.
+start their answer with `POLICY ERROR`. The agent can propose the fix: a write to
+`.safectx.json` asks a human instead of being denied, as every change to the policy does.
 
 ## Ecosystems
 
