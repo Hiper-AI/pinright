@@ -48,6 +48,11 @@ beforeAll(async () => {
           for (let i = 0; i < 10; i++) res.write(Buffer.alloc(1000));
           res.end();
           return;
+        case '/slow-body':
+          // Headers at once, then the body never finishes.
+          res.setHeader('content-type', 'application/json');
+          res.write('{"a":');
+          return;
         case '/small':
           res.end(Buffer.from('abc'));
           return;
@@ -100,6 +105,18 @@ describe('http on the built-in fetch', () => {
       const started = Date.now();
       await expect(getText(`${base}/slow`)).rejects.toThrow();
       expect(Date.now() - started).toBeLessThan(1_500);
+    } finally {
+      (config as { requestTimeoutMs: number }).requestTimeoutMs = saved;
+    }
+  });
+
+  it('the timeout covers the body too, not only the headers (security review F11)', async () => {
+    const saved = config.requestTimeoutMs;
+    (config as { requestTimeoutMs: number }).requestTimeoutMs = 200;
+    try {
+      const started = Date.now();
+      await expect(getJson(`${base}/slow-body`)).rejects.toThrow();
+      expect(Date.now() - started).toBeLessThan(2_000);
     } finally {
       (config as { requestTimeoutMs: number }).requestTimeoutMs = saved;
     }

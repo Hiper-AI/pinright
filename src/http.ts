@@ -42,7 +42,14 @@ function intHeader(res: { headers: { get(name: string): string | null } }, name:
   return Number.isFinite(n) ? n : undefined;
 }
 
-async function request(url: string, opts: HttpOptions = {}) {
+/**
+ * Largest JSON or text body accepted. The hosts are fixed, but some serve what package
+ * publishers wrote (raw files of a repo, jsDelivr listings): no answer may exhaust memory.
+ */
+const MAX_TEXT_BYTES = 64_000_000;
+
+/** One request, body included: the timeout covers the whole body, not just the headers. */
+async function requestText(url: string, opts: HttpOptions = {}): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.requestTimeoutMs);
   const init: RequestInit = {
@@ -63,24 +70,38 @@ async function request(url: string, opts: HttpOptions = {}) {
     });
     debug(init.method ?? 'GET', url, res.status);
     if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
       const remaining = intHeader(res, 'x-ratelimit-remaining');
       const resetSec = intHeader(res, 'x-ratelimit-reset');
       throw new HttpError(res.status, url, intHeader(res, 'retry-after'), remaining !== undefined || resetSec !== undefined ? { remaining, resetSec } : undefined);
     }
-    return res;
+    const tooLarge = () => new Error(`${url} is larger than ${MAX_TEXT_BYTES} bytes`);
+    if (Number.parseInt(res.headers.get('content-length') ?? '', 10) > MAX_TEXT_BYTES) {
+      controller.abort();
+      throw tooLarge();
+    }
+    const chunks: Buffer[] = [];
+    let total = 0;
+    for await (const chunk of res.body ?? []) {
+      total += chunk.length;
+      if (total > MAX_TEXT_BYTES) {
+        controller.abort();
+        throw tooLarge();
+      }
+      chunks.push(Buffer.from(chunk));
+    }
+    return new TextDecoder('utf-8').decode(Buffer.concat(chunks));
   } finally {
     clearTimeout(timer);
   }
 }
 
 export async function getJson<T>(url: string, opts?: HttpOptions): Promise<T> {
-  const res = await request(url, opts);
-  return (await res.json()) as T;
+  return JSON.parse(await requestText(url, opts)) as T;
 }
 
 export async function getText(url: string, opts?: HttpOptions): Promise<string> {
-  const res = await request(url, opts);
-  return await res.text();
+  return await requestText(url, opts);
 }
 
 /**
