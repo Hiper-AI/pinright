@@ -1,7 +1,7 @@
 /**
  * Prompt-injection detector against real documentation: what share of the
  * docs safectx serves for popular npm and PyPI packages would it drop (high)
- * or flag (medium)? Every chunk of every document query-docs gathers is
+ * or flag (medium)? Every chunk of every document get-docs gathers is
  * scanned, not only the few a query returns, plus the upgrade-guide output for
  * a few big upgrades. Also prints the adversarial-corpus numbers.
  *
@@ -94,7 +94,7 @@ async function docsFor(eco: Ecosystem, name: string, query: string) {
       if (s.level !== 'none') flags.push({ pkg: `${name}@${version}`, source: d.label, level: s.level, reasons: s.reasons, excerpt: oneLine(c.text) });
     }
   }
-  // The answer itself, end to end: did query-docs remove or warn about anything?
+  // The answer itself, end to end: did get-docs remove or warn about anything?
   const served = await getDocs({ ecosystem: eco, name, version, query });
   const removed = (served.text.match(/^safectx: removed/gm) ?? []).length;
   const warned = (served.text.match(/^safectx: the next block/gm) ?? []).length;
@@ -169,12 +169,12 @@ async function main() {
     '',
     '## False positives on real documentation',
     '',
-    `${served} packages (${LIBS.filter((l) => l[0] === 'npm').length} npm, ${LIBS.filter((l) => l[0] === 'pypi').length} PyPI). Every chunk of every document query-docs gathered for them was scanned: ` +
+    `${served} packages (${LIBS.filter((l) => l[0] === 'npm').length} npm, ${LIBS.filter((l) => l[0] === 'pypi').length} PyPI). Every chunk of every document get-docs gathered for them was scanned: ` +
       `**${chunks} chunks** (${(bytes / 1e6).toFixed(1)} MB of text).`,
     '',
     `- High (the passage would be dropped): **${high.length} chunks (${pct(high.length)})**`,
     `- Medium (kept, with a warning line): **${med.length} chunks (${pct(med.length)})**`,
-    `- In the actual query-docs answers for those ${served} questions: ${servedRemoved} passages removed, ${servedWarned} warnings.`,
+    `- In the actual get-docs answers for those ${served} questions: ${servedRemoved} passages removed, ${servedWarned} warnings.`,
     `- upgrade-guide on ${UPGRADES.length} real upgrades: ${upRemoved} entries removed, ${upWarned} warnings.`,
     '',
     'Every flagged chunk is listed below for review. None of the packages is known to carry an injection, so each one is a false positive unless the excerpt says otherwise.',

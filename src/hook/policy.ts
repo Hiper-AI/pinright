@@ -391,7 +391,7 @@ export function agentMessage(d: HookDecision): string {
   if (d.action !== 'allow') {
     lines.push(`safectx ${d.action === 'deny' ? 'blocked' : 'needs approval for'} this dependency change:`);
     for (const p of d.problems) lines.push(hookLine(p));
-    if (d.action === 'deny') lines.push('Change the version (or the name) and try again. check-package and query-docs from the safectx MCP server explain each case.');
+    if (d.action === 'deny') lines.push('Change the version (or the name) and try again. check-package and get-docs from the safectx MCP server explain each case.');
   }
   if (d.warnings.length) {
     lines.push(d.action === 'allow' ? 'safectx notes about the dependencies in this change:' : 'Also:');

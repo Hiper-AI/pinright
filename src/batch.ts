@@ -129,7 +129,7 @@ function row(r: BatchResult): string {
   const risky = v.risk?.signals.filter((s) => s.level !== 'info') ?? [];
   if (risky.length) notes.push(`supply-chain: ${risky.map((s) => s.id).join(', ')}`);
   if (rep.recentMajor && use !== '-' && use.startsWith(rep.recentMajor.line.replace(/x$/, ''))) {
-    notes.push(`${rep.recentMajor.line} is a recent major (since ${rep.recentMajor.since}): read query-docs`);
+    notes.push(`${rep.recentMajor.line} is a recent major (since ${rep.recentMajor.since}): read get-docs`);
   }
   return `| ${pkg} | ${asked} | ${verdict} | ${use} | ${notes.filter(Boolean).join('; ')} |`;
 }

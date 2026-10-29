@@ -1,6 +1,6 @@
 /**
  * Prompt injection in third-party text: the normalizer, the detector, the
- * fences, and end to end through query-docs, upgrade-guide, the verdict
+ * fences, and end to end through get-docs, upgrade-guide, the verdict
  * (deprecation messages), the risk signal and the hook message. Upstreams are
  * fixtures keyed by URL, as in upgradeGuide.test.ts.
  */
@@ -192,7 +192,7 @@ describe('cleanField and fences', () => {
   });
 });
 
-// ---------------------------------------------------------------- query-docs ----
+// ---------------------------------------------------------------- get-docs ----
 
 const README = [
   '# lib',
@@ -239,7 +239,7 @@ function seedDocs() {
   );
 }
 
-describe('query-docs (getDocs)', () => {
+describe('get-docs (getDocs)', () => {
   it('fences every block, drops passages that order the agent around and says so, and warns on the doubtful ones', async () => {
     seedDocs();
     const r = await getDocs({ ecosystem: 'npm', name: 'lib', version: '1.0.0', query: 'usage', budgetChars: 20_000 });
@@ -375,7 +375,7 @@ describe('check-package and the hook', () => {
     expect(o?.warning).toMatch(/addresses AI agents with instructions/);
   });
 
-  it('surfaces docs findings from an earlier query-docs as a signal on the same version', async () => {
+  it('surfaces docs findings from an earlier get-docs as a signal on the same version', async () => {
     seedDocs();
     await getDocs({ ecosystem: 'npm', name: 'lib', version: '1.0.0', query: 'usage', budgetChars: 20_000 });
     const versions = [ver('1.0.0', 400, { isDefault: true })];

@@ -30,15 +30,15 @@ const BATCH = [
 ];
 
 const CALLS: Call[] = [
-  { label: 'resolve next.js', tool: 'resolve-library-id', args: { libraryName: 'next.js', query: 'middleware auth' } },
-  { label: 'resolve fastapi', tool: 'resolve-library-id', args: { libraryName: 'fastapi', query: 'python jwt auth' } },
-  { label: 'resolve typo reqeusts', tool: 'resolve-library-id', args: { libraryName: 'reqeusts', query: 'python http' } },
+  { label: 'resolve next.js', tool: 'find-library', args: { libraryName: 'next.js', query: 'middleware auth' } },
+  { label: 'resolve fastapi', tool: 'find-library', args: { libraryName: 'fastapi', query: 'python jwt auth' } },
+  { label: 'resolve typo reqeusts', tool: 'find-library', args: { libraryName: 'reqeusts', query: 'python http' } },
   { label: 'check express (ok)', tool: 'check-package', args: { name: 'express', ecosystem: 'npm' } },
   { label: 'check jsonwebtoken@8.5.1', tool: 'check-package', args: { name: 'jsonwebtoken', ecosystem: 'npm', version: '8.5.1' } },
   { label: 'check next@15.1.0', tool: 'check-package', args: { name: 'next', ecosystem: 'npm', version: '15.1.0' } },
-  { label: 'docs next@15.1.0 middleware', tool: 'query-docs', args: { libraryId: 'npm:next@15.1.0', query: 'protect routes with middleware and redirect to login' } },
-  { label: 'docs express error handling', tool: 'query-docs', args: { libraryId: 'npm:express', query: 'error handling middleware' } },
-  { label: 'docs fastapi oauth2 jwt', tool: 'query-docs', args: { libraryId: 'pypi:fastapi', query: 'OAuth2 password bearer with JWT tokens' } },
+  { label: 'docs next@15.1.0 middleware', tool: 'get-docs', args: { libraryId: 'npm:next@15.1.0', query: 'protect routes with middleware and redirect to login' } },
+  { label: 'docs express error handling', tool: 'get-docs', args: { libraryId: 'npm:express', query: 'error handling middleware' } },
+  { label: 'docs fastapi oauth2 jwt', tool: 'get-docs', args: { libraryId: 'pypi:fastapi', query: 'OAuth2 password bearer with JWT tokens' } },
   { label: `batch of ${BATCH.length} packages`, tool: 'check-packages', args: { packages: BATCH } },
 ];
 

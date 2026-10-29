@@ -1,6 +1,5 @@
 /**
- * The MCP server. resolve-library-id and query-docs keep Context7's names so
- * "use context7"-style prompts work unchanged, but the docs come from the
+ * The MCP server. find-library and get-docs: the docs come from the
  * package itself (published files and the repo at the release tag) and the
  * project's llms.txt, never from a docs index. check-package,
  * check-packages and check-manifest are the security verdict on their own.
@@ -70,7 +69,7 @@ function hitLine(
   return parts.join(' | ');
 }
 
-/** Our ids ("npm:next@16.4.3") or Context7's ("/vercel/next.js/v16.4.3"). */
+/** Our ids ("npm:next@16.4.3") or a GitHub repo ("/vercel/next.js/v16.4.3"). */
 async function refFromId(libraryId: string, ecosystem?: string, packageName?: string) {
   const ours = parseLibraryRef(libraryId);
   if (ours) return ours;
@@ -108,8 +107,8 @@ export function buildMcpServer(): McpServer {
       '(README, docs, type definitions) and the source repo at the release tag, so they match the version ' +
       'you install. Efficient flow: decide the full dependency list first, then call check-packages ONCE with ' +
       'all of them (registry names; versions if the project already pins some) and pin the "use" version of each. ' +
-      'Then call query-docs only for the APIs you are unsure of, or when a notice says a major is recent ' +
-      '(pass the version you pin). resolve-library-id is only for when you do not know the registry name; ' +
+      'Then call get-docs only for the APIs you are unsure of, or when a notice says a major is recent ' +
+      '(pass the version you pin). find-library is only for when you do not know the registry name; ' +
       'check-package is the deep view of one package; check-manifest audits a whole lockfile. ' +
       'Without a version, the tools use the version installed in the project, read from its lockfile or manifest. ' +
       'A "SECURITY NOTICE" outside untrusted-data blocks is authoritative: prefer the recommended version, and the one on the same release ' +
@@ -120,15 +119,15 @@ export function buildMcpServer(): McpServer {
   const project = new Project();
   watchRoots(server.server, project);
 
-  // 1) resolve-library-id -------------------------------------------------------
+  // 1) find-library -------------------------------------------------------
   server.registerTool(
-    'resolve-library-id',
+    'find-library',
     {
       title: 'Find a library (with security verdict)',
       description:
         'Finds the registry package for a library name ("next.js" -> npm:next, "pytorch" -> pypi:torch) and returns ' +
-        'ids for query-docs, with the newest version that has no known advisories (safe) and a verdict. ' +
-        'Skip it when you know the registry name: query-docs takes "npm:next" or "pypi:requests" directly, and ' +
+        'ids for get-docs, with the newest version that has no known advisories (safe) and a verdict. ' +
+        'Skip it when you know the registry name: get-docs takes "npm:next" or "pypi:requests" directly, and ' +
         'check-packages takes plain names.',
       inputSchema: {
         libraryName: z.string().describe('Library name, e.g. "next.js", "requests", "tokio".'),
@@ -159,16 +158,16 @@ export function buildMcpServer(): McpServer {
             return hitLine(h, v, inst);
           }),
         );
-        return text([...lines, 'Use the best id with query-docs. Pin the safe version, not latest, when they differ.'].join('\n'));
+        return text([...lines, 'Use the best id with get-docs. Pin the safe version, not latest, when they differ.'].join('\n'));
       } catch (err) {
         return errorText(err);
       }
     },
   );
 
-  // 2) query-docs -------------------------------------------------------------
+  // 2) get-docs -------------------------------------------------------------
   server.registerTool(
-    'query-docs',
+    'get-docs',
     {
       title: 'Documentation for the version you will use (security-checked)',
       description:
@@ -177,18 +176,18 @@ export function buildMcpServer(): McpServer {
         'the newest version with no known advisories. With a vulnerable version it starts with a SECURITY NOTICE and ' +
         'documents the safe version on the same release line, so the code you write keeps working after the upgrade.',
       inputSchema: {
-        libraryId: z.string().describe('Id from resolve-library-id, e.g. "npm:next" or "npm:next@15.1.0". Context7 ids ("/vercel/next.js") also work.'),
+        libraryId: z.string().describe('Id from find-library, e.g. "npm:next" or "npm:next@15.1.0". A GitHub repo ("/vercel/next.js") also works.'),
         query: z.string().describe('The question or task, e.g. "protect routes with middleware".'),
         version: z.string().optional().describe('Version the project uses or pins, if any. Overrides the one in libraryId.'),
         tokens: z.number().int().optional().describe('Approximate size of the answer in tokens (default 2500; raise it only when the answer was cut short).'),
-        ecosystem: z.enum(ECOSYSTEMS as unknown as [string, ...string[]]).optional().describe('Only for Context7-style ids that map to several registries.'),
-        packageName: z.string().optional().describe('Only for Context7-style ids whose package name differs from the repo.'),
+        ecosystem: z.enum(ECOSYSTEMS as unknown as [string, ...string[]]).optional().describe('Only for GitHub repo ids that map to several registries.'),
+        packageName: z.string().optional().describe('Only for GitHub repo ids whose package name differs from the repo.'),
       },
     },
     async ({ libraryId, query, version, tokens, ecosystem, packageName }) => {
       try {
         const ref = await refFromId(libraryId, ecosystem, packageName);
-        if (!ref) return text(`Could not map "${libraryId}" to a registry package. Call resolve-library-id first, or use an id like "npm:<name>".`);
+        if (!ref) return text(`Could not map "${libraryId}" to a registry package. Call find-library first, or use an id like "npm:<name>".`);
         const inst = version || ref.version ? undefined : await project.installed(ref.ecosystem, ref.name).catch(() => undefined);
         const requested = (version ?? ref.version ?? inst?.version)?.replace(/^v(?=\d)/, '');
         const { policy, error } = await project.policy();

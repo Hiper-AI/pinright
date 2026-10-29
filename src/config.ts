@@ -19,7 +19,7 @@ function cacheDir(): string {
 }
 
 export const config = {
-  /** Characters of documentation returned per query-docs call (about 4 per token). */
+  /** Characters of documentation returned per get-docs call (about 4 per token). */
   docsBudgetChars: intEnv("SAFECTX_DOCS_BUDGET", 10_000),
   depsDevBaseUrl: process.env.DEPSDEV_BASE_URL ?? 'https://api.deps.dev',
   osvBaseUrl: process.env.OSV_BASE_URL ?? 'https://api.osv.dev',

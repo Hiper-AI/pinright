@@ -4,11 +4,11 @@ Run on 2026-10-29 with `npx tsx bench/injection/run.ts` (live registries and Git
 
 ## False positives on real documentation
 
-32 packages (18 npm, 14 PyPI). Every chunk of every document query-docs gathered for them was scanned: **38381 chunks** (45.6 MB of text).
+32 packages (18 npm, 14 PyPI). Every chunk of every document get-docs gathered for them was scanned: **38381 chunks** (45.6 MB of text).
 
 - High (the passage would be dropped): **4 chunks (0.01%)**
 - Medium (kept, with a warning line): **26 chunks (0.07%)**
-- In the actual query-docs answers for those 32 questions: 0 passages removed, 0 warnings.
+- In the actual get-docs answers for those 32 questions: 0 passages removed, 0 warnings.
 - upgrade-guide on 6 real upgrades: 0 entries removed, 0 warnings.
 
 Every flagged chunk is listed below for review. None of the packages is known to carry an injection, so each one is a false positive unless the excerpt says otherwise.

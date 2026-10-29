@@ -75,7 +75,7 @@ describe('check-packages', () => {
     expect(out).toContain('| npm express | - | ok | 5.3.0 | MIT |');
     expect(out).toContain('| npm jsonwebtoken | 8.5.1 | VULNERABLE (2, HIGH) | 9.0.3 | fix needs a new major: breaking changes |');
     expect(out).toContain('| pypi pyjwt | 2.10.1 | VULNERABLE (10, CRITICAL) | 2.15.1 | fix on the same release line |');
-    expect(out).toContain('18.x is a recent major (since 2026-09-17): read query-docs');
+    expect(out).toContain('18.x is a recent major (since 2026-09-17): read get-docs');
     // Full notices, advisories included, for the vulnerable ones only.
     expect(out).toContain('SECURITY NOTICE: jsonwebtoken (npm)@8.5.1 has 2 known advisories.');
     expect(out).toContain('GHSA-b');

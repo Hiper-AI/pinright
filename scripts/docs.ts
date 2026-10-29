@@ -1,4 +1,4 @@
-/** npx tsx scripts/docs.ts <ecosystem> <name> <version> "<query>": prints what query-docs would return. */
+/** npx tsx scripts/docs.ts <ecosystem> <name> <version> "<query>": prints what get-docs would return. */
 import { getDocs } from '../src/docs/index.js';
 import { parseEcosystem } from '../src/ecosystems.js';
 

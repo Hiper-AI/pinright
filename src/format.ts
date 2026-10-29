@@ -128,7 +128,7 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
   if (report.recentMajor && recommended && releaseLine(recommended) === report.recentMajor.line) {
     lines.push(
       `Heads-up: ${report.package} ${report.recentMajor.line} is a recent major (first release ${report.recentMajor.since}). ` +
-        `Its APIs and configuration may differ from what you know; read query-docs for ${recommended} before writing code or config for it.`,
+        `Its APIs and configuration may differ from what you know; read get-docs for ${recommended} before writing code or config for it.`,
     );
   }
 

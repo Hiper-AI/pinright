@@ -62,7 +62,7 @@ No key is required. A `GITHUB_TOKEN` helps with large monorepos and upgrade guid
 Docs for a version with known holes come back with the notice first, and for the version to move to:
 
 ```
-query-docs { libraryId: "npm:next@15.1.0", query: "protect routes with middleware" }
+get-docs { libraryId: "npm:next@15.1.0", query: "protect routes with middleware" }
 
 SECURITY NOTICE: next (npm)@15.1.0 has 36 known advisories.
   - GHSA-f82v-jwr5-mffw (CVE-2025-29927) [CRITICAL]: Authorization Bypass in Next.js Middleware fixed in 13.5.9, 14.2.25, 15.2.3
@@ -98,8 +98,8 @@ safectx blocked this dependency change:
 
 | Tool | What it does |
 |---|---|
-| `resolve-library-id` | Library name to registry package (`next.js` to `npm:next`, `pytorch` to `pypi:torch`), ranked by repo stars, with the safe version and a verdict. Hits the project already depends on carry `installedVersion` and `installedIn`. Suggests the real name for a misspelled one. |
-| `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the one installed in the project, or the safe one when the project does not use the package; with a vulnerable one it documents the same-line fix. GitHub repo ids (`/vercel/next.js`) work too. |
+| `find-library` | Library name to registry package (`next.js` to `npm:next`, `pytorch` to `pypi:torch`), ranked by repo stars, with the safe version and a verdict. Hits the project already depends on carry `installedVersion` and `installedIn`. Suggests the real name for a misspelled one. |
+| `get-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the one installed in the project, or the safe one when the project does not use the package; with a vulnerable one it documents the same-line fix. GitHub repo ids (`/vercel/next.js`) work too. |
 | `upgrade-guide` | What changes between two versions: breaking changes, removed or renamed APIs, config and default changes, packages that split off, deprecations, and the advisories the move fixes. Without `to` it targets the recommended version. |
 | `check-packages` | The verdict for up to 50 packages in one call: one table row each (verdict, version to pin, short reason), and the full notice only for the ones that need attention. The cheap way to vet a dependency list. |
 | `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes, and team policy violations. Without a version it checks the installed one. |
@@ -224,7 +224,7 @@ It reads, all at the target version and cached:
 
 Entries come back tagged `BREAKING`, `CONFIG/DEFAULT`, `NEW PACKAGE` or `DEPRECATED`, each with its
 version and source. The answer opens with the advisories the move fixes and any that remain at `to`.
-It fits the same budget as `query-docs` (`tokens` argument). Without a `GITHUB_TOKEN` it reads fewer
+It fits the same budget as `get-docs` (`tokens` argument). Without a `GITHUB_TOKEN` it reads fewer
 release pages.
 
 ## Project detection
@@ -240,12 +240,12 @@ APIs the project does not have. safectx reads the project's dependency files by 
 - **What.** One file per ecosystem and directory, lockfile first: the exact version from the lockfile;
   for npm without a lockfile, the version in `node_modules`; an exact pin in a manifest; else the
   version the manifest's range resolves to today, and the answer says so.
-- **How it is used.** `query-docs` and `check-package` without a version use the installed one and say
+- **How it is used.** `get-docs` and `check-package` without a version use the installed one and say
   so in one line, then apply the same checks as for an explicit version: a vulnerable installed
   version gets the same-line fix and docs for it. An explicit version always wins.
 
 ```
-query-docs { libraryId: "npm:next", query: "middleware" }
+get-docs { libraryId: "npm:next", query: "middleware" }
 
 Using next 15.1.0, installed in this project (package-lock.json).
 SECURITY NOTICE: next (npm)@15.1.0 has 36 known advisories.
@@ -284,7 +284,7 @@ the same rules. It is JSON with `//` comments allowed. Every key is optional:
 | Key | Hook | MCP tools |
 |---|---|---|
 | `allow` | Listed names pass without a check. `allow` wins over `deny`. | No policy findings for them. |
-| `deny` | Denied with the reason, before any lookup. Only new or changed lines of a manifest count. | `POLICY:` line in `check-package` and `query-docs`; every match in the tree in `check-manifest`. |
+| `deny` | Denied with the reason, before any lookup. Only new or changed lines of a manifest count. | `POLICY:` line in `check-package` and `get-docs`; every match in the tree in `check-manifest`. |
 | `licenses` | A version whose license expression has no acceptable alternative is denied (`MIT OR AGPL-3.0` passes a deny on `AGPL-*`). A missing or non-SPDX license is a note. | Same, for the version checked; direct dependencies in `check-manifest`. |
 | `severityThreshold` | When every advisory of a version is rated below it, the hook allows with a note. Unrated advisories and malware always count. Applies to transitive findings too. | Not applied: the tools report every advisory. |
 | `cooldownDays`, `cooldown` | As `SAFECTX_COOLDOWN_DAYS` and `SAFECTX_HOOK_COOLDOWN`. | `cooldownDays` changes the recommended version. |
@@ -398,9 +398,9 @@ invisible characters. safectx defends in three layers.
 
 | Surface | Tool | Third-party text in it |
 |---|---|---|
-| Docs | `query-docs` | READMEs, bundled docs, `.d.ts` comments, Python docstrings and source from the wheel, repo docs at the tag, `llms.txt` / `llms-full.txt` pages (titles included) |
+| Docs | `get-docs` | READMEs, bundled docs, `.d.ts` comments, Python docstrings and source from the wheel, repo docs at the tag, `llms.txt` / `llms-full.txt` pages (titles included) |
 | Upgrade notes | `upgrade-guide` | Changelog entries, GitHub release bodies, migration guides, announcement posts, `.d.ts` signatures |
-| Verdicts | `check-package`, `check-packages`, `query-docs`, `upgrade-guide`, `check-manifest` | Deprecation messages (npm, Packagist "abandoned"), advisory titles (OSV, GHSA, Packagist), install script commands and publisher names (npm) |
+| Verdicts | `check-package`, `check-packages`, `get-docs`, `upgrade-guide`, `check-manifest` | Deprecation messages (npm, Packagist "abandoned"), advisory titles (OSV, GHSA, Packagist), install script commands and publisher names (npm) |
 | Hook | Claude Code `permissionDecisionReason` / `additionalContext`, Cursor `agent_message` / `user_message` | The same deprecation messages, advisory ids, install scripts and publisher names, inside safectx's own sentences |
 
 Package names, versions, licenses and URLs also come from registries; safectx prints them as values and
@@ -449,7 +449,7 @@ as an order is replaced by `[withheld by safectx: this text addressed the AI age
 Hook messages get a last pass: one line per problem, capped, invisible characters removed.
 
 A package that tries to steer agents is suspect in itself. High findings in its deprecation message,
-its npm description, or the docs and changelogs that `query-docs` and `upgrade-guide` served for that
+its npm description, or the docs and changelogs that `get-docs` and `upgrade-guide` served for that
 version (kept 30 days in the cache) become the `agent-instructions-in-package-text` risk signal, which
 `check-package` shows and the hook passes on as a warning.
 
@@ -458,8 +458,8 @@ version (kept 30 days in the cache) become the `agent-instructions-in-package-te
 
 | Measure | Result |
 |---|---|
-| False positives on real docs: every section of every document `query-docs` gathered for 32 popular packages (18 npm, 14 PyPI; 38,381 sections, 45.6 MB) | 4 dropped (0.01%), 26 warned (0.07%), all false positives |
-| The actual `query-docs` answers for those 32 questions, and `upgrade-guide` on 6 real upgrades (next 14 to 16, zod 3 to 4, express 4 to 5, langchain 0.2 to 1.4, openai 4 to 7, pydantic 1.10) | nothing removed, no warnings |
+| False positives on real docs: every section of every document `get-docs` gathered for 32 popular packages (18 npm, 14 PyPI; 38,381 sections, 45.6 MB) | 4 dropped (0.01%), 26 warned (0.07%), all false positives |
+| The actual `get-docs` answers for those 32 questions, and `upgrade-guide` on 6 real upgrades (next 14 to 16, zod 3 to 4, express 4 to 5, langchain 0.2 to 1.4, openai 4 to 7, pydantic 1.10) | nothing removed, no warnings |
 | Adversarial corpus (`test/fixtures/injection/cases.ts`, 61 passages over every surface above) | 61/61 at the expected level, 52 dropped; 0/41 hard negatives flagged. Written with the rules, so a regression floor |
 | Passages written before a tuning round and scored once (`bench/injection/heldout*.ts`) | 5/20, 6/15 and 3/15 flagged; 0/35 benign flagged |
 
@@ -661,7 +661,7 @@ These numbers come from one model, one day and tasks we wrote; they are not a gu
 npm install
 npm test                                   # offline unit tests with fixtures
 npm run build && npx tsx scripts/e2e.ts .  # drive the server over stdio with a real MCP client
-npx tsx scripts/docs.ts npm next 16.4.3 "middleware"   # what query-docs returns
+npx tsx scripts/docs.ts npm next 16.4.3 "middleware"   # what get-docs returns
 npx tsx scripts/audit.ts package-lock.json # whole-tree audit
 npx tsx scripts/upgrade.ts npm next 15.5.28 16.4.3 "middleware"   # what upgrade-guide returns
 npm run bench:agents                       # agent benchmark, see bench/agents/

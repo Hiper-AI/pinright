@@ -453,7 +453,7 @@ export async function upgradeGuide(opts: UpgradeOptions): Promise<UpgradeResult>
   if (!act.length && !allGuides.length && !apiText) {
     notes.push(`No breaking changes were found in the sources read.${releaseUrl(meta) ? ` Check ${releaseUrl(meta)} before assuming there are none.` : ''}`);
   }
-  parts.push(`Read: ${counts.join(', ')}. Entries marked BREAKING/CONFIG/NEW PACKAGE need action; for the ${to} API itself call query-docs with libraryId "${eco}:${name}@${to}".`);
+  parts.push(`Read: ${counts.join(', ')}. Entries marked BREAKING/CONFIG/NEW PACKAGE need action; for the ${to} API itself call get-docs with libraryId "${eco}:${name}@${to}".`);
   if (notes.length) parts.push(notes.join('\n'));
   // What was removed goes right under the header, where it is read first.
   if (out.notes.length) parts.splice(1, 0, out.notes.join('\n'));

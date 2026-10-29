@@ -169,11 +169,11 @@ describe('MCP tools use the installed version', () => {
     return { client, call, setRoots: async (r: string[]) => { current = r; await client.sendRootsListChanged(); } };
   }
 
-  it('query-docs and check-package without a version use the one in the project (from MCP roots)', async () => {
+  it('get-docs and check-package without a version use the one in the project (from MCP roots)', async () => {
     const d = tempDir();
     write(d, 'package-lock.json', lock({ next: '15.1.0' }));
     const { client, call } = await connect([d]);
-    const docs = await call('query-docs', { libraryId: 'npm:next', query: 'middleware' });
+    const docs = await call('get-docs', { libraryId: 'npm:next', query: 'middleware' });
     expect(docs.split('\n')[0]).toBe('Using next 15.1.0, installed in this project (package-lock.json).');
     // The installed version is the "requested" one: the safety logic still moves to the same-line fix.
     expect(docs).toContain('These docs are for 15.5.28, the version to move to, not 15.1.0.');
@@ -184,17 +184,17 @@ describe('MCP tools use the installed version', () => {
     expect(pkg.requested.version).toBe('15.1.0');
 
     // An explicit version still wins.
-    const explicit = await call('query-docs', { libraryId: 'npm:next@16.4.3', query: 'x' });
+    const explicit = await call('get-docs', { libraryId: 'npm:next@16.4.3', query: 'x' });
     expect(explicit).not.toContain('installed in this project');
     expect(checks.at(-1)).toEqual({ name: 'next', version: '16.4.3' });
     await client.close();
   });
 
-  it('resolve-library-id marks hits that are already dependencies', async () => {
+  it('find-library marks hits that are already dependencies', async () => {
     const d = tempDir();
     write(d, 'package-lock.json', lock({ next: '15.1.0' }));
     const { client, call } = await connect([d]);
-    const lines = (await call('resolve-library-id', { libraryName: 'next.js', query: 'x' })).split('\n').filter((l) => l.startsWith('npm:'));
+    const lines = (await call('find-library', { libraryName: 'next.js', query: 'x' })).split('\n').filter((l) => l.startsWith('npm:'));
     expect(lines[0]).toMatch(/^npm:next \| installed 15\.1\.0 \(package-lock\.json\)/);
     expect(lines[1]).not.toContain('installed');
     await client.close();
@@ -206,10 +206,10 @@ describe('MCP tools use the installed version', () => {
     write(a, 'package-lock.json', lock({ next: '15.1.0' }));
     write(b, 'package-lock.json', lock({ next: '16.4.3' }));
     const { client, call, setRoots } = await connect([a]);
-    expect(await call('query-docs', { libraryId: 'npm:next', query: 'x' })).toMatch(/^Using next 15\.1\.0/);
+    expect(await call('get-docs', { libraryId: 'npm:next', query: 'x' })).toMatch(/^Using next 15\.1\.0/);
     await setRoots([b]);
     await new Promise((r) => setTimeout(r, 50));
-    expect(await call('query-docs', { libraryId: 'npm:next', query: 'x' })).toMatch(/^Using next 16\.4\.3/);
+    expect(await call('get-docs', { libraryId: 'npm:next', query: 'x' })).toMatch(/^Using next 16\.4\.3/);
     await client.close();
   });
 
@@ -236,7 +236,7 @@ describe('MCP tools use the installed version', () => {
     process.chdir(d);
     try {
       const { client, call } = await connect(undefined);
-      expect(await call('query-docs', { libraryId: 'npm:next', query: 'x' })).toMatch(/^Using next 15\.1\.0/);
+      expect(await call('get-docs', { libraryId: 'npm:next', query: 'x' })).toMatch(/^Using next 15\.1\.0/);
       await client.close();
     } finally {
       process.chdir(cwd);

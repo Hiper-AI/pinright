@@ -30,7 +30,7 @@ export function previousVersions(versions: DepsDevVersionSummary[], version: str
 
 /**
  * `agentText`: registry text of this version already judged as addressing an agent (the
- * deprecation message, from the verdict). Docs findings come from earlier query-docs and
+ * deprecation message, from the verdict). Docs findings come from earlier get-docs and
  * upgrade-guide answers for the same version (src/untrusted).
  */
 export async function assessRisk(eco: Ecosystem, name: string, version: string, now = Date.now(), agentText: string[] = []): Promise<RiskReport> {
