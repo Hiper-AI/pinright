@@ -173,7 +173,8 @@ export class UntrustedOutput {
         d.reasons = [...new Set([...d.reasons, ...this.scan(c.text).reasons])].slice(0, 3);
         dropped.set(source(c), d);
       }
-      pool = pool.filter((c) => !bad.includes(c));
+      // A section cut to fit (its `origin` the full one) takes the full one out too.
+      pool = pool.filter((c) => !bad.some((b) => b === c || (b as { origin?: unknown }).origin === c));
     }
     return pick(pool).filter((c) => this.scan(c.text).level !== 'high');
   }

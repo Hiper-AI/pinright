@@ -10,7 +10,7 @@ import { docsSourceFor } from '../data/docsRepos.js';
 import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
 import { applicableRenames, expandQuery, packageRenames, renamesNote, type Rename } from './renames.js';
-import { chunkFile, coverPaths, notUserDocs, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile } from './retrieve.js';
+import { chunkFile, coverPaths, notUserDocs, olderMajorPath, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile } from './retrieve.js';
 import {
   docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
 } from './sources.js';
@@ -49,7 +49,8 @@ async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): P
 function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUpgrade: boolean): RemoteFile[] {
   const isReadme = (p: string) => /(^|\/)readme\.(md|mdx|rst|txt)$/i.test(p);
   const entry = meta.typesEntry?.replace(/^\.\//, '');
-  const isUpgrade = (p: string) => /(changelog|migrat|upgrad|history|releases?)[^/]*\.(md|mdx|rst)$/i.test(p);
+  // Release posts count as upgrade notes, as they do in llms.txt: "Zod 4.5 > Bug fixes" is not the reference.
+  const isUpgrade = (p: string) => /(changelog|migrat|upgrad|history|releases?)[^/]*\.(md|mdx|rst)$/i.test(p) || /(^|\/)(blog|news)\//i.test(p);
   const nameTerms = [meta.name.replace(/^@[^/]+\//, '')];
 
   const readmes = files.filter((f) => isReadme(f.path)).sort((a, b) => a.path.split('/').length - b.path.split('/').length);
@@ -64,7 +65,7 @@ function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUp
   const scored = rankPaths(prose, query, nameTerms).map((f) => ({
     ...f,
     hit: f.score > 0,
-    internal: notUserDocs(f.path, query),
+    internal: notUserDocs(f.path, query) || (!wantUpgrade && olderMajorPath(f.path, meta.version)),
     score: f.score + (f.inPackageDir ? 0.5 : 0) + (/(^|\/)docs?\//.test(f.path) ? 0.3 : 0),
   }));
   // Contributor and agent notes only when the user docs match too little of the question.
@@ -81,7 +82,9 @@ function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUp
 
   // Public types live at the entry, at the package root or under types/; deep dist/ files are internals.
   const types = files.filter(
-    (f) => f.path.endsWith('.d.ts') && (f.path === entry || f.path.split('/').length <= 2 || /^types?\//.test(f.path)) && !/internal|devtools|private|compiled/i.test(f.path),
+    (f) =>
+      f.path.endsWith('.d.ts') && (f.path === entry || f.path.split('/').length <= 2 || /^types?\//.test(f.path)) && !/internal|devtools|private|compiled/i.test(f.path) &&
+      (wantUpgrade || !olderMajorPath(f.path, meta.version)),
   );
   const rankedTypes = rankPaths(types, query, nameTerms)
     .map((f) => ({ ...f, score: f.score + (entry && f.path === entry ? 2 : 0) - (f.path.includes('/internal') ? 1 : 0) }))
@@ -186,8 +189,8 @@ export async function collectDocs(opts: DocsOptions): Promise<{
         content: keep(content),
         kind: f.path.endsWith('.d.ts') ? 'types' : 'markdown',
         versionAccurate: f.versionAccurate ?? (f.origin === 'package' || repo.atTag),
-        // A contributor note that made the cut still ranks below the user docs.
-        boost: (f.inPackageDir ? 1.2 : 1) * (notUserDocs(f.path, opts.query) ? 0.5 : 1),
+        // A contributor note or an older major's copy that made the cut still ranks below the user docs.
+        boost: (f.inPackageDir ? 1.2 : 1) * (notUserDocs(f.path, opts.query) || (!wantUpgrade && olderMajorPath(f.path, meta.version)) ? 0.5 : 1),
       };
     })
   ).filter((d): d is DocFile => Boolean(d));
@@ -222,7 +225,9 @@ export async function collectDocs(opts: DocsOptions): Promise<{
 }
 
 function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput, renames: Rename[] = []): DocsResult {
-  const ranked = dedupe(rank(docFiles.flatMap(chunkFile), opts.query, topics(opts.query)));
+  // Sections the injection scanner flags stay apart, so dropping one never takes clean neighbors with it.
+  const chunks = docFiles.flatMap((d) => chunkFile(d, (t) => out.scan(t).level === 'none'));
+  const ranked = dedupe(rank(chunks, opts.query, topics(opts.query)));
   const best = ranked[0]?.score ?? 0;
   const sources = docFiles.map((d) => ({ label: d.label, url: d.url, versionAccurate: d.versionAccurate }));
   // PyPI: import name and sibling packages to install, checked against the query and the returned text.

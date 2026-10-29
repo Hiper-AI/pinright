@@ -25,6 +25,8 @@ export interface Chunk {
   score: number;
   /** Score against each topic of a question that asks several things (see `topics`). */
   topicScores?: number[];
+  /** The full section this one was cut from (select trims a topic's section to its share). */
+  origin?: Chunk;
 }
 
 const STOP = new Set(
@@ -124,6 +126,39 @@ export function chunkMarkdown(content: string, rstHeadings = false): { title: st
     buf.push(line);
   }
   flush();
+  return out;
+}
+
+const SMALL_SECTION = 700;
+const MERGED_SECTION = 1600;
+
+/**
+ * Short sections under one heading read as one: "Objects > z.object", "> z.strictObject",
+ * "> z.looseObject" are three lines each, and alone each ties with its siblings on any question
+ * about objects. A small section joins the previous one when they share a parent, or when the
+ * previous one is its parent's introduction, up to a combined size that still leaves room for others.
+ * Runs on tidied chunks (no heading line), so each joined section brings its own heading.
+ * `mergeable` keeps a section the injection scanner flags on its own: joined, it would take its
+ * clean neighbors down with it when it is dropped.
+ */
+export function mergeSmallSections<T extends { title: string; text: string }>(chunks: T[], mergeable: (text: string) => boolean = () => true): T[] {
+  const parent = (t: string) => t.split(' > ').slice(0, -1).join(' > ');
+  const out: T[] = [];
+  let prevParent = '';
+  let prevOk = false;
+  for (const c of chunks) {
+    const prev = out[out.length - 1];
+    const p = parent(c.title);
+    const ok = mergeable(c.text);
+    if (prev && p && prevOk && ok && (prevParent === p || prev.title === p) && c.text.length < SMALL_SECTION && prev.text.length + c.text.length <= MERGED_SECTION) {
+      out[out.length - 1] = { ...prev, text: `${prev.text}\n\n#### ${c.title.split(' > ').pop()}\n${c.text}` };
+      prevParent = p;
+      continue;
+    }
+    out.push(c);
+    prevParent = p;
+    prevOk = ok;
+  }
   return out;
 }
 
@@ -235,14 +270,16 @@ export function tidy(text: string): string {
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-export function chunkFile(file: DocFile): Chunk[] {
+/** Sections of one document; small markdown sections under one heading joined (see mergeSmallSections). */
+export function chunkFile(file: DocFile, mergeable?: (text: string) => boolean): Chunk[] {
   const parts =
     file.kind === 'types'
       ? file.lang === 'python' ? chunkPython(file.content) : chunkTypes(file.content)
       : chunkMarkdown(file.content, /\.rst$/i.test(file.url));
-  return parts
+  const chunks = parts
     .map((p) => ({ file, title: p.title, text: file.kind === 'types' ? p.text : tidy(p.text), score: 0 }))
     .filter((c) => c.text);
+  return file.kind === 'types' ? chunks : mergeSmallSections(chunks, mergeable);
 }
 
 /**
@@ -289,13 +326,34 @@ export function rank(chunks: Chunk[], query: string, topicList: string[] = []): 
     }
     return s;
   };
+  const queryIds = identifiers(query);
+  const topicIds = topicList.map(identifiers);
   chunks.forEach((c, i) => {
     // Code examples are what agents copy; favor chunks that carry some.
     const weight = (/```|^\s{4}\S/m.test(c.text) ? 1.15 : 1) * (c.file.boost ?? 1);
-    c.score = bm25(i, q) * weight;
-    c.topicScores = topicTerms.length ? topicTerms.map((terms) => bm25(i, terms) * weight) : undefined;
+    const body = `${c.title}\n${c.text}`;
+    c.score = bm25(i, q) * weight * nameMatch(body, queryIds);
+    c.topicScores = topicTerms.length ? topicTerms.map((terms, t) => bm25(i, terms) * weight * nameMatch(body, topicIds[t])) : undefined;
   });
   return [...chunks].sort((a, b2) => b2.score - a.score);
+}
+
+/**
+ * API names a question spells as code: `z.record`, `field_validator`, `strictObject`, `@tool`,
+ * `ConfigDict`, `pattern=`. Words alone do not tell `z.record` from `z.partialRecord`; the name does.
+ */
+export function identifiers(query: string): string[] {
+  const ids = query.match(/[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+|@[A-Za-z_]\w*|\b[a-z]+_\w+|\b[a-z]+[A-Z][\w$]*|\b[A-Z][a-z0-9]+[A-Z][\w$]*|\b\w+=(?!=)/g) ?? [];
+  return [...new Set(ids)].slice(0, 12);
+}
+
+/** 1 plus the share of the question's API names the section spells exactly (up to 2x); `pattern=` matches a keyword argument. */
+export function nameMatch(text: string, ids: string[]): number {
+  if (!ids.length) return 1;
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = (id: string) => (id.endsWith('=') ? `${esc(id.slice(0, -1))}\\s*=(?!=)` : `${esc(id)}(?![\\w$])`);
+  const hits = ids.filter((id) => new RegExp(`(^|[^\\w$.])${re(id)}`).test(text)).length;
+  return 1 + hits / ids.length;
 }
 
 /** Up to `max` items: the best of each topic's ranking first, then the overall ranking. */
@@ -320,6 +378,27 @@ export function overlap(a: Set<string>, b: Set<string>): number {
 const NEAR_DUPLICATE = 0.7;
 
 /**
+ * The start of a section, cut at a blank line outside code blocks, ending with a note that it was
+ * cut. A code block is never cut in the middle; undefined when not even the first block fits.
+ */
+export function trimSection(text: string, max: number): string | undefined {
+  if (text.length <= max) return text;
+  const lines = text.split('\n');
+  let inFence = false;
+  let size = 0;
+  let cut = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*(```|~~~)/.test(lines[i])) inFence = !inFence;
+    size += lines[i].length + 1;
+    if (size > max) break;
+    if (!inFence && (lines[i + 1] === undefined || !lines[i + 1].trim() || /^\s*(```|~~~)/.test(lines[i]))) cut = i;
+  }
+  if (cut < 0) return undefined;
+  const kept = lines.slice(0, cut + 1).join('\n').trimEnd();
+  return kept.length >= 200 ? `${kept}\n\n[...]` : undefined;
+}
+
+/**
  * Best chunks that fit the budget, at most `perFile` from one file so one long page cannot crowd out
  * the rest, and no near-duplicate of a chunk already picked.
  */
@@ -329,9 +408,9 @@ export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk
   const count = new Map<string, number>();
   let used = 0;
   const sizeOf = (c: Chunk) => c.text.length + c.title.length + 80;
-  const take = (c: Chunk, limit: number): boolean => {
+  const take = (c: Chunk, limit: number, maxPerFile = perFile): boolean => {
     const n = count.get(c.file.url) ?? 0;
-    if (n >= perFile || out.includes(c) || used + sizeOf(c) > limit) return false;
+    if (n >= maxPerFile || out.includes(c) || used + sizeOf(c) > limit) return false;
     const toks = new Set(tokenize(c.text));
     if (toks.size >= 20 && picked.some((p) => overlap(toks, p) >= NEAR_DUPLICATE)) return false;
     out.push(c);
@@ -341,21 +420,30 @@ export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk
     return true;
   };
 
-  // A question with several topics: first the best section for each topic, each within its share of
-  // the budget (a topic whose best section is already in covers itself), then the rest by overall score.
+  // A question with several topics: first the best section for each topic, cut to its share of the
+  // budget when it is longer (eight topics must not spend the budget on the first five), and a topic
+  // whose best section is already in covers itself; a reference page may give one section per topic.
+  // Then the rest by overall score.
   const nTopics = ranked.find((c) => c.topicScores)?.topicScores?.length ?? 0;
+  const chosen = new Set<Chunk>();
   if (nTopics) {
-    const share = Math.max(budgetChars / nTopics, 1500);
+    const share = Math.max(budgetChars / nTopics, 900);
     for (let t = 0; t < nTopics; t++) {
       const best = ranked.filter((c) => (c.topicScores?.[t] ?? 0) > 0).sort((a, b) => (b.topicScores?.[t] ?? 0) - (a.topicScores?.[t] ?? 0));
-      if (best[0] && out.includes(best[0])) continue;
-      for (const c of best.slice(0, 5)) if (sizeOf(c) <= share * 1.5 && take(c, budgetChars)) break;
+      if (best[0] && chosen.has(best[0])) continue;
+      for (const c of best.slice(0, 3)) {
+        const text = sizeOf(c) <= share * 1.5 ? c.text : trimSection(c.text, share - c.title.length - 80);
+        if (text && take(text === c.text ? c : { ...c, text, origin: c }, budgetChars, Math.max(perFile, nTopics))) {
+          chosen.add(c);
+          break;
+        }
+      }
     }
   }
 
   for (const c of ranked) {
     if (c.score <= 0) break;
-    if (out.includes(c)) continue;
+    if (chosen.has(c) || out.includes(c)) continue;
     if (used + sizeOf(c) > budgetChars) {
       if (used > budgetChars * 0.6) break;
       continue;
@@ -377,6 +465,18 @@ const NOT_USER_DOCS =
 /** Contributor and agent notes, evals, example apps; error-message pages (Next's errors/*) unless the question is about an error. */
 export function notUserDocs(path: string, query = ''): boolean {
   return NOT_USER_DOCS.test(path) || (/(^|\/)errors\//i.test(path) && !/\berror/i.test(query));
+}
+
+/**
+ * A copy of an older major that the package still ships: Zod 4's `v3/types.d.ts` and `docs-v3/`,
+ * `v1/` compatibility layers, `legacy/` and `compat/` folders. It documents the API the question
+ * should move away from.
+ */
+export function olderMajorPath(path: string, version: string): boolean {
+  const major = Number.parseInt(version, 10);
+  if (/(^|\/)(legacy|compat)(\/|$)/i.test(path)) return true;
+  if (!Number.isFinite(major)) return false;
+  return [...path.matchAll(/(?:^|\/)(?:[\w-]*-)?v(\d+)(?:\.x)?(?=\/|$)|(?:^|\/)(\d+)\.x(?=\/|$)/gi)].some((m) => Number(m[1] ?? m[2]) < major);
 }
 
 /** Ranks file paths before downloading them: we cannot fetch 500 docs pages per question. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, rank, rankPaths, select, singular, tidy, tokenize, topics, topicsFirst, type DocFile } from '../src/docs/retrieve.js';
+import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, olderMajorPath, rank, rankPaths, select, singular, tidy, tokenize, topics, topicsFirst, identifiers, nameMatch, trimSection, type DocFile } from '../src/docs/retrieve.js';
 import { parseLlmsIndex, tagCandidates } from '../src/docs/sources.js';
 import { ecosystemHint, formatLibraryId, nameVariants, parseLibraryRef } from '../src/search.js';
 
@@ -11,6 +11,17 @@ describe('chunking', () => {
     const chunks = chunkMarkdown(md);
     expect(chunks.map((c) => c.title)).toEqual(['Middleware', 'Middleware > Matcher', 'Middleware > Matcher > Negative matching', 'Middleware > Proxy']);
     expect(chunks[1].text).toContain('# not a heading');
+  });
+
+  it('small sections under one heading join, each with its heading; big ones and flagged ones stay apart', () => {
+    const md = '## Objects\nUse z.object.\n### `z.strictObject`\nThrows on unknown keys.\n### `z.looseObject`\nPasses unknown keys through.\n## Records\nz.record(z.string(), z.number())\n';
+    const chunks = chunkFile(file('api.mdx', md));
+    expect(chunks.map((c) => c.title)).toEqual(['Objects', 'Records']);
+    expect(chunks[0].text).toBe('Use z.object.\n\n#### `z.strictObject`\nThrows on unknown keys.\n\n#### `z.looseObject`\nPasses unknown keys through.');
+    const flagged = chunkFile(file('api.mdx', md), (t) => !t.includes('unknown keys through'));
+    expect(flagged.map((c) => c.title)).toEqual(['Objects', 'Objects > `z.looseObject`', 'Records']);
+    const long = `## A\n${'x '.repeat(500)}\n### B\n${'y '.repeat(500)}\n`;
+    expect(chunkFile(file('a.md', long)).map((c) => c.title)).toEqual(['A', 'A > B']);
   });
 
   it('rst headings only for .rst files', () => {
@@ -87,6 +98,16 @@ describe('ranking', () => {
     expect(picked.filter((p) => p.includes('extra_types'))).toHaveLength(2);
   });
 
+  it('olderMajorPath: copies of an older major the package still ships', () => {
+    expect(olderMajorPath('v3/types.d.ts', '4.6.7')).toBe(true);
+    expect(olderMajorPath('packages/docs-v3/ERROR_HANDLING.md', '4.6.7')).toBe(true);
+    expect(olderMajorPath('docs/1.x/guide.md', '2.0.0')).toBe(true);
+    expect(olderMajorPath('src/legacy/index.md', '1.0.0')).toBe(true);
+    expect(olderMajorPath('packages/docs/content/v4/changelog.mdx', '4.6.7')).toBe(false);
+    expect(olderMajorPath('v4/index.d.ts', '4.6.7')).toBe(false);
+    expect(olderMajorPath('docs/api/v2-endpoints.md', '4.6.7')).toBe(false);
+  });
+
   it('notUserDocs: contributor and agent notes, evals, plans and example apps are not user docs', () => {
     for (const p of [
       'astro/.agents/skills/astro-developer/SKILL.md', 'docs/plans/agent-native/004-skill-connection-config.md', 'packages/core/auth-js/AGENTS.md',
@@ -127,6 +148,38 @@ describe('ranking', () => {
     const budget = 2 * (enumDoc.length + 100);
     expect(select(rank(chunks, q), budget).map((c) => c.title)).toEqual(['Enums', 'Records']);
     expect(select(rank(chunks, q, topics(q)), budget).map((c) => c.title)).toEqual(['Strict objects', 'Enums']);
+  });
+
+  it('identifiers and nameMatch: the API name as written beats words shared with its siblings', () => {
+    expect(identifiers('z.email, z.record key value, field_validator, Field pattern=, @tool, ConfigDict, strictObject, plain words')).toEqual([
+      'z.email', 'z.record', 'field_validator', 'pattern=', '@tool', 'ConfigDict', 'strictObject',
+    ]);
+    expect(nameMatch('const s = z.record(z.string(), z.number());', ['z.record'])).toBe(2);
+    expect(nameMatch('z.partialRecord(z.enum(["a"]), z.number())', ['z.record'])).toBe(1);
+    expect(nameMatch('name: str = Field(pattern=r"^a")', ['pattern='])).toBe(2);
+    expect(nameMatch('the pattern of the field', ['pattern='])).toBe(1);
+    const rec = { file: file('api.mdx', ''), title: 'Records', text: 'Record schemas: z.record(z.string(), z.number()) validates a record.', score: 0 };
+    const partial = { file: file('api.mdx', ''), title: 'Partial records', text: 'Partial record schemas: z.partialRecord validates a partial record.', score: 0 };
+    expect(rank([partial, rec], 'z.record')[0].title).toBe('Records');
+  });
+
+  it('trimSection cuts at a blank line outside code blocks and says so', () => {
+    const text = `${'Intro sentence. '.repeat(20)}\n\n\`\`\`ts\n${'code();\n'.repeat(30)}\`\`\`\n\n${'More prose. '.repeat(40)}`;
+    const cut = trimSection(text, 600)!;
+    expect(cut.endsWith('[...]')).toBe(true);
+    expect((cut.match(/```/g) ?? []).length % 2).toBe(0);
+    expect(trimSection(text, 50)).toBeUndefined();
+    expect(trimSection('short', 100)).toBe('short');
+  });
+
+  it('a long best section of a topic is cut to its share instead of losing to a worse one', () => {
+    const long = { file: file('a.md', ''), title: 'Records', text: `z.record(z.string(), z.number())\n\n${`${'Records map keys to values. '.repeat(10)}\n\n`.repeat(12)}`, score: 0 };
+    const other = { file: file('b.md', ''), title: 'Enums', text: 'z.enum(["a", "b"]) builds an enum.', score: 0 };
+    const q = 'z.record of strings; z.enum';
+    const picked = select(rank([long, other], q, topics(q)), 2000);
+    expect(picked.map((c) => c.title)).toEqual(['Records', 'Enums']);
+    expect(picked[0].text).toContain('z.record(z.string()');
+    expect(picked[0].origin).toBe(long);
   });
 
   it('topicsFirst takes the best item of each topic, then the overall ranking, without repeats', () => {
