@@ -116,6 +116,16 @@ describe('sources helpers', () => {
       { title: 'API', url: 'https://x.dev/api', description: '' },
     ]);
   });
+
+  it('parses consecutive entries without descriptions, one per line (react.dev)', () => {
+    const idx = [
+      '#### Managing State',
+      '- [Managing State](https://react.dev/learn/managing-state.md)',
+      '- [useActionState](https://react.dev/reference/react/useActionState.md)',
+      '- [use](https://react.dev/reference/react/use.md)',
+    ].join('\n');
+    expect(parseLlmsIndex(idx, 'https://react.dev/').map((e) => [e.title, e.description])).toEqual([['Managing State', ''], ['useActionState', ''], ['use', '']]);
+  });
 });
 
 describe('library ids and search helpers', () => {

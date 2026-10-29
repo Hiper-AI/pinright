@@ -247,7 +247,8 @@ export interface LlmsDocs {
 
 export function parseLlmsIndex(content: string, base: string): { title: string; url: string; description: string }[] {
   const out: { title: string; url: string; description: string }[] = [];
-  for (const m of content.matchAll(/^\s*[-*]\s*\[([^\]]+)\]\(([^)\s]+)\)\s*:?\s*(.*)$/gm)) {
+  // One entry per line: a \s that crossed the newline took the next entry as this one's description.
+  for (const m of content.matchAll(/^[ \t]*[-*][ \t]*\[([^\]\n]+)\]\(([^)\s]+)\)[ \t]*:?[ \t]*(.*)$/gm)) {
     try {
       out.push({ title: m[1], url: new URL(m[2], base).toString(), description: m[3] });
     } catch {
