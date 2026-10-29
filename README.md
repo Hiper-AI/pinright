@@ -124,7 +124,25 @@ npm test                  # offline unit tests with fixtures
 npm run build && npx tsx scripts/e2e.ts   # drive the server over stdio with a real MCP client
 npx tsx scripts/smoke.ts  # live calls against the real APIs
 npm run bench             # Context7 vs safectx over ~95 libraries, writes bench/RESULTS.md
+npm run bench:agents      # real agents: no docs vs Context7 vs safectx, see bench/AGENTS.md
 ```
+
+## Benchmark with real agents
+
+[bench/AGENTS.md](bench/AGENTS.md) runs Claude Code headless on 12 coding tasks (8 npm, 4 PyPI)
+that ask for pinned versions, twice per arm, with no MCP server, with Context7 and with safectx.
+The manifests are then audited with `npm audit` and `pip-audit`, which share nothing with safectx.
+On the 2026-10-29 run, Sonnet 5.5:
+
+| | No docs | Context7 | safectx |
+|---|---|---|---|
+| Direct deps with a known advisory | 42% | 41% | 0% |
+| Whole-tree alerts (Dependabot-style), 24 projects | 763 | 632 | 2 |
+| Projects with zero alerts | 0 | 2 | 22 |
+| Cost per run (USD) | 0.03 | 0.06 | 0.05 |
+
+Installing the same packages with no version at all also lands near zero (1 alert over 12
+projects). safectx gets there while still pinning, and adds a 3-day cooldown and typosquat checks.
 
 ## License
 

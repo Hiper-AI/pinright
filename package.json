@@ -25,7 +25,8 @@
     "test": "vitest run",
     "bench": "tsx bench/run.ts",
     "coverage:ecosystem": "tsx scripts/coverage.ts",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "bench:agents": "tsx bench/agents/run.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
