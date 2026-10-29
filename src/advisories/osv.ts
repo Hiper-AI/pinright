@@ -86,6 +86,10 @@ export async function queryBatch(items: BatchItem[]): Promise<string[][]> {
       `${config.osvBaseUrl}/v1/querybatch`,
       { method: 'POST', body },
     );
+    // One result per query, in order: anything else and a missing result would read as "no advisories".
+    if (!Array.isArray(res?.results) || res.results.length !== chunk.length) {
+      throw new Error(`OSV querybatch returned ${Array.isArray(res?.results) ? res.results.length : 'no'} results for ${chunk.length} queries`);
+    }
     for (let j = 0; j < chunk.length; j++) {
       const r = res.results[j];
       let ids = (r?.vulns ?? []).map((v) => v.id);

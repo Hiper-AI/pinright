@@ -108,6 +108,7 @@ export function auditExitCode(run: AuditRun, failOn: FailOn): number {
   const bad = run.files.some(
     (f) =>
       f.audit.malicious > 0 ||
+      f.audit.unverifiedAlerts > 0 ||
       levels.slice(floor).some((s) => f.audit.bySeverity[s as keyof TreeAudit['bySeverity']] > 0) ||
       (floor === 0 && f.audit.bySeverity.unknown > 0) ||
       f.policy.some((h) => h.kind === 'deny' || h.kind === 'license') ||

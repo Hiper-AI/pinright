@@ -50,6 +50,12 @@ export interface TreeAudit {
   alerts: number;
   bySeverity: Record<'critical' | 'high' | 'moderate' | 'low' | 'unknown', number>;
   malicious: number;
+  /**
+   * Alerts whose advisory details (and so severity) could not be fetched: OSV failed, or past
+   * MAX_VULN_DETAILS. They count as "unknown" severity, but unlike a genuinely unrated advisory
+   * nobody knows they are below the threshold, so the audit fails closed on them.
+   */
+  unverifiedAlerts: number;
   findings: TreeFinding[];
   remediation: Remediation[];
   notes: string[];
@@ -136,8 +142,15 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean; 
   extra?.ids.forEach((more, i) => ids[i].push(...more));
   const allIds = [...new Set(ids.flat())].filter((id) => !extra?.details.has(id));
   if (allIds.length > MAX_VULN_DETAILS) notes.push(`${allIds.length} advisories found; details fetched for the first ${MAX_VULN_DETAILS}.`);
+  const failed = new Set<string>(allIds.slice(MAX_VULN_DETAILS));
   const details = new Map(
-    (await pool(allIds.slice(0, MAX_VULN_DETAILS), 8, async (id) => [id, await getVuln(id).catch(() => undefined)] as const)),
+    await pool(allIds.slice(0, MAX_VULN_DETAILS), 8, async (id) => {
+      const v = await getVuln(id).catch(() => {
+        failed.add(id);
+        return undefined;
+      });
+      return [id, v] as const;
+    }),
   );
   for (const [id, v] of extra?.details ?? []) details.set(id, v);
 
@@ -182,9 +195,11 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean; 
 
   const bySeverity = { critical: 0, high: 0, moderate: 0, low: 0, unknown: 0 };
   let alerts = 0;
+  let unverifiedAlerts = 0;
   for (const f of findings) {
     for (const a of f.advisories) {
       alerts++;
+      if (failed.has(a.id)) unverifiedAlerts++;
       const s = (a.severity ?? '').toUpperCase();
       if (s === 'CRITICAL') bySeverity.critical++;
       else if (s === 'HIGH') bySeverity.high++;
@@ -192,6 +207,9 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean; 
       else if (s === 'LOW') bySeverity.low++;
       else bySeverity.unknown++;
     }
+  }
+  if (unverifiedAlerts) {
+    notes.push(`${unverifiedAlerts} alert${unverifiedAlerts === 1 ? '' : 's'} could not be rated: OSV did not return the advisory details. Their severity is unknown, so they fail the audit at any threshold; run it again.`);
   }
   return {
     ecosystem: eco,
@@ -202,6 +220,7 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean; 
     alerts,
     bySeverity,
     malicious: findings.filter((f) => f.malicious).length,
+    unverifiedAlerts,
     findings,
     remediation,
     notes,

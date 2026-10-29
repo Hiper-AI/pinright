@@ -91,6 +91,35 @@ describe('auditTree', () => {
     expect(text).toContain('via parent > child');
   });
 
+  it('an advisory whose details OSV did not return fails the audit at any threshold (security review F5)', async () => {
+    const { HttpError } = await import('../src/http.js');
+    const { auditExitCode } = await import('../src/auditRun.js');
+    const { resolvePolicy } = await import('../src/teamConfig.js');
+    vulnsByPkg.set('child@1.0.0', ['GHSA-gone']);
+    const { getVuln } = await import('../src/advisories/osv.js');
+    vi.mocked(getVuln).mockImplementationOnce(async () => {
+      throw new HttpError(503, 'osv');
+    });
+    const a = await auditTree(parseFile('package-lock.json', lock));
+    expect(a.bySeverity.unknown).toBe(1);
+    expect(a.unverifiedAlerts).toBe(1);
+    expect(a.notes.join(' ')).toMatch(/could not be rated/);
+    const run = { target: '.', files: [{ tree: parseFile('package-lock.json', lock), audit: a, packages: [], policy: [], supply: [] }], policy: resolvePolicy(), notes: [] };
+    expect(auditExitCode(run, 'high')).toBe(1);
+    expect(auditExitCode(run, 'none')).toBe(0);
+  });
+
+  it('a genuinely unrated advisory still passes a high threshold', async () => {
+    const { auditExitCode } = await import('../src/auditRun.js');
+    const { resolvePolicy } = await import('../src/teamConfig.js');
+    vulnsByPkg.set('child@1.0.0', ['GHSA-unrated']);
+    vulnDetails.set('GHSA-unrated', { id: 'GHSA-unrated', aliases: [] });
+    const a = await auditTree(parseFile('package-lock.json', lock));
+    expect(a.unverifiedAlerts).toBe(0);
+    const run = { target: '.', files: [{ tree: parseFile('package-lock.json', lock), audit: a, packages: [], policy: [], supply: [] }], policy: resolvePolicy(), notes: [] };
+    expect(auditExitCode(run, 'high')).toBe(0);
+  });
+
   it('a clean tree says so', async () => {
     const a = await auditTree(parseFile('package-lock.json', lock));
     expect(a.alerts).toBe(0);
