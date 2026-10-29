@@ -9,9 +9,9 @@
  *
  *   npx tsx bench/agents/run.ts [--model sonnet] [--reps 2] [--concurrency 4] [--only id1,id2] [--arms a,b]
  */
-import { spawn } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { planJobs, runJobs } from './harness.js';
 import { DOCS_HINT, TASKS } from './tasks.js';
 
 const args = process.argv.slice(2);
@@ -25,6 +25,7 @@ const concurrency = Number(opt('concurrency', '4'));
 const only = opt('only', '').split(',').filter(Boolean);
 const armsOpt = opt('arms', 'no-docs,safectx,hook-only,safectx+hook').split(',');
 const stamp = opt('stamp', new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19));
+const resume = args.includes('--resume');
 
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
@@ -45,73 +46,17 @@ const hookSettings = {
   },
 };
 
-interface Job { arm: string; taskId: string; rep: number; prompt: string }
-const jobs: Job[] = [];
-for (let rep = 1; rep <= reps; rep++) {
-  for (const t of TASKS) {
-    if (only.length && !only.includes(t.id)) continue;
-    for (const arm of armsOpt) {
-      // --resume: skip runs whose transcript already ends in a successful result.
-      if (args.includes('--resume')) {
-        const tr = join(runDir, arm, t2(t.id, rep), 'transcript.jsonl');
-        if (existsSync(tr) && /"type":"result","subtype":"success"/.test(readFileSync(tr, 'utf8'))) continue;
-        rmSync(join(runDir, arm, t2(t.id, rep)), { recursive: true, force: true });
-      }
-      jobs.push({ arm, taskId: t.id, rep, prompt: `${t.prompt}\n\n${DOCS_HINT}` });
-    }
-  }
-}
-function t2(id: string, rep: number) {
-  return `${id}-r${rep}`;
-}
-
-function runOne(job: Job): Promise<number> {
-  const dir = join(runDir, job.arm, `${job.taskId}-r${job.rep}`);
-  const work = join(dir, 'work');
-  mkdirSync(work, { recursive: true });
-  const mcpPath = join(dir, 'mcp.json');
-  writeFileSync(mcpPath, JSON.stringify(MCP[job.arm], null, 2));
-  const allowed = ['Write', 'Read', 'mcp__safectx'];
-  const cliArgs = [
-    '-p', job.prompt,
-    '--model', model,
-    '--output-format', 'stream-json', '--verbose',
-    '--tools', 'Write,Read',
-    '--allowedTools', ...allowed,
-    '--permission-mode', 'acceptEdits',
-    '--strict-mcp-config', '--mcp-config', mcpPath,
-    '--setting-sources', 'project',
-    '--no-session-persistence',
-    '--max-turns', '40',
-  ];
-  if (HOOKED.has(job.arm)) {
-    const settingsPath = join(dir, 'settings.json');
-    writeFileSync(settingsPath, JSON.stringify(hookSettings, null, 2));
-    cliArgs.push('--settings', settingsPath);
-  }
-  const out = createWriteStream(join(dir, 'transcript.jsonl'));
-  const err = createWriteStream(join(dir, 'stderr.log'));
-  const started = Date.now();
-  return new Promise((res) => {
-    const env = { ...process.env, SAFECTX_NO_CACHE: '' };
-    const child = spawn('claude', cliArgs, { cwd: work, env, windowsHide: true });
-    child.stdout.pipe(out);
-    child.stderr.pipe(err);
-    const timer = setTimeout(() => child.kill(), 15 * 60_000);
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      writeFileSync(join(dir, 'meta.json'), JSON.stringify({ ...job, prompt: undefined, model, exitCode: code, wallMs: Date.now() - started }, null, 2));
-      console.log(`${job.arm.padEnd(9)} ${job.taskId}-r${job.rep} exit=${code} ${Math.round((Date.now() - started) / 1000)}s`);
-      res(code ?? -1);
-    });
-  });
-}
+const tasks = TASKS.filter((t) => !only.length || only.includes(t.id));
+const jobs = planJobs(tasks, armsOpt, reps, { runDir, resume, suffix: DOCS_HINT });
 
 mkdirSync(runDir, { recursive: true });
-if (!args.includes('--resume')) writeFileSync(join(runDir, 'config.json'), JSON.stringify({ model, reps, arms: armsOpt, tasks: only.length ? only : TASKS.map((t) => t.id), startedAt: new Date().toISOString() }, null, 2));
-console.log(`${jobs.length} runs -> ${runDir}`);
-let next = 0;
-await Promise.all(Array.from({ length: concurrency }, async () => {
-  while (next < jobs.length) await runOne(jobs[next++]);
-}));
-console.log('done');
+if (!resume) writeFileSync(join(runDir, 'config.json'), JSON.stringify({ model, reps, arms: armsOpt, tasks: only.length ? only : TASKS.map((t) => t.id), startedAt: new Date().toISOString() }, null, 2));
+await runJobs(jobs, {
+  runDir,
+  model,
+  concurrency,
+  mcp: MCP,
+  // safectx arms run with Context7 off: this run measures safectx's own docs.
+  env: () => ({ SAFECTX_CONTEXT7: 'off' }),
+  settings: (arm) => (HOOKED.has(arm) ? hookSettings : undefined),
+});
