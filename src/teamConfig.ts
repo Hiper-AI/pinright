@@ -49,6 +49,8 @@ export const teamConfigSchema = z.strictObject({
   noFix: z.enum(['severity', 'allow', 'ask', 'deny']).optional(),
   /** When deps.dev or OSV cannot be reached. */
   onError: z.enum(['allow', 'ask', 'deny']).optional(),
+  /** What safectx cannot check: git and URL sources, registry switches, commands or files it cannot read. */
+  unverifiable: z.enum(['allow', 'ask', 'deny']).optional(),
   /** Pinning of GitHub Actions to commit SHAs; read by the workflow checks. */
   actionsPin: z.enum(['off', 'warn', 'enforce']).optional(),
 });
@@ -69,6 +71,7 @@ export interface Policy {
   severityThreshold: Severity;
   noFix: 'severity' | Action;
   onError: Action;
+  unverifiable: Action;
   cooldown: 'warn' | 'enforce';
   cooldownDays?: number;
   actionsPin?: 'off' | 'warn' | 'enforce';
@@ -188,6 +191,7 @@ export function resolvePolicy(cfg?: TeamConfig, env: NodeJS.ProcessEnv = process
     severityThreshold: envEnum('SAFECTX_SEVERITY_THRESHOLD', SEVERITIES, env) ?? cfg?.severityThreshold ?? 'low',
     noFix: envEnum('SAFECTX_HOOK_NO_FIX', ['severity', 'allow', 'ask', 'deny'] as const, env) ?? cfg?.noFix ?? 'severity',
     onError: envEnum('SAFECTX_HOOK_ON_ERROR', ['allow', 'ask', 'deny'] as const, env) ?? cfg?.onError ?? 'allow',
+    unverifiable: envEnum('SAFECTX_HOOK_UNVERIFIABLE', ['allow', 'ask', 'deny'] as const, env) ?? cfg?.unverifiable ?? 'ask',
     cooldown: envEnum('SAFECTX_HOOK_COOLDOWN', ['warn', 'enforce'] as const, env) ?? cfg?.cooldown ?? 'warn',
     cooldownDays: days !== undefined && Number.isFinite(days) && days >= 0 ? days : cfg?.cooldownDays,
     actionsPin: envEnum('SAFECTX_ACTIONS_PIN', ['off', 'warn', 'enforce'] as const, env) ?? cfg?.actionsPin,
@@ -424,6 +428,9 @@ export const STARTER_CONFIG = `{
   "noFix": "severity",
 
   // When deps.dev or OSV cannot be reached: allow, ask or deny.
-  "onError": "allow"
+  "onError": "allow",
+
+  // What safectx cannot check (git or URL sources, another registry, a command it cannot read): allow, ask or deny.
+  "unverifiable": "ask"
 }
 `;

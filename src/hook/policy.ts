@@ -24,6 +24,7 @@ import { normalizePypiName } from '../tree/lockfiles.js';
 import semver from 'semver';
 import { GRAPH_ECOSYSTEMS, pickVersion, satisfiesPep440 } from '../tree/resolveManifest.js';
 import { belowThreshold, checkLicenses, denyEntry, denyMessage, isAllowed, type Policy, resolvePolicy, severityLevel } from '../teamConfig.js';
+import { findLookalike } from '../typosquat.js';
 import { stripInvisible } from '../untrusted/index.js';
 import { checkPackage, type Verdict } from '../verdict.js';
 import { type DepIntent } from './intent.js';
@@ -38,7 +39,8 @@ export interface HookDecision {
   checked: number;
 }
 
-const MAX_CHECKS = 25;
+/** Dependencies looked up per change. More than this asks a human instead of passing the rest unchecked. */
+const MAX_CHECKS = 40;
 /** Unchanged lines of a manifest read for the compatibility check only. */
 const MAX_CONTEXT = 60;
 
@@ -194,7 +196,7 @@ function judge(c: Checked, p: Policy): Outcome {
         ? { action: 'deny', problem: `${label}: version ${version} was never published (or was removed).${fix(r.safeVersion, 'Use')}` }
         : { action: 'deny', problem: `${label}: no such package in the ${i.ecosystem} registry. Check the name; if it is a private package, add it to "allow" in .safectx.json (or SAFECTX_ALLOW).` };
     case 'unknown':
-      return { action: p.onError, warning: `${label}: could not be verified (${r.reason}).` };
+      return unreachable(p, i, `${label}: could not be verified (${r.reason}).`);
     default:
       break;
   }
@@ -268,9 +270,60 @@ async function mildIds(ids: string[], p: Policy): Promise<Set<string>> {
   return mild;
 }
 
+/**
+ * The registries could not be reached: the policy's onError decides, except that a name one edit
+ * away from a popular package is never let through unseen (the lookalike check needs no network).
+ */
+function unreachable(p: Policy, i: DepIntent, text: string): Outcome {
+  const look = findLookalike(i.ecosystem, i.name);
+  if (look && p.onError === 'allow') return { action: 'ask', problem: `${text} The name is one edit away from "${look.of}"; a human should confirm it.` };
+  return p.onError === 'allow' ? { action: 'allow', warning: text } : { action: p.onError, problem: text };
+}
+
+/** What safectx can say without deps.dev or OSV: unverifiable sources and the team's deny list. */
+function offlineOutcomes(intents: DepIntent[], p: Policy): Outcome[] {
+  const out: Outcome[] = [];
+  const seen = new Set<string>();
+  for (const i of intents) {
+    const u = i.unverifiable;
+    if (!u) continue;
+    const key = `${u.reason}\0${i.source}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (u.level !== 'guard' && isAllowed(p, i.ecosystem, i.name)) continue;
+    const action: Action = u.level === 'guard' ? 'ask' : u.level === 'note' ? 'allow' : p.unverifiable;
+    const text = `${u.reason}${i.source && !u.reason.includes(i.source) ? ` (${i.source.slice(0, 160)})` : ''}`;
+    out.push(action === 'allow' ? { action, warning: text } : { action, problem: text });
+  }
+  return out;
+}
+
+/** The hook's answer when the full check ran out of time: what is known offline, then onError for the rest. */
+export function timeoutDecision(intents: DepIntent[], policy: Policy): HookDecision {
+  const outcomes = offlineOutcomes(intents, policy);
+  const rest = intents.filter((i) => !i.unverifiable && !i.contextOnly && !isAllowed(policy, i.ecosystem, i.name));
+  for (const i of rest) {
+    const d = denyEntry(policy, i.ecosystem, i.name);
+    if (d) outcomes.push({ action: 'deny', problem: `${i.name} (${i.ecosystem}): ${denyMessage(policy, d)}` });
+    else if (findLookalike(i.ecosystem, i.name)) outcomes.push(unreachable(policy, i, `${i.name} (${i.ecosystem}): not verified before the deadline.`));
+  }
+  if (rest.length) {
+    const text = 'safectx: verification timed out; dependencies not checked.';
+    outcomes.push(policy.onError === 'allow' ? { action: 'allow', warning: text } : { action: policy.onError, problem: text });
+  }
+  const action: Action = outcomes.some((o) => o.action === 'deny') ? 'deny' : outcomes.some((o) => o.action === 'ask') ? 'ask' : 'allow';
+  return {
+    action,
+    problems: outcomes.map((o) => o.problem).filter((x): x is string => Boolean(x)),
+    warnings: outcomes.map((o) => o.warning).filter((x): x is string => Boolean(x)),
+    checked: 0,
+  };
+}
+
 export async function decide(intents: DepIntent[], policy: Policy = resolvePolicy()): Promise<HookDecision> {
   const p = policy;
-  const outcomes: Outcome[] = [];
+  const outcomes: Outcome[] = offlineOutcomes(intents, p);
+  intents = intents.filter((i) => !i.unverifiable);
   const seen = new Set<string>();
   const unique = intents.filter((i) => {
     const k = `${i.ecosystem}:${i.name}:${i.spec ?? ''}`;
@@ -293,7 +346,7 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
       try {
         checked.push(await inspect(i));
       } catch (err) {
-        outcomes.push({ action: p.onError, warning: `${i.name}: could not be verified (${(err as Error).message}).` });
+        outcomes.push(unreachable(p, i, `${i.name}: could not be verified (${(err as Error).message}).`));
       }
     }),
   );
@@ -369,7 +422,14 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
 
   const problems = outcomes.map((r) => r.problem).filter((p): p is string => Boolean(p));
   const warnings = outcomes.map((r) => r.warning).filter((w): w is string => Boolean(w));
-  if (changed.length > MAX_CHECKS) warnings.push(`Only the first ${MAX_CHECKS} of ${changed.length} dependencies were checked.`);
+  if (changed.length > MAX_CHECKS) {
+    // Padding a change with harmless packages must not push a bad one past the check.
+    const skipped = changed.slice(MAX_CHECKS).map((i) => i.name);
+    problems.push(
+      `This change adds ${changed.length} dependencies and safectx checks ${MAX_CHECKS} per change, so ${skipped.slice(0, 8).join(', ')}${skipped.length > 8 ? `, +${skipped.length - 8} more` : ''} were not checked. Add them in smaller batches, or a human should approve.`,
+    );
+    outcomes.push({ action: 'ask' });
+  }
   const action: Action = outcomes.some((r) => r.action === 'deny') ? 'deny' : outcomes.some((r) => r.action === 'ask') ? 'ask' : 'allow';
   return { action, problems, warnings, checked: Math.min(changed.length, MAX_CHECKS) };
 }

@@ -172,9 +172,11 @@ describe('the hook with a broken .safectx.json', () => {
       const out = JSON.parse(res.stdout);
       expect(out.hookSpecificOutput.permissionDecision).toBe('deny');
       expect(out.hookSpecificOutput.permissionDecisionReason).toMatch(/project policy cannot be read.*not valid JSON/s);
-      // Fixing the file is not a dependency change, so the hook stays out of the way.
+      // Fixing the file is a policy change: not denied, but a human approves it (an agent could write "allow": ["*"]).
       const fix = run({ tool_name: 'Write', tool_input: { file_path: path.join(dir, '.safectx.json'), content: '{}' }, cwd: dir });
-      expect(fix.stdout).toBe('');
+      expect(JSON.parse(fix.stdout).hookSpecificOutput.permissionDecision).toBe('ask');
+      // Other tool calls still pass.
+      expect(run({ tool_name: 'Bash', tool_input: { command: 'ls' }, cwd: dir }).stdout).toBe('');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

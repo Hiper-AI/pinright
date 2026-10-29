@@ -10,8 +10,10 @@ import path from 'node:path';
 import { applyCooldownDays } from '../config.js';
 import { readProjectFile } from '../projectFile.js';
 import { loadTeamConfig, resolvePolicy } from '../teamConfig.js';
-import { agentMessage, decide, type HookDecision } from './policy.js';
-import { type DepIntent, fromCommand, fromFileWrite, isWatchedFile } from './intent.js';
+import { agentMessage, decide, type HookDecision, timeoutDecision } from './policy.js';
+import { type DepIntent, fromCommand, fromFileWrite, isGuardedFile } from './intent.js';
+import { lifecycleIntents } from './command.js';
+import { unverifiable } from './spec.js';
 import { decideActions } from '../actions/check.js';
 import { stripInvisible } from '../untrusted/index.js';
 import { type ActionUse, changedUses, isWorkflowFile } from '../actions/workflow.js';
@@ -31,14 +33,20 @@ function applyEdits(original: string, edits: { old_string?: string; new_string?:
   let s = original;
   for (const e of edits) {
     if (e.old_string === undefined || e.new_string === undefined) continue;
-    s = e.replace_all ? s.split(e.old_string).join(e.new_string) : s.replace(e.old_string, e.new_string);
+    // A function replacer: a string one would expand $&, $' and $` in new_string, and the hook would
+    // judge a different file from the one the tool writes.
+    const next = e.new_string;
+    s = e.replace_all ? s.split(e.old_string).join(next) : s.replace(e.old_string, () => next);
   }
   return s;
 }
 
-/** The file a write/edit tool targets, with its content before and after, when `accept` wants it. */
-function fileChange(input: Record<string, any>, cwd: string, accept: (file: string) => boolean): { abs: string; old?: string; next: string } | undefined {
-  const file = input.file_path ?? input.path ?? input.target_file ?? input.filePath;
+/**
+ * The file a write/edit tool targets, with its content before and after, when `accept` wants it.
+ * `opaque` set: the tool writes the file but its result cannot be computed (a lazy Cursor edit).
+ */
+function fileChange(input: Record<string, any>, cwd: string, accept: (file: string) => boolean): { abs: string; old?: string; next: string; opaque?: boolean } | undefined {
+  const file = input.file_path ?? input.path ?? input.target_file ?? input.filePath ?? input.notebook_path;
   if (typeof file !== 'string' || !accept(file)) return undefined;
   const abs = path.resolve(cwd, file);
   const old = readIfExists(abs);
@@ -48,6 +56,7 @@ function fileChange(input: Record<string, any>, cwd: string, accept: (file: stri
   else if (Array.isArray(input.edits)) next = old !== undefined ? applyEdits(old, input.edits) : undefined;
   else if (typeof input.old_string === 'string') next = old !== undefined ? applyEdits(old, [input]) : undefined;
   else if (typeof input.code_edit === 'string' && !/\.\.\. existing code/i.test(input.code_edit)) next = input.code_edit;
+  else if (typeof input.code_edit === 'string') return { abs, old, next: '', opaque: true };
   return next === undefined ? undefined : { abs, old, next };
 }
 
@@ -67,14 +76,54 @@ function gradleSiblings(abs: string): Record<string, string> {
   return out;
 }
 
-/** Tool input from either agent -> dependency intents. Unknown tools yield nothing. */
-export function intentsFromToolInput(toolName: string, input: Record<string, any>, cwd: string): DepIntent[] {
+/** Shell lines in notebook source: "!pip install x", "%pip install x", and %%bash / %%sh / %%script cells. */
+export function notebookCommands(source: string): string {
+  if (/^\s*%%(bash|sh|script\s+(ba)?sh|system)\b/.test(source)) return source.replace(/^\s*%%[^\n]*\n?/, '');
+  return source
+    .split(/\r?\n/)
+    .map((l) => l.trim().match(/^(?:!|%(?=(pip|conda|mamba|uv|npm|sx|system)\b))(.*)$/)?.[2] ?? '')
+    .filter(Boolean)
+    .join('\n');
+}
+
+/** The code cells of an .ipynb written whole. */
+function notebookSource(content: string): string {
+  try {
+    const nb = JSON.parse(content);
+    return (nb.cells ?? [])
+      .filter((c: any) => c.cell_type === 'code')
+      .map((c: any) => notebookCommands(Array.isArray(c.source) ? c.source.join('') : String(c.source ?? '')))
+      .join('\n');
+  } catch {
+    return '';
+  }
+}
+
+function extract(input: Record<string, any>, cwd: string): DepIntent[] {
   const command = input.command ?? input.cmd;
   if (typeof command === 'string') return fromCommand(command, cwd, readIfExists);
-  const change = fileChange(input, cwd, isWatchedFile);
+  // NotebookEdit: a cell with "!pip install x" installs when it runs.
+  if (typeof input.new_source === 'string') return fromCommand(notebookCommands(input.new_source), path.dirname(path.resolve(cwd, String(input.notebook_path ?? '.'))), readIfExists);
+  const nb = fileChange(input, cwd, (f) => /\.ipynb$/i.test(f));
+  if (nb) return fromCommand(notebookSource(nb.next), path.dirname(nb.abs), readIfExists);
+  const change = fileChange(input, cwd, isGuardedFile);
   if (!change) return [];
+  if (change.opaque) return fromFileWrite(change.abs, undefined, change.old);
+  const out = fromFileWrite(change.abs, change.next, change.old, gradleSiblings(change.abs));
+  if (/(^|[\\/])package\.json$/i.test(change.abs)) out.push(...lifecycleIntents(change.abs, change.next, change.old, readIfExists));
+  return out;
+}
+
+/** Tool input from either agent -> dependency intents. Unknown tools yield nothing. */
+export function intentsFromToolInput(toolName: string, input: Record<string, any>, cwd: string): DepIntent[] {
   void toolName;
-  return fromFileWrite(change.abs, change.next, change.old, gradleSiblings(change.abs));
+  try {
+    return extract(input, cwd);
+  } catch (err) {
+    // A reader bug must not turn into a silent pass: whatever the agent is doing, a human looks at it.
+    const what = typeof (input.command ?? input.cmd) === 'string' ? String(input.command ?? input.cmd) : String(input.file_path ?? input.path ?? 'this change');
+    return [unverifiable('npm', 'hook', `safectx could not read this change (${(err as Error).message}).`, what.slice(0, 200))];
+  }
 }
 
 /** New or changed `uses:` lines in a workflow or action.yml being written. */
@@ -119,6 +168,10 @@ async function readStdin(): Promise<string> {
 async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number, cwd: string): Promise<HookDecision> {
   const team = loadTeamConfig(cwd);
   if (team.error) {
+    // The fix to the file itself goes to a human, like any other change to the policy.
+    if (intents.length && !uses.length && intents.every((i) => i.unverifiable?.level === 'guard')) {
+      return { action: 'ask', problems: [`the project policy cannot be read (${team.error}); a human should approve this change to it.`], warnings: [], checked: 0 };
+    }
     return {
       action: 'deny',
       problems: [`the project policy cannot be read, so no dependency change is allowed until it is fixed. ${team.error}`],
@@ -130,11 +183,8 @@ async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number,
   applyCooldownDays(policy.cooldownDays);
   // The Actions check reads SAFECTX_ACTIONS_PIN; the hook is a short-lived process, so the policy can set it.
   if (policy.actionsPin && !process.env.SAFECTX_ACTIONS_PIN) process.env.SAFECTX_ACTIONS_PIN = policy.actionsPin;
-  const timeout = new Promise<HookDecision>((resolve) =>
-    setTimeout(() => {
-      resolve({ action: policy.onError, problems: [], warnings: ['safectx: verification timed out; dependencies not checked.'], checked: 0 });
-    }, ms).unref(),
-  );
+  // On timeout: what is known without the network (unverifiable sources, the deny list, lookalike names), then onError.
+  const timeout = new Promise<HookDecision>((resolve) => setTimeout(() => resolve(timeoutDecision(intents, policy)), ms).unref());
   const both = async () => {
     const [deps, actions] = await Promise.all([
       intents.length ? decide(intents, policy) : undefined,

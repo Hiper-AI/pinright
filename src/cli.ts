@@ -178,7 +178,7 @@ function initFiles(args: string[]): number {
     if (withHook) {
       const p = path.resolve('.claude', 'settings.json');
       const j = readJson(p);
-      const entry = { matcher: 'Bash|Write|Edit|MultiEdit', hooks: [{ type: 'command', command: shell(['hook', 'claude']), timeout: 60 }] };
+      const entry = { matcher: 'Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: shell(['hook', 'claude']), timeout: 60 }] };
       const pre = (j.hooks?.PreToolUse ?? []).filter((h: any) => !JSON.stringify(h).includes('safectx'));
       j.hooks = { ...(j.hooks ?? {}), PreToolUse: [...pre, entry] };
       writeJson(p, j);

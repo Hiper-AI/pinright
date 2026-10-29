@@ -41,7 +41,8 @@ vi.mock('../src/advisories/depsdev.js', () => ({
   }),
 }));
 
-const { decide, agentMessage, satisfiesRequirement } = await import('../src/hook/policy.js');
+const { decide, agentMessage, satisfiesRequirement, timeoutDecision } = await import('../src/hook/policy.js');
+const { resolvePolicy } = await import('../src/teamConfig.js');
 const adv = (id: string) => ({ id, aliases: [`CVE-${id}`], url: '', severity: 'HIGH' });
 
 beforeEach(() => {
@@ -328,5 +329,51 @@ describe('supply-chain risk signals', () => {
     const d = await decide([{ ecosystem: 'npm', name: 'fresh-cli', source: 'npx fresh-cli', executes: true }]);
     expect(d.action).toBe('allow');
     expect(d.warnings[0]).toContain('new and runs install scripts');
+  });
+});
+
+describe('what the hook cannot check', () => {
+  const remote = { ecosystem: 'npm' as const, name: 'x', source: 'npm i github:evil/x', unverifiable: { reason: 'github:evil/x comes from outside the registry.' } };
+
+  it('asks by default; the policy can allow or deny; allow-listed names pass', async () => {
+    expect((await decide([remote], resolvePolicy(undefined, {}))).action).toBe('ask');
+    expect((await decide([remote], resolvePolicy({ unverifiable: 'deny' }, {}))).action).toBe('deny');
+    const allowed = await decide([remote], resolvePolicy(undefined, { SAFECTX_HOOK_UNVERIFIABLE: 'allow' }));
+    expect(allowed.action).toBe('allow');
+    expect(allowed.warnings[0]).toContain('outside the registry');
+    expect((await decide([remote], resolvePolicy({ allow: ['x'] }, {}))).action).toBe('allow');
+  });
+
+  it('notes only inform, and changes to the hook configuration always ask', async () => {
+    const note = { ...remote, unverifiable: { reason: 'jsr:@x/y is a JSR package.', level: 'note' as const } };
+    expect((await decide([note], resolvePolicy(undefined, {}))).action).toBe('allow');
+    const guard = { ...remote, name: '.safectx.json', unverifiable: { reason: 'changes the policy.', level: 'guard' as const } };
+    expect((await decide([guard], resolvePolicy({ unverifiable: 'allow', allow: ['*'] }, {}))).action).toBe('ask');
+  });
+
+  it('padding a change past the per-change limit asks instead of passing the rest unchecked', async () => {
+    const many = Array.from({ length: 45 }, (_, k) => ({ ecosystem: 'npm' as const, name: `pkg${k}`, spec: '1.0.0', source: 'npm i ...' }));
+    for (const i of many) versions.set(i.name, ['1.0.0']);
+    const d = await decide(many);
+    expect(d.action).toBe('ask');
+    expect(d.problems.join('\n')).toMatch(/45 dependencies.*pkg40/);
+  });
+
+  it('an unreachable registry never lets a lookalike name through, even with onError allow', async () => {
+    reports.set('expresss', { verdict: 'unknown', reason: 'deps.dev timed out' });
+    versions.set('expresss', ['1.0.0']);
+    expect((await decide([{ ecosystem: 'npm', name: 'expresss', source: 'npm i expresss' }])).action).toBe('ask');
+    reports.set('left-pad', { verdict: 'unknown', reason: 'deps.dev timed out' });
+    versions.set('left-pad', ['1.3.0']);
+    expect((await decide([{ ecosystem: 'npm', name: 'left-pad', source: 'npm i left-pad' }])).action).toBe('allow');
+  });
+
+  it('on timeout, what is known offline still decides', () => {
+    const p = resolvePolicy({ deny: ['request'] }, {});
+    expect(timeoutDecision([{ ecosystem: 'npm', name: 'left-pad', source: 'x' }], p).action).toBe('allow');
+    expect(timeoutDecision([{ ecosystem: 'npm', name: 'expresss', source: 'x' }], p).action).toBe('ask');
+    expect(timeoutDecision([{ ecosystem: 'npm', name: 'request', source: 'x' }], p).action).toBe('deny');
+    expect(timeoutDecision([remote], p).action).toBe('ask');
+    expect(timeoutDecision([{ ecosystem: 'npm', name: 'left-pad', source: 'x' }], resolvePolicy({ onError: 'ask' }, {})).action).toBe('ask');
   });
 });
