@@ -5,6 +5,7 @@
  * safectx hook claude|cursor   pre-install hook: reads the agent's hook JSON on stdin
  * safectx check <eco> <name>[@version]
  * safectx audit [path] [--json] [--fail-on=low|moderate|high|critical]
+ * safectx upgrade <eco> <name> <from> [to] [--query="..."]
  * safectx init [claude|cursor] [--no-hook] [--no-mcp]
  */
 import fs from 'node:fs';
@@ -18,6 +19,7 @@ import { splitNpmSpec } from './hook/intent.js';
 import { buildMcpServer, manifestsIn, readSiblings } from './mcp.js';
 import { auditTree, formatTreeAudit, type TreeAudit } from './tree/audit.js';
 import { parseFile } from './tree/lockfiles.js';
+import { upgradeGuide } from './upgrade/index.js';
 import { checkPackage } from './verdict.js';
 
 async function serve(): Promise<number> {
@@ -37,6 +39,20 @@ async function check(args: string[]): Promise<number> {
   const v = await checkPackage(eco, name, version);
   console.log(securityNotice(v.report, v.typo));
   return v.report.verdict === 'ok' ? 0 : 1;
+}
+
+async function upgrade(args: string[]): Promise<number> {
+  const pos = args.filter((a) => !a.startsWith('--'));
+  const eco = parseEcosystem(pos[0]);
+  if (!eco || !pos[1] || !pos[2]) {
+    console.error('usage: safectx upgrade <npm|pypi|...> <name> <from> [to] [--query="..."] [--tokens=N]');
+    return 2;
+  }
+  const query = args.find((a) => a.startsWith('--query='))?.slice(8);
+  const tokens = Number(args.find((a) => a.startsWith('--tokens='))?.slice(9));
+  const r = await upgradeGuide({ ecosystem: eco, name: pos[1], from: pos[2], to: pos[3], query, budgetChars: tokens > 0 ? tokens * 4 : undefined });
+  console.log(r.text);
+  return r.to ? 0 : 1;
 }
 
 const SEV = ['low', 'moderate', 'high', 'critical'];
@@ -144,6 +160,8 @@ async function main(): Promise<number> {
       return check(args);
     case 'audit':
       return audit(args);
+    case 'upgrade':
+      return upgrade(args);
     case 'init':
       return init(args);
     case '--version':
@@ -151,7 +169,7 @@ async function main(): Promise<number> {
       console.log(readJson(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')).version);
       return 0;
     default:
-      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver] | audit [path] | init [claude|cursor]]');
+      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor]]');
       return 2;
   }
 }

@@ -76,9 +76,11 @@ describe('securityNotice with release lines', () => {
     expect(t).toContain('Recommended within 3.x: 3.25.80');
     expect(t).toContain('npm install zod@3.25.80');
     expect(t).toContain('Newest safe overall: 4.6.7 (a different major');
+    expect(t).toContain('call upgrade-guide from 3.9.0 to 4.6.7');
   });
   it('says plainly when the fix needs a new major', () => {
     const t = securityNotice({ ...base, package: 'jsonwebtoken', verdict: 'vulnerable', line: '8.x', crossLineRequired: true, safeVersion: '9.0.3', requested: { ...vuln, version: '8.5.1' } });
     expect(t).toContain('No 8.x release is free of known advisories. The fix needs 9.0.3, a different major');
+    expect(t).toContain('call upgrade-guide from 8.5.1 to 9.0.3');
   });
 });

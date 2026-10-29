@@ -73,6 +73,7 @@ describe('decide', () => {
     });
     const d = await decide([{ ecosystem: 'npm', name: 'jsonwebtoken', spec: '8.5.1', source: 'x' }]);
     expect(d.problems[0]).toMatch(/new major, 9\.0\.3/);
+    expect(d.problems[0]).toContain('safectx upgrade npm jsonwebtoken 8.5.1 9.0.3');
   });
 
   it('asks a human when no clean version exists', async () => {

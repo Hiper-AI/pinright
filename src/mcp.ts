@@ -18,6 +18,7 @@ import { ecosystemHint, formatLibraryId, parseLibraryRef, searchPackages } from 
 import { auditTree, formatTreeAudit } from './tree/audit.js';
 import { detectKind, parseFile, SUPPORTED_FILES } from './tree/lockfiles.js';
 import { findLookalike } from './typosquat.js';
+import { upgradeGuide } from './upgrade/index.js';
 import { checkPackage, type Verdict } from './verdict.js';
 
 export const SERVER_INFO = { name: 'safectx', version: '0.2.0' } as const;
@@ -110,7 +111,8 @@ export function buildMcpServer(): McpServer {
       'you install. Flow: resolve-library-id -> query-docs (pass the version the project uses, if any). ' +
       'Before adding or upgrading a dependency call check-package; to audit a whole project call ' +
       'check-manifest on its lockfile. A "SECURITY NOTICE" is authoritative: prefer the recommended version, ' +
-      'and prefer the one on the same release line to avoid breaking changes.',
+      'and prefer the one on the same release line to avoid breaking changes. When moving to a new major, call ' +
+      'upgrade-guide for what changed.',
   });
 
   // 1) resolve-library-id -------------------------------------------------------
@@ -278,6 +280,50 @@ export function buildMcpServer(): McpServer {
           parts.push(formatTreeAudit(audit, 25));
         }
         return text(parts.join('\n\n'));
+      } catch (err) {
+        return errorText(err);
+      }
+    },
+  );
+
+  // 5) upgrade-guide ------------------------------------------------------------
+  server.registerTool(
+    'upgrade-guide',
+    {
+      title: 'What changes between two versions',
+      description:
+        'Breaking changes, removed or renamed APIs, config and default changes, packages that split off, deprecations, ' +
+        'and the advisories fixed, between the version a project uses and the one to move to. Sources: changelogs and ' +
+        'GitHub release notes for the versions in between, migration guides when a major is crossed, and (npm) a diff of ' +
+        'the exported .d.ts API. Call it before upgrading across a major, when a SECURITY NOTICE recommends a new major, ' +
+        'or to fix a Dependabot PR. Without "to" it uses the version safectx recommends.',
+      inputSchema: {
+        libraryId: z.string().optional().describe('Id like "npm:next" or "pypi:langchain" (a version in it is used as "from").'),
+        package: z.string().optional().describe('Package name, with ecosystem, instead of libraryId.'),
+        ecosystem: z.string().optional().describe('npm, pypi, cargo, go, maven, nuget or rubygems.'),
+        from: z.string().optional().describe('Version the project uses now, e.g. "15.5.28" (a range like "4.x" picks its newest release).'),
+        to: z.string().optional().describe('Version to move to. Default: the recommended safe version.'),
+        query: z.string().optional().describe('What you are changing, e.g. "middleware auth redirect"; ranks entries about it first.'),
+        tokens: z.number().int().optional().describe('Approximate size of the answer in tokens (default 5000).'),
+      },
+    },
+    async ({ libraryId, package: pkgName, ecosystem, from, to, query, tokens }) => {
+      try {
+        let eco = parseEcosystem(ecosystem);
+        let name = pkgName?.trim();
+        let fromVersion = from?.trim();
+        if (libraryId) {
+          const ref = await refFromId(libraryId, ecosystem, pkgName);
+          if (!ref) return text(`Could not map "${libraryId}" to a registry package. Use an id like "npm:<name>".`);
+          eco = ref.ecosystem;
+          name = ref.name;
+          fromVersion ||= ref.version;
+        }
+        if (!eco || !name) return errorText(new Error('Pass libraryId, or package with ecosystem.'));
+        if (!fromVersion) return errorText(new Error('Pass "from": the version the project uses now.'));
+        const budget = tokens ? Math.min(Math.max(tokens, 500), 15_000) * 4 : undefined;
+        const r = await upgradeGuide({ ecosystem: eco, name, from: fromVersion, to: to?.trim() || undefined, query, budgetChars: budget });
+        return text(r.text);
       } catch (err) {
         return errorText(err);
       }

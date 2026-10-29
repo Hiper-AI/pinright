@@ -201,7 +201,10 @@ function judge(c: Checked): Outcome {
     const sev = req.advisories.find((a) => a.severity)?.severity;
     const head = `${label}${implicit ? ` resolves to ${version}, which` : ''} has ${req.advisories.length} known advisor${req.advisories.length === 1 ? 'y' : 'ies'} (${ids}${sev ? `, ${sev}` : ''}).`;
     if (r.safeVersionSameLine && r.safeVersionSameLine !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersionSameLine, `Use ${r.line} release`)}` };
-    if (r.safeVersion && r.safeVersion !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}` };
+    if (r.safeVersion && r.safeVersion !== version) {
+      const guide = ` Call upgrade-guide (safectx MCP, or \`safectx upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersion}\`) for the breaking changes before writing code for it.`;
+      return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}${guide}` };
+    }
     // No version is clean. If another one is clearly less exposed, point there.
     const le = r.leastExposed;
     if (le && le.version !== version) {

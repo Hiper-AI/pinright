@@ -58,13 +58,16 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport): s
   if (req && report.line && sameLine && sameLine !== req.version) {
     lines.push(`Recommended within ${report.line}: ${sameLine} (same release line, no API break expected). Upgrade: ${cmd(sameLine)}`);
     if (report.safeVersion && report.safeVersion !== sameLine) {
-      lines.push(`Newest safe overall: ${report.safeVersion} (a different major: read its migration guide before switching).`);
+      lines.push(
+        `Newest safe overall: ${report.safeVersion} (a different major: before switching, call upgrade-guide from ${req.version} to ${report.safeVersion} for what changes).`,
+      );
     }
   } else if (req && report.line && report.crossLineRequired && report.safeVersion) {
     lines.push(
       `No ${report.line} release is free of known advisories. The fix needs ${report.safeVersion}, a different major: ` +
         `expect breaking changes, read the migration guide. Upgrade: ${cmd(report.safeVersion)}`,
     );
+    lines.push(`Before rewriting code or config for it, call upgrade-guide from ${req.version} to ${report.safeVersion}.`);
   } else if (report.safeVersion) {
     const isUpgrade = req && req.version !== report.safeVersion;
     lines.push(

@@ -91,6 +91,7 @@ safectx blocked this dependency change:
 | `resolve-library-id` | Library name to registry package (`next.js` to `npm:next`, `pytorch` to `pypi:torch`), ranked by repo stars, with the safe version and a verdict. Suggests the real name for a misspelled one. |
 | `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the safe one; with a vulnerable one it documents the same-line fix. Context7 ids (`/vercel/next.js`) work too. |
 | `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes. |
+| `upgrade-guide` | What changes between two versions: breaking changes, removed or renamed APIs, config and default changes, packages that split off, deprecations, and the advisories the move fixes. Without `to` it targets the recommended version. |
 | `check-manifest` | Whole-tree audit of `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `Cargo.lock`, `go.mod`, `Gemfile.lock`, `packages.lock.json`, or a bare `package.json` / `pyproject.toml` / `Cargo.toml` resolved through deps.dev. Each finding comes with its chain and fix. |
 
 Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `unknown-package`,
@@ -125,6 +126,36 @@ on a moderate finding nobody can fix yet. Everything else passes, with notes for
 | `SAFECTX_HOOK_COOLDOWN` | `warn` | `enforce` blocks an unpinned install whose newest version is inside the cooldown window. |
 | `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check; on timeout it behaves as `SAFECTX_HOOK_ON_ERROR`. |
 
+## Upgrade guides
+
+When safectx recommends a new major, the agent tends to write code and config for the old API from
+memory: a `tsconfig.json` without `rootDir` for TypeScript 6+, `middleware.ts` for Next.js 16 where
+the file is now `proxy.ts`, an import from `langchain` for text splitters that moved to
+`langchain-text-splitters`. `upgrade-guide` gives the agent the changes between the two versions
+before it writes anything, and you can run it by hand to fix a Dependabot PR:
+
+```
+upgrade-guide { libraryId: "npm:next", from: "15.5.28", to: "16.4.3", query: "middleware" }
+npx safectx upgrade npm next 15.5.28 16.4.3 --query="middleware"
+npx safectx upgrade pypi pydantic 1.10.x 2.x       # ranges resolve to their newest release
+```
+
+It reads, all at the target version and cached:
+
+1. `CHANGELOG`, `HISTORY`, `CHANGES` and `RELEASES` files from the published package and from the repo
+   at the release tag, keeping only the sections for versions after `from` up to `to`;
+2. GitHub release notes for the tags in that range, and the announcement post when a release body only
+   links to one (TypeScript's);
+3. migration guides when the move crosses a major: files and `llms.txt` pages named after migrating or
+   upgrading to that major;
+4. for npm, a diff of the exported API in the `.d.ts` files of both versions: removed exports, changed
+   signatures, removed members.
+
+Entries come back tagged `BREAKING`, `CONFIG/DEFAULT`, `NEW PACKAGE` or `DEPRECATED`, each with its
+version and source. The answer opens with the advisories the move fixes and any that remain at `to`.
+It fits the same budget as `query-docs` (`tokens` argument). Without a `GITHUB_TOKEN` it reads fewer
+release pages.
+
 ## How the safe version is chosen
 
 The newest version that is stable (no `rc`, `beta`, `canary`, Go pseudo-versions), not deprecated,
@@ -158,6 +189,7 @@ Sections are ranked locally with BM25 against the question, and the answer is ca
 npx safectx check npm axios@1.7.9          # exit 1 if not ok
 npx safectx audit . --fail-on=high         # whole-tree audit for CI, exit 1 on findings
 npx safectx audit package-lock.json --json
+npx safectx upgrade npm zod 3.25.76 4.6.7  # what changes between two versions
 ```
 
 ## Configuration
@@ -204,6 +236,7 @@ npm test                                   # offline unit tests with fixtures
 npm run build && npx tsx scripts/e2e.ts .  # drive the server over stdio with a real MCP client
 npx tsx scripts/docs.ts npm next 16.4.3 "middleware"   # what query-docs returns
 npx tsx scripts/audit.ts package-lock.json # whole-tree audit
+npx tsx scripts/upgrade.ts npm next 15.5.28 16.4.3 "middleware"   # what upgrade-guide returns
 npm run bench:agents                       # agent benchmark, see bench/agents/
 ```
 
