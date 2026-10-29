@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, olderMajorPath, rank, rankPaths, select, singular, tidy, tokenize, topics, topicsFirst, identifiers, nameMatch, trimSection, type DocFile } from '../src/docs/retrieve.js';
+import { isRst, chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, olderMajorPath, rank, rankPaths, select, singular, tidy, tokenize, topics, topicsFirst, identifiers, nameMatch, trimSection, type DocFile } from '../src/docs/retrieve.js';
 import { parseLlmsIndex, tagCandidates } from '../src/docs/sources.js';
 import { ecosystemHint, formatLibraryId, nameVariants, parseLibraryRef } from '../src/search.js';
 
@@ -22,6 +22,15 @@ describe('chunking', () => {
     expect(flagged.map((c) => c.title)).toEqual(['Objects', 'Objects > `z.looseObject`', 'Records']);
     const long = `## A\n${'x '.repeat(500)}\n### B\n${'y '.repeat(500)}\n`;
     expect(chunkFile(file('a.md', long)).map((c) => c.title)).toEqual(['A', 'A > B']);
+  });
+
+  it('isRst: .rst, and .txt under docs/ (Django), never a README', () => {
+    expect(isRst('https://cdn.jsdelivr.net/gh/django/django@6.1.2/docs/topics/tasks.txt')).toBe(true);
+    expect(isRst('docs/ref/models/constraints.txt')).toBe(true);
+    expect(isRst('README.rst')).toBe(true);
+    expect(isRst('docs/README.txt')).toBe(false);
+    expect(isRst('notes.txt')).toBe(false);
+    expect(chunkFile(file('docs/topics/tasks.txt', 'Tasks\n=====\n\nintro\n\nDefining tasks\n--------------\n\nUse ``@task``.\n'), undefined).map((c) => c.title)).toEqual(['Tasks']);
   });
 
   it('rst headings only for .rst files', () => {

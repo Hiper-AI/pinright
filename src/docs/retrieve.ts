@@ -270,12 +270,17 @@ export function tidy(text: string): string {
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/** reStructuredText: .rst, or a .txt under docs/, where Sphinx projects such as Django keep their sources. */
+export function isRst(path: string): boolean {
+  return /\.rst$/i.test(path) || (/(^|\/)docs?\/.+\.txt$/i.test(path) && !/(^|\/)readme\.txt$/i.test(path));
+}
+
 /** Sections of one document; small markdown sections under one heading joined (see mergeSmallSections). */
 export function chunkFile(file: DocFile, mergeable?: (text: string) => boolean): Chunk[] {
   const parts =
     file.kind === 'types'
       ? file.lang === 'python' ? chunkPython(file.content) : chunkTypes(file.content)
-      : chunkMarkdown(file.content, /\.rst$/i.test(file.url));
+      : chunkMarkdown(file.content, isRst(file.url));
   const chunks = parts
     .map((p) => ({ file, title: p.title, text: file.kind === 'types' ? p.text : tidy(p.text), score: 0 }))
     .filter((c) => c.text);

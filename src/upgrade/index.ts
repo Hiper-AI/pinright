@@ -10,7 +10,7 @@
 import { getPackage } from '../advisories/depsdev.js';
 import { type AdvisoryInfo } from '../advisories/resolve.js';
 import { config } from '../config.js';
-import { chunkMarkdown, rank, select, type Chunk, type DocFile } from '../docs/retrieve.js';
+import { chunkMarkdown, isRst, rank, select, type Chunk, type DocFile } from '../docs/retrieve.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { packageMeta } from '../registry.js';
 import { UntrustedOutput } from '../untrusted/index.js';
@@ -160,7 +160,7 @@ export function cleanMdx(s: string): string {
 
 function guideChunks(docs: UpgradeDoc[], query: string | undefined, budget: number, out?: UntrustedOutput): Chunk[] {
   const files: DocFile[] = docs.map((d) => ({ label: d.label, url: d.url, content: cleanMdx(d.content), kind: 'markdown', versionAccurate: d.versionAccurate }));
-  const chunks = files.flatMap((f) => chunkMarkdown(f.content, /\.rst$/i.test(f.url)).map((p) => ({ file: f, title: p.title, text: p.text, score: 0 })));
+  const chunks = files.flatMap((f) => chunkMarkdown(f.content, isRst(f.url)).map((p) => ({ file: f, title: p.title, text: p.text, score: 0 })));
   const ranked = rank(chunks, `${query ?? ''} ${UPGRADE_QUERY}`);
   for (const c of ranked) {
     // Every section of a migration guide is about the upgrade; the terms only order them.
@@ -193,7 +193,7 @@ export function guideToc(docs: UpgradeDoc[], shown: Chunk[], majors: number[], m
   const shownTitles = new Set(shown.map((c) => c.title));
   for (const d of docs) {
     if (!majorMarkers(`${d.label} ${d.url}`).some((m) => majors.includes(m))) continue;
-    const titles = [...new Set(chunkMarkdown(cleanMdx(d.content), /\.rst$/i.test(d.url)).map((c) => c.title))].filter((t) => t && !shownTitles.has(t));
+    const titles = [...new Set(chunkMarkdown(cleanMdx(d.content), isRst(d.url)).map((c) => c.title))].filter((t) => t && !shownTitles.has(t));
     // Breaking, deprecated and renamed sections first; sub-sections only when they name a change themselves.
     const notable = (t: string) => {
       const c = headingCategory(t);

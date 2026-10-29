@@ -50,8 +50,10 @@ async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): P
 function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUpgrade: boolean): RemoteFile[] {
   const isReadme = (p: string) => /(^|\/)readme\.(md|mdx|rst|txt)$/i.test(p);
   const entry = meta.typesEntry?.replace(/^\.\//, '');
-  // Release posts count as upgrade notes, as they do in llms.txt: "Zod 4.5 > Bug fixes" is not the reference.
-  const isUpgrade = (p: string) => /(changelog|migrat|upgrad|history|releases?)[^/]*\.(md|mdx|rst)$/i.test(p) || /(^|\/)(blog|news)\//i.test(p);
+  // Release posts and per-release notes (Django's docs/releases/6.1.txt) count as upgrade notes, as they do in
+  // llms.txt: "Zod 4.5 > Bug fixes" is not the reference.
+  const isUpgrade = (p: string) =>
+    /(changelog|migrat|upgrad|history|releases?)[^/]*\.(md|mdx|rst|txt)$/i.test(p) || /(^|\/)(blog|news|releases|release-notes|changelogs?)\//i.test(p);
   const nameTerms = [meta.name.replace(/^@[^/]+\//, '')];
 
   const readmes = files.filter((f) => isReadme(f.path)).sort((a, b) => a.path.split('/').length - b.path.split('/').length);
