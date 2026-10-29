@@ -8,6 +8,9 @@ describe('guessNames', () => {
     expect(guessNames('scikit-learn', 'scikit-learn')).toContain('scikit_learn');
     expect(guessNames('pallets', 'flask-sqlalchemy')).toContain('flask_sqlalchemy');
     expect(guessNames('upstash', 'upstash-redis')).toContain('redis');
+    expect(guessNames('auth0', 'node-jsonwebtoken')).toContain('jsonwebtoken');
+    expect(guessNames('vuejs', 'core', 'Vue.js')).toContain('vue');
+    expect(guessNames('chartjs', 'Chart.js', 'Chart.js')).toContain('chart');
   });
 });
 

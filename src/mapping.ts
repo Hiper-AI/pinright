@@ -16,6 +16,7 @@ import { compareVersionsDesc } from './advisories/resolve.js';
 import { cached } from './cache.js';
 import { config } from './config.js';
 import { parseLibraryId } from './context7.js';
+import { ALIASES } from './data/aliases.js';
 import { type Ecosystem, fromDepsDevSystem, parseEcosystem } from './ecosystems.js';
 import { getText, isNotFound } from './http.js';
 
@@ -23,7 +24,7 @@ export interface PackageRef {
   ecosystem: Ecosystem;
   name: string;
   /** How we got here, for the agent and for debugging. */
-  via: 'explicit' | 'verified-guess' | 'deps.dev-project';
+  via: 'explicit' | 'alias' | 'verified-guess' | 'deps.dev-project';
 }
 
 function normalize(s: string): string {
@@ -42,23 +43,36 @@ function sameRepo(url: string | undefined, owner: string, repo: string): boolean
 }
 
 /** Names a repo is likely to publish under. Order matters: most likely first. */
-export function guessNames(owner: string, repo: string): string[] {
+export function guessNames(owner: string, repo: string, title?: string): string[] {
   const out = new Set<string>();
   const bare = repo.toLowerCase();
   out.add(bare);
-  const stripped = bare.replace(/\.js$|-js$|_js$|\.py$|-py$|-python$|-rs$|-rust$|-rb$|-ruby$/, '');
+  const stripped = bare
+    .replace(/^(node|nodejs|js|py|python|rust|rs|ruby|rb|go)-/, '')
+    .replace(/\.js$|-js$|_js$|\.py$|-py$|-python$|-rs$|-rust$|-rb$|-ruby$|-node$|-nodejs$/, '');
   if (stripped && stripped !== bare) out.add(stripped);
   out.add(bare.replace(/_/g, '-'));
   out.add(bare.replace(/-/g, '_'));
   out.add(`@${owner.toLowerCase()}/${bare}`);
   if (bare.startsWith(`${owner.toLowerCase()}-`)) out.add(bare.slice(owner.length + 1));
+  if (title) {
+    // Context7's title is often the package name with branding: "Vue.js", "Chart.js", "scikit-learn".
+    const t = title.toLowerCase().replace(/\.js$|\s+js$/, '').trim();
+    if (/^[a-z0-9@][a-z0-9._/-]*$/.test(t)) out.add(t);
+    const firstWord = t.split(/\s+/)[0];
+    if (/^[a-z0-9][a-z0-9._-]*$/.test(firstWord)) out.add(firstWord);
+  }
   return [...out];
 }
 
-/** Does deps.dev agree that this package comes from github.com/owner/repo? */
-async function verifyPackage(eco: Ecosystem, name: string, owner: string, repo: string): Promise<boolean> {
+/**
+ * Does deps.dev agree that this package comes from github.com/owner/repo?
+ * Returns the number of published versions when it does (a tie-breaker between
+ * ecosystems: npm has a "rails" that points at rails/rails, with 3 versions), 0 otherwise.
+ */
+async function verifyPackage(eco: Ecosystem, name: string, owner: string, repo: string): Promise<number> {
   const pkg = await getPackage(eco, name);
-  if (!pkg || pkg.versions.length === 0) return false;
+  if (!pkg || pkg.versions.length === 0) return 0;
   // The default tag may be a pre-release whose metadata moved elsewhere (prisma's
   // 8.0.0-rc points at prisma/prisma-cli); the newest stable is the second witness.
   const sorted = [...pkg.versions].sort(compareVersionsDesc);
@@ -76,9 +90,9 @@ async function verifyPackage(eco: Ecosystem, name: string, owner: string, repo: 
       ...(detail.links ?? []).filter((l) => l.label === 'SOURCE_REPO' || l.label === 'HOMEPAGE').map((l) => l.url),
       ...(detail.slsaProvenances ?? []).map((p) => p.sourceRepository),
     ];
-    if (urls.some((u) => sameRepo(u, owner, repo))) return true;
+    if (urls.some((u) => sameRepo(u, owner, repo))) return pkg.versions.length;
   }
-  return false;
+  return 0;
 }
 
 const PRERELEASE = /[-+.](alpha|beta|rc|canary|dev|preview|nightly|snapshot|pre|next|experimental)/i;
@@ -98,21 +112,27 @@ async function hasGoMod(owner: string, repo: string): Promise<boolean> {
 
 const GUESS_ORDER: Ecosystem[] = ['npm', 'pypi', 'cargo', 'rubygems', 'go'];
 
-async function guessAndVerify(owner: string, repo: string, preferred?: Ecosystem): Promise<PackageRef | undefined> {
+async function guessAndVerify(owner: string, repo: string, preferred?: Ecosystem, title?: string): Promise<PackageRef | undefined> {
   const ecos = preferred ? [preferred] : GUESS_ORDER;
-  const names = guessNames(owner, repo);
+  const names = guessNames(owner, repo, title);
+  let best: { ref: PackageRef; versions: number } | undefined;
   for (const eco of ecos) {
     const candidates = eco === 'go' ? [`github.com/${owner}/${repo}`] : names.filter((n) => eco === 'npm' || !n.startsWith('@'));
     if (eco === 'go' && !(await hasGoMod(owner, repo))) continue;
     for (const name of candidates) {
       try {
-        if (await verifyPackage(eco, name, owner, repo)) return { ecosystem: eco, name, via: 'verified-guess' };
+        const versions = await verifyPackage(eco, name, owner, repo);
+        if (versions > 0 && (!best || versions > best.versions)) {
+          best = { ref: { ecosystem: eco, name, via: 'verified-guess' }, versions };
+        }
+        if (versions > 0) break; // one hit per ecosystem is enough; other ecosystems still get a look
       } catch {
         // deps.dev hiccup on one guess: try the next one.
       }
     }
+    if (best && preferred) break;
   }
-  return undefined;
+  return best?.ref;
 }
 
 /**
@@ -166,7 +186,7 @@ export function pickPackage(
 
 export async function resolvePackage(
   libraryId: string,
-  hints: { ecosystem?: string; packageName?: string; language?: string } = {},
+  hints: { ecosystem?: string; packageName?: string; language?: string; title?: string } = {},
 ): Promise<PackageRef | undefined> {
   const eco = parseEcosystem(hints.ecosystem) ?? parseEcosystem(hints.language);
   if (hints.packageName && eco) {
@@ -178,7 +198,12 @@ export async function resolvePackage(
     return hints.packageName ? { ecosystem: 'npm', name: hints.packageName, via: 'explicit' } : undefined;
   }
 
-  const guessed = await guessAndVerify(owner, repo, eco);
+  const alias = ALIASES[`${owner.toLowerCase()}/${repo.toLowerCase()}`];
+  if (alias && (!eco || alias.ecosystem === eco)) {
+    return hints.packageName ? { ecosystem: alias.ecosystem, name: hints.packageName, via: 'explicit' } : { ...alias, via: 'alias' };
+  }
+
+  const guessed = await guessAndVerify(owner, repo, eco, hints.title);
   if (guessed) return hints.packageName ? { ...guessed, name: hints.packageName, via: 'explicit' } : guessed;
 
   let rows: { system: string; name: string; relationType?: string; relationProvenance?: string }[] = [];

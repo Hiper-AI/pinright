@@ -92,7 +92,7 @@ export function buildMcpServer(): McpServer {
               versions: lib.versions?.filter((v) => !v.startsWith('__')),
             };
             if (i >= VERDICT_RESULTS) return base;
-            const ref = await resolvePackage(lib.id).catch(() => undefined);
+            const ref = await resolvePackage(lib.id, { title: lib.title }).catch(() => undefined);
             if (!ref) {
               return { ...base, security: { verdict: 'unknown-package', reason: 'could not map this id to a package; pass packageName and ecosystem to query-docs or use check-package' } };
             }
