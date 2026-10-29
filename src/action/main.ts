@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AuditInputError, auditExitCode, formatAuditRun, parseFailOn, runAudit, runToSarif, sarifRoot } from '../auditRun.js';
-import { annotations, summaryMarkdown } from '../sarif/summary.js';
+import { annotations, fenceCommands, summaryMarkdown } from '../sarif/summary.js';
 
 const env = process.env;
 const input = (name: string, fallback = '') => (env[`SAFECTX_INPUT_${name}`] ?? '').trim() || fallback;
@@ -59,7 +59,7 @@ async function main(): Promise<number> {
   const code = auditExitCode(run, failOn);
 
   console.log('::group::safectx report');
-  console.log(formatAuditRun(run, 100));
+  console.log(fenceCommands(formatAuditRun(run, 100), { actions: true }));
   console.log('::endgroup::');
 
   const log = runToSarif(run, { root: sarifRoot(target, workspace), toolVersion: version() });
@@ -87,7 +87,7 @@ main().then(
     process.exit(0);
   },
   (err) => {
-    console.log(`::error title=safectx::${(err as Error).message}`);
+    console.log(`::error title=safectx::${(err as Error).message.replace(/\r?\n/g, ' ')}`);
     setOutput('exit-code', 3);
     process.exit(0);
   },

@@ -18,6 +18,7 @@ import { PKG_VERSION } from './pkg.js';
 import { parseEcosystem } from './ecosystems.js';
 import { config } from './config.js';
 import { securityNotice } from './format.js';
+import { fenceCommands } from './sarif/summary.js';
 import { ghCliLoggedIn, githubAuthAdvice, mcpEntryEnv, trackGitHub } from './github.js';
 import { runClaudeHook, runCursorHook } from './hook/run.js';
 import { splitNpmSpec } from './hook/intent.js';
@@ -46,7 +47,7 @@ async function check(args: string[]): Promise<number> {
   // "check pypi idna 3.10" is as common as "idna@3.10"; ignoring the version would report on the latest.
   const version = inline ?? args[2];
   const v = await checkPackage(eco, name, version);
-  console.log(securityNotice(v.report, v.typo, v.risk));
+  console.log(fenceCommands(securityNotice(v.report, v.typo, v.risk)));
   return v.report.verdict === 'ok' ? 0 : 1;
 }
 
@@ -60,7 +61,7 @@ async function upgrade(args: string[]): Promise<number> {
   const query = args.find((a) => a.startsWith('--query='))?.slice(8);
   const tokens = Number(args.find((a) => a.startsWith('--tokens='))?.slice(9));
   const r = await upgradeGuide({ ecosystem: eco, name: pos[1], from: pos[2], to: pos[3], query, budgetChars: tokens > 0 ? tokens * 4 : undefined });
-  console.log(r.text);
+  console.log(fenceCommands(r.text));
   return r.to ? 0 : 1;
 }
 
@@ -105,7 +106,7 @@ async function audit(args: string[]): Promise<number> {
     throw err;
   }
   if (flags.json) console.log(JSON.stringify(auditJson(run), null, 2));
-  else console.log(formatAuditRun(run, 50));
+  else console.log(fenceCommands(formatAuditRun(run, 50)));
   if (typeof flags.sarif === 'string') {
     const log = runToSarif(run, { root: sarifRoot(target, flags['sarif-root'] as string | undefined), toolVersion: PKG_VERSION });
     fs.mkdirSync(path.dirname(path.resolve(flags.sarif)), { recursive: true });

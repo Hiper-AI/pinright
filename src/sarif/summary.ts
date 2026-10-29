@@ -3,6 +3,7 @@
  * table and the worst findings) and workflow-command annotations, which GitHub
  * renders on the PR diff even when the repository has no code scanning.
  */
+import { randomUUID } from 'node:crypto';
 import type { SarifLog } from './build.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- SARIF objects are plain JSON */
@@ -40,7 +41,17 @@ const bucket = (r: Row) =>
   r.score === undefined ? (r.level === 'error' ? 'high' : r.level === 'warning' ? 'unrated' : 'note')
   : r.score >= 9 ? 'critical' : r.score >= 7 ? 'high' : r.score >= 4 ? 'medium' : 'low';
 
-const cell = (s: string) => s.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+// Rule ids, paths and messages come from lockfiles and advisories: in the summary they are text, never
+// HTML, links or images (a package named "[all clear](https://evil)" or "<img src=...>").
+const cell = (s: string) =>
+  s
+    .replace(/\r?\n/g, ' ')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/([\\`*_[\]()!|~])/g, '\\$1');
+/** Inside a code span backslash escapes do not apply: only the span's delimiter and the table's pipe need care. */
+const code = (s: string) => `\`${s.replace(/\r?\n/g, ' ').replace(/`/g, "'").replace(/\|/g, '\\|')}\``;
 
 const rank = (r: Row) => (r.score ?? (r.level === 'error' ? 7 : r.level === 'warning' ? 4 : 0));
 
@@ -62,7 +73,7 @@ export function summaryMarkdown(log: SarifLog, opts: { exitCode: number; failOn:
   if (rows.length) {
     const top = [...rows].sort((a, b) => rank(b) - rank(a)).slice(0, max);
     out.push('', '| Severity | Rule | Where | Finding |', '| --- | --- | --- | --- |');
-    for (const r of top) out.push(`| ${bucket(r)} | \`${cell(r.ruleId)}\` | \`${cell(r.file)}:${r.line}\` | ${cell(r.message)} |`);
+    for (const r of top) out.push(`| ${bucket(r)} | ${code(r.ruleId)} | ${code(`${r.file}:${r.line}`)} | ${cell(r.message)} |`);
     if (rows.length > top.length) out.push('', `... and ${rows.length - top.length} more.`);
   }
   if (opts.sarifFile) out.push('', `SARIF: \`${opts.sarifFile}\`${opts.uploaded ? ', uploaded to code scanning by the next step' : ''}.`);
@@ -88,4 +99,18 @@ export function annotations(log: SarifLog, max = 10): string[] {
     out.push(`::${cmd} ${props.join(',')}::${escData(r.message)}`);
   }
   return out;
+}
+
+/**
+ * Text that carries package names, advisory titles or file paths, for a GitHub
+ * Actions log. The runner executes any line starting with "::" as a workflow
+ * command, and a lockfile key or an advisory can hold a newline: fenced between
+ * stop-commands and a random resume token, no line of it is run (no
+ * ::add-mask::, ::stop-commands:: or forged ::error:: from package data).
+ * Outside Actions the text is returned as is.
+ */
+export function fenceCommands(text: string, opts: { actions?: boolean; token?: string } = {}): string {
+  if (!(opts.actions ?? process.env.GITHUB_ACTIONS === 'true')) return text;
+  const token = opts.token ?? randomUUID().replace(/-/g, '');
+  return `::stop-commands::${token}\n${text.split(token).join('[token]')}\n::${token}::`;
 }
