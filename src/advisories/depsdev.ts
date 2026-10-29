@@ -7,6 +7,7 @@ import { cached } from '../cache.js';
 import { config } from '../config.js';
 import { type Ecosystem, toDepsDevSystem } from '../ecosystems.js';
 import { getJson, isNotFound } from '../http.js';
+import { packagistDependencies } from '../composer/graph.js';
 import { packagistPackage, packagistVersion } from '../composer/packagist.js';
 
 export interface DepsDevVersionSummary {
@@ -124,14 +125,15 @@ export interface DepsDevGraph {
 
 /**
  * The resolved dependency graph of one package version, as deps.dev resolves it
- * in isolation (npm, PyPI, Cargo and Maven; Go is not supported). Undefined on 404.
+ * in isolation (npm, PyPI, Cargo and Maven; Composer from Packagist's metadata, see
+ * composer/graph.ts; Go is not supported). Undefined on 404.
  */
 export async function getDependencies(
   eco: Ecosystem,
   name: string,
   version: string,
 ): Promise<DepsDevGraph | undefined> {
-  if (eco === 'composer') return undefined; // deps.dev resolves no Packagist graphs
+  if (eco === 'composer') return packagistDependencies(name, version); // deps.dev resolves no Packagist graphs
   const url =
     `${config.depsDevBaseUrl}/v3/systems/${toDepsDevSystem(eco)}/packages/${enc(name)}` +
     `/versions/${enc(version)}:dependencies`;

@@ -216,6 +216,20 @@ describe('version compatibility inside one file', () => {
     expect(d.problems[0]).toContain('resolves it to 0.4.2');
   });
 
+  it('composer: the same conflict check runs on composer.json, with Composer constraints', async () => {
+    versions.set('guzzlehttp/guzzle', ['7.9.2']);
+    versions.set('guzzlehttp/psr7', ['1.8.0', '2.7.0']);
+    reports.set('guzzlehttp/guzzle@7.9.2', { verdict: 'ok', requested: { version: '7.9.2', verdict: 'ok', advisories: [] } });
+    graphs.set('guzzlehttp/guzzle@7.9.2', { 'guzzlehttp/psr7': '2.7.0' });
+    requirements.set('guzzlehttp/guzzle@7.9.2', { 'guzzlehttp/psr7': '^2.7.0' });
+    const d = await decide([
+      { ecosystem: 'composer', name: 'guzzlehttp/guzzle', spec: '7.9.2', source: 'composer.json' },
+      { ecosystem: 'composer', name: 'guzzlehttp/psr7', spec: '1.8.0', source: 'composer.json' },
+    ]);
+    expect(d.action).toBe('deny');
+    expect(d.problems.join('\n')).toContain('guzzlehttp/psr7 1.8.0 does not satisfy guzzlehttp/guzzle 7.9.2\'s requirement "^2.7.0"');
+  });
+
   it('a vulnerable dependency of a pinned parent is repinned when its fix fits the parent\'s range', async () => {
     versions.set('requests', ['2.34.2']);
     versions.set('idna', ['3.10.0', '3.20.0']);

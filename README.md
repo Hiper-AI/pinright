@@ -300,8 +300,15 @@ each direct dependency.
 **Composer.** deps.dev does not index Packagist, so versions come from `repo.packagist.org/p2` and
 advisories from two sources: OSV (`Packagist`) and Packagist's security advisories API, which also
 carries FriendsOfPHP records. A version is clean only when both agree. Constraints (`^`, `~`, `*`,
-ranges, `|`/`||`) resolve the way Composer does. Packagist has no dependency graphs, so the transitive
-check needs `composer.lock`. Dev branches (`dev-main`) are not releases and are never recommended.
+ranges, `|`/`||`, `@stable`/`@beta` flags, `self.version`) resolve the way Composer does. deps.dev
+resolves no Packagist graphs, so safectx builds them from each release's `require` in Packagist's
+metadata: every requirement goes to the newest stable release that satisfies it, skipping platform
+packages (`php`, `ext-*`, `lib-*`), virtual packages that only exist as `provide`, and names that a
+package already in the graph replaces. That gives Composer the same hook checks as npm and PyPI (a pin
+outside its parent's range, the parent upgrade that pulls a fixed dependency, vulnerable transitive
+dependencies) and lets `check-manifest` audit a `composer.json` without a lock. Like deps.dev, it
+resolves each direct dependency on its own; `composer.lock` is still the exact tree. Dev branches
+(`dev-main`) are not releases and are never recommended.
 An abandoned package shows as deprecated, with its replacement.
 
 **GitHub Actions.** For every `uses: owner/repo[/path]@ref` (local `./` actions and `docker://` images

@@ -56,6 +56,11 @@ function bump(p: Parsed, at: number): Parsed {
   return { parts, stability: 0, stabilityNum: 0 };
 }
 
+/** Composer's "^3.0" and "~3.0" start at 3.0.0.0-dev: the bound's own pre-releases match (the stability flag decides). */
+function devFloor(raw: string, p: Parsed): Parsed {
+  return /[a-z]/i.test(raw.replace(/^v/i, '')) ? p : { ...p, stability: 0, stabilityNum: 0 };
+}
+
 function single(atom: string): Check | undefined {
   const s = atom.replace(/@\w+$/, '').trim();
   if (!s || s === '*' || s === 'x') return () => true;
@@ -67,7 +72,8 @@ function single(atom: string): Check | undefined {
     // ^1.2.3 -> <2.0.0; ^0.3 -> <0.4.0; ^0.0.3 -> <0.0.4: the first non-zero part is the major.
     const nz = b.p.parts.findIndex((n, i) => n !== 0 || i >= b.given - 1);
     const upper = bump(b.p, Math.max(0, Math.min(nz, b.given - 1)));
-    return (v) => cmp(v, b.p) >= 0 && cmp(v, upper) < 0;
+    const lower = devFloor(m[1], b.p);
+    return (v) => cmp(v, lower) >= 0 && cmp(v, upper) < 0;
   }
   m = s.match(/^~\s*(.+)$/);
   if (m) {
@@ -75,7 +81,8 @@ function single(atom: string): Check | undefined {
     if (!b) return undefined;
     // ~1.2 -> <2.0; ~1.2.3 -> <1.3; ~1 -> <2.
     const upper = bump(b.p, Math.max(0, b.given - 2));
-    return (v) => cmp(v, b.p) >= 0 && cmp(v, upper) < 0;
+    const lower = devFloor(m[1], b.p);
+    return (v) => cmp(v, lower) >= 0 && cmp(v, upper) < 0;
   }
   m = s.match(/^(\d+(?:\.\d+)*)\.[*x]$/i);
   if (m) {

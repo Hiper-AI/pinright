@@ -13,7 +13,7 @@ import { type Ecosystem } from '../ecosystems.js';
 import { pickMavenVersion } from '../jvm/maven.js';
 import { type ParsedTree, type TreePackage, normalizePypiName } from './lockfiles.js';
 
-export const GRAPH_ECOSYSTEMS: Ecosystem[] = ['npm', 'pypi', 'cargo', 'maven'];
+export const GRAPH_ECOSYSTEMS: Ecosystem[] = ['npm', 'pypi', 'cargo', 'maven', 'composer'];
 
 /** PEP 440 release tuple, enough to order and compare ordinary versions. */
 function pep440(v: string): number[] {
@@ -90,7 +90,7 @@ export async function resolveManifest(tree: ParsedTree, notes: string[]): Promis
     const name = eco === 'pypi' ? normalizePypiName(d.name) : d.name;
     const pkg = await getPackage(eco, name).catch(() => undefined);
     if (!pkg) {
-      notes.push(`${name}: not found in the ${eco} registry (deps.dev).`);
+      notes.push(`${name}: not found in the ${eco} registry (${eco === 'composer' ? 'Packagist' : 'deps.dev'}).`);
       continue;
     }
     const version = pickVersion(eco, d.spec, pkg.versions);
@@ -102,7 +102,7 @@ export async function resolveManifest(tree: ParsedTree, notes: string[]): Promis
     if (!GRAPH_ECOSYSTEMS.includes(eco)) continue;
     const graph = await getDependencies(eco, name, version).catch(() => undefined);
     if (!graph?.nodes?.length) {
-      notes.push(`${name}@${version}: deps.dev has no resolved graph; only the package itself was checked.`);
+      notes.push(`${name}@${version}: ${eco === 'composer' ? 'Packagist' : 'deps.dev'} has no resolved graph; only the package itself was checked.`);
       continue;
     }
     // Breadth-first from SELF so every node gets its shortest chain.

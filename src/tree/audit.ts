@@ -42,7 +42,7 @@ export interface Remediation {
 export interface TreeAudit {
   ecosystem: Ecosystem;
   file: string;
-  source: 'lockfile' | 'manifest resolved by deps.dev';
+  source: 'lockfile' | 'manifest resolved by deps.dev' | 'manifest resolved from Packagist metadata';
   packages: number;
   vulnerablePackages: number;
   alerts: number;
@@ -119,7 +119,7 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean }
     packages = await resolveManifest(tree, notes);
     notes.push(
       GRAPH_ECOSYSTEMS.includes(eco)
-        ? 'No lockfile: the tree was resolved by deps.dev, one direct dependency at a time. Audit the lockfile for the exact tree.'
+        ? `No lockfile: the tree was resolved by ${eco === 'composer' ? "safectx from Packagist's metadata" : 'deps.dev'}, one direct dependency at a time. Audit the lockfile for the exact tree.`
         : 'No lockfile and no graph resolution for this ecosystem: only direct dependencies were checked.',
     );
   }
@@ -191,7 +191,7 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean }
   return {
     ecosystem: eco,
     file: tree.file,
-    source: tree.kind === 'lockfile' ? 'lockfile' : 'manifest resolved by deps.dev',
+    source: tree.kind === 'lockfile' ? 'lockfile' : eco === 'composer' ? 'manifest resolved from Packagist metadata' : 'manifest resolved by deps.dev',
     packages: packages.length,
     vulnerablePackages: findings.length,
     alerts,

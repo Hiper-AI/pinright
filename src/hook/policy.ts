@@ -16,6 +16,7 @@
 import { getDependencies, getPackage } from '../advisories/depsdev.js';
 import { getVuln, queryBatch, severityOf } from '../advisories/osv.js';
 import { recommendedUpgrade } from '../advisories/resolve.js';
+import { satisfiesComposer } from '../composer/constraint.js';
 import { config } from '../config.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { riskOutcome } from '../risk/index.js';
@@ -101,6 +102,7 @@ export function satisfiesRequirement(eco: Ecosystem, version: string, requiremen
   if (!req || req === '*') return true;
   try {
     if (eco === 'pypi') return satisfiesPep440(version, req);
+    if (eco === 'composer') return satisfiesComposer(version, requirement.trim() === 'self.version' ? version : requirement);
     if (eco === 'npm' || eco === 'cargo') {
       const range = eco === 'cargo' ? req.split(',').map((p) => (/^\d/.test(p.trim()) ? `^${p.trim()}` : p.trim())).join(' ') : req;
       if (!semver.validRange(range, { loose: true })) return undefined;

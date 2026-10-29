@@ -6,8 +6,8 @@
  * which also carries FriendsOfPHP records. Both are shaped like deps.dev's
  * answers so the verdict code does not need to know the difference.
  *
- * Gaps, stated in the report: no dependency graphs (transitive checks need a
- * composer.lock), and dev branches ("dev-main", the ~dev file) are not releases
+ * Dependency graphs are not in deps.dev either: graph.ts resolves them from each
+ * release's "require". Dev branches ("dev-main", the ~dev file) are not releases
  * and are never recommended.
  */
 import { cached } from '../cache.js';
@@ -25,6 +25,11 @@ export interface PackagistRelease {
   time?: string;
   license?: string[];
   abandoned?: boolean | string;
+  /** What this release requires to install ("guzzlehttp/psr7" -> "^2.7"), platform packages included. */
+  require?: Record<string, string>;
+  /** Names this release stands in for, so Composer never installs them separately. */
+  replace?: Record<string, string>;
+  provide?: Record<string, string>;
 }
 
 export interface PackagistAdvisory {
@@ -62,6 +67,8 @@ export function expandMinified(list: any[]): any[] {
 }
 
 const clean = (v: string) => v.replace(/^v(?=\d)/i, '');
+/** A link map ("require", "replace", "provide"); Packagist writes an empty one as []. */
+const links = (x: any): Record<string, string> | undefined => (x && typeof x === 'object' && !Array.isArray(x) ? x : undefined);
 
 /** Tagged releases of a package, newest first as Packagist lists them. Undefined when the package does not exist. */
 export async function packagistReleases(name: string): Promise<PackagistRelease[] | undefined> {
@@ -73,7 +80,15 @@ export async function packagistReleases(name: string): Promise<PackagistRelease[
     if (j?.minified) list = expandMinified(list);
     return list
       .filter((e) => typeof e?.version === 'string' && !/^dev-|\.x-dev$|-dev$/i.test(e.version))
-      .map((e) => ({ version: clean(e.version), time: e.time, license: e.license, abandoned: e.abandoned }));
+      .map((e) => ({
+        version: clean(e.version),
+        time: e.time,
+        license: e.license,
+        abandoned: e.abandoned,
+        require: links(e.require),
+        replace: links(e.replace),
+        provide: links(e.provide),
+      }));
   } catch (err) {
     if (isNotFound(err)) return undefined;
     throw err;
