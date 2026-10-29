@@ -655,6 +655,24 @@ On the same 108 lockfiles, `check-manifest` flagged the same vulnerable packages
 and `pip-audit` (mean Jaccard 0.94 for npm, 1.00 for PyPI).
 These numbers come from one model, one day and tasks we wrote; they are not a guarantee.
 
+### Docs: does the agent write the current API?
+
+Eight tasks that only come out right with a library's current major (Next.js 16, Tailwind CSS 4,
+Zod 4, AI SDK 7, Express 5, ESLint 10, Pydantic 2, LangChain 1), twice per arm. Each project is
+installed, built, smoke-tested at runtime and checked for new, removed and deprecated APIs. Full
+report and per-task diagnosis in [bench/DOCS.md](bench/DOCS.md):
+
+| | No docs | safectx |
+|---|---|---|
+| Current API (works, right major, all checks pass) | 12 / 16 | 16 / 16 |
+| Works (installs, builds, smoke test passes) | 14 / 16 | 16 / 16 |
+| Cost per run (USD) | 0.04 | 0.08 |
+
+Most of the gap is AI SDK 7, newer than the model: without docs it wrote AI SDK 5/6 code. The model
+already knew the other new APIs, so we also probe safectx's docs without an agent: 20 of 25 typical
+questions get the current API in the answer (16 before the fixes this benchmark prompted). Open
+gaps: Pydantic questions that name many features at once, Tailwind's Vite setup, LangChain's `@tool`.
+
 ## Development
 
 ```bash

@@ -17,7 +17,7 @@ const scores: DocsRunScore[] = JSON.parse(readFileSync(join(runDir, 'scores.json
 const config = JSON.parse(readFileSync(join(runDir, 'config.json'), 'utf8'));
 
 const LABEL: Record<string, string> = { 'no-docs': 'No docs', safectx: 'safectx' };
-const label = (a: string) => label(a) ?? a;
+const label = (a: string) => LABEL[a] ?? a;
 const arms = [...ARMS.filter((a) => scores.some((s) => s.arm === a)), ...[...new Set(scores.map((s) => s.arm))].filter((a) => !ARMS.includes(a)).sort()];
 const pct = (n: number, d: number) => (d ? `${Math.round((100 * n) / d)}%` : 'n/a');
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
@@ -64,7 +64,7 @@ metric('Docs calls per run (mean)', (rs) => f1(mean(rs.map((r) => docsCalls(r).l
 metric('Docs returned per run (k chars, mean)', (rs) => f1(mean(rs.map((r) => docsCalls(r).reduce((a, c) => a + c.resultChars, 0) / 1000))));
 L.push('');
 
-L.push('## Per task', '', 'Each cell: runs with the current API / runs that work, out of the repetitions. Failed checks follow, with how many runs failed each (r = required missing, x = removed API used, d = deprecated API used).', '');
+L.push('### Per task', '', 'Each cell: runs with the current API / runs that work (build + smoke test) / runs that build, out of the repetitions. Failed checks follow, with how many runs failed each (r = required missing, x = removed API used, d = deprecated API used).', '');
 head(['Task', ...arms.map((a) => label(a))]);
 for (const t of TASKS) {
   row([`${t.id} (${t.library})`, ...arms.map((a) => {
@@ -79,12 +79,12 @@ for (const t of TASKS) {
       if (!r.versionOk) fails.set(`v:${Object.entries(r.pinned).map(([k, v]) => `${k}@${v ?? '?'}`).join(',')}`, (fails.get(`v:${Object.entries(r.pinned).map(([k, v]) => `${k}@${v ?? '?'}`).join(',')}`) ?? 0) + 1);
     }
     const f = [...fails.entries()].map(([k, n]) => (n > 1 ? `${k} x${n}` : k)).join(', ');
-    return `**${rs.filter((r) => r.current).length}** / ${rs.filter((r) => r.works).length} of ${rs.length}${f ? `<br>${f}` : ''}`;
+    return `**${rs.filter((r) => r.current).length}** / ${rs.filter((r) => r.works).length} / ${rs.filter((r) => r.build?.built).length} of ${rs.length}${f ? `<br>${f}` : ''}`;
   })]);
 }
 L.push('');
 
-L.push('## Runs that do not work', '');
+L.push('### Runs that do not work', '');
 for (const a of arms) {
   const bad = by(a).filter((r) => !r.works);
   L.push(`**${label(a)}**: ${bad.length ? '' : 'none'}`, '');
@@ -95,12 +95,12 @@ for (const a of arms) {
       : !b.built
         ? `${b.step} failed: ${b.error ?? ''}`
         : `smoke: ${r.smoke?.error ?? r.smoke?.tests.filter((x) => !x.pass).map((x) => `${x.name}${x.got ? ` (${x.got})` : x.error ? ` (${x.error})` : ''}`).join('; ')}`;
-    L.push(`- ${r.task} r${r.rep}: \`${why.replace(/`/g, "'").replace(/\s+/g, ' ').slice(0, 220)}\``);
+    L.push(`- ${r.task} r${r.rep}: \`${why.replace(/\s*\(?[A-Z]:\\[^\s)]*\)?/g, '').replace(/`/g, "'").replace(/\s+/g, ' ').slice(0, 220)}\``);
   }
   L.push('');
 }
 
-L.push('## Docs tool usage', '');
+L.push('### Docs tool usage', '');
 head(['Arm', 'Calls by tool (total over all runs)', 'query-docs answers with no matching docs']);
 for (const a of arms.filter((x) => x !== 'no-docs')) {
   const calls = by(a).flatMap((r) => r.calls);
@@ -114,10 +114,6 @@ for (const a of arms.filter((x) => x !== 'no-docs')) {
   ]);
 }
 L.push('');
-
-L.push('## Reproduce', '', '```bash', 'npm ci && npm run build', 'npx tsx bench/docs/selftest.ts        # the scorer against reference and old-API projects',
-  `GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model ${config.model} --reps ${config.reps} --concurrency 2 --stamp <stamp>`,
-  'npx tsx bench/docs/score.ts <stamp>', 'npx tsx bench/docs/report.ts <stamp>', 'npx tsx bench/docs/calls.ts <stamp> <task> <arm>   # what each docs call returned', '```');
 
 const START = '<!-- generated:start -->';
 const END = '<!-- generated:end -->';
