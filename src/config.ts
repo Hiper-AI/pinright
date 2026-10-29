@@ -30,6 +30,8 @@ export const config = {
   requestTimeoutMs: intEnv('SAFECTX_TIMEOUT_MS', 15_000),
   cacheDir: cacheDir(),
   cacheDisabled: process.env.SAFECTX_NO_CACHE === '1',
+  /** Size the cache is pruned down to (expired entries first, then the oldest). */
+  cacheMaxBytes: intEnv('SAFECTX_CACHE_MAX_MB', 200) * 1024 * 1024,
   ttl: {
     docs: 7 * 24 * 3600_000,
     search: 24 * 3600_000,

@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PKG_NAME, SERVER_KEY } from '../pkg.js';
-import { CONFIG_FILE, STARTER_CONFIG } from '../teamConfig.js';
+import { CONFIG_FILE, STARTER_CONFIG } from '../teamStarter.js';
 import { mcpEntryEnv } from '../github.js';
 import { ConfigError } from './edit.js';
 import { CLIENTS, type Client, type Ctx, type EnvFor, type FileWrite, type Launch, type Scope, findClient } from './registry.js';

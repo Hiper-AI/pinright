@@ -11,7 +11,12 @@ import { pool } from './tree/audit.js';
 import { checkPackage, type Verdict } from './verdict.js';
 
 export const MAX_BATCH = 50;
-const CONCURRENCY = 4;
+const CONCURRENCY = 8;
+/**
+ * The whole batch answers within this, slow upstreams or not: packages still
+ * pending are reported as "not checked", never dropped and never called ok.
+ */
+const BATCH_DEADLINE_MS = Number(process.env.SAFECTX_BATCH_TIMEOUT_MS ?? 45_000);
 const SEV_ORDER = ['CRITICAL', 'HIGH', 'MODERATE', 'MEDIUM', 'LOW'];
 
 export interface BatchItem {
@@ -49,7 +54,7 @@ function short(s: string | undefined, max = 90): string {
   return one.length > max ? `${one.slice(0, max - 3)}...` : one;
 }
 
-export async function checkPackages(items: BatchItem[], defaultEcosystem?: string): Promise<BatchResult[]> {
+export async function checkPackages(items: BatchItem[], defaultEcosystem?: string, deadlineMs = BATCH_DEADLINE_MS): Promise<BatchResult[]> {
   const seen = new Set<string>();
   const unique = items
     .map((i) => ({ name: i.name.trim(), version: i.version?.trim() || undefined, ecoRaw: i.ecosystem ?? defaultEcosystem }))
@@ -59,15 +64,36 @@ export async function checkPackages(items: BatchItem[], defaultEcosystem?: strin
       seen.add(key);
       return true;
     });
-  return pool(unique, CONCURRENCY, async (i): Promise<BatchResult> => {
+  const done: (BatchResult | undefined)[] = new Array(unique.length);
+  const all = pool(unique.map((i, k) => ({ i, k })), CONCURRENCY, async ({ i, k }): Promise<void> => {
     const eco = parseEcosystem(i.ecoRaw ?? '');
-    if (!eco) return { name: i.name, version: i.version, error: `unknown ecosystem "${i.ecoRaw ?? ''}"` };
+    if (!eco) {
+      done[k] = { name: i.name, version: i.version, error: `unknown ecosystem "${i.ecoRaw ?? ''}"` };
+      return;
+    }
     try {
-      return { ecosystem: eco, name: i.name, version: i.version, verdict: await checkPackage(eco, i.name, i.version) };
+      done[k] = { ecosystem: eco, name: i.name, version: i.version, verdict: await checkPackage(eco, i.name, i.version) };
     } catch (err) {
-      return { ecosystem: eco, name: i.name, version: i.version, error: (err as Error).message };
+      done[k] = { ecosystem: eco, name: i.name, version: i.version, error: (err as Error).message };
     }
   });
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, deadlineMs);
+    timer.unref();
+  });
+  await Promise.race([all, late]);
+  clearTimeout(timer);
+  const secs = deadlineMs < 10_000 ? (deadlineMs / 1000).toFixed(1) : String(Math.round(deadlineMs / 1000));
+  return unique.map(
+    (i, k) =>
+      done[k] ?? {
+        ecosystem: parseEcosystem(i.ecoRaw ?? ''),
+        name: i.name,
+        version: i.version,
+        error: `not checked: the upstreams did not answer within ${secs} s`,
+      },
+  );
 }
 
 /** True when the line in the table says everything there is to say. */

@@ -6,6 +6,7 @@
  */
 import { assessPackage, type PackageReport } from './advisories/resolve.js';
 import { getPackage } from './advisories/depsdev.js';
+import { config } from './config.js';
 import { type Ecosystem } from './ecosystems.js';
 import { assessRisk, type RiskReport } from './risk/index.js';
 import { weeklyDownloads } from './risk/sources.js';
@@ -39,6 +40,9 @@ export async function checkPackage(
   version?: string,
   opts: { risk?: boolean } = {},
 ): Promise<Verdict> {
+  // With a version, the risk signals' lookups start alongside the verdict instead of after it; the second
+  // call below finds them in the cache. Wasted only when the verdict rules risk out (malware, unknown).
+  if (version && opts.risk !== false && !config.cacheDisabled) void assessRisk(eco, name, version.replace(/^v/, ''), Date.now()).catch(() => undefined);
   const v = await checkVerdict(eco, name, version);
   if (opts.risk === false) return v;
   const r = v.report;

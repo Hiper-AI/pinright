@@ -16,7 +16,7 @@ import { getDocs } from './docs/index.js';
 import { ECOSYSTEMS, type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
 import { trackGitHub } from './github.js';
-import { HttpError } from './http.js';
+import { HttpError, trackUpstreams } from './http.js';
 import { PKG_NAME, PKG_VERSION } from './pkg.js';
 import { readProjectFile } from './projectFile.js';
 import { resolvePackage } from './mapping.js';
@@ -98,14 +98,19 @@ function policyLines(found: string[], error?: string): string[] {
   return [...(error ? [`POLICY ERROR: ${error} Fix the file; the hook denies dependency changes until then.`] : []), ...found.map((f) => `POLICY: ${f}`)];
 }
 
-/** Every tool answer ends with a note when GitHub's rate limit left something out of it. */
+/**
+ * Every tool answer ends with a note when GitHub's rate limit left something out
+ * of it, and another naming any upstream that failed while it ran.
+ */
 function withGitHubNotice(server: McpServer): void {
   const register = server.registerTool.bind(server);
   type Handler = (...args: unknown[]) => Promise<CallToolResult>;
   server.registerTool = ((name: string, cfg: never, cb: Handler) =>
     register(name, cfg, (async (...args: unknown[]) => {
-      const { value, notice } = await trackGitHub(() => cb(...args));
-      return notice ? { ...value, content: [...value.content, { type: 'text' as const, text: notice }] } : value;
+      const { value: tracked, notice: upstreams } = await trackUpstreams(() => trackGitHub(() => cb(...args)));
+      const { value, notice } = tracked;
+      const notes = [notice, upstreams].filter((n): n is string => Boolean(n));
+      return notes.length ? { ...value, content: [...value.content, ...notes.map((n) => ({ type: 'text' as const, text: n }))] } : value;
     }) as never)) as typeof server.registerTool;
 }
 

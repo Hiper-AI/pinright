@@ -76,6 +76,17 @@ const BATCH_SIZE = 1000; // OSV's documented maximum per querybatch call
  * call getVuln for the details.
  */
 export async function queryBatch(items: BatchItem[]): Promise<string[][]> {
+  if (!items.length) return [];
+  // The same set comes back every time the hook re-checks a manifest, not always in the same order:
+  // the key and the request use a sorted copy, and the answers are put back in the caller's order.
+  const id = (it: BatchItem) => `${it.ecosystem}:${it.name}@${it.version}`;
+  const sorted = [...new Map(items.map((it) => [id(it), it])).values()].sort((a, b) => (id(a) < id(b) ? -1 : id(a) > id(b) ? 1 : 0));
+  const answers = await cached(`osv:qb:${sorted.map(id).join('|')}`, config.ttl.advisories, () => queryBatchUncached(sorted));
+  const byId = new Map(sorted.map((it, k) => [id(it), answers[k]]));
+  return items.map((it) => byId.get(id(it)) ?? []);
+}
+
+async function queryBatchUncached(items: BatchItem[]): Promise<string[][]> {
   const out: string[][] = [];
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const chunk = items.slice(i, i + BATCH_SIZE);

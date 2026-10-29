@@ -19,7 +19,7 @@ import { getJson } from '../http.js';
 import { dedupeAdvisories, type AdvisoryInfo } from '../advisories/resolve.js';
 import { fixedVersions, severityOf, type OsvVuln } from '../advisories/osv.js';
 import { cvss3Of } from '../advisories/cvss.js';
-import type { HookDecision } from '../hook/policy.js';
+import { type HookDecision, unverified } from '../hook/policy.js';
 import { latestRelease, resolveRef, specificTag, tagForSha } from './github.js';
 import { actionName, useKey, type ActionUse } from './workflow.js';
 import { cleanText } from '../untrusted/index.js';
@@ -211,7 +211,8 @@ function allowed(name: string): boolean {
 
 type Action = HookDecision['action'];
 
-function onError(): Action {
+/** SAFECTX_HOOK_ON_ERROR when the caller has no resolved team policy. */
+function envOnError(): Action {
   const v = process.env.SAFECTX_HOOK_ON_ERROR;
   return v === 'deny' || v === 'ask' ? v : 'allow';
 }
@@ -226,8 +227,8 @@ const limited = (unverified: string) => unverified.startsWith('GitHub API rate l
 const TOKEN_HINT =
   'GitHub rate limit: without a token GitHub allows 60 API requests an hour. Set GITHUB_TOKEN (or SAFECTX_GH_CLI=1 to use the GitHub CLI login) and re-run to verify the rest.';
 
-/** The hook's decision for new or changed `uses:` lines. */
-export async function decideActions(uses: ActionUse[]): Promise<HookDecision> {
+/** The hook's decision for new or changed `uses:` lines. `onError` is the team policy's (see teamConfig.ts). */
+export async function decideActions(uses: ActionUse[], onError: Action = envOnError()): Promise<HookDecision> {
   const unique = [...new Map(uses.map((u) => [useKey(u), u])).values()].filter((u) => !allowed(actionName(u)));
   const list = unique.slice(0, MAX_CHECKS);
   const reports = await Promise.all(list.map((u) => checkAction(u)));
@@ -247,7 +248,7 @@ export async function decideActions(uses: ActionUse[]): Promise<HookDecision> {
       );
       continue;
     }
-    if (r.unverified) outcomes.push({ action: onError(), warning: `${label}: could not be verified (${r.unverified}).` });
+    if (r.unverified) outcomes.push(unverified({ onError }, `${label}: could not be verified (${r.unverified}).`));
     if (!r.pinned) {
       const msg = `${label} is a mutable ref; a tag can be re-pointed to other code. Pin the commit: ${r.pinTo ? `uses: ${r.pinTo}` : 'uses: owner/repo@<40-char SHA> # tag'}`;
       outcomes.push(enforcePin ? { action: 'deny', problem: msg } : { action: 'allow', warning: msg });

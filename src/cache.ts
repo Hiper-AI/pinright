@@ -49,13 +49,43 @@ export function cacheDirTrusted(dir = config.cacheDir): boolean {
   return ok;
 }
 
+/**
+ * Parsed entries this process already read, keyed by file and checked against its
+ * mtime and size, so another process's write is seen. A package's version list from
+ * deps.dev can be megabytes and one check reads it four or five times. Only the
+ * registry and advisory data (read-only by every caller) is kept, and not much of it.
+ */
+const memo = new Map<string, { mtimeMs: number; size: number; entry: Entry<unknown> }>();
+const MEMO_MAX = 500;
+const memoizable = (key: string) => key.startsWith('dd:') || key.startsWith('osv:');
+
+function remember(file: string, st: fs.Stats, entry: Entry<unknown>): void {
+  if (memo.size >= MEMO_MAX) memo.delete(memo.keys().next().value as string);
+  memo.set(file, { mtimeMs: st.mtimeMs, size: st.size, entry });
+}
+
+/** An entry that is not expired and whose expiry is believable (MAX_TTL_MS at most from now). */
+function live(entry: Entry<unknown> | undefined, now: number): boolean {
+  return typeof entry?.expiresAt === 'number' && entry.expiresAt >= now && entry.expiresAt <= now + MAX_TTL_MS;
+}
+
 export function cacheGet<T>(key: string): T | undefined {
   if (config.cacheDisabled || !cacheDirTrusted()) return undefined;
+  const file = fileFor(key);
   try {
-    const raw = fs.readFileSync(fileFor(key), 'utf8');
-    const entry = JSON.parse(raw) as Entry<T>;
-    const now = Date.now();
-    if (typeof entry?.expiresAt !== 'number' || entry.expiresAt < now || entry.expiresAt > now + MAX_TTL_MS) return undefined;
+    const st = fs.statSync(file);
+    const known = memo.get(file);
+    let entry: Entry<T>;
+    if (known && known.mtimeMs === st.mtimeMs && known.size === st.size) entry = known.entry as Entry<T>;
+    else {
+      entry = JSON.parse(fs.readFileSync(file, 'utf8')) as Entry<T>;
+      if (memoizable(key) && live(entry, Date.now())) remember(file, st, entry);
+    }
+    if (!live(entry, Date.now())) {
+      memo.delete(file);
+      fs.rmSync(file, { force: true }); // expired or implausible: nobody will read it again
+      return undefined;
+    }
     return entry.value;
   } catch {
     return undefined;
@@ -75,6 +105,122 @@ export function cacheSet<T>(key: string, value: T, ttlMs: number): void {
   } catch {
     // Read-only disk or a race with another process: skip caching.
   }
+}
+
+// ------------------------------------------------------------ housekeeping ---
+
+export interface CacheStats {
+  dir: string;
+  files: number;
+  bytes: number;
+}
+
+interface FileEntry {
+  file: string;
+  size: number;
+  mtimeMs: number;
+}
+
+/** Every entry file with its size and age; temp files of a crashed write count too. */
+function entries(dir: string): FileEntry[] {
+  const out: FileEntry[] = [];
+  let shards: string[];
+  try {
+    shards = fs.readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const shard of shards) {
+    const sub = path.join(dir, shard);
+    let names: string[];
+    try {
+      names = fs.readdirSync(sub);
+    } catch {
+      continue; // a file at the top level (the prune marker), not a shard
+    }
+    for (const name of names) {
+      try {
+        // lstat: a link planted in the cache is neither followed nor counted.
+        const st = fs.lstatSync(path.join(sub, name));
+        if (st.isFile()) out.push({ file: path.join(sub, name), size: st.size, mtimeMs: st.mtimeMs });
+      } catch {
+        // removed meanwhile by another process
+      }
+    }
+  }
+  return out;
+}
+
+export function cacheStats(dir = config.cacheDir): CacheStats {
+  const list = entries(dir);
+  return { dir, files: list.length, bytes: list.reduce((n, e) => n + e.size, 0) };
+}
+
+const PRUNE_MARKER = '.last-prune';
+const PRUNE_EVERY_MS = 24 * 3600_000;
+
+/**
+ * Removes expired entries and leftover temp files, then the least recently
+ * written ones until the cache fits `maxBytes`. Returns what was removed.
+ */
+export function pruneCache(
+  maxBytes = config.cacheMaxBytes,
+  now = Date.now(),
+  dir = config.cacheDir,
+): { removed: number; freedBytes: number; remaining: CacheStats } {
+  // Same rule as reading: a directory other users can write to is left alone.
+  if (!cacheDirTrusted(dir)) return { removed: 0, freedBytes: 0, remaining: cacheStats(dir) };
+  let removed = 0;
+  let freedBytes = 0;
+  const drop = (e: FileEntry) => {
+    try {
+      fs.rmSync(e.file, { force: true });
+      removed++;
+      freedBytes += e.size;
+    } catch {
+      // in use on Windows, or already gone: next time
+    }
+  };
+  const keep: FileEntry[] = [];
+  for (const e of entries(dir)) {
+    if (e.file.endsWith('.tmp')) {
+      if (now - e.mtimeMs > 3600_000) drop(e);
+      continue;
+    }
+    let expired: boolean;
+    try {
+      expired = !live(JSON.parse(fs.readFileSync(e.file, 'utf8')) as Entry<unknown>, now);
+    } catch {
+      expired = true; // unreadable: worthless as a cache entry
+    }
+    if (expired) drop(e);
+    else keep.push(e);
+  }
+  let total = keep.reduce((n, e) => n + e.size, 0);
+  for (const e of keep.sort((a, b) => a.mtimeMs - b.mtimeMs)) {
+    if (total <= maxBytes) break;
+    drop(e);
+    total -= e.size;
+  }
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, PRUNE_MARKER), String(now), { mode: 0o600 });
+  } catch {
+    // read-only cache dir: nothing was written there either
+  }
+  return { removed, freedBytes, remaining: cacheStats(dir) };
+}
+
+/** Prunes when the last prune was more than a day ago. The MCP server and batch commands call it, never the hook. */
+export function pruneCacheIfDue(now = Date.now()): void {
+  if (config.cacheDisabled) return;
+  try {
+    const last = Number(fs.readFileSync(path.join(config.cacheDir, PRUNE_MARKER), 'utf8'));
+    if (Number.isFinite(last) && now - last < PRUNE_EVERY_MS) return;
+  } catch {
+    // never pruned
+  }
+  pruneCache(config.cacheMaxBytes, now);
 }
 
 /** Loads in flight, so parallel callers of one key share a single upstream request. */

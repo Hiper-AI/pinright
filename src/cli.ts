@@ -7,40 +7,51 @@
  * safectx audit [path] [--json] [--fail-on low|moderate|high|critical|none] [--sarif <file>] [--config <file>]
  * safectx upgrade <eco> <name> <from> [to] [--query="..."]
  * safectx init [client] [--project|--user] [--print] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]
- * safectx cache clear
+ * safectx doctor [--json] [--offline]
+ * safectx cache clear|prune|path
+ *
+ * Only what every command needs is imported up front. The hook runs before
+ * each agent command, so the checks, the MCP server, the audit and the client
+ * registry are loaded by the command that uses them (see README "Latency").
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { AuditInputError, auditExitCode, auditJson, formatAuditRun, parseFailOn, runAudit, runToSarif, sarifRoot } from './auditRun.js';
 import { npxLauncher, PKG_VERSION } from './pkg.js';
 import { parseEcosystem } from './ecosystems.js';
 import { config } from './config.js';
-import { securityNotice } from './format.js';
 import { fenceCommands } from './sarif/summary.js';
 import { ghCliLoggedIn, githubAuthAdvice, trackGitHub } from './github.js';
-import { HOOK_AGENTS, isHookAgent, runHook } from './hook/run.js';
-import { INIT_USAGE, runInit } from './clients/init.js';
 import { splitNpmSpec } from './hook/intent.js';
-import { buildMcpServer } from './mcp.js';
-import { upgradeGuide } from './upgrade/index.js';
-import { checkPackage } from './verdict.js';
 
 async function serve(): Promise<number> {
+  const [{ StdioServerTransport }, { buildMcpServer }, { pruneCacheIfDue }] = await Promise.all([
+    import('@modelcontextprotocol/server/stdio'),
+    import('./mcp.js'),
+    import('./cache.js'),
+  ]);
   const server = buildMcpServer();
   await server.connect(new StdioServerTransport());
   console.error('[safectx] ready on stdio');
+  // Housekeeping off the request path: the server lives for the whole session.
+  setTimeout(() => pruneCacheIfDue(), 10_000).unref();
   return new Promise(() => {}); // stdio keeps the process alive
+}
+
+/** Usage error: what is wrong, the command's usage line on stderr, exit 2. */
+async function usage(cmd: string, problem?: string | { name: string; known: string[] }): Promise<number> {
+  const { COMMANDS, unknownFlag } = await import('./cliHelp.js');
+  const what = typeof problem === 'object' ? unknownFlag(problem.name, problem.known) : problem;
+  console.error(`${what ? `safectx ${cmd}: ${what}\n` : ''}usage: ${COMMANDS[cmd].usage}\nRun "safectx ${cmd} --help" for details.`);
+  return 2;
 }
 
 async function check(args: string[]): Promise<number> {
   const eco = parseEcosystem(args[0]);
-  if (!eco || !args[1]) {
-    console.error('usage: safectx check <npm|pypi|cargo|go|maven|nuget|rubygems|composer> <name>[@version | version]');
-    return 2;
-  }
+  if (!args[0] || !args[1]) return usage('check', args[0] && !eco ? `unknown ecosystem "${args[0]}"` : undefined);
+  if (!eco) return usage('check', `unknown ecosystem "${args[0]}"`);
+  const [{ checkPackage }, { securityNotice }] = await Promise.all([import('./verdict.js'), import('./format.js')]);
   const [name, inline] =
     eco === 'pypi' && args[1].includes('==') ? args[1].split('==')
     : eco === 'composer' && /^[^@:]+\/[^@:]+:/.test(args[1]) ? args[1].split(':')
@@ -53,23 +64,33 @@ async function check(args: string[]): Promise<number> {
 }
 
 async function upgrade(args: string[]): Promise<number> {
-  const pos = args.filter((a) => !a.startsWith('--'));
+  const { flags, positional: pos, unknown } = parseFlags(args, ['query', 'tokens'], []);
+  if (unknown) return usage('upgrade', unknown);
   const eco = parseEcosystem(pos[0]);
-  if (!eco || !pos[1] || !pos[2]) {
-    console.error('usage: safectx upgrade <npm|pypi|...> <name> <from> [to] [--query="..."] [--tokens=N]');
-    return 2;
-  }
-  const query = args.find((a) => a.startsWith('--query='))?.slice(8);
-  const tokens = Number(args.find((a) => a.startsWith('--tokens='))?.slice(9));
+  if (pos[0] && !eco) return usage('upgrade', `unknown ecosystem "${pos[0]}"`);
+  if (!eco || !pos[1] || !pos[2]) return usage('upgrade');
+  const query = typeof flags.query === 'string' ? flags.query : undefined;
+  const tokens = Number(flags.tokens);
+  const { upgradeGuide } = await import('./upgrade/index.js');
   const r = await upgradeGuide({ ecosystem: eco, name: pos[1], from: pos[2], to: pos[3], query, budgetChars: tokens > 0 ? tokens * 4 : undefined });
   console.log(fenceCommands(r.text));
   return r.to ? 0 : 1;
 }
 
-/** `--name value` or `--name=value`; the positionals are what is left. */
-function parseFlags(args: string[], valued: string[]): { flags: Record<string, string | true>; positional: string[] } {
+/**
+ * `--name value` or `--name=value`; the positionals are what is left. With a
+ * list of switches, the first flag that is neither is returned as `unknown`,
+ * so a typo like --jsno is an error instead of being ignored.
+ */
+function parseFlags(
+  args: string[],
+  valued: string[],
+  switches?: string[],
+): { flags: Record<string, string | true>; positional: string[]; unknown?: { name: string; known: string[] } } {
   const flags: Record<string, string | true> = {};
   const positional: string[] = [];
+  let unknown: { name: string; known: string[] } | undefined;
+  const known = switches ? [...valued, ...switches] : undefined;
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (!a.startsWith('--')) {
@@ -78,23 +99,21 @@ function parseFlags(args: string[], valued: string[]): { flags: Record<string, s
     }
     const eq = a.indexOf('=');
     const name = a.slice(2, eq > 0 ? eq : undefined);
+    if (known && !known.includes(name)) unknown ??= { name, known };
     if (eq > 0) flags[name] = a.slice(eq + 1);
     else if (valued.includes(name) && i + 1 < args.length && !args[i + 1].startsWith('--')) flags[name] = args[++i];
     else flags[name] = true;
   }
-  return { flags, positional };
+  return { flags, positional, unknown };
 }
 
-const AUDIT_USAGE =
-  'usage: safectx audit [path] [--fail-on low|moderate|high|critical|none] [--json] [--sarif <file>] [--sarif-root <dir>] [--config <.safectx.json>] [--no-supply-chain]';
-
 async function audit(args: string[]): Promise<number> {
-  const { flags, positional } = parseFlags(args, ['fail-on', 'sarif', 'sarif-root', 'config']);
+  const { flags, positional, unknown } = parseFlags(args, ['fail-on', 'sarif', 'sarif-root', 'config'], ['json', 'no-supply-chain']);
+  if (unknown) return usage('audit', unknown);
+  const { AuditInputError, auditExitCode, auditJson, formatAuditRun, parseFailOn, runAudit, runToSarif, sarifRoot } = await import('./auditRun.js');
   const failOn = parseFailOn(typeof flags['fail-on'] === 'string' ? flags['fail-on'] : undefined);
-  if (!failOn || flags.sarif === true || flags.config === true || flags['fail-on'] === true) {
-    console.error(AUDIT_USAGE);
-    return 2;
-  }
+  if (!failOn) return usage('audit', `--fail-on takes low, moderate, high, critical or none, not "${flags['fail-on']}"`);
+  for (const f of ['sarif', 'config', 'fail-on', 'sarif-root']) if (flags[f] === true) return usage('audit', `--${f} needs a value`);
   const target = path.resolve(positional[0] ?? '.');
   let run;
   try {
@@ -123,7 +142,8 @@ function launcher(dev: boolean): { command: string; args: string[] } {
   return { command: 'node', args: [fileURLToPath(import.meta.url)] };
 }
 
-function init(args: string[]): number {
+async function init(args: string[]): Promise<number> {
+  const { INIT_USAGE, runInit } = await import('./clients/init.js');
   const { flags, positional } = parseFlags(args, []);
   if (positional.length > 1 || (flags.user && (flags.project || flags.local))) {
     console.error(INIT_USAGE);
@@ -150,56 +170,128 @@ function init(args: string[]): number {
   return r.code;
 }
 
-/** `cache clear` empties the disk cache. */
-function cache(args: string[]): number {
-  if (args[0] !== 'clear' || args[1]) {
-    console.error('usage: safectx cache clear');
-    return 2;
+const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+/** `cache clear` empties the disk cache; `prune` drops expired entries and caps its size; `path` prints where it is. */
+async function cache(args: string[]): Promise<number> {
+  if (args.length !== 1) return usage('cache');
+  switch (args[0]) {
+    case 'clear':
+      fs.rmSync(config.cacheDir, { recursive: true, force: true });
+      console.log(`cleared ${config.cacheDir}`);
+      return 0;
+    case 'prune': {
+      const { pruneCache } = await import('./cache.js');
+      const r = pruneCache();
+      console.log(`removed ${r.removed} entries (${mb(r.freedBytes)}); ${r.remaining.files} left (${mb(r.remaining.bytes)}, cap ${mb(config.cacheMaxBytes)}) in ${config.cacheDir}`);
+      return 0;
+    }
+    case 'path':
+      console.log(config.cacheDir);
+      return 0;
+    default:
+      return usage('cache', `unknown subcommand "${args[0]}"`);
   }
-  fs.rmSync(config.cacheDir, { recursive: true, force: true });
-  console.log(`cleared ${config.cacheDir}`);
-  return 0;
 }
 
-/** What GitHub's rate limit left out, on stderr so `--json` output stays parseable. */
-async function noticed(run: () => Promise<number>): Promise<number> {
-  const { value, notice } = await trackGitHub(run);
-  if (notice) console.error(`\n${notice}`);
-  return value;
+async function doctor(args: string[]): Promise<number> {
+  const { flags, unknown } = parseFlags(args, [], ['json', 'offline']);
+  if (unknown) return usage('doctor', unknown);
+  const [{ runDoctor, formatDoctor }, { colorEnabled }] = await Promise.all([import('./doctor.js'), import('./cliHelp.js')]);
+  const report = await runDoctor({ offline: Boolean(flags.offline) });
+  console.log(flags.json ? JSON.stringify(report, null, 2) : formatDoctor(report, colorEnabled()));
+  return report.ok ? 0 : 1;
 }
+
+/** After a batch command: drop expired cache entries once a day. Never in the hook, which must exit at once. */
+async function housekeeping(code: number): Promise<number> {
+  try {
+    (await import('./cache.js')).pruneCacheIfDue();
+  } catch {
+    // the cache fails soft everywhere
+  }
+  return code;
+}
+
+/** What GitHub's rate limit or a failing upstream left out, on stderr so `--json` output stays parseable. */
+async function noticed(run: () => Promise<number>): Promise<number> {
+  const { trackUpstreams } = await import('./http.js');
+  const { value: tracked, notice: upstreams } = await trackUpstreams(() => trackGitHub(run));
+  for (const n of [tracked.notice, upstreams]) if (n) console.error(`\n${n}`);
+  return tracked.value;
+}
+
+const wantsHelp = (args: string[]) => args.includes('--help') || args.includes('-h');
 
 async function main(): Promise<number> {
   const [cmd, ...args] = process.argv.slice(2);
+  // The hook first and with nothing else loaded: it runs before every agent command.
+  // Never a usage error here: Claude Code reads exit 2 from a hook as "block".
+  if (cmd === 'hook' && !(args.length === 1 && wantsHelp(args))) {
+    const { HOOK_AGENTS, isHookAgent, runHook } = await import('./hook/run.js');
+    // No agent named: Claude Code, as before the other agents existed.
+    if (args[0] !== undefined && !isHookAgent(args[0])) {
+      // Exit 2 blocks every tool call in most agents; 1 lets the agent go on, as a crash does.
+      console.error(`usage: safectx hook <${HOOK_AGENTS.join('|')}>`);
+      return 1;
+    }
+    return runHook(args[0] ?? 'claude');
+  }
+  if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
+    console.log(PKG_VERSION);
+    return 0;
+  }
+  // A person at a terminal typing "safectx" wants help, not a server waiting on stdin; agents pipe stdin.
+  if (cmd === undefined && process.stdin.isTTY) {
+    const { mainHelp, colorEnabled } = await import('./cliHelp.js');
+    console.log(mainHelp(PKG_VERSION, colorEnabled()));
+    console.log('(Agents start the MCP server with "safectx" over a pipe, or "safectx serve".)');
+    return 0;
+  }
+  if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
+    const { canonical, commandHelp, mainHelp, colorEnabled, unknownCommand } = await import('./cliHelp.js');
+    if (!args[0]) {
+      console.log(mainHelp(PKG_VERSION, colorEnabled()));
+      return 0;
+    }
+    const c = canonical(args[0]);
+    if (!c) {
+      console.error(unknownCommand(args[0]));
+      return 2;
+    }
+    console.log(commandHelp(c));
+    return 0;
+  }
+  if (cmd !== undefined && wantsHelp(args)) {
+    const { canonical, commandHelp } = await import('./cliHelp.js');
+    const c = canonical(cmd);
+    if (c) {
+      console.log(commandHelp(c));
+      return 0;
+    }
+  }
   switch (cmd) {
     case undefined:
     case 'serve':
     case 'mcp':
       return serve();
-    case 'hook':
-      // No agent named: Claude Code, as before the other agents existed.
-      if (args[0] !== undefined && !isHookAgent(args[0])) {
-        // Exit 2 blocks every tool call in most agents; 1 lets the agent go on, as a crash does.
-        console.error(`usage: safectx hook <${HOOK_AGENTS.join('|')}>`);
-        return 1;
-      }
-      return runHook(args[0] ?? 'claude');
     case 'check':
-      return noticed(() => check(args));
+      return housekeeping(await noticed(() => check(args)));
     case 'audit':
-      return noticed(() => audit(args));
+      return housekeeping(await noticed(() => audit(args)));
     case 'upgrade':
-      return noticed(() => upgrade(args));
+      return housekeeping(await noticed(() => upgrade(args)));
     case 'init':
       return init(args);
+    case 'doctor':
+      return doctor(args);
     case 'cache':
       return cache(args);
-    case '--version':
-    case '-v':
-      console.log(PKG_VERSION);
-      return 0;
-    default:
-      console.error('usage: safectx [serve | hook <agent> | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [client] | cache clear]');
+    default: {
+      const { unknownCommand } = await import('./cliHelp.js');
+      console.error(unknownCommand(cmd));
       return 2;
+    }
   }
 }
 

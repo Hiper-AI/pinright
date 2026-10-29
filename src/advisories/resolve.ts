@@ -81,6 +81,8 @@ export interface PackageReport {
   cooldownOnly?: boolean;
   requested?: RequestedVersionReport;
   checkedAt: string;
+  /** Sources that did not answer during this check ("osv.dev", "deps.dev"): the verdict is partial or unknown because of them. */
+  unavailable?: string[];
   sources: string[];
 }
 
@@ -89,17 +91,35 @@ const PRERELEASE_HINT = /(alpha|beta|rc|canary|dev|preview|nightly|snapshot|pre|
 // tags are commits, not releases.
 const GO_PSEUDO = /^v?\d+\.\d+\.\d+-(?:\w+\.)?(?:0\.)?\d{14}-[0-9a-f]{12}$|\+incompatible$/;
 
-export function isPrerelease(version: string): boolean {
+/**
+ * One parse per version string. A package with a few thousand releases is sorted,
+ * filtered and split into lines several times per check; parsing each time was a
+ * second of CPU for a 30-dependency manifest.
+ */
+function memoized<T>(fn: (version: string) => T): (version: string) => T {
+  const seen = new Map<string, T>();
+  return (version) => {
+    if (seen.has(version)) return seen.get(version) as T;
+    if (seen.size > 50_000) seen.clear();
+    const v = fn(version);
+    seen.set(version, v);
+    return v;
+  };
+}
+
+export const isPrerelease = memoized((version: string): boolean => {
   if (GO_PSEUDO.test(version)) return true;
   const parsed = semver.parse(version, { loose: true }) ?? semver.coerce(version, { includePrerelease: true });
   if (parsed && parsed.prerelease.length > 0) return true;
   return PRERELEASE_HINT.test(version);
-}
+});
+
+const coerced = memoized((version: string) => semver.coerce(version, { includePrerelease: true }));
 
 /** Newest first. Semver when both sides parse; publish date otherwise. */
 export function compareVersionsDesc(a: DepsDevVersionSummary, b: DepsDevVersionSummary): number {
-  const va = semver.coerce(a.versionKey.version, { includePrerelease: true });
-  const vb = semver.coerce(b.versionKey.version, { includePrerelease: true });
+  const va = coerced(a.versionKey.version);
+  const vb = coerced(b.versionKey.version);
   if (va && vb) {
     const c = semver.rcompare(va, vb);
     if (c !== 0) return c;
@@ -108,11 +128,11 @@ export function compareVersionsDesc(a: DepsDevVersionSummary, b: DepsDevVersionS
 }
 
 /** "3.x" for 3.2.1, "0.28.x" for 0.28.1 (pre-1.0 minors are breaking by semver). */
-export function releaseLine(version: string): string | undefined {
+export const releaseLine = memoized((version: string): string | undefined => {
   const v = semver.coerce(version, { includePrerelease: false });
   if (!v) return undefined;
   return v.major === 0 ? `0.${v.minor}.x` : `${v.major}.x`;
-}
+});
 
 /** Order of two release lines as releaseLine writes them ("0.28.x" < "1.x" < "6.x"). */
 export function compareLines(a: string, b: string): number {
@@ -144,29 +164,38 @@ async function describeAdvisories(
   name: string,
   version: string,
   ids: string[],
-): Promise<AdvisoryInfo[]> {
+): Promise<{ advisories: AdvisoryInfo[]; osvDown?: string }> {
   // OSV gives summary, severity and the fixed versions in one call.
-  const osv = await queryVersion(eco, name, version).catch(() => []);
+  let osvDown: string | undefined;
+  const osv = await queryVersion(eco, name, version).catch((err: Error) => {
+    osvDown = err.message;
+    return [];
+  });
   const byId = new Map(osv.map((v) => [v.id, v]));
-  const allIds = new Set<string>([...ids, ...osv.map((v) => v.id)]);
-  const out: AdvisoryInfo[] = [];
-  for (const id of allIds) {
-    const vuln = byId.get(id);
-    // Packagist ids (FriendsOfPHP) are not in deps.dev; Packagist's own API describes them.
-    const pk = !vuln && eco === 'composer' ? await packagistAdvisoryInfo(name, id) : undefined;
-    const dd = vuln || eco === 'composer' ? undefined : await getAdvisory(id).catch(() => undefined);
-    out.push({
-      id,
-      aliases: vuln?.aliases ?? dd?.aliases ?? pk?.aliases ?? [],
-      title: cleanText(vuln?.summary ?? dd?.title ?? pk?.title),
-      severity: vuln ? severityOf(vuln) : pk?.severity,
-      cvss3Score: dd?.cvss3Score,
-      fixedIn: vuln ? fixedVersions(vuln, name) : pk?.fixedIn,
-      url: dd?.url ?? pk?.url ?? `https://osv.dev/vulnerability/${id}`,
-    });
-  }
-  return dedupeAdvisories(out);
+  const allIds = [...new Set<string>([...ids, ...osv.map((v) => v.id)])];
+  const out = await Promise.all(
+    allIds.map(async (id): Promise<AdvisoryInfo> => {
+      const vuln = byId.get(id);
+      // Packagist ids (FriendsOfPHP) are not in deps.dev; Packagist's own API describes them.
+      const pk = !vuln && eco === 'composer' ? await packagistAdvisoryInfo(name, id) : undefined;
+      const dd = vuln || eco === 'composer' ? undefined : await getAdvisory(id).catch(() => undefined);
+      return {
+        id,
+        aliases: vuln?.aliases ?? dd?.aliases ?? pk?.aliases ?? [],
+        title: cleanText(vuln?.summary ?? dd?.title ?? pk?.title),
+        severity: vuln ? severityOf(vuln) : pk?.severity,
+        cvss3Score: dd?.cvss3Score,
+        fixedIn: vuln ? fixedVersions(vuln, name) : pk?.fixedIn,
+        url: dd?.url ?? pk?.url ?? `https://osv.dev/vulnerability/${id}`,
+      };
+    }),
+  );
+  return { advisories: dedupeAdvisories(out), osvDown };
 }
+
+/** Candidates probed at once while looking for the newest clean version: 1, then 3, then 8 (order still decides). */
+const PROBE_GROWTH = 3;
+const PROBE_WINDOW_MAX = 8;
 
 const SEVERITY_RANK: Record<string, number> = { CRITICAL: 0, HIGH: 1, MODERATE: 2, MEDIUM: 2, LOW: 3 };
 
@@ -225,11 +254,15 @@ export async function assessPackage(
       ...base,
       verdict: 'unknown',
       reason: `${registry} did not answer (${(err as Error).message}); no verdict possible`,
+      unavailable: [registry],
     };
   }
   if (!pkg || pkg.versions.length === 0) {
     return { ...base, verdict: 'unknown-package', reason: `${registry} has no package "${name}" in ${eco}` };
   }
+  // The requested version is looked at while the candidates are scanned: neither waits for the other.
+  const requestedP = requestedVersion ? assessRequested(eco, name, requestedVersion) : undefined;
+  requestedP?.catch(() => {}); // awaited below; this only keeps an early rejection from counting as unhandled
 
   const versions = [...pkg.versions].sort(compareVersionsDesc);
   const latest = versions.find((v) => v.isDefault) ?? versions.find((v) => !isPrerelease(v.versionKey.version)) ?? versions[0];
@@ -242,37 +275,48 @@ export async function assessPackage(
   const candidates = eligible.slice(0, config.maxCandidates);
 
   let sourceDown: string | undefined;
+  let osvDown: string | undefined;
+  /** Is this candidate clean? Throws when the registry source does not answer. */
+  async function probe(cand: DepsDevVersionSummary): Promise<{ cand: DepsDevVersionSummary; licenses?: string[] } | undefined> {
+    // deps.dev mirrors OSV with a lag of hours; a fresh advisory may only be in OSV yet, so both are asked, at once.
+    // If OSV is unreachable, deps.dev's answer is all there is, and the verdict says so.
+    const [detail, osv] = await Promise.all([
+      getVersion(eco, name, cand.versionKey.version),
+      queryVersion(eco, name, cand.versionKey.version).catch((err: Error) => {
+        osvDown = err.message;
+        return [];
+      }),
+    ]);
+    if (!detail || (detail.advisoryKeys ?? []).length > 0) return undefined;
+    return osv.length === 0 ? { cand, licenses: detail.licenses } : undefined;
+  }
+  /**
+   * The newest clean candidate, first in order wins. The newest alone first (usually
+   * it is clean), then growing windows probed at once: 12 candidates in three round trips.
+   */
   async function firstClean(list: DepsDevVersionSummary[]) {
-    for (const cand of list) {
-      try {
-        const detail = await getVersion(eco, name, cand.versionKey.version);
-        if (!detail) continue;
-        if ((detail.advisoryKeys ?? []).length > 0) continue;
-        // deps.dev mirrors OSV with a lag of hours; a fresh advisory may only be in OSV yet.
-        // If OSV is unreachable, deps.dev's answer stands.
-        const osv = await queryVersion(eco, name, cand.versionKey.version).catch(() => []);
-        if (osv.length === 0) return { cand, licenses: detail.licenses };
-      } catch (err) {
-        sourceDown = (err as Error).message;
-        return undefined;
+    for (let i = 0, w = 1; i < list.length && !sourceDown; i += w, w = Math.min(w * PROBE_GROWTH, PROBE_WINDOW_MAX)) {
+      const settled = await Promise.allSettled(list.slice(i, i + w).map(probe));
+      for (const s of settled) {
+        if (s.status === 'rejected') {
+          sourceDown = (s.reason as Error).message;
+          return undefined;
+        }
+        if (s.value) return s.value;
       }
     }
     return undefined;
   }
 
-  const found = await firstClean(candidates);
+  // Same release line as the version the project uses: the upgrade that keeps the API.
+  // Scanned alongside the newest candidates; the lists overlap, and the cache shares their requests.
+  const line = requestedVersion ? releaseLine(requestedVersion) : undefined;
+  const onLine = line ? eligible.filter((v) => releaseLine(v.versionKey.version) === line).slice(0, config.maxCandidates) : [];
+  const [found, foundOnLine] = await Promise.all([firstClean(candidates), line ? firstClean(onLine) : undefined]);
   const safe = found?.cand;
   const safeLicenses = found?.licenses;
-
-  // Same release line as the version the project uses: the upgrade that keeps the API.
-  const line = requestedVersion ? releaseLine(requestedVersion) : undefined;
   let safeSameLine: DepsDevVersionSummary | undefined;
-  if (line && !sourceDown) {
-    const onLine = eligible
-      .filter((v) => releaseLine(v.versionKey.version) === line)
-      .slice(0, config.maxCandidates);
-    safeSameLine = safe && releaseLine(safe.versionKey.version) === line ? safe : (await firstClean(onLine))?.cand;
-  }
+  if (line && !sourceDown) safeSameLine = safe && releaseLine(safe.versionKey.version) === line ? safe : foundOnLine?.cand;
 
   const report: PackageReport = {
     ...base,
@@ -296,22 +340,22 @@ export async function assessPackage(
       .filter((l) => compareLines(l, line) > 0 && compareLines(l, safeLine) < 0)
       .sort(compareLines)
       .slice(0, MAX_NEAREST_LINES);
-    for (const l of between) {
-      const onLine = eligible.filter((v) => releaseLine(v.versionKey.version) === l).slice(0, config.maxCandidates);
-      const hit = (await firstClean(onLine))?.cand;
-      if (sourceDown) break;
-      if (hit) {
-        report.safeVersionNearestLine = hit.versionKey.version;
-        report.nearestLine = l;
-        break;
-      }
+    // All lines at once; the oldest one with a clean release wins.
+    const hits = await Promise.all(
+      between.map((l) => firstClean(eligible.filter((v) => releaseLine(v.versionKey.version) === l).slice(0, config.maxCandidates))),
+    );
+    const k = hits.findIndex(Boolean);
+    if (!sourceDown && k >= 0) {
+      report.safeVersionNearestLine = hits[k]?.cand.versionKey.version;
+      report.nearestLine = between[k];
     }
   }
   if (!safe && !sourceDown && candidates.length) {
     // Nothing is clean: point at the least exposed version instead of leaving the agent stuck.
     let best: { version: string; rank: number; count: number; maxSeverity?: string } | undefined;
-    for (const cand of candidates) {
-      const vulns = await queryVersion(eco, name, cand.versionKey.version).catch(() => undefined);
+    const exposure = await Promise.all(candidates.map((cand) => queryVersion(eco, name, cand.versionKey.version).catch(() => undefined)));
+    for (const [j, cand] of candidates.entries()) {
+      const vulns = exposure[j];
       if (!vulns) continue;
       if (vulns.some((v) => isMalware(v.id))) continue;
       const sevs = vulns.map((v) => (severityOf(v) ?? 'UNKNOWN').toUpperCase());
@@ -340,6 +384,7 @@ export async function assessPackage(
   if (sourceDown) {
     report.verdict = 'unknown';
     report.reason = `${registry} did not answer while scanning versions (${sourceDown})`;
+    report.unavailable = [registry];
   } else if (!safe && candidates.length === 0 && versions.some((v) => !v.isDeprecated && !isPrerelease(v.versionKey.version))) {
     // Every stable release is inside the cooldown (a brand-new package, or only fresh releases):
     // nothing to recommend yet, but no advisory either. Saying "vulnerable" here would be false.
@@ -350,8 +395,11 @@ export async function assessPackage(
     report.reason = `none of the newest ${candidates.length} stable versions past the ${config.cooldownDays}-day cooldown is free of known advisories`;
   }
 
-  if (requestedVersion) {
-    report.requested = await assessRequested(eco, name, requestedVersion);
+  if (requestedP) {
+    const { requested, osvDown: down, error } = await requestedP;
+    report.requested = requested;
+    osvDown ??= down;
+    if (error) report.unavailable = [registry];
     // The headline verdict is about what the agent asked for. Malware and a version that does not
     // exist win over anything the package-wide scan said: "vulnerable" (no clean version, as in a
     // package whose every release is malicious) or "unknown" (a source failed while scanning) would
@@ -359,11 +407,20 @@ export async function assessPackage(
     const definite = report.requested.verdict === 'malicious' || report.requested.verdict === 'unknown-package';
     if (report.requested.verdict !== 'ok' && (report.verdict === 'ok' || definite)) {
       report.verdict = report.requested.verdict;
-      report.reason = report.requested.verdict === 'unknown-package'
-        ? `version ${requestedVersion} of ${name} does not exist in ${eco}`
-        : undefined;
+      report.reason = report.requested.verdict === 'unknown'
+        ? `${registry} did not answer for version ${requestedVersion} (${error ?? 'no answer'}); no verdict possible`
+        : report.requested.verdict === 'unknown-package'
+          ? `version ${requestedVersion} of ${name} does not exist in ${eco}`
+          : undefined;
     }
   }
+  // "No known advisories" needs both sources: deps.dev alone lags OSV by hours, and fresh malware reports land in OSV first.
+  if (osvDown && report.verdict === 'ok') {
+    report.verdict = 'unknown';
+    report.reason = `osv.dev did not answer (${osvDown}); ${registry} lists no advisories, but it mirrors OSV with a lag, so this is unverified`;
+    if (report.requested?.verdict === 'ok') report.requested.verdict = 'unknown';
+  }
+  if (osvDown) report.unavailable = [...new Set([...(report.unavailable ?? []), 'osv.dev'])];
   return report;
 }
 
@@ -371,19 +428,19 @@ async function assessRequested(
   eco: Ecosystem,
   name: string,
   version: string,
-): Promise<RequestedVersionReport> {
+): Promise<{ requested: RequestedVersionReport; osvDown?: string; error?: string }> {
   const clean = version.replace(/^v/, '');
   let detail;
   try {
     detail = await getVersion(eco, name, clean);
   } catch (err) {
-    return { version: clean, verdict: 'unknown', advisories: [], deprecatedReason: (err as Error).message };
+    return { requested: { version: clean, verdict: 'unknown', advisories: [] }, error: (err as Error).message };
   }
   if (!detail) {
-    return { version: clean, verdict: 'unknown-package', advisories: [] };
+    return { requested: { version: clean, verdict: 'unknown-package', advisories: [] } };
   }
   const ids = (detail.advisoryKeys ?? []).map((a) => a.id);
-  const advisories = await describeAdvisories(eco, name, clean, ids);
+  const { advisories, osvDown } = await describeAdvisories(eco, name, clean, ids);
   let verdict: Verdict = 'ok';
   if (advisories.some((a) => isMalware(a.id))) verdict = 'malicious';
   else if (advisories.length > 0) verdict = 'vulnerable';
@@ -391,13 +448,16 @@ async function assessRequested(
   // The deprecation message is written by whoever controls the package: it goes to the agent and the hook.
   const reason = cleanField(detail.deprecatedReason || undefined, 300);
   return {
-    version: clean,
-    verdict,
-    isDeprecated: detail.isDeprecated,
-    deprecatedReason: reason.text,
-    publishedAt: detail.publishedAt,
-    licenses: detail.licenses,
-    advisories,
-    ...(reason.level === 'high' ? { agentText: [`deprecation message (${reason.flags.join(', ')})`] } : {}),
+    requested: {
+      version: clean,
+      verdict,
+      isDeprecated: detail.isDeprecated,
+      deprecatedReason: reason.text,
+      publishedAt: detail.publishedAt,
+      licenses: detail.licenses,
+      advisories,
+      ...(reason.level === 'high' ? { agentText: [`deprecation message (${reason.flags.join(', ')})`] } : {}),
+    },
+    osvDown,
   };
 }

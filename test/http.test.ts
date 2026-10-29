@@ -5,9 +5,22 @@
  */
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { config } from '../src/config.js';
-import { HttpError, getBytes, getJson, getText, isNotFound } from '../src/http.js';
+import { HttpError, NetworkError, getBytes, getJson, getText, isNotFound, isUnavailable, resetHostHealth } from '../src/http.js';
+
+// A timeout marks the host down for this process; every test starts with a healthy one.
+afterEach(() => resetHostHealth());
+
+async function withTimeout<T>(ms: number, run: () => Promise<T>): Promise<T> {
+  const saved = config.requestTimeoutMs;
+  (config as { requestTimeoutMs: number }).requestTimeoutMs = ms;
+  try {
+    return await run();
+  } finally {
+    (config as { requestTimeoutMs: number }).requestTimeoutMs = saved;
+  }
+}
 
 let server: http.Server;
 let base = '';
@@ -38,6 +51,11 @@ beforeAll(async () => {
           return;
         case '/slow':
           setTimeout(() => res.end('late'), 2_000).unref();
+          return;
+        case '/stalled-body':
+          // Headers at once, then the body never finishes.
+          res.setHeader('content-type', 'application/json');
+          res.write('{"partial":');
           return;
         case '/big-declared':
           res.setHeader('content-length', '5000');
@@ -137,5 +155,57 @@ describe('http on the built-in fetch', () => {
 
   it('times out a slow download', async () => {
     await expect(getBytes(`${base}/slow`, { maxBytes: 10, timeoutMs: 100 })).rejects.toThrow();
+  });
+});
+
+describe('when an upstream does not answer', () => {
+  it('names the host and the cause of a timeout', async () => {
+    const err = await withTimeout(100, () => getText(`${base}/slow`).catch((e: unknown) => e));
+    expect(err).toBeInstanceOf(NetworkError);
+    expect((err as Error).message).toMatch(/^127\.0\.0\.1:\d+ unreachable \(no answer within 0\.1 s\)$/);
+    expect(isUnavailable(err)).toBe(true);
+  });
+
+  it('times out a body that starts and never finishes, not only the headers', async () => {
+    const started = Date.now();
+    const err = await withTimeout(150, () => getJson(`${base}/stalled-body`).catch((e: unknown) => e));
+    expect(err).toBeInstanceOf(NetworkError);
+    expect(Date.now() - started).toBeLessThan(1_500);
+  });
+
+  it('fails the next requests to a host that just timed out at once, instead of waiting each time', async () => {
+    await withTimeout(100, () => getText(`${base}/slow`).catch(() => undefined));
+    const started = Date.now();
+    // /text would answer, but the host is marked down for a while: no request goes out.
+    const errs = await Promise.all(Array.from({ length: 5 }, () => getText(`${base}/text`).catch((e: unknown) => e)));
+    expect(errs.every((e) => e instanceof NetworkError)).toBe(true);
+    expect(Date.now() - started).toBeLessThan(100);
+    resetHostHealth();
+    expect(await getText(`${base}/text`)).toBe('hello');
+  });
+
+  it('says "connection refused" for a port nobody listens on', async () => {
+    const probe = http.createServer();
+    await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve));
+    const port = (probe.address() as AddressInfo).port;
+    await new Promise<void>((resolve) => probe.close(() => resolve()));
+    const err = await getJson(`http://127.0.0.1:${port}/x`).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(NetworkError);
+    expect((err as Error).message).toBe(`127.0.0.1:${port} unreachable (connection refused)`);
+  });
+
+  it('says "DNS lookup failed" for a name that does not resolve', async () => {
+    const err = await getJson('http://safectx-does-not-exist.invalid/x').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(NetworkError);
+    expect((err as Error).message).toMatch(/safectx-does-not-exist\.invalid unreachable \(DNS lookup failed\)/);
+  });
+
+  it('keeps a 5xx an HttpError (the host answered) but counts it as unavailable; a 404 is not', async () => {
+    const err = await getJson(`${base}/whatever-500`).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect(isUnavailable(err)).toBe(true);
+    expect(isUnavailable(await getJson(`${base}/missing`).catch((e: unknown) => e))).toBe(false);
+    // and the host is not marked down by an answer, even a failing one
+    expect(await getText(`${base}/text`)).toBe('hello');
   });
 });

@@ -77,18 +77,31 @@ interface Checked {
 
 type Outcome = { action: Action; problem?: string; warning?: string };
 
+/**
+ * Something could not be verified: the team's onError decides, and the message says which way it went.
+ * Allowed, it is a note; asked or denied, it is the reason, so the agent is never blocked without one.
+ */
+export function unverified(p: Pick<Policy, 'onError'>, text: string): Outcome {
+  if (p.onError === 'allow') return { action: 'allow', warning: `${text} Allowed unverified (onError: allow).` };
+  return { action: p.onError, problem: `${text} The project's onError policy is "${p.onError}" for checks that cannot complete.` };
+}
+
 const norm = (eco: Ecosystem, n: string) => (eco === 'pypi' ? normalizePypiName(n) : n);
 
 async function inspect(i: DepIntent): Promise<Checked> {
   const spec = i.spec ? (/^[=<>~!]/.test(i.spec) ? i.spec : `@${i.spec}`) : '';
   const label = `${i.name}${spec} (${i.ecosystem}${i.executes ? ', executed' : ''})`;
   const { version, implicit, exists } = await versionFor(i.ecosystem, i.name, i.spec);
-  // Unchanged lines of the file only take part in the compatibility check.
-  const v = i.contextOnly ? undefined : await checkPackage(i.ecosystem, i.name, exists ? version : undefined);
+  // The verdict and the dependency graph are fetched side by side; the graph of a malicious version is dropped.
+  const wantsGraph = Boolean(exists && version && !i.executes && GRAPH_ECOSYSTEMS.includes(i.ecosystem));
+  const [v, g] = await Promise.all([
+    // Unchanged lines of the file only take part in the compatibility check.
+    i.contextOnly ? undefined : checkPackage(i.ecosystem, i.name, exists ? version : undefined),
+    wantsGraph ? getDependencies(i.ecosystem, i.name, version as string).catch(() => undefined) : undefined,
+  ]);
   let graph: Map<string, string> | undefined;
   let requires: Map<string, string> | undefined;
-  if (exists && version && !i.executes && GRAPH_ECOSYSTEMS.includes(i.ecosystem) && v?.report.verdict !== 'malicious') {
-    const g = await getDependencies(i.ecosystem, i.name, version).catch(() => undefined);
+  if (wantsGraph && v?.report.verdict !== 'malicious') {
     if (g?.nodes?.length) {
       graph = new Map(g.nodes.slice(1).map((n) => [norm(i.ecosystem, n.versionKey.name), n.versionKey.version]));
       requires = new Map(
@@ -146,19 +159,22 @@ async function parentUpgrade(c: Checked, names: string[]): Promise<{ to: string;
   const r = c.v?.report ?? (await checkPackage(c.i.ecosystem, c.i.name, c.version, { risk: false }).catch(() => undefined))?.report;
   if (!r) return undefined;
   const candidates = [...new Set([r.safeVersionSameLine, r.safeVersionNearestLine, r.safeVersion].filter((x): x is string => Boolean(x) && x !== c.version))];
-  for (const to of candidates) {
-    const g = await getDependencies(c.i.ecosystem, c.i.name, to).catch(() => undefined);
-    if (!g?.nodes?.length) continue;
-    const pulled = new Map<string, string>();
-    for (const n of g.nodes.slice(1)) {
-      const nm = norm(c.i.ecosystem, n.versionKey.name);
-      if (names.includes(nm)) pulled.set(nm, n.versionKey.version);
-    }
-    const list = [...pulled.entries()];
-    const ids = await queryBatch(list.map(([name, version]) => ({ ecosystem: c.i.ecosystem, name, version }))).catch(() => undefined);
-    if (ids && ids.every((x) => x.length === 0)) return { to, sameLine: to === r.safeVersionSameLine, pulled };
-  }
-  return undefined;
+  // At most three candidates, looked at together; the first in order that pulls clean versions wins.
+  const tried = await Promise.all(
+    candidates.map(async (to) => {
+      const g = await getDependencies(c.i.ecosystem, c.i.name, to).catch(() => undefined);
+      if (!g?.nodes?.length) return undefined;
+      const pulled = new Map<string, string>();
+      for (const n of g.nodes.slice(1)) {
+        const nm = norm(c.i.ecosystem, n.versionKey.name);
+        if (names.includes(nm)) pulled.set(nm, n.versionKey.version);
+      }
+      const list = [...pulled.entries()];
+      const ids = await queryBatch(list.map(([name, version]) => ({ ecosystem: c.i.ecosystem, name, version }))).catch(() => undefined);
+      return ids && ids.every((x) => x.length === 0) ? { to, sameLine: to === r.safeVersionSameLine, pulled } : undefined;
+    }),
+  );
+  return tried.find(Boolean);
 }
 
 /**
@@ -277,7 +293,7 @@ async function mildIds(ids: string[], p: Policy): Promise<Set<string>> {
 function unreachable(p: Policy, i: DepIntent, text: string): Outcome {
   const look = findLookalike(i.ecosystem, i.name);
   if (look && p.onError === 'allow') return { action: 'ask', problem: `${text} The name is one edit away from "${look.of}"; a human should confirm it.` };
-  return p.onError === 'allow' ? { action: 'allow', warning: text } : { action: p.onError, problem: text };
+  return unverified(p, text);
 }
 
 /** What safectx can say without deps.dev or OSV: unverifiable sources and the team's deny list. */
@@ -308,8 +324,7 @@ export function timeoutDecision(intents: DepIntent[], policy: Policy): HookDecis
     else if (findLookalike(i.ecosystem, i.name)) outcomes.push(unreachable(policy, i, `${i.name} (${i.ecosystem}): not verified before the deadline.`));
   }
   if (rest.length) {
-    const text = 'safectx: verification timed out; dependencies not checked.';
-    outcomes.push(policy.onError === 'allow' ? { action: 'allow', warning: text } : { action: policy.onError, problem: text });
+    outcomes.push(unverified(policy, 'safectx: verification timed out (SAFECTX_HOOK_TIMEOUT_MS); dependencies not checked.'));
   }
   const action: Action = outcomes.some((o) => o.action === 'deny') ? 'deny' : outcomes.some((o) => o.action === 'ask') ? 'ask' : 'allow';
   return {
@@ -340,16 +355,18 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
   });
   const changed = unique.filter((i) => !i.contextOnly);
   const list = [...changed.slice(0, MAX_CHECKS), ...unique.filter((i) => i.contextOnly).slice(0, MAX_CONTEXT)];
-  const checked: Checked[] = [];
-  await Promise.all(
+  // In the order of the change, whichever lookup finishes first: the message and the cache keys stay stable.
+  const inspected = await Promise.all(
     list.map(async (i) => {
       try {
-        checked.push(await inspect(i));
+        return await inspect(i);
       } catch (err) {
         outcomes.push(unreachable(p, i, `${i.name}: could not be verified (${(err as Error).message}).`));
+        return undefined;
       }
     }),
   );
+  const checked = inspected.filter((c): c is Checked => Boolean(c));
 
   // Which declared package pulls which other declared package (agents often pin a whole tree by hand).
   const declared = new Map(checked.map((c) => [`${c.i.ecosystem}:${norm(c.i.ecosystem, c.i.name)}`, c]));
@@ -361,21 +378,32 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
     }
   }
 
-  for (const c of checked) {
+  // The parent upgrades each pinned child needs, looked up together before the outcomes are written in order.
+  const viaParent = await Promise.all(
+    checked.map((c) => {
+      if (c.i.contextOnly) return undefined;
+      const parent = parentOf.get(c);
+      const req = c.v?.report.requested;
+      const name = norm(c.i.ecosystem, c.i.name);
+      const ownFix = c.v ? recommendedUpgrade(c.v.report) : undefined;
+      const range = parent?.requires?.get(name);
+      // The package's own fix already fits the parent's range ("idna<4,>=2.5"): repinning it is enough.
+      const fitsParent = Boolean(ownFix && range && satisfiesRequirement(c.i.ecosystem, ownFix, range));
+      if (!parent || fitsParent || req?.verdict !== 'vulnerable' || belowThreshold(p, req.advisories)) return undefined;
+      // Pinning a dependency of another pinned package outside that package's range does not install.
+      return parentUpgrade(parent, [name]).then((up) => ({ parent, up }));
+    }),
+  );
+
+  for (const [k, c] of checked.entries()) {
     if (c.i.contextOnly) continue;
     let o = judge(c, p);
     const lic = licenseOutcome(c, p);
     if (lic) outcomes.push(lic);
-    const parent = parentOf.get(c);
-    const req = c.v?.report.requested;
     const name = norm(c.i.ecosystem, c.i.name);
-    const ownFix = c.v ? recommendedUpgrade(c.v.report) : undefined;
-    const range = parent?.requires?.get(name);
-    // The package's own fix already fits the parent's range ("idna<4,>=2.5"): repinning it is enough.
-    const fitsParent = Boolean(ownFix && range && satisfiesRequirement(c.i.ecosystem, ownFix, range));
-    if (parent && !fitsParent && req?.verdict === 'vulnerable' && !belowThreshold(p, req.advisories)) {
-      // Pinning a dependency of another pinned package outside that package's range does not install.
-      const up = await parentUpgrade(parent, [name]);
+    const via = viaParent[k];
+    if (via) {
+      const { parent, up } = via;
       const head = (o.problem ?? '').replace(/ (Use|No clean).*$/, '');
       if (up) {
         o = {
@@ -397,7 +425,14 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
   // Transitive dependencies nobody declared: block only when a same-line upgrade clears them.
   const withGraph = checked.filter((c) => c.graph?.size && !c.i.contextOnly);
   const nodes = withGraph.flatMap((c) => [...(c.graph as Map<string, string>).entries()].filter(([n]) => !declared.has(`${c.i.ecosystem}:${n}`)).map(([name, version]) => ({ c, name, version })));
-  const ids = nodes.length ? await queryBatch(nodes.map((n) => ({ ecosystem: n.c.i.ecosystem, name: n.name, version: n.version }))).catch(() => undefined) : [];
+  let ids: string[][] | undefined = [];
+  if (nodes.length) {
+    ids = await queryBatch(nodes.map((n) => ({ ecosystem: n.c.i.ecosystem, name: n.name, version: n.version }))).catch((err: Error) => {
+      // Not checking them is not the same as finding them clean: say so, and let onError decide.
+      outcomes.push(unverified(p, `${nodes.length} transitive dependencies could not be checked (${err.message}).`));
+      return undefined;
+    });
+  }
   const mild = await mildIds((ids ?? []).flat(), p);
   const vulnerableBy = new Map<Checked, string[]>();
   nodes.forEach((n, k) => {
@@ -407,9 +442,11 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
       outcomes.push({ action: 'allow', warning: `${n.c.label} pulls ${n.name}@${n.version}, whose advisories (${found.slice(0, 3).join(', ')}) are below the project's severity threshold (${p.severityThreshold}).` });
     } else vulnerableBy.set(n.c, [...(vulnerableBy.get(n.c) ?? []), `${n.name}@${n.version}`]);
   });
-  for (const [c, vulns] of vulnerableBy) {
-    const names = [...new Set(vulns.map((x) => x.slice(0, x.lastIndexOf('@'))))];
-    const up = await parentUpgrade(c, names);
+  const fixes = await Promise.all(
+    [...vulnerableBy].map(([c, vulns]) => parentUpgrade(c, [...new Set(vulns.map((x) => x.slice(0, x.lastIndexOf('@'))))])),
+  );
+  for (const [k, [c, vulns]] of [...vulnerableBy].entries()) {
+    const up = fixes[k];
     const list = vulns.slice(0, 4).join(', ') + (vulns.length > 4 ? `, +${vulns.length - 4} more` : '');
     if (up?.sameLine) {
       outcomes.push({ action: 'deny', problem: `${c.label} pulls dependencies with known advisories (${list}). ${installCommand(c.i.ecosystem, c.i.name, up.to)} pulls fixed versions on the same release line.` });

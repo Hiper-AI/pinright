@@ -9,19 +9,25 @@
  *   VS Code / Copilot        -> permissionDecision at the top level and in hookSpecificOutput
  *   Windsurf pre_run_command / pre_write_code -> exit 2 with the reason on stderr
  * All run the same extraction and policy.
+ *
+ * The hook runs before every shell command and file write the agent makes, so
+ * the common case (`npm test`, editing a README) must cost little more than
+ * reading stdin. The whole extraction (shell parser, command and write readers)
+ * is loaded up front, so nothing is called "not an install" without it; the
+ * policy, the registries and the team config are imported only when there is a
+ * dependency change to judge.
  */
 import path from 'node:path';
 import { applyCooldownDays } from '../config.js';
 import { readProjectFile } from '../projectFile.js';
-import { loadTeamConfig, resolvePolicy } from '../teamConfig.js';
-import { agentMessage, decide, type HookDecision, timeoutDecision } from './policy.js';
+import type { Policy } from '../teamConfig.js';
+import type { HookDecision } from './policy.js';
 import { type DepIntent, fromCommand, fromFileWrite, isGuardedFile } from './intent.js';
 import { lifecycleIntents } from './command.js';
 import { unverifiable } from './spec.js';
-import { decideActions } from '../actions/check.js';
-import { stripInvisible } from '../untrusted/index.js';
+import { stripInvisible } from '../untrusted/normalize.js';
 import { type ActionUse, changedUses, isWorkflowFile } from '../actions/workflow.js';
-import { languageOf, undeclaredImportNotes } from './imports.js';
+import { languageOf } from './languages.js';
 import { parseApplyPatch } from './applyPatch.js';
 
 function readIfExists(p: string): string | undefined {
@@ -148,7 +154,8 @@ export async function importNotesFromToolInput(input: Record<string, any>, cwd: 
   const change = fileChange(input, cwd, (f) => Boolean(languageOf(f)));
   if (!change) return [];
   const timeout = new Promise<string[]>((resolve) => setTimeout(() => resolve([]), ms).unref());
-  return Promise.race([undeclaredImportNotes(change.abs, change.next, change.old).catch(() => []), timeout]);
+  const notes = import('./imports.js').then(({ undeclaredImportNotes }) => undeclaredImportNotes(change.abs, change.next, change.old));
+  return Promise.race([notes.catch(() => []), timeout]);
 }
 
 const IMPORTS_DEADLINE_MS = Number(process.env.SAFECTX_IMPORTS_TIMEOUT_MS ?? 15_000);
@@ -174,9 +181,14 @@ async function readStdin(): Promise<string> {
  * The team policy is the .safectx.json nearest to cwd; a broken one denies
  * (fail closed) until it is fixed, since ignoring it would drop its deny list.
  */
-async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number, cwd: string): Promise<HookDecision> {
-  const team = loadTeamConfig(cwd);
-  if (team.error) {
+export async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number, cwd: string, given?: Policy): Promise<HookDecision> {
+  const [{ loadTeamConfig, resolvePolicy }, { decide, timeoutDecision }, { decideActions }] = await Promise.all([
+    import('../teamConfig.js'),
+    import('./policy.js'),
+    import('../actions/check.js'),
+  ]);
+  const team = given ? {} : loadTeamConfig(cwd);
+  if ('error' in team && team.error) {
     // The fix to the file itself goes to a human, like any other change to the policy.
     if (intents.length && !uses.length && intents.every((i) => i.unverifiable?.level === 'guard')) {
       return { action: 'ask', problems: [`the project policy cannot be read (${team.error}); a human should approve this change to it.`], warnings: [], checked: 0 };
@@ -188,7 +200,7 @@ async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number,
       checked: 0,
     };
   }
-  const policy = resolvePolicy(team.config, process.env, team.file);
+  const policy = given ?? resolvePolicy('config' in team ? team.config : undefined, process.env, 'file' in team ? team.file : undefined);
   applyCooldownDays(policy.cooldownDays);
   // The Actions check reads SAFECTX_ACTIONS_PIN; the hook is a short-lived process, so the policy can set it.
   if (policy.actionsPin && !process.env.SAFECTX_ACTIONS_PIN) process.env.SAFECTX_ACTIONS_PIN = policy.actionsPin;
@@ -197,7 +209,7 @@ async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number,
   const both = async () => {
     const [deps, actions] = await Promise.all([
       intents.length ? decide(intents, policy) : undefined,
-      uses.length ? decideActions(uses) : undefined,
+      uses.length ? decideActions(uses, policy.onError) : undefined,
     ]);
     return deps && actions ? merge(deps, actions) : ((deps ?? actions) as HookDecision);
   };
@@ -274,10 +286,11 @@ export async function evaluateHook(inputs: Record<string, any>[], cwd: string, m
   if (!intents.length && !uses.length) {
     // Not a dependency change; a source file may still import something nobody declared.
     const d = notesOnly(await notes);
-    return { d, msg: agentMessage(d) };
+    return { d, msg: d.warnings.length ? (await import('./policy.js')).agentMessage(d) : '' };
   }
   const d = await decideWithin(intents, uses, ms, cwd);
   d.warnings.push(...(await notes));
+  const { agentMessage } = await import('./policy.js');
   return { d, msg: agentMessage(d) };
 }
 

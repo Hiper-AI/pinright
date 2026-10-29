@@ -16,13 +16,10 @@ import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { PYTHON_STDLIB, npmPackageOf, pythonAliasesOf, pythonDistributions } from '../data/importNames.js';
 import { normalizePypiName, parseFile } from '../tree/lockfiles.js';
 import { checkPackage } from '../verdict.js';
+import { type Lang, languageOf } from './languages.js';
 
-type Lang = 'python' | 'js';
+export { languageOf } from './languages.js';
 
-const PY_SOURCE = /\.pyw?$/i;
-const JS_SOURCE = /\.(m|c)?(j|t)sx?$|\.(vue|svelte|astro)$/i;
-const PY_MANIFEST = /(^|[\\/])(requirements[^\\/]*\.(txt|in)|pyproject\.toml)$/i;
-const JS_MANIFEST = /(^|[\\/])package\.json$/i;
 const SKIP_DIRS = /^(node_modules|__pycache__|site-packages|dist|build|out|coverage|target|vendor|venv|env|\..*)$/i;
 
 const MAX_FILES = 400;
@@ -32,14 +29,6 @@ const MAX_DEPTH = 6;
 const MAX_REPORTED = 6;
 const UP_LEVELS = 6;
 
-export function languageOf(file: string): { lang: Lang; manifest: boolean } | undefined {
-  if (/node_modules|[\\/]site-packages[\\/]|[\\/]\.?venv[\\/]/.test(file)) return undefined;
-  if (PY_MANIFEST.test(file)) return { lang: 'python', manifest: true };
-  if (JS_MANIFEST.test(file)) return { lang: 'js', manifest: true };
-  if (PY_SOURCE.test(file)) return { lang: 'python', manifest: false };
-  if (JS_SOURCE.test(file) && !/\.d\.[mc]?ts$/i.test(file)) return { lang: 'js', manifest: false };
-  return undefined;
-}
 
 // ---------------------------------------------------------------- parsing ---
 
