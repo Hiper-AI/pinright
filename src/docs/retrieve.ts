@@ -297,6 +297,20 @@ export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk
   return out;
 }
 
+/**
+ * Text in a repo that is not documentation for the package's users: notes for contributors and
+ * for coding agents (AGENTS.md, .agents/skills, docs/plans, a compiler's internal passes), eval
+ * prompts, benchmark write-ups, the content of example apps. It matches the words of a question
+ * as well as a guide does ("form", "action", "markdown", "connection") and teaches the wrong thing.
+ */
+const NOT_USER_DOCS =
+  /(^|\/)(\.[\w-]+|evals?|plans?|rfcs?|benchmarks?|benchmarking|perf|performance|e2e|examples?|samples?|playground|fixtures|scripts|internals?|migrations|passes|rust-port)\/|(^|\/)(AGENTS|CLAUDE|GEMINI|SKILL|PROMPT|MAINTAIN\w*|TESTING|RELEASING|\w*PUBLISHING|DEVELOP\w*|ARCHITECTURE|GOVERNANCE|SUPPORT|ROADMAP)\.(md|mdx|rst|txt)$|(^|\/)_[\w-]+\.mdx?$/i;
+
+/** Contributor and agent notes, evals, example apps; error-message pages (Next's errors/*) unless the question is about an error. */
+export function notUserDocs(path: string, query = ''): boolean {
+  return NOT_USER_DOCS.test(path) || (/(^|\/)errors\//i.test(path) && !/\berror/i.test(query));
+}
+
 /** Ranks file paths before downloading them: we cannot fetch 500 docs pages per question. */
 export function rankPaths<T extends { path: string }>(files: T[], query: string, extraTerms: string[] = []): (T & { score: number; terms: string[] })[] {
   const q = new Set([...tokenize(query), ...extraTerms.flatMap(tokenize)]);

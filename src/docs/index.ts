@@ -9,7 +9,7 @@ import { packageMeta, type PackageMeta } from '../registry.js';
 import { docsSourceFor } from '../data/docsRepos.js';
 import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
-import { chunkFile, coverPaths, rank, rankPaths, select, type Chunk, type DocFile } from './retrieve.js';
+import { chunkFile, coverPaths, notUserDocs, rank, rankPaths, select, type Chunk, type DocFile } from './retrieve.js';
 import {
   docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
 } from './sources.js';
@@ -63,10 +63,13 @@ function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUp
   const scored = rankPaths(prose, query, nameTerms).map((f) => ({
     ...f,
     hit: f.score > 0,
+    internal: notUserDocs(f.path, query),
     score: f.score + (f.inPackageDir ? 0.5 : 0) + (/(^|\/)docs?\//.test(f.path) ? 0.3 : 0),
   }));
-  const hits = coverPaths(scored.filter((f) => f.hit).sort((a, b) => b.score - a.score), MD_FILES);
-  const fill = scored.filter((f) => !f.hit && (f.fill ?? /(^|\/)(docs?|guides?|documentation)\//i.test(f.path))).sort((a, b) => b.score - a.score);
+  // Contributor and agent notes only when the user docs match too little of the question.
+  const userHits = coverPaths(scored.filter((f) => f.hit && !f.internal).sort((a, b) => b.score - a.score), MD_FILES);
+  const hits = userHits.length >= 4 ? userHits : [...userHits, ...scored.filter((f) => f.hit && f.internal).slice(0, 4 - userHits.length)];
+  const fill = scored.filter((f) => !f.hit && !f.internal && (f.fill ?? /(^|\/)(docs?|guides?|documentation)\//i.test(f.path))).sort((a, b) => b.score - a.score);
   const rankedProse: RemoteFile[] = [...hits];
   let bytes = hits.reduce((a, f) => a + (f.size ?? 20_000), 0);
   for (const f of fill) {
@@ -169,7 +172,8 @@ export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMet
         content: keep(content),
         kind: f.path.endsWith('.d.ts') ? 'types' : 'markdown',
         versionAccurate: f.versionAccurate ?? (f.origin === 'package' || repo.atTag),
-        boost: f.inPackageDir ? 1.2 : 1,
+        // A contributor note that made the cut still ranks below the user docs.
+        boost: (f.inPackageDir ? 1.2 : 1) * (notUserDocs(f.path, opts.query) ? 0.5 : 1),
       };
     })
   ).filter((d): d is DocFile => Boolean(d));

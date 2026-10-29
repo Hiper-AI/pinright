@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, rank, rankPaths, select, tidy, tokenize, type DocFile } from '../src/docs/retrieve.js';
+import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, rank, rankPaths, select, tidy, tokenize, type DocFile } from '../src/docs/retrieve.js';
 import { parseLlmsIndex, tagCandidates } from '../src/docs/sources.js';
 import { ecosystemHint, formatLibraryId, nameVariants, parseLibraryRef } from '../src/search.js';
 
@@ -78,6 +78,20 @@ describe('ranking', () => {
     expect(picked).toContain('docs/concepts/config.md');
     expect(picked).toContain('docs/concepts/validators.md');
     expect(picked.filter((p) => p.includes('extra_types'))).toHaveLength(2);
+  });
+
+  it('notUserDocs: contributor and agent notes, evals, plans and example apps are not user docs', () => {
+    for (const p of [
+      'astro/.agents/skills/astro-developer/SKILL.md', 'docs/plans/agent-native/004-skill-connection-config.md', 'packages/core/auth-js/AGENTS.md',
+      'evals/proxy/PROMPT.md', 'examples/blog/src/content/blog/first-post.md', 'compiler/packages/babel-plugin-react-compiler/docs/passes/02-enterSSA.md',
+      'docs/TESTING.md', 'docs/JSR_PUBLISHING.md', 'hono/docs/MAINTAINING.md', 'packages/realtime-js/migrations/httpsend.md', 'docs/en/docs/_llm-test.md',
+    ]) expect(notUserDocs(p), p).toBe(true);
+    for (const p of ['docs/01-app/03-api-reference/03-file-conventions/proxy.mdx', 'docs/topics/migrations.txt', 'docs/en/docs/advanced/events.md', 'docs/guide/templates.md']) {
+      expect(notUserDocs(p), p).toBe(false);
+    }
+    // Error-message pages count when the question is about an error.
+    expect(notUserDocs('errors/no-cache.mdx', 'set up caching')).toBe(true);
+    expect(notUserDocs('errors/no-cache.mdx', 'fix the no-cache error')).toBe(false);
   });
 
   it('select skips near-duplicate sections (the same step in several framework guides)', () => {
