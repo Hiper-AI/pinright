@@ -9,6 +9,7 @@ import { packageMeta, type PackageMeta } from '../registry.js';
 import { docsSourceFor } from '../data/docsRepos.js';
 import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
+import { applicableRenames, expandQuery, packageRenames, renamesNote, type Rename } from './renames.js';
 import { chunkFile, coverPaths, notUserDocs, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile } from './retrieve.js';
 import {
   docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
@@ -137,16 +138,24 @@ export interface DocsOptions {
 export async function getDocs(opts: DocsOptions): Promise<DocsResult> {
   const budget = opts.budgetChars ?? config.docsBudgetChars;
   const out = new UntrustedOutput();
-  const { meta, docFiles, pyApi } = await collectDocs(opts);
+  const { meta, docFiles, pyApi, query, renames } = await collectDocs(opts);
   // Normalized before chunking: hidden text never reaches a chunk, and hiding instructions is a finding.
   for (const d of docFiles) d.content = out.prepare(d.content, `${d.label}, ${meta.name}@${meta.version}`, d.kind === 'types' ? 'code' : 'markdown');
-  const result = await assemble(opts, budget, meta, docFiles, pyApi, out);
+  const result = await assemble({ ...opts, query }, budget, meta, docFiles, pyApi, out, renames);
   out.record(opts.ecosystem, meta.name, meta.version);
   return result;
 }
 
 /** Every document gathered for one package version, before ranking (exported for bench/injection). */
-export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMeta; docFiles: DocFile[]; pyApi?: PythonApi; wantUpgrade: boolean }> {
+export async function collectDocs(opts: DocsOptions): Promise<{
+  meta: PackageMeta;
+  docFiles: DocFile[];
+  pyApi?: PythonApi;
+  wantUpgrade: boolean;
+  /** The question, with the new name next to each old one it uses (see renames.ts). */
+  query: string;
+  renames: Rename[];
+}> {
   const meta = await packageMeta(opts.ecosystem, opts.name, opts.version);
   const wantUpgrade = Boolean(opts.upgrade) || UPGRADE_TERMS.test(opts.query);
 
@@ -161,7 +170,12 @@ export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMet
     opts.ecosystem === 'pypi' ? pythonApi(meta.name, meta.version) : Promise.resolve(undefined),
   ]);
 
-  const chosen = pickFiles([...pkgFiles, ...repo.files, ...docsRepo], meta, opts.query, wantUpgrade);
+  // Names the question uses that this version renamed: the new ones are searched too.
+  const listed = [...pkgFiles, ...repo.files, ...docsRepo];
+  const renames = applicableRenames(await packageRenames(opts.ecosystem, meta, listed, pyApi).catch(() => []), opts.query);
+  const query = expandQuery(opts.query, renames);
+
+  const chosen = pickFiles(listed, meta, query, wantUpgrade);
   const docFiles: DocFile[] = (
     await pool(chosen, 6, async (f): Promise<DocFile | undefined> => {
       const content = await fetchFile(f.url);
@@ -177,7 +191,7 @@ export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMet
       };
     })
   ).filter((d): d is DocFile => Boolean(d));
-  if (pyApi) docFiles.push(...apiDocFiles(pyApi, opts.query));
+  if (pyApi) docFiles.push(...apiDocFiles(pyApi, query));
 
   if (meta.readme && !docFiles.some((d) => /readme/i.test(d.label))) {
     docFiles.push({ label: `README (${opts.ecosystem} ${meta.name} ${meta.version})`, url: `https://pypi.org/project/${meta.name}/${meta.version}/`, content: meta.readme, kind: 'markdown', versionAccurate: true });
@@ -192,9 +206,9 @@ export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMet
     const extra = docsSource?.llmsIndex ? [meta.name] : [];
     const max = docsSource?.llmsIndex ? CURATED_LLMS_PAGES : LLMS_PAGES;
     // Several topics: the best page of each, then the best overall, one more page per extra topic.
-    const tl = topics(opts.query);
+    const tl = topics(query);
     const ranked = topicsFirst(
-      rankPaths(paths, opts.query, extra),
+      rankPaths(paths, query, extra),
       tl.map((t) => rankPaths(paths, t, extra).filter((e) => e.score > 0)),
       Math.max(max, Math.min(tl.length, CURATED_LLMS_PAGES)),
       (e) => e.url,
@@ -204,10 +218,10 @@ export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMet
       if (content) docFiles.push({ label: e.title, url: e.url, content: keep(content), kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.8 : 1 });
     }
   }
-  return { meta, docFiles, pyApi, wantUpgrade };
+  return { meta, docFiles, pyApi, wantUpgrade, query, renames };
 }
 
-function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput): DocsResult {
+function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput, renames: Rename[] = []): DocsResult {
   const ranked = dedupe(rank(docFiles.flatMap(chunkFile), opts.query, topics(opts.query)));
   const best = ranked[0]?.score ?? 0;
   const sources = docFiles.map((d) => ({ label: d.label, url: d.url, versionAccurate: d.versionAccurate }));
@@ -237,6 +251,9 @@ function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles
         : `: ${accurate} from the package or the repo at its release tag, ${picked.length - accurate} from the current site docs (may describe a newer version).`),
     ...notesFor(picked.map((c) => c.text).join('\n')),
   ];
+  // Names read from the package's files: fenced like the docs they come from.
+  const renamed = renamesNote(meta.name, meta.version, renames);
+  if (renamed) header.push(out.block(renamed, `${[...new Set(renames.map((r) => r.source))].join(', ')}, ${meta.name}@${meta.version}`));
   return { meta, via: 'local', sources, text: format(meta, picked, header, out) };
 }
 

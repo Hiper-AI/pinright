@@ -107,7 +107,7 @@ async function stubPackage(name: string, version: string): Promise<{ label: stri
 
 /** The rendered API of name@version, cached; undefined when there is no readable distribution. */
 export async function pythonApi(name: string, version: string): Promise<PythonApi | undefined> {
-  const key = `pyapi:v2:${normalizePypiName(name)}@${version}`;
+  const key = `pyapi:v3:${normalizePypiName(name)}@${version}`;
   const res = await cached<PythonApi | null>(key, config.ttl.docs, async () => {
     const rel = await release(name, version);
     const file = pickDistribution(rel.files);

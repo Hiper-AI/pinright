@@ -314,8 +314,14 @@ export interface RenderOptions {
 function renderDef(d: PyDef, indent: string, opts: RenderOptions, qual: string, cap: number): string[] {
   if (d.kind === 'assign') return [indent + d.header];
   const header = (d.kind === 'def' && opts.stubSigs?.get(qual)) || d.header;
-  // Long decorator calls (pandas' @Appender(_doc.format(...))) are noise: keep the name only.
-  const decorators = d.decorators.map((x) => x.replace(/\s*\n\s*/g, ' ')).map((x) => (x.length > 100 ? x.replace(/\(.*$/s, '(...)') : x));
+  // Long decorator calls (pandas' @Appender(_doc.format(...))) are noise: keep the name only. A deprecation
+  // keeps the start of its message, which names the replacement ("on_event is deprecated, use lifespan ...").
+  const short = (x: string) => {
+    if (x.length <= 100) return x;
+    const dep = x.match(/^@[\w.]*deprecated\(\s*(?:[rRuUbBfF]{0,2})("""|'''|"|')\s*([\s\S]*)/);
+    return dep ? `@${x.slice(1).split('(')[0]}(${dep[1]}${dep[2].split(/"""|'''|"|'/)[0].slice(0, 160).trim()}...${dep[1]})` : x.replace(/\(.*$/s, '(...)');
+  };
+  const decorators = d.decorators.map((x) => x.replace(/\s*\n\s*/g, ' ')).map(short);
   const lines = [...decorators.map((x) => indent + x), ...headerLines(header, indent)];
   lines[lines.length - 1] += ':';
   const inner = `${indent}    `;

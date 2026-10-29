@@ -200,6 +200,14 @@ describe('python API extraction', () => {
     expect(out).not.toContain('DEBUG'); // plain module constants only when __all__ lists them
   });
 
+  it('a long @deprecated decorator keeps the start of its message; other long decorators only their name', () => {
+    const msg = 'on_event is deprecated, use lifespan event handlers instead. Read more about it in the FastAPI docs for Lifespan Events, with examples.';
+    const src = `@deprecated(\n    """\n    ${msg}\n    """\n)\ndef on_event(event_type): ...\n@Appender(_shared_docs["aggregate"] % dict(klass="DataFrame", axis="{0 or 'index', 1 or 'columns'}", see_also=_agg_see_also_doc))\ndef aggregate(func): ...\n`;
+    const out = renderModule('m.py', parseModule(src));
+    expect(out).toContain('@deprecated("""on_event is deprecated, use lifespan event handlers instead.');
+    expect(out).toContain('@Appender(...)');
+  });
+
   it('keeps the implementation of an overloaded function, not the overloads', () => {
     const src = '@overload\ndef f(x: int) -> int: ...\n@overload\ndef f(x: str) -> str: ...\ndef f(x):\n    """Doc of f."""\n';
     const out = renderModule('m.py', parseModule(src));
