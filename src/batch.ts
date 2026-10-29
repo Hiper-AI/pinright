@@ -73,6 +73,8 @@ export async function checkPackages(items: BatchItem[], defaultEcosystem?: strin
 function plainlyOk(r: BatchResult): boolean {
   const v = r.verdict;
   if (!v || v.report.verdict !== 'ok') return false;
+  // A supply-chain signal worth a warning (new install scripts, publisher change...) needs its details shown.
+  if (v.risk?.signals.some((s) => s.level !== 'info')) return false;
   const use = versionToUse(v);
   return !r.version || use === r.version;
 }
@@ -117,6 +119,8 @@ function row(r: BatchResult): string {
       if (rep.safeVersionLicenses?.length && use === rep.safeVersion) notes.push(rep.safeVersionLicenses.join('/'));
       break;
   }
+  const risky = v.risk?.signals.filter((s) => s.level !== 'info') ?? [];
+  if (risky.length) notes.push(`supply-chain: ${risky.map((s) => s.id).join(', ')}`);
   if (rep.recentMajor && use !== '-' && use.startsWith(rep.recentMajor.line.replace(/x$/, ''))) {
     notes.push(`${rep.recentMajor.line} is a recent major (since ${rep.recentMajor.since}): read query-docs`);
   }
@@ -140,7 +144,7 @@ export function formatBatch(results: BatchResult[]): string {
     lines.push('', 'Details for the packages that need attention:');
     for (const r of details) {
       // The header already carries the sources and the date.
-      const notice = securityNotice(r.verdict!.report, r.verdict!.typo).split('\n').filter((l) => !l.startsWith('Verified against '));
+      const notice = securityNotice(r.verdict!.report, r.verdict!.typo, r.verdict!.risk).split('\n').filter((l) => !l.startsWith('Verified against '));
       lines.push('', ...notice);
     }
   }

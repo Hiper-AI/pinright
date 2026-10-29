@@ -4,7 +4,8 @@
  *
  *   deny : malware, typosquat lookalike, package or version that does not exist,
  *          a version with known advisories when a clean one exists, a deprecated
- *          version when a maintained one exists;
+ *          version when a maintained one exists, a brand-new package with install
+ *          scripts, a release that adds install scripts from a new publisher (src/risk);
  *   ask  : the newest version itself has advisories and nothing clean exists;
  *   allow: everything else. Warnings (cooldown, unknown source) go to the agent
  *          as context without blocking, unless configured otherwise.
@@ -13,6 +14,7 @@ import { getDependencies, getPackage } from '../advisories/depsdev.js';
 import { queryBatch } from '../advisories/osv.js';
 import { config } from '../config.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
+import { riskOutcome } from '../risk/index.js';
 import { normalizePypiName } from '../tree/lockfiles.js';
 import semver from 'semver';
 import { GRAPH_ECOSYSTEMS, pickVersion, satisfiesPep440 } from '../tree/resolveManifest.js';
@@ -139,7 +141,7 @@ function conflicts(checked: Checked[]): Outcome[] {
 /** The upgrade of `parent` whose resolved graph carries clean versions of every name in `names`. */
 async function parentUpgrade(c: Checked, names: string[]): Promise<{ to: string; sameLine: boolean; pulled: Map<string, string> } | undefined> {
   if (!c.version) return undefined;
-  const r = c.v?.report ?? (await checkPackage(c.i.ecosystem, c.i.name, c.version).catch(() => undefined))?.report;
+  const r = c.v?.report ?? (await checkPackage(c.i.ecosystem, c.i.name, c.version, { risk: false }).catch(() => undefined))?.report;
   if (!r) return undefined;
   const candidates = [...new Set([r.safeVersionSameLine, r.safeVersion].filter((x): x is string => Boolean(x) && x !== c.version))];
   for (const to of candidates) {
@@ -281,6 +283,9 @@ export async function decide(intents: DepIntent[]): Promise<HookDecision> {
       }
     }
     outcomes.push(o);
+    // Behavior signals (install scripts, publisher, provenance, age): deny only the narrow cases, note the rest.
+    const risky = riskOutcome(c.label, c.v?.risk);
+    if (risky) outcomes.push(risky);
   }
 
   outcomes.push(...conflicts(checked));

@@ -37,7 +37,7 @@ async function check(args: string[]): Promise<number> {
   }
   const [name, version] = eco === 'pypi' && args[1].includes('==') ? args[1].split('==') : splitNpmSpec(args[1]);
   const v = await checkPackage(eco, name, version);
-  console.log(securityNotice(v.report, v.typo));
+  console.log(securityNotice(v.report, v.typo, v.risk));
   return v.report.verdict === 'ok' ? 0 : 1;
 }
 

@@ -93,7 +93,7 @@ safectx blocked this dependency change:
 | `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the safe one; with a vulnerable one it documents the same-line fix. Context7 ids (`/vercel/next.js`) work too. |
 | `upgrade-guide` | What changes between two versions: breaking changes, removed or renamed APIs, config and default changes, packages that split off, deprecations, and the advisories the move fixes. Without `to` it targets the recommended version. |
 | `check-packages` | The verdict for up to 50 packages in one call: one table row each (verdict, version to pin, short reason), and the full notice only for the ones that need attention. The cheap way to vet a dependency list. |
-| `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes. `detail: true` returns the full JSON report. |
+| `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes, supply-chain signals (`risk`). |
 | `check-manifest` | Whole-tree audit of `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `Cargo.lock`, `go.mod`, `Gemfile.lock`, `packages.lock.json`, or a bare `package.json` / `pyproject.toml` / `Cargo.toml` resolved through deps.dev. Each finding comes with its chain and fix. |
 
 Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `unknown-package`,
@@ -118,7 +118,10 @@ dependency of another pinned package, it points at the parent upgrade, so the fi
 It also blocks a manifest whose pinned versions contradict each other (a pin outside the range its
 parent requires), because that install would fail. When no clean version exists at all, it asks a
 human for high and critical advisories and lets the rest through with a note, so the work does not stop
-on a moderate finding nobody can fix yet. Everything else passes, with notes for the agent.
+on a moderate finding nobody can fix yet. It also blocks two supply-chain patterns (see below): a
+package first published less than 14 days ago that runs install scripts, and a release that adds install
+scripts and comes from a publisher the previous releases never had. Everything else passes, with notes
+for the agent.
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -127,6 +130,38 @@ on a moderate finding nobody can fix yet. Everything else passes, with notes for
 | `SAFECTX_HOOK_NO_FIX` | `severity` | When no clean version exists: `severity` asks for high/critical and allows the rest; or `allow`, `ask`, `deny` for all. |
 | `SAFECTX_HOOK_COOLDOWN` | `warn` | `enforce` blocks an unpinned install whose newest version is inside the cooldown window. |
 | `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check; on timeout it behaves as `SAFECTX_HOOK_ON_ERROR`. |
+| `SAFECTX_HOOK_RISK` | `enforce` | Supply-chain signals: `enforce` blocks the two patterns above, `warn` only notes them, `off` ignores them. |
+
+## Supply-chain signals
+
+OSV marks a malicious release (`MAL-*`) days after the attack. The release's behavior shows earlier, so
+for the version you would install (the one you pass, or the latest), safectx also reports a `risk`
+section with signals at three levels: `info`, `warn` and `high`.
+
+| Signal | Source | Level |
+|---|---|---|
+| Install scripts (`preinstall`, `install`, `postinstall`, implicit `node-gyp`) | npm version document | `info`; `warn` when the previous releases had none; `high` when the package is brand new, or when the scripts arrive with a new publisher |
+| Provenance dropped: earlier releases had an npm provenance attestation, this one has none | npm version document | `warn`, `high` with a new publisher |
+| Publisher change: the account that published this recent release published none of the previous ones | npm `_npmUser` | `warn`; `info` when that account was already a maintainer or the release has provenance |
+| Young package, with weekly downloads | deps.dev first publish date, npm downloads API, pypistats.org | `warn` when young and under the download threshold, `info` otherwise |
+| OpenSSF Scorecard below the threshold, or a dangerous workflow, with the notable failing checks | deps.dev project | `info` only |
+
+Install scripts, provenance and publisher come from npm only; Scorecard and age cover every ecosystem
+deps.dev knows, and downloads cover npm and PyPI. safectx reads the version documents of the requested
+release and up to 5 earlier ones (a few KB each), never the full packument. Missing data produces no
+signal, and the notice lists sources that did not answer under "Not verified". Signals never change
+the verdict.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SAFECTX_RISK_NEW_PACKAGE_DAYS` | `14` | A package younger than this with install scripts is `high` (blocked by the hook). |
+| `SAFECTX_RISK_RECENT_DAYS` | `30` | Window for "young package" and for flagging a publisher change. |
+| `SAFECTX_RISK_LOW_DOWNLOADS` | `100` | Weekly downloads under this, on a young package, is a `warn`. |
+| `SAFECTX_RISK_SCORECARD_LOW` | `4` | Scorecard under this is noted. |
+| `SAFECTX_RISK_HISTORY` | `5` | Earlier releases compared for scripts, provenance and publisher. |
+
+Typosquat lookalikes are checked against about 3,600 npm and 3,000 PyPI names, regenerated by
+`npx tsx scripts/popular.ts` from pinned public rankings (see the header of `src/data/popular.ts`).
 
 ## Upgrade guides
 

@@ -6,6 +6,7 @@
 import { assessPackage, type PackageReport } from './advisories/resolve.js';
 import { getPackage } from './advisories/depsdev.js';
 import { type Ecosystem } from './ecosystems.js';
+import { assessRisk, type RiskReport } from './risk/index.js';
 import { checkTyposquat, findLookalike, type TyposquatReport } from './typosquat.js';
 
 const YOUNG_PACKAGE_DAYS = 60;
@@ -13,6 +14,8 @@ const YOUNG_PACKAGE_DAYS = 60;
 export interface Verdict {
   report: PackageReport;
   typo?: TyposquatReport;
+  /** Behavior signals beyond known advisories (install scripts, provenance, publisher, age). */
+  risk?: RiskReport;
 }
 
 async function firstPublishedAt(eco: Ecosystem, name: string): Promise<number | undefined> {
@@ -23,7 +26,27 @@ async function firstPublishedAt(eco: Ecosystem, name: string): Promise<number | 
   return dates.length ? Math.min(...dates) : undefined;
 }
 
+/**
+ * The verdict plus the supply-chain risk signals of the version the agent would
+ * get: the one it asked for, or the latest (what a bare install resolves to).
+ * Pass `{ risk: false }` where only the verdict matters (search results).
+ */
 export async function checkPackage(
+  eco: Ecosystem,
+  name: string,
+  version?: string,
+  opts: { risk?: boolean } = {},
+): Promise<Verdict> {
+  const v = await checkVerdict(eco, name, version);
+  if (opts.risk === false) return v;
+  const r = v.report;
+  const target = version ? r.requested?.version : r.latestVersion;
+  if (!target || r.verdict === 'unknown-package' || r.verdict === 'malicious' || r.verdict === 'unknown') return v;
+  v.risk = await assessRisk(eco, name, target).catch(() => ({ version: target, signals: [], unknown: ['risk signals'], sources: [] }));
+  return v;
+}
+
+async function checkVerdict(
   eco: Ecosystem,
   name: string,
   version?: string,

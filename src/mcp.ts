@@ -154,7 +154,7 @@ export function buildMcpServer(): McpServer {
         }
         const lines = await Promise.all(
           hits.map(async (h, i) => {
-            const v = i < VERDICT_RESULTS ? await checkPackage(h.ecosystem, h.name).catch(() => undefined) : undefined;
+            const v = i < VERDICT_RESULTS ? await checkPackage(h.ecosystem, h.name, undefined, { risk: false }).catch(() => undefined) : undefined;
             return hitLine(h, v);
           }),
         );
@@ -191,7 +191,7 @@ export function buildMcpServer(): McpServer {
         const requested = (version ?? ref.version)?.replace(/^v(?=\d)/, '');
         const v = await checkPackage(ref.ecosystem, ref.name, requested);
         const r = v.report;
-        const notice = securityNotice(r, v.typo);
+        const notice = securityNotice(r, v.typo, v.risk);
         if (r.verdict === 'malicious' || r.verdict === 'possible-typosquat') return text(notice);
 
         let docsVersion = requested ?? r.safeVersion ?? r.leastExposed?.version ?? r.latestVersion;
@@ -237,8 +237,8 @@ export function buildMcpServer(): McpServer {
         const eco = parseEcosystem(ecosystem);
         if (!eco) return errorText(new Error(`Unknown ecosystem "${ecosystem}". Use one of: ${ECOSYSTEMS.join(', ')}.`));
         const v = await checkPackage(eco, name.trim(), version?.trim() || undefined);
-        const notice = securityNotice(v.report, v.typo);
-        if (detail) return text({ notice, ...v.report, typosquat: v.typo });
+        const notice = securityNotice(v.report, v.typo, v.risk);
+        if (detail) return text({ notice, ...v.report, typosquat: v.typo, risk: v.risk });
         const more = (v.report.requested?.advisories.length ?? 0) > 8 ? '\nCall again with detail: true for every advisory.' : '';
         return text(notice + more);
       } catch (err) {

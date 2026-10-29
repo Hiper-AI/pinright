@@ -6,12 +6,15 @@ import type { PackageReport } from '../src/advisories/resolve.js';
 
 const reports = new Map<string, Partial<PackageReport> & { typo?: { lookalikeOf?: string; existsInRegistry?: boolean } }>();
 const versions = new Map<string, string[]>();
+const risks = new Map<string, { id: string; level: 'info' | 'warn' | 'high'; message: string }[]>(); // name -> signals
 
 vi.mock('../src/verdict.js', () => ({
   checkPackage: vi.fn(async (eco: string, name: string, version?: string) => {
     const r = reports.get(`${name}@${version ?? ''}`) ?? reports.get(name) ?? { verdict: 'ok' };
     const { typo, ...rest } = r;
-    return { report: { package: name, ecosystem: eco, checkedAt: '', sources: [], ...rest }, typo };
+    const signals = risks.get(name);
+    const risk = signals ? { version: version ?? '', signals, unknown: [], sources: [] } : undefined;
+    return { report: { package: name, ecosystem: eco, checkedAt: '', sources: [], ...rest }, typo, risk };
   }),
 }));
 const graphs = new Map<string, Record<string, string>>(); // "name@version" -> { dep: version }
@@ -44,6 +47,8 @@ const adv = (id: string) => ({ id, aliases: [`CVE-${id}`], url: '', severity: 'H
 beforeEach(() => {
   reports.clear();
   versions.clear();
+  risks.clear();
+  delete process.env.SAFECTX_HOOK_RISK;
   graphs.clear();
   requirements.clear();
   vulnerable.clear();
@@ -212,5 +217,46 @@ describe('no clean version, but a less exposed one', () => {
     const d = await decide([{ ecosystem: 'npm', name: 'nuxt', spec: '4.0.3', source: 'package.json' }]);
     expect(d.action).toBe('deny');
     expect(d.problems[0]).toContain('the least exposed is 4.6.2 (1 advisory, worst MODERATE): npm install nuxt@4.6.2');
+  });
+});
+
+describe('supply-chain risk signals', () => {
+  const sig = (id: string, level: 'info' | 'warn' | 'high', message: string) => ({ id, level, message });
+
+  it('denies running a brand-new package with install scripts through npx', async () => {
+    versions.set('fresh-cli', ['1.0.0']);
+    risks.set('fresh-cli', [sig('install-script-new-package', 'high', 'the package was first published 2 days ago and runs install scripts (postinstall: node x.js)')]);
+    const d = await decide([{ ecosystem: 'npm', name: 'fresh-cli', source: 'npx fresh-cli', executes: true }]);
+    expect(d.action).toBe('deny');
+    expect(d.problems[0]).toContain('fresh-cli (npm, executed), version 1.0.0: the package was first published 2 days ago');
+  });
+
+  it('denies a release that adds install scripts from a new publisher', async () => {
+    versions.set('popular-lib', ['2.0.0', '2.0.1']);
+    risks.set('popular-lib', [sig('install-script-added-new-publisher', 'high', 'adds install scripts'), sig('publisher-change', 'warn', 'new publisher')]);
+    const d = await decide([{ ecosystem: 'npm', name: 'popular-lib', spec: '2.0.1', source: 'npm i' }]);
+    expect(d.action).toBe('deny');
+  });
+
+  it('only warns for other signals, and stays silent on info', async () => {
+    versions.set('a', ['1.0.0']);
+    versions.set('b', ['1.0.0']);
+    risks.set('a', [sig('provenance-dropped', 'warn', '1.0.0 has no provenance attestation')]);
+    risks.set('b', [sig('install-script', 'info', 'runs install scripts (postinstall: node install.js)')]);
+    const d = await decide([
+      { ecosystem: 'npm', name: 'a', source: 'npm i a b' },
+      { ecosystem: 'npm', name: 'b', source: 'npm i a b' },
+    ]);
+    expect(d.action).toBe('allow');
+    expect(d.warnings).toEqual(['a (npm), version 1.0.0: 1.0.0 has no provenance attestation.']);
+  });
+
+  it('SAFECTX_HOOK_RISK=warn turns the deny into a note', async () => {
+    process.env.SAFECTX_HOOK_RISK = 'warn';
+    versions.set('fresh-cli', ['1.0.0']);
+    risks.set('fresh-cli', [sig('install-script-new-package', 'high', 'new and runs install scripts')]);
+    const d = await decide([{ ecosystem: 'npm', name: 'fresh-cli', source: 'npx fresh-cli', executes: true }]);
+    expect(d.action).toBe('allow');
+    expect(d.warnings[0]).toContain('new and runs install scripts');
   });
 });

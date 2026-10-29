@@ -4,9 +4,10 @@
  */
 import { installCommand } from './ecosystems.js';
 import { releaseLine, type PackageReport } from './advisories/resolve.js';
+import { riskLines, type RiskReport } from './risk/index.js';
 import { type TyposquatReport } from './typosquat.js';
 
-export function securityNotice(report: PackageReport, typo?: TyposquatReport): string {
+export function securityNotice(report: PackageReport, typo?: TyposquatReport, risk?: RiskReport): string {
   const lines: string[] = [];
   const pkg = `${report.package} (${report.ecosystem})`;
   const req = report.requested;
@@ -94,9 +95,11 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport): s
     );
   }
 
-  lines.push(`Verified against ${report.sources.join(' + ')} on ${report.checkedAt.slice(0, 10)}.`);
+  lines.push(...riskLines(risk));
+
+  lines.push(`Verified against ${[...report.sources, ...(risk?.sources ?? [])].join(' + ')} on ${report.checkedAt.slice(0, 10)}.`);
   if (report.verdict === 'ok') {
-    // Nothing to warn about: the routine lines fit on one; anything else keeps its own line.
+    // Nothing to warn about: the routine lines fit on one; anything else (risk signals) keeps its own line.
     const routine = /^(Security check:|Recommended version:|License:|Verified against )/;
     const one = lines.filter((l) => routine.test(l)).map((l) => l.replace(/\.$/, '')).join(' | ');
     return [one, ...lines.filter((l) => !routine.test(l))].join('\n');

@@ -43,17 +43,45 @@ function canon(name: string): string {
   return name.toLowerCase().replace(/[-_.]/g, '');
 }
 
+/**
+ * The list is ordered by popularity. Two edits are allowed only against the
+ * head, the names attackers actually imitate; the long tail allows one edit and
+ * skips short names, where one edit away covers half the registry.
+ */
+const HEAD = 1000;
+const TAIL_MIN_LENGTH = 5;
+
+interface PopularIndex {
+  exact: Set<string>;
+  entries: { name: string; canon: string; head: boolean }[];
+}
+
+const indexes = new Map<Ecosystem, PopularIndex>();
+
+function indexFor(eco: Ecosystem): PopularIndex {
+  let idx = indexes.get(eco);
+  if (!idx) {
+    const entries = (POPULAR[eco] ?? []).map((name, i) => ({ name, canon: canon(name), head: i < HEAD }));
+    idx = { exact: new Set(entries.map((e) => e.canon)), entries };
+    indexes.set(eco, idx);
+  }
+  return idx;
+}
+
 export function findLookalike(eco: Ecosystem, name: string): { of: string; distance: number } | undefined {
-  const list = POPULAR[eco] ?? [];
+  const idx = indexFor(eco);
   const target = canon(name);
-  if (list.some((p) => canon(p) === target)) return undefined; // it IS the popular one
-  const maxDist = target.length <= 4 ? 1 : 2;
+  if (idx.exact.has(target)) return undefined; // it IS the popular one
   let best: { of: string; distance: number } | undefined;
-  for (const p of list) {
-    const pc = canon(p);
-    if (Math.abs(pc.length - target.length) > maxDist) continue;
-    const dist = editDistance(target, pc);
-    if (dist <= maxDist && (!best || dist < best.distance)) best = { of: p, distance: dist };
+  for (const p of idx.entries) {
+    if (!p.head && p.canon.length < TAIL_MIN_LENGTH) continue;
+    const maxDist = target.length <= 4 || !p.head ? 1 : 2;
+    if (Math.abs(p.canon.length - target.length) > maxDist) continue;
+    const dist = editDistance(target, p.canon);
+    if (dist <= maxDist && (!best || dist < best.distance)) {
+      best = { of: p.name, distance: dist };
+      if (dist === 1 && p.head) break; // nothing is closer, and the head is ranked by popularity
+    }
   }
   return best;
 }

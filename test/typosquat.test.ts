@@ -28,3 +28,24 @@ describe('findLookalike', () => {
     expect(findLookalike('npm', 'reac')).toEqual({ of: 'react', distance: 1 });
   });
 });
+
+describe('findLookalike on the generated top lists', () => {
+  it('catches typos of names that were not in the hand-picked list', () => {
+    expect(findLookalike('npm', 'expresss')).toEqual({ of: 'express', distance: 1 });
+    expect(findLookalike('npm', 'lodahs')).toEqual({ of: 'lodash', distance: 1 });
+    expect(findLookalike('npm', 'chokdiar')?.of).toBe('chokidar');
+    expect(findLookalike('pypi', 'beautifulsop4')?.of).toBe('beautifulsoup4');
+  });
+
+  it('treats any listed name as the real thing', () => {
+    for (const name of ['preact', 'chokidar', 'ansi-styles', 'botocore', 'typing-extensions']) {
+      expect(findLookalike(name === 'botocore' || name === 'typing-extensions' ? 'pypi' : 'npm', name)).toBeUndefined();
+    }
+  });
+
+  it('is fast enough to call on every check', () => {
+    const t0 = performance.now();
+    for (let i = 0; i < 200; i++) findLookalike('npm', `some-unknown-package-${i}`);
+    expect((performance.now() - t0) / 200).toBeLessThan(20);
+  });
+});
