@@ -24,7 +24,7 @@ vi.mock('../src/http.js', async () => {
   };
 });
 
-const { assessPackage, compareVersionsDesc, dedupeAdvisories } = await import('../src/advisories/resolve.js');
+const { assessPackage, compareVersionsDesc, dedupeAdvisories, isPrerelease } = await import('../src/advisories/resolve.js');
 const { HttpError } = await import('../src/http.js');
 
 const DAY = 86_400_000;
@@ -124,6 +124,15 @@ describe('assessPackage', () => {
     await assessPackage('npm', 'lib');
     const versionCalls = calls.filter((u) => u.includes('/versions/'));
     expect(versionCalls.length).toBeLessThanOrEqual(12);
+  });
+});
+
+describe('isPrerelease', () => {
+  it('treats rc, canary, dev builds, Go pseudo-versions and +incompatible tags as not releasable', () => {
+    for (const v of ['3.0.0-rc.1', '15.4.0-canary.82', '1.0.0.dev6', '8.0.0-rc.28', 'v0.0.0-20190210073940-906799fef2f8', 'v3.3.10+incompatible', 'v3.3.5-retag.0.20180829034922-90822319eb61+incompatible']) {
+      expect(isPrerelease(v), v).toBe(true);
+    }
+    for (const v of ['1.2.3', 'v1.25.12', '2.32.4', '16.4.3', '6.1']) expect(isPrerelease(v), v).toBe(false);
   });
 });
 

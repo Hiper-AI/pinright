@@ -58,8 +58,12 @@ export interface PackageReport {
 }
 
 const PRERELEASE_HINT = /(alpha|beta|rc|canary|dev|preview|nightly|snapshot|pre|next|experimental)/i;
+// Go pseudo-versions ("v0.0.0-20190210073940-906799fef2f8") and "+incompatible"
+// tags are commits, not releases.
+const GO_PSEUDO = /^v?\d+\.\d+\.\d+-(?:\w+\.)?(?:0\.)?\d{14}-[0-9a-f]{12}$|\+incompatible$/;
 
-function isPrerelease(version: string): boolean {
+export function isPrerelease(version: string): boolean {
+  if (GO_PSEUDO.test(version)) return true;
   const parsed = semver.parse(version, { loose: true }) ?? semver.coerce(version, { includePrerelease: true });
   if (parsed && parsed.prerelease.length > 0) return true;
   return PRERELEASE_HINT.test(version);

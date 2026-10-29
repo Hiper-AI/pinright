@@ -97,17 +97,25 @@ async function verifyPackage(eco: Ecosystem, name: string, owner: string, repo: 
 
 const PRERELEASE = /[-+.](alpha|beta|rc|canary|dev|preview|nightly|snapshot|pre|next|experimental)/i;
 
-async function hasGoMod(owner: string, repo: string): Promise<boolean> {
+/**
+ * The module path from the repo's go.mod, or undefined when there is none.
+ * It is not always github.com/owner/repo: gorm lives at gorm.io/gorm and
+ * echo at github.com/labstack/echo/v4, and deps.dev keys modules by that path.
+ */
+export async function goModulePath(owner: string, repo: string): Promise<string | undefined> {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/go.mod`;
-  return cached(`gomod:${owner}/${repo}`, config.ttl.versions, async () => {
+  return cached(`gomod:${owner}/${repo}`, config.ttl.versions, async (): Promise<string | ''> => {
     try {
-      await getText(url);
-      return true;
+      const text = await getText(url);
+      const m = text.match(/^\s*module\s+"?([^\s"]+)"?/m);
+      return m ? m[1] : '';
     } catch (err) {
-      if (isNotFound(err)) return false;
+      if (isNotFound(err)) return '';
       throw err;
     }
-  }).catch(() => false);
+  })
+    .then((p) => p || undefined)
+    .catch(() => undefined);
 }
 
 const GUESS_ORDER: Ecosystem[] = ['npm', 'pypi', 'cargo', 'rubygems', 'go'];
@@ -117,8 +125,12 @@ async function guessAndVerify(owner: string, repo: string, preferred?: Ecosystem
   const names = guessNames(owner, repo, title);
   let best: { ref: PackageRef; versions: number } | undefined;
   for (const eco of ecos) {
-    const candidates = eco === 'go' ? [`github.com/${owner}/${repo}`] : names.filter((n) => eco === 'npm' || !n.startsWith('@'));
-    if (eco === 'go' && !(await hasGoMod(owner, repo))) continue;
+    let candidates = names.filter((n) => eco === 'npm' || !n.startsWith('@'));
+    if (eco === 'go') {
+      const modulePath = await goModulePath(owner, repo);
+      if (!modulePath) continue;
+      candidates = [modulePath];
+    }
     for (const name of candidates) {
       try {
         const versions = await verifyPackage(eco, name, owner, repo);
@@ -180,7 +192,7 @@ export function pickPackage(
   const best = [...agg.values()].sort((x, y) => score(y) - score(x))[0];
   // A weak name match from a capped list is worse than no answer: the agent
   // would get a verdict about the wrong package.
-  if (score(best) < 300) return undefined;
+  if (score(best) < 900) return undefined;
   return { ecosystem: best.ecosystem, name: best.name, via: 'deps.dev-project' };
 }
 
@@ -217,7 +229,7 @@ export async function resolvePackage(
   } catch {
     rows = [];
   }
-  const allowGo = rows.some((r) => r.system.toUpperCase() === 'GO') ? await hasGoMod(owner, repo) : false;
+  const allowGo = rows.some((r) => r.system.toUpperCase() === 'GO') ? Boolean(await goModulePath(owner, repo)) : false;
   const picked = pickPackage(owner, repo, rows, eco, allowGo);
   if (picked) return hints.packageName ? { ...picked, name: hints.packageName, via: 'explicit' } : picked;
   if (hints.packageName) return { ecosystem: eco ?? 'npm', name: hints.packageName, via: 'explicit' };

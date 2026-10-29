@@ -29,4 +29,8 @@ export const ALIASES: Record<string, { ecosystem: Ecosystem; name: string }> = {
   'huggingface/transformers': { ecosystem: 'pypi', name: 'transformers' },
   'rust-lang/rust': { ecosystem: 'cargo', name: 'std' },
   'rails/rails': { ecosystem: 'rubygems', name: 'rails' },
+  'anthropics/anthropic-sdk-typescript': { ecosystem: 'npm', name: '@anthropic-ai/sdk' },
+  'anthropics/anthropic-sdk-python': { ecosystem: 'pypi', name: 'anthropic' },
+  'openai/openai-node': { ecosystem: 'npm', name: 'openai' },
+  'openai/openai-python': { ecosystem: 'pypi', name: 'openai' },
 };
