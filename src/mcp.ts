@@ -69,10 +69,18 @@ function hitLine(
   return parts.join(' | ');
 }
 
-/** Our ids ("npm:next@16.4.3") or a GitHub repo ("/vercel/next.js/v16.4.3"). */
-async function refFromId(libraryId: string, ecosystem?: string, packageName?: string) {
+/**
+ * Our ids ("npm:next@16.4.3") or a GitHub repo ("/vercel/next.js/v16.4.3"). An explicit ecosystem or
+ * package name wins over the id: agents send "npm:pydantic" with ecosystem "pypi", or a placeholder id
+ * with packageName, and got the docs of an unrelated npm package.
+ */
+export async function refFromId(libraryId: string, ecosystem?: string, packageName?: string) {
   const ours = parseLibraryRef(libraryId);
-  if (ours) return ours;
+  if (ours) {
+    const eco = parseEcosystem(ecosystem ?? '');
+    const name = packageName?.trim();
+    return { ...ours, ...(eco ? { ecosystem: eco } : {}), ...(name ? { name } : {}) };
+  }
   if (libraryId.startsWith('/')) {
     const parts = libraryId.replace(/^\/+/, '').split('/');
     const version = parts[2]?.replace(/^v(?=\d)/, '');
@@ -180,8 +188,8 @@ export function buildMcpServer(): McpServer {
         query: z.string().describe('The question or task, e.g. "protect routes with middleware".'),
         version: z.string().optional().describe('Version the project uses or pins, if any. Overrides the one in libraryId.'),
         tokens: z.number().int().optional().describe('Approximate size of the answer in tokens (default 2500; raise it only when the answer was cut short).'),
-        ecosystem: z.enum(ECOSYSTEMS as unknown as [string, ...string[]]).optional().describe('Only for GitHub repo ids that map to several registries.'),
-        packageName: z.string().optional().describe('Only for GitHub repo ids whose package name differs from the repo.'),
+        ecosystem: z.enum(ECOSYSTEMS as unknown as [string, ...string[]]).optional().describe('Registry, when the id does not say it or says the wrong one; overrides the id.'),
+        packageName: z.string().optional().describe('Registry package name, when it differs from the id; overrides the id.'),
       },
     },
     async ({ libraryId, query, version, tokens, ecosystem, packageName }) => {
