@@ -4,7 +4,7 @@ import { intentsFromToolInput } from '../src/hook/run.js';
 
 const none = () => undefined;
 const pick = (cmd: string, files: Record<string, string> = {}) =>
-  fromCommand(cmd, '/p', (p) => files[p.replace(/\\/g, '/').replace(/^[A-Z]:/, '')]).map((i) => `${i.ecosystem}:${i.name}${i.spec ? ` ${i.spec}` : ''}${i.executes ? ' (exec)' : ''}`);
+  fromCommand(cmd, '/p', (p) => files[p.replace(/\\/g, '/').replace(/^[A-Z]:/, '')]).map((i) => i.unverifiable ? `?${i.ecosystem}` : `${i.ecosystem}:${i.name}${i.spec ? ` ${i.spec}` : ''}${i.executes ? ' (exec)' : ''}`);
 
 describe('splitCommands', () => {
   it('splits on separators and honors quotes', () => {
@@ -17,7 +17,7 @@ describe('fromCommand', () => {
     expect(pick('npm install --save-dev axios@1.7.9 @types/node lodash@^4')).toEqual(['npm:axios 1.7.9', 'npm:@types/node', 'npm:lodash ^4']);
     expect(pick('pnpm add -D zod && yarn add react@19 && bun add hono')).toEqual(['npm:zod', 'npm:react 19', 'npm:hono']);
     expect(pick('npm install')).toEqual([]);
-    expect(pick('npm i ./local ../x file:../y git+https://g/x.git user/repo pkg.tgz')).toEqual([]);
+    expect(pick('npm i ./local ../x file:../y git+https://g/x.git user/repo pkg.tgz')).toEqual(['?npm', '?npm']);
   });
 
   it('executed packages: npx, pnpm dlx, uvx, pipx run', () => {
@@ -28,7 +28,8 @@ describe('fromCommand', () => {
   });
 
   it('pip, python -m pip, uv, poetry, requirements files', () => {
-    expect(pick('pip install "requests[socks]==2.31.0" flask>=3 -i https://x/simple')).toEqual(['pypi:requests ==2.31.0', 'pypi:flask >=3']);
+    // Unquoted, flask>=3 is a redirection in every shell; the custom index is something safectx cannot vouch for.
+    expect(pick('pip install "requests[socks]==2.31.0" "flask>=3" -i https://x/simple')).toEqual(['?pypi', 'pypi:requests ==2.31.0', 'pypi:flask >=3']);
     expect(pick('python -m pip install -U PyYAML')).toEqual(['pypi:pyyaml']);
     expect(pick('uv pip install httpx && uv add fastapi==0.110.0 && poetry add pydantic')).toEqual(['pypi:httpx', 'pypi:fastapi ==0.110.0', 'pypi:pydantic']);
     expect(pick('pip install -r reqs.txt', { '/p/reqs.txt': 'django==4.2.0\n# c\n-e .\nrequests\n' })).toEqual(['pypi:django ==4.2.0', 'pypi:requests']);
