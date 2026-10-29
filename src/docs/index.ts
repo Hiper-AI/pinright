@@ -10,7 +10,7 @@ import { docsSourceFor } from '../data/docsRepos.js';
 import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
 import { expandIncludes } from './includes.js';
-import { applicableRenames, expandQuery, packageRenames, renamesNote, type Rename } from './renames.js';
+import { applicableRenames, currentGuides, expandQuery, packageRenames, renamesNote, type Rename } from './renames.js';
 import { chunkFile, coverPaths, notUserDocs, olderMajorPath, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile } from './retrieve.js';
 import {
   docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
@@ -104,7 +104,9 @@ function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUp
   );
   const deepTypes = rankPaths(deep, query).filter((f) => f.score >= 0.8).slice(0, DEEP_TYPE_FILES);
 
-  const upgrade = wantUpgrade ? files.filter((f) => isUpgrade(f.path)).slice(0, 2) : [];
+  // The migration guide of the current major shows the current API next to the one it replaced (Tailwind 4's
+  // Vite setup lives there): a candidate for every question, ranked below the reference (see collectDocs).
+  const upgrade = wantUpgrade ? files.filter((f) => isUpgrade(f.path)).slice(0, 2) : currentGuides(files.filter((f) => !f.path.endsWith('.d.ts')), meta.version).slice(0, 1);
   return [...new Set([readme, ...rankedProse, ...upgrade, ...rankedTypes, ...deepTypes].filter((f): f is RemoteFile => Boolean(f)))];
 }
 
@@ -191,6 +193,7 @@ export async function collectDocs(opts: DocsOptions): Promise<{
   const query = expandQuery(opts.query, renames);
 
   const chosen = pickFiles(listed, meta, query, wantUpgrade);
+  const guide = currentGuides(listed.filter((f) => !f.path.endsWith('.d.ts')), meta.version)[0]?.path;
   const docFiles: DocFile[] = (
     await pool(chosen, 6, async (f): Promise<DocFile | undefined> => {
       const content = await fetchFile(f.url);
@@ -201,8 +204,12 @@ export async function collectDocs(opts: DocsOptions): Promise<{
         content: keep(content),
         kind: f.path.endsWith('.d.ts') ? 'types' : 'markdown',
         versionAccurate: f.versionAccurate ?? (f.origin === 'package' || repo.atTag),
-        // A contributor note or an older major's copy that made the cut still ranks below the user docs.
-        boost: (f.inPackageDir ? 1.2 : 1) * (notUserDocs(f.path, opts.query) || (!wantUpgrade && olderMajorPath(f.path, meta.version)) ? 0.5 : 1),
+        // A contributor note or an older major's copy that made the cut still ranks below the user docs, and the
+        // current major's migration guide below the reference unless the question is about upgrading.
+        boost:
+          (f.inPackageDir ? 1.2 : 1) *
+          (notUserDocs(f.path, opts.query) || (!wantUpgrade && olderMajorPath(f.path, meta.version)) ? 0.5 : 1) *
+          (!wantUpgrade && f.path === guide ? 0.8 : 1),
       };
     })
   ).filter((d): d is DocFile => Boolean(d));

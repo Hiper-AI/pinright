@@ -71,6 +71,17 @@ describe('get-docs answer', () => {
     expect(r.sources.map((s) => s.label)).not.toContain('dist/decorators/core/controller.decorator.d.ts');
   });
 
+  it("the current major's migration guide answers setup questions; older guides do not", async () => {
+    seed();
+    const listing = fixtures.get('data.jsdelivr.com/v1/packages/npm/lib@2.0.0') as { files: { name: string; size: number }[] };
+    listing.files.push({ name: '/docs/upgrade-guide-2-0.md', size: 300 }, { name: '/docs/upgrade-guide-1-0.md', size: 300 });
+    fixtures.set('cdn.jsdelivr.net/npm/lib@2.0.0/docs/upgrade-guide-2-0.md', '# Upgrading to 2.0\n\n## Using Vite\n\nInstall the plugin: `import lib from "@lib/vite"` and add it to plugins.\n');
+    fixtures.set('cdn.jsdelivr.net/npm/lib@2.0.0/docs/upgrade-guide-1-0.md', '# Upgrading to 1.0\n\n## Using Vite\n\nUse the old `lib-vite-legacy` plugin.\n');
+    const r = await getDocs({ ecosystem: 'npm', name: 'lib', version: '2.0.0', query: 'install lib with Vite' });
+    expect(r.text).toContain('@lib/vite');
+    expect(r.text).not.toContain('lib-vite-legacy');
+  });
+
   it('a question in the old name also searches the new one, and says so inside a fence', async () => {
     seed();
     const r = await getDocs({ ecosystem: 'npm', name: 'lib', version: '2.0.0', query: 'streamText with a system prompt' });
