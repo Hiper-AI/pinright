@@ -16,8 +16,9 @@ const runDir = join(root, 'bench', 'docs', 'runs', stamp);
 const scores: DocsRunScore[] = JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8'));
 const config = JSON.parse(readFileSync(join(runDir, 'config.json'), 'utf8'));
 
-const LABEL: Record<string, string> = { 'no-docs': 'No docs', context7: 'Context7', safectx: 'safectx', 'safectx+c7': 'safectx + C7 fallback' };
-const arms = ARMS.filter((a) => scores.some((s) => s.arm === a));
+const LABEL: Record<string, string> = { 'no-docs': 'No docs', safectx: 'safectx' };
+const label = (a: string) => label(a) ?? a;
+const arms = [...ARMS.filter((a) => scores.some((s) => s.arm === a)), ...[...new Set(scores.map((s) => s.arm))].filter((a) => !ARMS.includes(a)).sort()];
 const pct = (n: number, d: number) => (d ? `${Math.round((100 * n) / d)}%` : 'n/a');
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
 const f1 = (x: number) => (Number.isFinite(x) ? x.toFixed(1) : 'n/a');
@@ -36,7 +37,7 @@ L.push(
   `Run \`${stamp}\`, model \`${models.join(', ') || config.model}\`, ${config.reps} repetitions of ${TASKS.length} tasks per arm, ${scores.length} runs scored.`,
   '',
 );
-head(['Metric', ...arms.map((a) => LABEL[a])]);
+head(['Metric', ...arms.map((a) => label(a))]);
 const by = (a: string) => scores.filter((s) => s.arm === a);
 const metric = (name: string, f: (rs: DocsRunScore[]) => string) => row([name, ...arms.map((a) => f(by(a)))]);
 metric('**Current API** (works, right major, every check passes)', (rs) => `**${rs.filter((r) => r.current).length} / ${rs.length}** (${pct(rs.filter((r) => r.current).length, rs.length)})`);
@@ -64,7 +65,7 @@ metric('Docs returned per run (k chars, mean)', (rs) => f1(mean(rs.map((r) => do
 L.push('');
 
 L.push('## Per task', '', 'Each cell: runs with the current API / runs that work, out of the repetitions. Failed checks follow, with how many runs failed each (r = required missing, x = removed API used, d = deprecated API used).', '');
-head(['Task', ...arms.map((a) => LABEL[a])]);
+head(['Task', ...arms.map((a) => label(a))]);
 for (const t of TASKS) {
   row([`${t.id} (${t.library})`, ...arms.map((a) => {
     const rs = scores.filter((s) => s.arm === a && s.task === t.id);
@@ -86,7 +87,7 @@ L.push('');
 L.push('## Runs that do not work', '');
 for (const a of arms) {
   const bad = by(a).filter((r) => !r.works);
-  L.push(`**${LABEL[a]}**: ${bad.length ? '' : 'none'}`, '');
+  L.push(`**${label(a)}**: ${bad.length ? '' : 'none'}`, '');
   for (const r of bad) {
     const b = r.build;
     const why = !b?.installed
@@ -100,17 +101,16 @@ for (const a of arms) {
 }
 
 L.push('## Docs tool usage', '');
-head(['Arm', 'Calls by tool (total over all runs)', 'query-docs answers with no local docs', 'Answers served by Context7 fallback']);
+head(['Arm', 'Calls by tool (total over all runs)', 'query-docs answers with no matching docs']);
 for (const a of arms.filter((x) => x !== 'no-docs')) {
   const calls = by(a).flatMap((r) => r.calls);
   const tools = new Map<string, number>();
   for (const c of calls) tools.set(c.tool, (tools.get(c.tool) ?? 0) + 1);
   const q = calls.filter((c) => /query-docs$/.test(c.tool));
   row([
-    LABEL[a],
+    label(a),
     [...tools.entries()].map(([k, n]) => `${k} ${n}`).join(', '),
     a.startsWith('safectx') ? String(q.filter((c) => /^No documentation found/m.test(c.result ?? '')).length) : 'n/a',
-    a.startsWith('safectx') ? String(q.filter((c) => /come from Context7/.test(c.result ?? '')).length) : 'n/a',
   ]);
 }
 L.push('');

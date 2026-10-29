@@ -134,6 +134,13 @@ describe('docs benchmark: old APIs are caught, current ones are not', () => {
     ]);
   });
 
+  it('ai-sdk7: a component input state next to useChat is not useChat().input (seen in a real run)', () => {
+    const page = "'use client';\nexport default function Page() {\n  const [input, setInput] = useState('');\n  const { messages, sendMessage } = useChat({\n    transport: new DefaultChatTransport({ api: '/api/chat' }),\n  });\n  return messages.map((message) => message.parts.map((p) => p.text));\n}\n";
+    expect(failing('ai-sdk7-chat', variant('ai-sdk7-chat', { 'app/page.tsx': page }))).toEqual(['send-message']);
+    const old = "const { messages, input: text, handleInputChange } = useChat<UIMessage>({ api: '/api/chat' });";
+    expect(failing('ai-sdk7-chat', variant('ai-sdk7-chat', { 'app/page.tsx': `${fixture('ai-sdk7-chat')['app/page.tsx']}\n${old}` }))).toEqual(['v4-usechat']);
+  });
+
   it('ai-sdk7: a form handler named handleSubmit is not useChat().handleSubmit', () => {
     const page = fixture('ai-sdk7-chat')['app/page.tsx'].replace('<form\n', '<form data-x={handleSubmit}\n').replace("  const [text, setText] = useState('');", "  const [text, setText] = useState('');\n  const handleSubmit = () => sendMessage({ text });");
     expect(failing('ai-sdk7-chat', variant('ai-sdk7-chat', { 'app/page.tsx': page }))).toEqual([]);

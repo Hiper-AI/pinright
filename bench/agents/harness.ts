@@ -24,6 +24,22 @@ export interface HarnessOptions {
   timeoutMs?: number;
 }
 
+/**
+ * Extra arms from the command line: `--mcp-arm name=path/to/mcp.json` (repeatable),
+ * where the file is a Claude Code MCP config ({ "mcpServers": { ... } }). Lets any
+ * docs server be compared without the benchmark shipping its config.
+ */
+export function extraArms(args: string[]): Record<string, object> {
+  const out: Record<string, object> = {};
+  args.forEach((a, i) => {
+    if (a !== '--mcp-arm') return;
+    const m = (args[i + 1] ?? '').match(/^([\w.+-]+)=(.+)$/);
+    if (!m) throw new Error('--mcp-arm expects name=path/to/mcp.json');
+    out[m[1]] = JSON.parse(readFileSync(m[2], 'utf8'));
+  });
+  return out;
+}
+
 export function runPath(runDir: string, arm: string, taskId: string, rep: number): string {
   return join(runDir, arm, `${taskId}-r${rep}`);
 }
@@ -58,7 +74,9 @@ function runOne(job: Job, o: HarnessOptions): Promise<number> {
   mkdirSync(work, { recursive: true });
   const mcpPath = join(dir, 'mcp.json');
   writeFileSync(mcpPath, JSON.stringify(o.mcp[job.arm], null, 2));
-  const allowed = ['Write', 'Read', 'mcp__context7', 'mcp__safectx'];
+  // Every server of the arm's config is allowed, whatever its name.
+  const servers = Object.keys((o.mcp[job.arm] as { mcpServers?: Record<string, unknown> }).mcpServers ?? {});
+  const allowed = ['Write', 'Read', ...servers.map((s) => `mcp__${s}`)];
   const cliArgs = [
     '-p', job.prompt,
     '--model', o.model,

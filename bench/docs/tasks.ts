@@ -165,7 +165,13 @@ export const TASKS: DocsTask[] = [
       { id: 'input-schema', kind: 'required', desc: 'tool inputSchema', test: (p) => has(p, /\binputSchema\s*:/) },
       { id: 'tool-parameters', kind: 'removed', desc: 'tool parameters: (v4)', test: someCall('tool', (a) => /\bparameters\s*:/.test(a[0] ?? '')) },
       { id: 'send-message', kind: 'required', desc: 'useChat().sendMessage', test: (p) => has(p, /\bsendMessage\s*\(/) },
-      { id: 'v4-usechat', kind: 'removed', desc: 'useChat input/handleSubmit/handleInputChange/append', test: (p) => has(p, /\{[^}]*\b(handleSubmit|handleInputChange|append|input)\b[^}]*\}\s*=\s*useChat\s*\(/) },
+      {
+        id: 'v4-usechat',
+        kind: 'removed',
+        desc: 'useChat input/handleSubmit/handleInputChange/append',
+        // Only the names destructured from useChat() itself; a component's own `input` state is fine.
+        test: (p) => filesMatching(p, SRC_JS).some(([, c]) => [...c.matchAll(/\{([^{}]*)\}\s*=\s*useChat\s*(?:<[^>]*>\s*)?\(/g)].some((m) => /(^|[\s,])(handleSubmit|handleInputChange|append|input)\s*(?=[,:}]|$)/.test(m[1]))),
+      },
       { id: 'message-content', kind: 'removed', desc: 'message.content instead of parts', test: (p) => has(p, /\b(m|msg|message)\.content\b/, /\.(tsx|jsx)$/) },
     ],
   },

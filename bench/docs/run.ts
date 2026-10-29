@@ -1,17 +1,18 @@
 /**
  * Docs benchmark: the same coding agent writes code for libraries whose API
  * changed in their current major, with one docs source attached per arm:
- *   no-docs    : nothing; the agent writes from memory
- *   context7   : the official Context7 MCP server
- *   safectx    : this server with Context7 turned off (its own docs only)
- *   safectx+c7 : this server in its default mode (Context7 as a fallback when local docs are thin)
+ *   no-docs : nothing; the agent writes from memory
+ *   safectx : this server (Context7 fallback off)
+ * Any other MCP docs server can be added as an arm with --mcp-arm name=mcp.json
+ * (a Claude Code MCP config); none is shipped here.
  * Uses the worktree's dist/cli.js: build first, and do not rebuild while runs are in flight.
  *
- *   npx tsx bench/docs/run.ts [--model sonnet] [--reps 2] [--concurrency 2] [--only id1,id2] [--arms a,b] [--stamp s] [--resume]
+ *   npx tsx bench/docs/run.ts [--model sonnet] [--reps 2] [--concurrency 2] [--only id1,id2]
+ *     [--arms a,b] [--mcp-arm name=mcp.json] [--stamp s] [--resume]
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { planJobs, runJobs } from '../agents/harness.js';
+import { extraArms, planJobs, runJobs } from '../agents/harness.js';
 import { DOCS_HINT, TASKS } from './tasks.js';
 
 const args = process.argv.slice(2);
@@ -19,23 +20,22 @@ const opt = (name: string, def: string) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : def;
 };
+const root = resolve(import.meta.dirname, '..', '..');
+const MCP: Record<string, object> = {
+  'no-docs': { mcpServers: {} },
+  safectx: { mcpServers: { safectx: { command: 'node', args: [join(root, 'dist', 'cli.js')] } } },
+  ...extraArms(args),
+};
+
 const model = opt('model', 'sonnet');
 const reps = Number(opt('reps', '2'));
 const concurrency = Number(opt('concurrency', '2'));
 const only = opt('only', '').split(',').filter(Boolean);
-const arms = opt('arms', 'no-docs,context7,safectx,safectx+c7').split(',');
+const arms = opt('arms', Object.keys(MCP).join(',')).split(',');
+for (const a of arms) if (!MCP[a]) throw new Error(`unknown arm ${a}; pass --mcp-arm ${a}=mcp.json`);
 const stamp = opt('stamp', `docs-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`);
 const resume = args.includes('--resume');
-
-const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'docs', 'runs', stamp);
-const safectx = { safectx: { command: 'node', args: [join(root, 'dist', 'cli.js')] } };
-const MCP: Record<string, object> = {
-  'no-docs': { mcpServers: {} },
-  context7: { mcpServers: { context7: { command: 'npx', args: ['-y', '@upstash/context7-mcp'] } } },
-  safectx: { mcpServers: safectx },
-  'safectx+c7': { mcpServers: safectx },
-};
 
 const tasks = TASKS.filter((t) => !only.length || only.includes(t.id));
 const jobs = planJobs(tasks, arms, reps, { runDir, resume, suffix: DOCS_HINT });
@@ -46,5 +46,6 @@ await runJobs(jobs, {
   model,
   concurrency,
   mcp: MCP,
-  env: (arm) => ({ SAFECTX_CONTEXT7: arm === 'safectx+c7' ? 'fallback' : 'off' }),
+  // safectx measures its own docs only.
+  env: () => ({ SAFECTX_CONTEXT7: 'off' }),
 });

@@ -17,7 +17,8 @@ import { type CheckResult, loadProject, npmMajor, pypiMajor, runChecks } from '.
 import { runSmoke, type SmokeResult } from './smoke.js';
 import { type DocsTask, TASKS } from './tasks.js';
 
-export const ARMS = ['no-docs', 'context7', 'safectx', 'safectx+c7'];
+/** Report order for the built-in arms; extra arms (--mcp-arm) follow in name order. */
+export const ARMS = ['no-docs', 'safectx'];
 
 export interface DocsCall { tool: string; input: any; resultChars: number; result?: string }
 export interface DocsRunScore {
@@ -94,9 +95,10 @@ if (isMain) {
   const runDir = isAbsolute(stamp) ? stamp : join(root, 'bench', 'docs', 'runs', stamp);
 
   const jobs: { arm: string; task: DocsTask; rep: number; dir: string }[] = [];
-  for (const arm of ARMS) {
+  const present = readdirSync(runDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+  for (const arm of present) {
     const armDir = join(runDir, arm);
-    if (!existsSync(armDir) || (onlyArms.length && !onlyArms.includes(arm))) continue;
+    if (onlyArms.length && !onlyArms.includes(arm)) continue;
     for (const name of readdirSync(armDir).sort()) {
       const m = name.match(/^(.*)-r(\d+)$/);
       const task = m && TASKS.find((t) => t.id === m[1]);
