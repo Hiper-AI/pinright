@@ -14,6 +14,8 @@ export interface DocFile {
   versionAccurate: boolean;
   /** Multiplier for a source we trust more for this query (README of a small package...). */
   boost?: number;
+  /** Code language of a `types` file; TypeScript when unset. */
+  lang?: 'python';
 }
 
 export interface Chunk {
@@ -122,8 +124,61 @@ export function chunkTypes(content: string): { title: string; text: string }[] {
   return out;
 }
 
+/**
+ * Python API (stub-like source): one chunk per top-level function or class
+ * with its decorators and docstring; a class too long for one chunk is split
+ * into its header and one chunk per method. Titles carry the module path
+ * ("def yaml.safe_load") when the text starts with a "# module x" line.
+ */
+export function chunkPython(content: string): { title: string; text: string }[] {
+  const lines = content.replace(/\r\n/g, '\n').split('\n');
+  const mod = lines[0]?.match(/^# module ([\w.]+)/)?.[1];
+  const prefix = mod ? `${mod}.` : '';
+  const out: { title: string; text: string }[] = [];
+
+  /** Splits `src` before each decorator/def/class line at `indent`, outside docstrings. */
+  const blocks = (src: string[], indent: string): { name?: string; kind?: string; lines: string[] }[] => {
+    const res: { name?: string; kind?: string; lines: string[] }[] = [{ lines: [] }];
+    let inDoc = false;
+    let decorated = false;
+    for (const line of src) {
+      if (!inDoc && line.startsWith(indent) && !/^\s/.test(line.slice(indent.length))) {
+        const rest = line.slice(indent.length);
+        const def = rest.match(/^(?:async\s+)?(def|class)\s+([A-Za-z_]\w*)/);
+        if (rest.startsWith('@') || def) {
+          if (!decorated) res.push({ lines: [] });
+          decorated = rest.startsWith('@');
+          if (def) Object.assign(res[res.length - 1], { kind: def[1], name: def[2] });
+        }
+      }
+      if ((line.match(/"""/g) ?? []).length % 2 === 1) inDoc = !inDoc;
+      res[res.length - 1].lines.push(line);
+    }
+    return res.filter((b) => b.lines.join('').trim());
+  };
+
+  for (const b of blocks(lines, '')) {
+    const text = b.lines.join('\n').trim();
+    const title = b.name ? `${b.kind} ${prefix}${b.name}` : `module ${mod ?? ''}`.trim();
+    if (b.kind !== 'class' || text.length <= MAX_CHUNK) {
+      out.push(...splitLong(title, text));
+      continue;
+    }
+    const parts = blocks(b.lines, '    ');
+    const head = parts[0]?.name ? undefined : parts.shift();
+    const classLine = b.lines.find((l) => /^class\s/.test(l));
+    const headerLine = classLine?.endsWith(':') ? classLine : `class ${b.name}:`;
+    if (head) out.push(...splitLong(title, head.lines.join('\n').trim()));
+    for (const m of parts) out.push(...splitLong(`${title} > ${m.kind} ${m.name ?? ''}`.trim(), `${headerLine}\n${m.lines.join('\n').trimEnd()}`));
+  }
+  return out;
+}
+
 export function chunkFile(file: DocFile): Chunk[] {
-  const parts = file.kind === 'types' ? chunkTypes(file.content) : chunkMarkdown(file.content, /\.rst$/i.test(file.url));
+  const parts =
+    file.kind === 'types'
+      ? file.lang === 'python' ? chunkPython(file.content) : chunkTypes(file.content)
+      : chunkMarkdown(file.content, /\.rst$/i.test(file.url));
   return parts.map((p) => ({ file, title: p.title, text: p.text, score: 0 }));
 }
 

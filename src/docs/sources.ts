@@ -5,12 +5,16 @@
  *   2. the source repository at the release tag (GitHub tree + raw files):
  *      docs/ folders, README, migration guides;
  *   3. the project's llms.txt / llms-full.txt, which describe the current site,
- *      not a specific version.
+ *      not a specific version;
+ *   4. for packages whose docs live elsewhere (src/data/docsRepos.ts), that docs
+ *      repo or llms.txt index.
+ * PyPI distributions (wheel/sdist API) are read in python.ts.
  * Every fetch is cached and fails soft: a missing source means fewer docs.
  */
 import { cached } from '../cache.js';
 import { config } from '../config.js';
 import { getJson, getText, HttpError } from '../http.js';
+import { type DocsSource } from '../data/docsRepos.js';
 import { type PackageMeta } from '../registry.js';
 
 export interface RemoteFile {
@@ -19,6 +23,11 @@ export interface RemoteFile {
   size?: number;
   origin: 'package' | 'repo';
   inPackageDir?: boolean;
+  /** Files from a separate docs repo (src/data/docsRepos.ts) carry their own label. */
+  label?: string;
+  versionAccurate?: boolean;
+  /** Whether the file may fill the docs budget without a path match (default: docs/ folders only). */
+  fill?: boolean;
 }
 
 const DOC_EXT = /\.(md|mdx|markdown|rst)$|(^|\/)readme\.txt$/i;
@@ -115,6 +124,36 @@ export async function repoFiles(meta: PackageMeta): Promise<{ files: RemoteFile[
   };
 }
 
+/**
+ * Docs kept in a repo other than the package's own (src/data/docsRepos.ts),
+ * read from its default branch: they describe the current release, not a
+ * specific version.
+ */
+export async function docsRepoFiles(src: NonNullable<DocsSource['repo']>): Promise<RemoteFile[]> {
+  const { owner, repo, paths, exclude } = src;
+  const files = await cached(`gh:docsrepo:${owner}/${repo}`, config.ttl.docs, () => treeAt(owner, repo, 'HEAD')).catch(() => undefined);
+  const inScope = (p: string) => paths.some((prefix) => p === prefix || (prefix.endsWith('/') && p.startsWith(prefix)));
+  const scoped = (files ?? []).filter((f) => inScope(f.path) && !exclude?.test(f.path));
+  return scoped.map((f) => ({
+    path: f.path,
+    url: `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${f.path}`,
+    size: f.size,
+    origin: 'repo' as const,
+    label: `${owner}/${repo}/${f.path} (docs repo, default branch)`,
+    versionAccurate: false,
+    // A small docs set can fill the budget; a large one (hundreds of integration pages) only by path match.
+    fill: scoped.length <= 60,
+  }));
+}
+
+/** Docs written for several languages with `:::python` / `:::js` blocks (Mintlify): keep one language. */
+export function keepLanguage(md: string, lang: string): string {
+  return md
+    .replace(/^:::(\w+)[ \t]*\n([\s\S]*?)^:::[ \t]*(?:\n|$)/gm, (_m, l: string, body: string) => (l === lang ? body : ''))
+    // Mintlify's rendered markdown tags fences with a theme: "```python theme={...}".
+    .replace(/^(```[^\n]*?)\s+theme=\{.*\}[ \t]*$/gm, '$1');
+}
+
 export async function fetchFile(url: string): Promise<string | undefined> {
   return cached(`file:${url}`, config.ttl.docs, () => getText(url)).catch(() => undefined);
 }
@@ -177,6 +216,12 @@ export async function llmsDocs(site: string | undefined): Promise<LlmsDocs | und
     }
   }
   return undefined;
+}
+
+/** A known llms.txt-style index (one per language on some sites) instead of discovering one. */
+export async function llmsIndexDocs(url: string): Promise<LlmsDocs | undefined> {
+  const idx = await fetchTextDoc(url);
+  return idx ? { site: new URL(url).origin, index: { url, entries: parseLlmsIndex(idx, url) } } : undefined;
 }
 
 /** A page linked from llms.txt; many sites serve a .md twin of each HTML page. */

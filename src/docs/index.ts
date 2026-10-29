@@ -8,8 +8,12 @@ import { config } from '../config.js';
 import { fetchDocs as context7Docs, searchLibraries } from '../context7.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { packageMeta, type PackageMeta } from '../registry.js';
+import { docsSourceFor } from '../data/docsRepos.js';
+import { apiDocFiles, packageNotes, pythonApi } from './python.js';
 import { chunkFile, rank, rankPaths, select, type Chunk, type DocFile } from './retrieve.js';
-import { fetchFile, fetchLlmsPage, llmsDocs, npmPackageFiles, repoFiles, type RemoteFile } from './sources.js';
+import {
+  docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
+} from './sources.js';
 
 export interface DocsResult {
   text: string;
@@ -28,6 +32,7 @@ const TRANSLATION =
   /(^|\/)(i18n|translations?|locales?)\/|(^|\/)docs\/(?!en\/)(ar|az|bn|cs|de|em|es|fa|fr|he|hi|hu|id|it|ja|ko|nl|pl|pt|pt-br|ru|sv|th|tr|uk|ur|vi|yo|zh|zh-cn|zh-hant|zh-tw)\//i;
 const TYPE_FILES = 3;
 const LLMS_PAGES = 4;
+const CURATED_LLMS_PAGES = 8;
 /** Below this BM25 score the local docs did not really answer the question. */
 const WEAK_SCORE = 2;
 
@@ -64,7 +69,7 @@ function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUp
     score: f.score + (f.inPackageDir ? 0.5 : 0) + (/(^|\/)docs?\//.test(f.path) ? 0.3 : 0),
   }));
   const hits = scored.filter((f) => f.hit).sort((a, b) => b.score - a.score).slice(0, MD_FILES);
-  const fill = scored.filter((f) => !f.hit && /(^|\/)(docs?|guides?|documentation)\//i.test(f.path)).sort((a, b) => b.score - a.score);
+  const fill = scored.filter((f) => !f.hit && (f.fill ?? /(^|\/)(docs?|guides?|documentation)\//i.test(f.path))).sort((a, b) => b.score - a.score);
   const rankedProse: RemoteFile[] = [...hits];
   let bytes = hits.reduce((a, f) => a + (f.size ?? 20_000), 0);
   for (const f of fill) {
@@ -104,7 +109,9 @@ function format(meta: PackageMeta, chunks: Chunk[], header: string[]): string {
     parts.push(`### ${c.title || c.file.label}`);
     parts.push(`Source: ${c.file.label}${c.file.versionAccurate ? ` (${meta.name}@${meta.version})` : ' (current site docs)'} ${c.file.url}`);
     parts.push('');
-    parts.push(c.file.kind === 'types' ? '```ts\n' + c.text + '\n```' : c.text);
+    // Python docstrings often hold ``` examples: fence them with a longer run of backticks.
+    const fence = c.file.lang === 'python' && c.text.includes('```') ? '````' : '```';
+    parts.push(c.file.kind === 'types' ? fence + (c.file.lang ?? 'ts') + '\n' + c.text + '\n' + fence : c.text);
     parts.push('');
   }
   return parts.join('\n');
@@ -123,27 +130,33 @@ export async function getDocs(opts: {
   const meta = await packageMeta(opts.ecosystem, opts.name, opts.version);
   const wantUpgrade = Boolean(opts.upgrade) || UPGRADE_TERMS.test(opts.query);
 
-  const [pkgFiles, repo, llms] = await Promise.all([
+  // Docs that live outside the package's repo (LangChain, PyYAML...), and the API of a PyPI distribution.
+  const docsSource = docsSourceFor(opts.ecosystem, meta.name);
+  const keep = (text: string) => (docsSource?.language ? keepLanguage(text, docsSource.language) : text);
+  const [pkgFiles, repo, llms, docsRepo, pyApi] = await Promise.all([
     opts.ecosystem === 'npm' ? npmPackageFiles(opts.name, opts.version) : Promise.resolve([] as RemoteFile[]),
     repoFiles(meta),
-    llmsDocs(meta.docsUrl),
+    docsSource?.llmsIndex ? llmsIndexDocs(docsSource.llmsIndex) : llmsDocs(meta.docsUrl),
+    docsSource?.repo ? docsRepoFiles(docsSource.repo) : Promise.resolve([] as RemoteFile[]),
+    opts.ecosystem === 'pypi' ? pythonApi(meta.name, meta.version) : Promise.resolve(undefined),
   ]);
 
-  const chosen = pickFiles([...pkgFiles, ...repo.files], meta, opts.query, wantUpgrade);
+  const chosen = pickFiles([...pkgFiles, ...repo.files, ...docsRepo], meta, opts.query, wantUpgrade);
   const docFiles: DocFile[] = (
     await pool(chosen, 6, async (f): Promise<DocFile | undefined> => {
       const content = await fetchFile(f.url);
       if (!content) return undefined;
       return {
-        label: f.origin === 'repo' ? `${meta.repo?.repo}/${f.path}${repo.atTag ? `@${repo.ref}` : ' (default branch)'}` : f.path,
+        label: f.label ?? (f.origin === 'repo' ? `${meta.repo?.repo}/${f.path}${repo.atTag ? `@${repo.ref}` : ' (default branch)'}` : f.path),
         url: f.url,
-        content,
+        content: keep(content),
         kind: f.path.endsWith('.d.ts') ? 'types' : 'markdown',
-        versionAccurate: f.origin === 'package' || repo.atTag,
+        versionAccurate: f.versionAccurate ?? (f.origin === 'package' || repo.atTag),
         boost: f.inPackageDir ? 1.2 : 1,
       };
     })
   ).filter((d): d is DocFile => Boolean(d));
+  if (pyApi) docFiles.push(...apiDocFiles(pyApi, opts.query));
 
   if (meta.readme && !docFiles.some((d) => /readme/i.test(d.label))) {
     docFiles.push({ label: `README (${opts.ecosystem} ${meta.name} ${meta.version})`, url: `https://pypi.org/project/${meta.name}/${meta.version}/`, content: meta.readme, kind: 'markdown', versionAccurate: true });
@@ -153,39 +166,49 @@ export async function getDocs(opts: {
     docFiles.push({ label: 'llms-full.txt', url: llms.full.url, content: llms.full.content, kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.7 : 1 });
   } else if (llms?.index?.entries.length) {
     const entries = llms.index.entries.filter((e) => wantUpgrade || !/\/(blog|changelog|releases?|news)\b/i.test(e.url));
+    // A curated index (docsRepos.ts) covers a whole product family: favor this package's pages, read more of them.
     const ranked = rankPaths(
       entries.map((e) => ({ ...e, path: `${e.title} ${e.description} ${new URL(e.url).pathname}` })),
       opts.query,
-    ).slice(0, LLMS_PAGES);
+      docsSource?.llmsIndex ? [meta.name] : [],
+    ).slice(0, docsSource?.llmsIndex ? CURATED_LLMS_PAGES : LLMS_PAGES);
     const pages = await pool(ranked, 4, async (e) => ({ e, content: await fetchLlmsPage(e.url) }));
     for (const { e, content } of pages) {
-      if (content) docFiles.push({ label: e.title, url: e.url, content, kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.8 : 1 });
+      if (content) docFiles.push({ label: e.title, url: e.url, content: keep(content), kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.8 : 1 });
     }
   }
 
   const ranked = dedupe(rank(docFiles.flatMap(chunkFile), opts.query));
   const best = ranked[0]?.score ?? 0;
   const sources = docFiles.map((d) => ({ label: d.label, url: d.url, versionAccurate: d.versionAccurate }));
+  // PyPI: import name and sibling packages to install, checked against the query and the returned text.
+  const notesFor = (text: string): string[] =>
+    opts.ecosystem === 'pypi'
+      ? packageNotes({ name: meta.name, version: meta.version, query: opts.query, text, importNames: pyApi?.importNames ?? [], requiresDist: pyApi?.requiresDist ?? [] })
+      : [];
 
   if (best < WEAK_SCORE && config.context7Mode !== 'off') {
     const c7 = await context7Fallback(meta, opts.query).catch(() => undefined);
     if (c7) {
+      const notes = notesFor(c7.text);
       return {
         meta,
         via: 'context7',
         sources: [{ label: `Context7 ${c7.id}`, url: `https://context7.com${c7.id}`, versionAccurate: c7.versioned }],
-        text: `Docs for ${meta.name}@${meta.version}: local sources were thin, so these come from Context7 (${c7.id}${c7.versioned ? '' : ', not pinned to this version'}).\n\n${c7.text}`,
+        text: `Docs for ${meta.name}@${meta.version}: local sources were thin, so these come from Context7 (${c7.id}${c7.versioned ? '' : ', not pinned to this version'}).\n${notes.length ? `${notes.join('\n')}\n` : ''}\n${c7.text}`,
       };
     }
   }
 
   if (!ranked.length || best <= 0) {
+    const notes = notesFor('');
     return {
       meta,
       via: 'none',
       sources,
       text: `No documentation found for ${meta.name}@${meta.version} that matches "${opts.query}".` +
-        (meta.docsUrl ? ` Project docs: ${meta.docsUrl}` : '') + (meta.repo ? ` Source: https://github.com/${meta.repo.owner}/${meta.repo.repo}` : ''),
+        (meta.docsUrl ? ` Project docs: ${meta.docsUrl}` : '') + (meta.repo ? ` Source: https://github.com/${meta.repo.owner}/${meta.repo.repo}` : '') +
+        (notes.length ? `\n${notes.join('\n')}` : ''),
     };
   }
 
@@ -194,6 +217,7 @@ export async function getDocs(opts: {
   const header = [
     `Docs for ${meta.name}@${meta.version} (${opts.ecosystem})${meta.description ? `: ${meta.description}` : ''}.`,
     `${picked.length} sections, ${accurate} from the published package or the repo at its release tag; the rest from the project's current site docs, which may describe a newer version.`,
+    ...notesFor(picked.map((c) => c.text).join('\n')),
   ];
   return { meta, via: 'local', sources, text: format(meta, picked, header) };
 }

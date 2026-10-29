@@ -60,6 +60,43 @@ export async function getText(url: string, opts?: HttpOptions): Promise<string> 
   return await res.text();
 }
 
+/**
+ * A binary download (package archives) with a size cap enforced while
+ * streaming and a timeout that covers the whole body, not just the headers.
+ */
+export async function getBytes(url: string, opts: { maxBytes: number; timeoutMs?: number; headers?: Record<string, string> }): Promise<Buffer> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? config.requestTimeoutMs * 4);
+  try {
+    const res = await fetch(url, {
+      headers: { 'user-agent': USER_AGENT, accept: '*/*', ...opts.headers },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new HttpError(res.status, url);
+    const declared = Number.parseInt(res.headers.get('content-length') ?? '', 10);
+    const tooLarge = () => new Error(`${url} is larger than ${opts.maxBytes} bytes`);
+    if (declared > opts.maxBytes) {
+      controller.abort();
+      throw tooLarge();
+    }
+    const chunks: Buffer[] = [];
+    let total = 0;
+    if (res.body) {
+      for await (const chunk of res.body) {
+        total += chunk.length;
+        if (total > opts.maxBytes) {
+          controller.abort();
+          throw tooLarge();
+        }
+        chunks.push(Buffer.from(chunk));
+      }
+    }
+    return Buffer.concat(chunks);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Returns true for a 404, false otherwise; rethrows anything that is not a 404. */
 export function isNotFound(err: unknown): boolean {
   return err instanceof HttpError && err.status === 404;

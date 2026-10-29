@@ -18,7 +18,8 @@ often months old and carry known vulnerabilities. safectx gives the agent:
   never asked.
 
 ```
-agent --MCP--> safectx --> registry + jsDelivr     package files at the exact version
+agent --MCP--> safectx --> registry + jsDelivr     package files at the exact version (npm)
+                       --> PyPI files              wheel/sdist at the exact version (Python API)
                        --> GitHub (raw, tree API)  repo docs at the release tag
                        --> project site            llms.txt / llms-full.txt
                        --> api.deps.dev            versions, advisories, licenses, dependency graphs
@@ -174,10 +175,18 @@ before deps.dev mirrors them.
 
 1. The published package at the exact version, through jsDelivr: README, bundled docs, and the
    `.d.ts` type definitions, which are the ground truth of an npm package's API.
+   For PyPI, the wheel (or sdist) of that version, read as text and never imported: signatures and
+   docstrings of public functions, classes and methods (`__all__` respected; private modules,
+   tests and vendored code skipped), `.pyi` stubs, and the typeshed `types-<name>` package for
+   signatures when the distribution ships no types. The answer also names the import name when it
+   differs from the package name (`yaml` for `pyyaml`).
 2. The source repository at the release tag (`v1.2.3`, `1.2.3`, `name@1.2.3`, `name==1.2.3`...):
    `docs/` folders, guides, migration notes. Translations are skipped.
 3. The project's `llms-full.txt` or `llms.txt`, which describe the current site and may be newer
-   than the version you use; sections from it are labeled as such.
+   than the version you use; sections from it are labeled as such. Packages whose docs live in
+   another repo or site (LangChain, LangGraph, PyYAML, Streamlit, Selenium) are mapped to it in
+   `src/data/docsRepos.ts`. For LangChain's split packages, the answer lists the sibling packages
+   the question needs that are not dependencies (`langchain-text-splitters`, `langchain-community`).
 4. Context7, only when the three above return nothing relevant. `SAFECTX_CONTEXT7=off` disables it.
 
 Sections are ranked locally with BM25 against the question, and the answer is capped at about
