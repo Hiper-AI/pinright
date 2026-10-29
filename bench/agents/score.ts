@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- npm audit / pip-audit JSON is untyped */
 /**
  * Scores an agent-benchmark run: reads the manifest each agent wrote and measures
  *   - direct deps: does the pinned version exist, how many advisories it carries
@@ -5,24 +6,31 @@
  *     deprecation, age;
  *   - the whole tree, the way Dependabot sees it: npm audit over a lockfile
  *     resolved without installing, pip-audit over `uv pip compile` output.
- *     These two tools share neither code nor data path with safectx.
- *   - agent cost: USD, turns, wall time, MCP calls.
+ *     These two tools share neither code nor data path with safectx; safectx's own
+ *     check-manifest runs on the same files to measure agreement;
+ *   - does it install and build (see buildcheck.ts);
+ *   - agent cost: USD, turns, wall time, MCP calls, hook blocks.
  * Writes runs/<stamp>/scores.json.
  *
- *   npx tsx bench/agents/score.ts <stamp>
+ *   npx tsx bench/agents/score.ts <stamp> [--concurrency 4] [--no-build]
  */
-import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { getAdvisory, getPackage, getVersion } from '../../src/advisories/depsdev.js';
+import { auditTree } from '../../src/tree/audit.js';
+import { parseFile } from '../../src/tree/lockfiles.js';
+import { type BuildScore, npmBuild, pypiBuild, run } from './buildcheck.js';
 import { TASKS } from './tasks.js';
 
-const stamp = process.argv[2];
+const args = process.argv.slice(2);
+const stamp = args[0];
 if (!stamp) throw new Error('usage: score.ts <stamp>');
+const concurrency = Number(args[args.indexOf('--concurrency') + 1] || 4) || 4;
+const doBuild = !args.includes('--no-build');
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
-const ARMS = ['no-docs', 'context7', 'safectx', 'latest'];
+export const ARMS = ['no-docs', 'context7', 'safectx', 'hook-only', 'safectx+hook', 'latest'];
 const DAY = 86_400_000;
 
 interface Dep { name: string; spec: string; version: string; exact: boolean }
@@ -35,11 +43,23 @@ export interface DepScore extends Dep {
   latest?: string;
   isLatest?: boolean;
 }
-export interface TreeScore { resolved: boolean; error?: string; packages?: number; alerts?: number; critical?: number; high?: number; vulnerablePackages?: number }
+export interface TreeScore {
+  resolved: boolean;
+  error?: string;
+  packages?: number;
+  alerts?: number;
+  critical?: number;
+  high?: number;
+  vulnerablePackages?: number;
+  /** safectx check-manifest on the same lockfile / resolved requirements. */
+  safectx?: { alerts: number; vulnerablePackages: number; vulnerableNames: string[] };
+  auditNames?: string[];
+}
 export interface RunScore {
   arm: string; task: string; rep: number; ecosystem: 'npm' | 'pypi';
   ok: boolean; costUsd?: number; turns?: number; durationMs?: number; mcpCalls: Record<string, number>;
-  model?: string; deps: DepScore[]; tree?: TreeScore;
+  hookBlocks: number;
+  model?: string; deps: DepScore[]; tree?: TreeScore; build?: BuildScore;
 }
 
 function readManifest(work: string, eco: 'npm' | 'pypi'): Dep[] | undefined {
@@ -91,29 +111,29 @@ async function scoreDep(eco: 'npm' | 'pypi', d: Dep): Promise<DepScore> {
   };
 }
 
-function sh(cmd: string, cwd: string, timeoutMs = 300_000) {
-  const r = spawnSync(cmd, { cwd, shell: true, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });
-  return { code: r.status ?? -1, out: r.stdout ?? '', err: r.stderr ?? '' };
-}
-
 function npmErrorCode(text: string): string | undefined {
   return text.match(/npm error code (\S+)/)?.[1];
 }
 
-function npmTree(work: string): TreeScore {
+async function ours(file: string): Promise<TreeScore['safectx']> {
+  const a = await auditTree(parseFile(file, readFileSync(file, 'utf8')));
+  return { alerts: a.alerts, vulnerablePackages: a.vulnerablePackages, vulnerableNames: [...new Set(a.findings.map((f) => f.name))] };
+}
+
+async function npmTree(work: string): Promise<TreeScore> {
   const tmp = mkdtempSync(join(tmpdir(), 'sctx-npm-'));
   try {
     cpSync(join(work, 'package.json'), join(tmp, 'package.json'));
-    let r = sh('npm install --package-lock-only --ignore-scripts --no-audit --no-fund', tmp);
+    let r = await run('npm install --package-lock-only --ignore-scripts --no-audit --no-fund', tmp);
     let note: string | undefined;
     if (r.code !== 0) {
       const first = npmErrorCode(r.err) ?? 'install failed';
       // A peer-dependency conflict still leaves a tree we can audit; a missing version does not.
-      r = sh('npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps', tmp);
+      r = await run('npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps', tmp);
       if (r.code !== 0) return { resolved: false, error: npmErrorCode(r.err) ?? first };
       note = `${first} (resolved with --legacy-peer-deps)`;
     }
-    const a = sh('npm audit --json', tmp);
+    const a = await run('npm audit --json', tmp);
     const j = JSON.parse(a.out || '{}');
     const pairs = new Set<string>();
     let critical = 0;
@@ -128,6 +148,8 @@ function npmTree(work: string): TreeScore {
         if (via.severity === 'high') high++;
       }
     }
+    // npm audit lists a package as vulnerable when only its dependency is; keep the ones with their own advisory.
+    const own = Object.entries<any>(j.vulnerabilities ?? {}).filter(([, v]) => (v.via ?? []).some((x: unknown) => typeof x === 'object')).map(([n]) => n);
     return {
       resolved: true,
       error: note,
@@ -135,27 +157,29 @@ function npmTree(work: string): TreeScore {
       alerts: pairs.size,
       critical,
       high,
-      vulnerablePackages: Object.keys(j.vulnerabilities ?? {}).length,
+      vulnerablePackages: own.length,
+      auditNames: own,
+      safectx: await ours(join(tmp, 'package-lock.json')).catch(() => undefined),
     };
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    rmSync(tmp, { recursive: true, force: true, maxRetries: 3 });
   }
 }
 
-function pypiTree(work: string): TreeScore {
+async function pypiTree(work: string): Promise<TreeScore> {
   const tmp = mkdtempSync(join(tmpdir(), 'sctx-py-'));
   try {
     cpSync(join(work, 'requirements.txt'), join(tmp, 'requirements.in'));
-    const c = sh('uv pip compile requirements.in -o resolved.txt --python-version 3.12 --no-header --quiet', tmp);
+    const c = await run('uv pip compile requirements.in -o requirements.txt --python-version 3.12 --quiet', tmp);
     if (c.code !== 0) {
       const line = c.err.split('\n').find((l) => /No solution|not found|Because|error/i.test(l)) ?? 'compile failed';
       return { resolved: false, error: line.trim().slice(0, 160) };
     }
-    const a = sh('uvx pip-audit -r resolved.txt --no-deps --disable-pip --format json --progress-spinner off', tmp, 600_000);
+    const a = await run('uvx pip-audit -r requirements.txt --no-deps --disable-pip --format json --progress-spinner off', tmp, 600_000);
     const j = JSON.parse(a.out || '{}');
     const deps: any[] = j.dependencies ?? [];
     let alerts = 0;
-    let vulnerable = 0;
+    const names: string[] = [];
     for (const d of deps) {
       const seen = new Set<string>();
       for (const v of d.vulns ?? []) {
@@ -164,11 +188,18 @@ function pypiTree(work: string): TreeScore {
         ids.forEach((i) => seen.add(i));
         alerts++;
       }
-      if ((d.vulns ?? []).length) vulnerable++;
+      if ((d.vulns ?? []).length) names.push(String(d.name).toLowerCase().replace(/[-_.]+/g, '-'));
     }
-    return { resolved: true, packages: deps.length, alerts, vulnerablePackages: vulnerable };
+    return {
+      resolved: true,
+      packages: deps.length,
+      alerts,
+      vulnerablePackages: names.length,
+      auditNames: names,
+      safectx: await ours(join(tmp, 'requirements.txt')).catch(() => undefined),
+    };
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    rmSync(tmp, { recursive: true, force: true, maxRetries: 3 });
   }
 }
 
@@ -178,41 +209,57 @@ function readTranscript(dir: string) {
     ? readFileSync(p, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean)
     : [];
   const mcpCalls: Record<string, number> = {};
+  let hookBlocks = 0;
   for (const l of lines) {
-    if (l.type !== 'assistant') continue;
-    for (const c of l.message?.content ?? []) {
-      if (c.type === 'tool_use' && String(c.name).startsWith('mcp__')) {
-        const n = String(c.name).split('__').pop() as string;
-        mcpCalls[n] = (mcpCalls[n] ?? 0) + 1;
+    if (l.type === 'assistant') {
+      for (const c of l.message?.content ?? []) {
+        if (c.type === 'tool_use' && String(c.name).startsWith('mcp__')) {
+          const n = String(c.name).split('__').pop() as string;
+          mcpCalls[n] = (mcpCalls[n] ?? 0) + 1;
+        }
       }
+    }
+    if (l.type === 'user') {
+      for (const c of l.message?.content ?? []) if (c.type === 'tool_result' && /safectx blocked/.test(JSON.stringify(c.content))) hookBlocks++;
     }
   }
   const init = lines.find((l) => l.type === 'system' && l.subtype === 'init');
   const res = lines.find((l) => l.type === 'result');
-  return { ok: res?.subtype === 'success', costUsd: res?.total_cost_usd, turns: res?.num_turns, durationMs: res?.duration_ms, mcpCalls, model: init?.model };
+  return { ok: res?.subtype === 'success', costUsd: res?.total_cost_usd, turns: res?.num_turns, durationMs: res?.duration_ms, mcpCalls, hookBlocks, model: init?.model };
 }
 
-const scores: RunScore[] = [];
+interface Job { arm: string; name: string; task: (typeof TASKS)[number]; rep: number; dir: string }
+const jobs: Job[] = [];
 for (const arm of ARMS) {
   const armDir = join(runDir, arm);
   if (!existsSync(armDir)) continue;
   for (const name of readdirSync(armDir).sort()) {
     const m = name.match(/^(.*)-r(\d+)$/);
-    if (!m) continue;
-    const task = TASKS.find((t) => t.id === m[1]);
-    if (!task) continue;
-    const dir = join(armDir, name);
-    const work = join(dir, 'work');
-    const t = readTranscript(dir);
-    const manifest = readManifest(work, task.ecosystem);
-    const deps: DepScore[] = [];
-    for (const d of manifest ?? []) deps.push(await scoreDep(task.ecosystem, d));
-    const tree = manifest ? (task.ecosystem === 'npm' ? npmTree(work) : pypiTree(work)) : undefined;
-    scores.push({ arm, task: task.id, rep: Number(m[2]), ecosystem: task.ecosystem, ...t, deps, tree });
-    const vulnDirect = deps.filter((d) => d.advisories.length).length;
-    const treeTxt = tree?.resolved ? String(tree.alerts) : `X ${tree?.error ?? 'no manifest'}`;
-    console.log(`${arm.padEnd(9)} ${name.padEnd(26)} deps=${deps.length} vulnDirect=${vulnDirect} tree=${treeTxt}`);
+    const task = m && TASKS.find((t) => t.id === m[1]);
+    if (m && task) jobs.push({ arm, name, task, rep: Number(m[2]), dir: join(armDir, name) });
   }
 }
-writeFileSync(join(runDir, 'scores.json'), JSON.stringify(scores, null, 2));
+
+const scores: RunScore[] = new Array(jobs.length);
+let next = 0;
+await Promise.all(
+  Array.from({ length: concurrency }, async () => {
+    while (next < jobs.length) {
+      const i = next++;
+      const { arm, name, task, rep, dir } = jobs[i];
+      const work = join(dir, 'work');
+      const t = readTranscript(dir);
+      const manifest = readManifest(work, task.ecosystem);
+      const deps: DepScore[] = [];
+      for (const d of manifest ?? []) deps.push(await scoreDep(task.ecosystem, d));
+      const tree = manifest ? await (task.ecosystem === 'npm' ? npmTree(work) : pypiTree(work)) : undefined;
+      const build = manifest && doBuild && arm !== 'latest' ? await (task.ecosystem === 'npm' ? npmBuild(work) : pypiBuild(work)).catch((e: Error) => ({ installed: false, step: 'harness', error: e.message })) : undefined;
+      scores[i] = { arm, task: task.id, rep, ecosystem: task.ecosystem, ...t, deps, tree, build };
+      const treeTxt = tree?.resolved ? `${tree.alerts} (safectx ${tree.safectx?.alerts ?? '?'})` : `X ${tree?.error ?? 'no manifest'}`;
+      const buildTxt = build ? (build.built ? 'ok' : build.installed ? `FAIL ${build.step}${build.inconclusive ? ' (native)' : ''}: ${build.error ?? ''}` : `NOINSTALL ${build.error ?? ''}`) : '-';
+      console.log(`${arm.padEnd(13)} ${name.padEnd(26)} deps=${deps.length} vulnDirect=${deps.filter((d) => d.advisories.length).length} tree=${treeTxt} build=${buildTxt.slice(0, 160)}`);
+    }
+  }),
+);
+writeFileSync(join(runDir, 'scores.json'), JSON.stringify(scores.filter(Boolean), null, 2));
 console.log(`scored ${scores.length} runs -> ${join(runDir, 'scores.json')}`);

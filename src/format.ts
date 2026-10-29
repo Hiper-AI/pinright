@@ -53,17 +53,29 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport): s
     if (req.advisories.length > 8) lines.push(`  - ... and ${req.advisories.length - 8} more`);
   }
 
-  if (report.safeVersion) {
+  const sameLine = report.safeVersionSameLine;
+  const cmd = (v: string) => installCommand(report.ecosystem, report.package, v);
+  if (req && report.line && sameLine && sameLine !== req.version) {
+    lines.push(`Recommended within ${report.line}: ${sameLine} (same release line, no API break expected). Upgrade: ${cmd(sameLine)}`);
+    if (report.safeVersion && report.safeVersion !== sameLine) {
+      lines.push(`Newest safe overall: ${report.safeVersion} (a different major: read its migration guide before switching).`);
+    }
+  } else if (req && report.line && report.crossLineRequired && report.safeVersion) {
+    lines.push(
+      `No ${report.line} release is free of known advisories. The fix needs ${report.safeVersion}, a different major: ` +
+        `expect breaking changes, read the migration guide. Upgrade: ${cmd(report.safeVersion)}`,
+    );
+  } else if (report.safeVersion) {
     const isUpgrade = req && req.version !== report.safeVersion;
     lines.push(
       `Recommended version: ${report.safeVersion}` +
         (report.latestVersion && report.latestVersion !== report.safeVersion
           ? ` (latest is ${report.latestVersion}, which is either newer than the cooldown window, pre-release or has an advisory)`
           : ' (latest)') +
-        (isUpgrade ? `. Upgrade: ${installCommand(report.ecosystem, report.package, report.safeVersion)}` : '.'),
+        (isUpgrade ? `. Upgrade: ${cmd(report.safeVersion)}` : '.'),
     );
-    if (report.safeVersionLicenses?.length) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
   }
+  if (report.safeVersion && report.safeVersionLicenses?.length) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
 
   lines.push(`Verified against ${report.sources.join(' + ')} on ${report.checkedAt.slice(0, 10)}.`);
   return lines.join('\n');

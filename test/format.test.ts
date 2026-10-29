@@ -68,3 +68,17 @@ describe('ecosystems', () => {
     expect(installCommand('go', 'github.com/gin-gonic/gin', 'v1.10.0')).toBe('go get github.com/gin-gonic/gin@v1.10.0');
   });
 });
+
+describe('securityNotice with release lines', () => {
+  const vuln = { version: '3.9.0', verdict: 'vulnerable' as const, advisories: [{ id: 'GHSA-x', aliases: [], url: '' }] };
+  it('puts the same-line upgrade first and the major upgrade as a separate warning', () => {
+    const t = securityNotice({ ...base, package: 'zod', verdict: 'vulnerable', line: '3.x', safeVersionSameLine: '3.25.80', safeVersion: '4.6.7', requested: vuln });
+    expect(t).toContain('Recommended within 3.x: 3.25.80');
+    expect(t).toContain('npm install zod@3.25.80');
+    expect(t).toContain('Newest safe overall: 4.6.7 (a different major');
+  });
+  it('says plainly when the fix needs a new major', () => {
+    const t = securityNotice({ ...base, package: 'jsonwebtoken', verdict: 'vulnerable', line: '8.x', crossLineRequired: true, safeVersion: '9.0.3', requested: { ...vuln, version: '8.5.1' } });
+    expect(t).toContain('No 8.x release is free of known advisories. The fix needs 9.0.3, a different major');
+  });
+});

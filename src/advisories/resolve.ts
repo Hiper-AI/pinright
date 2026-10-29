@@ -52,6 +52,15 @@ export interface PackageReport {
   safeVersion?: string;
   safeVersionPublishedAt?: string;
   safeVersionLicenses?: string[];
+  /**
+   * Release line of the version the project uses ("3.x", or "0.28.x" before 1.0,
+   * where minors break). Set when a version was given.
+   */
+  line?: string;
+  /** Newest safe version on that line: the upgrade that should not break the API. */
+  safeVersionSameLine?: string;
+  /** True when no release on the line is clean and the fix needs a new major. */
+  crossLineRequired?: boolean;
   requested?: RequestedVersionReport;
   checkedAt: string;
   sources: string[];
@@ -78,6 +87,13 @@ export function compareVersionsDesc(a: DepsDevVersionSummary, b: DepsDevVersionS
     if (c !== 0) return c;
   }
   return (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
+}
+
+/** "3.x" for 3.2.1, "0.28.x" for 0.28.1 (pre-1.0 minors are breaking by semver). */
+export function releaseLine(version: string): string | undefined {
+  const v = semver.coerce(version, { includePrerelease: false });
+  if (!v) return undefined;
+  return v.major === 0 ? `0.${v.minor}.x` : `${v.major}.x`;
 }
 
 function olderThanCooldown(publishedAt: string | undefined, now: number): boolean {
@@ -179,27 +195,38 @@ export async function assessPackage(
   const now = Date.now();
 
   // Candidates for "safe": stable, not deprecated, past the cooldown, newest first.
-  const candidates = versions
+  const eligible = versions
     .filter((v) => !v.isDeprecated && !isPrerelease(v.versionKey.version))
-    .filter((v) => olderThanCooldown(v.publishedAt, now))
-    .slice(0, config.maxCandidates);
+    .filter((v) => olderThanCooldown(v.publishedAt, now));
+  const candidates = eligible.slice(0, config.maxCandidates);
 
-  let safe: DepsDevVersionSummary | undefined;
-  let safeLicenses: string[] | undefined;
   let sourceDown: string | undefined;
-  for (const cand of candidates) {
-    try {
-      const detail = await getVersion(eco, name, cand.versionKey.version);
-      if (!detail) continue;
-      if ((detail.advisoryKeys ?? []).length === 0) {
-        safe = cand;
-        safeLicenses = detail.licenses;
-        break;
+  async function firstClean(list: DepsDevVersionSummary[]) {
+    for (const cand of list) {
+      try {
+        const detail = await getVersion(eco, name, cand.versionKey.version);
+        if (!detail) continue;
+        if ((detail.advisoryKeys ?? []).length === 0) return { cand, licenses: detail.licenses };
+      } catch (err) {
+        sourceDown = (err as Error).message;
+        return undefined;
       }
-    } catch (err) {
-      sourceDown = (err as Error).message;
-      break;
     }
+    return undefined;
+  }
+
+  const found = await firstClean(candidates);
+  const safe = found?.cand;
+  const safeLicenses = found?.licenses;
+
+  // Same release line as the version the project uses: the upgrade that keeps the API.
+  const line = requestedVersion ? releaseLine(requestedVersion) : undefined;
+  let safeSameLine: DepsDevVersionSummary | undefined;
+  if (line && !sourceDown) {
+    const onLine = eligible
+      .filter((v) => releaseLine(v.versionKey.version) === line)
+      .slice(0, config.maxCandidates);
+    safeSameLine = safe && releaseLine(safe.versionKey.version) === line ? safe : (await firstClean(onLine))?.cand;
   }
 
   const report: PackageReport = {
@@ -211,6 +238,11 @@ export async function assessPackage(
     safeVersionPublishedAt: safe?.publishedAt,
     safeVersionLicenses: safeLicenses,
   };
+  if (line) {
+    report.line = line;
+    report.safeVersionSameLine = safeSameLine?.versionKey.version;
+    report.crossLineRequired = !safeSameLine && Boolean(safe);
+  }
 
   if (sourceDown) {
     report.verdict = 'unknown';

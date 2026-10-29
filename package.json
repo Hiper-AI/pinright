@@ -1,12 +1,12 @@
 {
   "name": "safectx",
-  "version": "0.1.0",
-  "description": "MCP server that serves up-to-date library docs (via Context7) and tells the agent which version is free of known vulnerabilities (via deps.dev and OSV).",
+  "version": "0.2.0",
+  "description": "Version-accurate library docs for coding agents, with a supply-chain verdict: safe versions, whole-tree audit and a pre-install hook (deps.dev + OSV).",
   "license": "MIT",
   "type": "module",
-  "main": "dist/server.js",
+  "main": "dist/cli.js",
   "bin": {
-    "safectx": "dist/server.js"
+    "safectx": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/cli.js",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",

@@ -2,7 +2,9 @@
  * Runs each task with a real coding agent (Claude Code, headless) under three arms:
  *   no-docs   : no MCP server, no web; the agent pins versions from memory
  *   context7  : the official Context7 MCP server
- *   safectx   : this server
+ *   safectx   : this server (Context7 off)
+ *   hook-only : no MCP server, only the safectx pre-install hook
+ *   safectx+hook : both
  * Built-in tools are limited to Write and Read in every arm, so the only
  * difference is the MCP server. Transcripts land in bench/agents/runs/<stamp>/.
  *
@@ -22,16 +24,27 @@ const model = opt('model', 'sonnet');
 const reps = Number(opt('reps', '2'));
 const concurrency = Number(opt('concurrency', '4'));
 const only = opt('only', '').split(',').filter(Boolean);
-const armsOpt = opt('arms', 'no-docs,context7,safectx').split(',');
+const armsOpt = opt('arms', 'no-docs,context7,safectx,hook-only,safectx+hook').split(',');
 const stamp = opt('stamp', new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19));
 
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
 
+const cli = join(root, 'dist', 'cli.js');
+const safectxServer = { safectx: { command: 'node', args: [cli] } };
 const MCP: Record<string, object> = {
   'no-docs': { mcpServers: {} },
   context7: { mcpServers: { context7: { command: 'npx', args: ['-y', '@upstash/context7-mcp'] } } },
-  safectx: { mcpServers: { safectx: { command: 'node', args: [join(root, 'dist', 'server.js')] } } },
+  safectx: { mcpServers: safectxServer },
+  'hook-only': { mcpServers: {} },
+  'safectx+hook': { mcpServers: safectxServer },
+};
+/** Arms that also get the pre-install hook, through a settings file passed with --settings. */
+const HOOKED = new Set(['hook-only', 'safectx+hook']);
+const hookSettings = {
+  hooks: {
+    PreToolUse: [{ matcher: 'Bash|Write|Edit|MultiEdit', hooks: [{ type: 'command', command: `node "${cli.replace(/\\/g, '/')}" hook claude`, timeout: 60 }] }],
+  },
 };
 
 interface Job { arm: string; taskId: string; rep: number; prompt: string }
@@ -62,11 +75,18 @@ function runOne(job: Job): Promise<number> {
     '--no-session-persistence',
     '--max-turns', '40',
   ];
+  if (HOOKED.has(job.arm)) {
+    const settingsPath = join(dir, 'settings.json');
+    writeFileSync(settingsPath, JSON.stringify(hookSettings, null, 2));
+    cliArgs.push('--settings', settingsPath);
+  }
   const out = createWriteStream(join(dir, 'transcript.jsonl'));
   const err = createWriteStream(join(dir, 'stderr.log'));
   const started = Date.now();
   return new Promise((res) => {
-    const child = spawn('claude', cliArgs, { cwd: work, env: { ...process.env, SAFECTX_NO_CACHE: '' }, windowsHide: true });
+    // safectx arms run with Context7 off: this run measures safectx's own docs.
+    const env = { ...process.env, SAFECTX_NO_CACHE: '', SAFECTX_CONTEXT7: 'off' };
+    const child = spawn('claude', cliArgs, { cwd: work, env, windowsHide: true });
     child.stdout.pipe(out);
     child.stderr.pipe(err);
     const timer = setTimeout(() => child.kill(), 15 * 60_000);

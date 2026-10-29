@@ -155,3 +155,26 @@ describe('dedupeAdvisories', () => {
     expect(out[2].fixedIn).toEqual(['2.0']);
   });
 });
+
+describe('same release line', () => {
+  it('recommends the newest clean version on the line the project uses, and the overall one apart', async () => {
+    seedLib({
+      versions: [version('3.9.0'), version('3.10.0'), version('3.11.0'), version('4.0.0'), version('4.1.0', { isDefault: true })],
+      advisories: { '3.9.0': ['GHSA-a'], '3.11.0': ['GHSA-b'] },
+    });
+    const r = await assessPackage('npm', 'lib', '3.9.0');
+    expect(r.line).toBe('3.x');
+    expect(r.safeVersionSameLine).toBe('3.10.0');
+    expect(r.safeVersion).toBe('4.1.0');
+    expect(r.crossLineRequired).toBe(false);
+  });
+
+  it('flags when only a new major is clean; 0.x minors are their own line', async () => {
+    seedLib({ versions: [version('0.27.0'), version('0.28.0'), version('1.0.0', { isDefault: true })], advisories: { '0.27.0': ['GHSA-a'], '0.28.0': ['GHSA-a'] } });
+    const r = await assessPackage('npm', 'lib', '0.27.0');
+    expect(r.line).toBe('0.27.x');
+    expect(r.safeVersionSameLine).toBeUndefined();
+    expect(r.crossLineRequired).toBe(true);
+    expect(r.safeVersion).toBe('1.0.0');
+  });
+});

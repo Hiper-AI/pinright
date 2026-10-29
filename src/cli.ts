@@ -1,0 +1,166 @@
+#!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-explicit-any -- untyped JSON from registries, lockfiles and agent hooks, read defensively */
+/**
+ * safectx                      MCP server over stdio (what agents launch)
+ * safectx hook claude|cursor   pre-install hook: reads the agent's hook JSON on stdin
+ * safectx check <eco> <name>[@version]
+ * safectx audit [path] [--json] [--fail-on=low|moderate|high|critical]
+ * safectx init [claude|cursor] [--no-hook] [--no-mcp]
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { parseEcosystem } from './ecosystems.js';
+import { securityNotice } from './format.js';
+import { runClaudeHook, runCursorHook } from './hook/run.js';
+import { splitNpmSpec } from './hook/intent.js';
+import { buildMcpServer, manifestsIn, readSiblings } from './mcp.js';
+import { auditTree, formatTreeAudit, type TreeAudit } from './tree/audit.js';
+import { parseFile } from './tree/lockfiles.js';
+import { checkPackage } from './verdict.js';
+
+async function serve(): Promise<number> {
+  const server = buildMcpServer();
+  await server.connect(new StdioServerTransport());
+  console.error('[safectx] ready on stdio');
+  return new Promise(() => {}); // stdio keeps the process alive
+}
+
+async function check(args: string[]): Promise<number> {
+  const eco = parseEcosystem(args[0]);
+  if (!eco || !args[1]) {
+    console.error('usage: safectx check <npm|pypi|cargo|go|maven|nuget|rubygems> <name>[@version]');
+    return 2;
+  }
+  const [name, version] = eco === 'pypi' && args[1].includes('==') ? args[1].split('==') : splitNpmSpec(args[1]);
+  const v = await checkPackage(eco, name, version);
+  console.log(securityNotice(v.report, v.typo));
+  return v.report.verdict === 'ok' ? 0 : 1;
+}
+
+const SEV = ['low', 'moderate', 'high', 'critical'];
+
+async function audit(args: string[]): Promise<number> {
+  const json = args.includes('--json');
+  const failOn = args.find((a) => a.startsWith('--fail-on='))?.split('=')[1] ?? 'low';
+  const target = path.resolve(args.find((a) => !a.startsWith('--')) ?? '.');
+  const files = fs.statSync(target).isDirectory() ? manifestsIn(target) : [target];
+  if (!files.length) {
+    console.error(`No supported lockfile or manifest in ${target}`);
+    return 2;
+  }
+  const audits: TreeAudit[] = [];
+  for (const f of files) audits.push(await auditTree(parseFile(f, fs.readFileSync(f, 'utf8'), readSiblings(f))));
+  if (json) console.log(JSON.stringify(audits, null, 2));
+  else console.log(audits.map((a) => formatTreeAudit(a, 50)).join('\n\n'));
+  const floor = Math.max(0, SEV.indexOf(failOn));
+  const bad = audits.some(
+    (a) => a.malicious > 0 || SEV.slice(floor).some((s) => a.bySeverity[s as keyof TreeAudit['bySeverity']] > 0) || (floor === 0 && a.bySeverity.unknown > 0),
+  );
+  return bad ? 1 : 0;
+}
+
+function readJson(p: string): any {
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function writeJson(p: string, data: unknown) {
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, `${JSON.stringify(data, null, 2)}\n`);
+  console.log(`wrote ${path.relative(process.cwd(), p) || p}`);
+}
+
+/** How the agent should launch us: the published package, or this checkout with --local. */
+function launcher(local: boolean): { command: string; args: string[] } {
+  if (!local) return { command: 'npx', args: ['-y', 'safectx'] };
+  return { command: 'node', args: [fileURLToPath(import.meta.url)] };
+}
+
+function init(args: string[]): number {
+  const agent = args.find((a) => !a.startsWith('--')) ?? 'claude';
+  const local = args.includes('--local');
+  const withHook = !args.includes('--no-hook');
+  const withMcp = !args.includes('--no-mcp');
+  const l = launcher(local);
+  const shell = (extra: string[]) => [l.command, ...l.args, ...extra].map((s) => (/\s/.test(s) ? `"${s}"` : s)).join(' ');
+  if (agent === 'claude') {
+    if (withMcp) {
+      const p = path.resolve('.mcp.json');
+      const j = readJson(p);
+      j.mcpServers = { ...(j.mcpServers ?? {}), safectx: { command: l.command, args: l.args } };
+      writeJson(p, j);
+    }
+    if (withHook) {
+      const p = path.resolve('.claude', 'settings.json');
+      const j = readJson(p);
+      const entry = { matcher: 'Bash|Write|Edit|MultiEdit', hooks: [{ type: 'command', command: shell(['hook', 'claude']), timeout: 60 }] };
+      const pre = (j.hooks?.PreToolUse ?? []).filter((h: any) => !JSON.stringify(h).includes('safectx'));
+      j.hooks = { ...(j.hooks ?? {}), PreToolUse: [...pre, entry] };
+      writeJson(p, j);
+    }
+    return 0;
+  }
+  if (agent === 'cursor') {
+    if (withMcp) {
+      const p = path.resolve('.cursor', 'mcp.json');
+      const j = readJson(p);
+      j.mcpServers = { ...(j.mcpServers ?? {}), safectx: { command: l.command, args: l.args } };
+      writeJson(p, j);
+    }
+    if (withHook) {
+      const p = path.resolve('.cursor', 'hooks.json');
+      const j = readJson(p);
+      const cmd = { command: shell(['hook', 'cursor']), timeout: 60 };
+      const keep = (list: any[] | undefined) => (list ?? []).filter((h) => !JSON.stringify(h).includes('safectx'));
+      j.version = j.version ?? 1;
+      j.hooks = {
+        ...(j.hooks ?? {}),
+        beforeShellExecution: [...keep(j.hooks?.beforeShellExecution), cmd],
+        preToolUse: [...keep(j.hooks?.preToolUse), cmd],
+      };
+      writeJson(p, j);
+    }
+    return 0;
+  }
+  console.error('usage: safectx init [claude|cursor] [--local] [--no-hook] [--no-mcp]');
+  return 2;
+}
+
+async function main(): Promise<number> {
+  const [cmd, ...args] = process.argv.slice(2);
+  switch (cmd) {
+    case undefined:
+    case 'serve':
+    case 'mcp':
+      return serve();
+    case 'hook':
+      return args[0] === 'cursor' ? runCursorHook() : runClaudeHook();
+    case 'check':
+      return check(args);
+    case 'audit':
+      return audit(args);
+    case 'init':
+      return init(args);
+    case '--version':
+    case '-v':
+      console.log(readJson(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')).version);
+      return 0;
+    default:
+      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver] | audit [path] | init [claude|cursor]]');
+      return 2;
+  }
+}
+
+main().then(
+  (code) => process.exit(code),
+  (err) => {
+    console.error('[safectx] fatal:', (err as Error).message);
+    // A crashing hook must not wedge the agent; Claude Code and Cursor treat exit 1 as "proceed".
+    process.exit(1);
+  },
+);

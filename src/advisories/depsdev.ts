@@ -112,3 +112,49 @@ export async function getProjectPackageVersions(
     throw err;
   }
 }
+
+export interface DepsDevGraph {
+  nodes: { versionKey: { system: string; name: string; version: string }; relation: 'SELF' | 'DIRECT' | 'INDIRECT'; errors?: string[] }[];
+  edges: { fromNode: number; toNode: number; requirement?: string }[];
+  error?: string;
+}
+
+/**
+ * The resolved dependency graph of one package version, as deps.dev resolves it
+ * in isolation (npm, PyPI, Cargo and Maven; Go is not supported). Undefined on 404.
+ */
+export async function getDependencies(
+  eco: Ecosystem,
+  name: string,
+  version: string,
+): Promise<DepsDevGraph | undefined> {
+  const url =
+    `${config.depsDevBaseUrl}/v3/systems/${toDepsDevSystem(eco)}/packages/${enc(name)}` +
+    `/versions/${enc(version)}:dependencies`;
+  try {
+    return await cached(`dd:deps:${eco}:${name}:${version}`, config.ttl.versions, () => getJson<DepsDevGraph>(url));
+  } catch (err) {
+    if (isNotFound(err)) return undefined;
+    throw err;
+  }
+}
+
+export interface DepsDevProject {
+  projectKey: { id: string };
+  starsCount?: number;
+  forksCount?: number;
+  description?: string;
+  homepage?: string;
+  scorecard?: { overallScore?: number };
+}
+
+/** A source repository as deps.dev knows it ("github.com/vercel/next.js"): stars, Scorecard. */
+export async function getProject(projectId: string): Promise<DepsDevProject | undefined> {
+  const url = `${config.depsDevBaseUrl}/v3/projects/${enc(projectId)}`;
+  try {
+    return await cached(`dd:project:${projectId}`, config.ttl.versions, () => getJson<DepsDevProject>(url));
+  } catch (err) {
+    if (isNotFound(err)) return undefined;
+    throw err;
+  }
+}
