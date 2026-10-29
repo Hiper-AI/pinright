@@ -29,12 +29,27 @@ const STOP = new Set(
   'a an and are as at be by for from how i in is it of on or that the this to use using with what when where which why do does can my your you me we our'.split(' '),
 );
 
+/**
+ * Plural to singular, enough for "errors" to find error.md and "guard" to find guards.md. Not a
+ * stemmer: verb forms stay apart. Both sides of every comparison go through it, so an odd stem
+ * ("cookies", "cookie" -> "cooky") still matches itself.
+ */
+export function singular(t: string): string {
+  if (t.length <= 3) return t;
+  if (/(ss|ch|sh|x)es$/.test(t)) return t.slice(0, -2);
+  if (/ies$/.test(t) && t.length > 4) return `${t.slice(0, -3)}y`;
+  if (/ie$/.test(t)) return `${t.slice(0, -2)}y`;
+  if (/[^su]s$/.test(t) && !/is$/.test(t)) return t.slice(0, -1);
+  return t;
+}
+
 export function tokenize(s: string): string[] {
   return s
     .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase -> camel Case
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .filter((t) => t.length > 1 && !STOP.has(t));
+    .filter((t) => t.length > 1 && !STOP.has(t))
+    .map(singular);
 }
 
 const MAX_CHUNK = 2400;

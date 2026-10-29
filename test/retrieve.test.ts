@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, rank, rankPaths, select, tidy, tokenize, type DocFile } from '../src/docs/retrieve.js';
+import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, rank, rankPaths, select, singular, tidy, tokenize, type DocFile } from '../src/docs/retrieve.js';
 import { parseLlmsIndex, tagCandidates } from '../src/docs/sources.js';
 import { ecosystemHint, formatLibraryId, nameVariants, parseLibraryRef } from '../src/search.js';
 
@@ -43,6 +43,13 @@ describe('tidy', () => {
 describe('ranking', () => {
   it('tokenizes camelCase and drops stop words', () => {
     expect(tokenize('How to use NextResponse.redirect in middleware')).toEqual(['next', 'response', 'redirect', 'middleware']);
+  });
+
+  it('plurals match their singular on both sides (errors / error.md, guard / guards.md)', () => {
+    expect(['errors', 'guards', 'queries', 'matches', 'classes', 'cookies', 'cookie', 'class', 'status', 'redis', 'aws'].map(singular)).toEqual(
+      ['error', 'guard', 'query', 'match', 'class', 'cooky', 'cooky', 'class', 'status', 'redis', 'aws'],
+    );
+    expect(rankPaths([{ path: 'docs/tutorial/handling-errors.md' }, { path: 'docs/tutorial/body.md' }], 'return a 404 error')[0].path).toBe('docs/tutorial/handling-errors.md');
   });
 
   it('BM25 puts the section that answers the question first, and select respects the budget', () => {
