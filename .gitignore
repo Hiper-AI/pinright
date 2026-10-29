@@ -8,3 +8,4 @@ bench/agents/runs/
 pack.json
 *.tgz
 bench/docs/runs/
+build/

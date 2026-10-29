@@ -11,14 +11,18 @@ repository does it for you.
 
 The npm name is not final. If it changes, edit these places and nothing else:
 
-- `package.json`: `name`, and `bin` if the command changes too.
-- `src/mcp.ts`: `SERVER_INFO.name`, the server name agents see.
-- `src/http.ts`: the `User-Agent` prefix.
-- `README.md` and `SECURITY.md`: install commands (`npx -y safectx ...`) and prose.
-- `src/cli.ts`: `launcher` (`npx -y safectx`, written into agent configs by `init`) and the
-  `includes('safectx')` filters that find its own hook entries when `init` runs again.
+- `package.json`: `name`, `mcpName` (`io.github.Hiper-AI/<name>`, spelled like the GitHub org
+  login: the MCP Registry compares it byte for byte), and `bin` if the command changes too.
+- Run `npm run dist:artifacts`. It rewrites `server.json` and the generated blocks of the README
+  (per-client configs, install links) from `package.json`; a test fails while they are stale.
+- `README.md` and `SECURITY.md`: the install commands and prose outside those blocks.
+- Hook entries `init` wrote under the old name: `init` finds its own entries by the package name,
+  so after a rename it adds a new entry next to the old one. Say so in the release notes.
 
-The workflows and `scripts/check-pack.mjs` read the name and version from `package.json`.
+`src/pkg.ts` reads the name from `package.json` at runtime: the server name agents see
+(`SERVER_INFO`), the `User-Agent`, the launcher `init` writes (`npx -y <name>`), the server key in
+every client config and the `.mcpb` manifest all follow it. The workflows and
+`scripts/check-pack.mjs` read the name and version from `package.json` too.
 `.safectx.json`, the `SAFECTX_*` variables and the cache directory also carry the name; they can
 keep it even if the npm name changes.
 

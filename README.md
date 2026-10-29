@@ -14,8 +14,8 @@ often months old and carry known vulnerabilities. safectx gives the agent:
   project already uses so the upgrade does not break the API.
 - **A whole-tree audit**: every package in a lockfile, direct and transitive, the way Dependabot
   sees it, with the fix for each finding.
-- **A pre-install hook** for Claude Code and Cursor that blocks the bad change even when the agent
-  never asked.
+- **A pre-install hook** for Claude Code, Cursor, VS Code, Codex, Gemini CLI and Windsurf that
+  blocks the bad change even when the agent never asked.
 
 ```
 agent --MCP--> safectx --> registry + jsDelivr     package files at the exact version (npm)
@@ -30,32 +30,396 @@ agent --MCP--> safectx --> registry + jsDelivr     package files at the exact ve
 
 ## Install
 
-Claude Code, MCP server and hook in the current project:
+`init` adds safectx to an agent client: the MCP server, the pre-install hook when the client has
+hooks, and a starter [`.safectx.json`](#team-policy-safectxjson) for the project.
+
+```bash
+npx -y safectx init                  # the clients this project already uses (Claude Code if none)
+npx -y safectx init cursor           # one client, in this project
+npx -y safectx init codex --user     # one client, for your user instead of this project
+npx -y safectx init vscode --print   # print what it would write and write nothing
+```
+
+What `init` does to your files:
+
+- It edits only the `safectx` entry. Other servers, other hooks, comments (JSONC) and indentation
+  stay as you left them. In a Codex `config.toml` it replaces the `[mcp_servers.safectx]` table and
+  leaves the other lines alone.
+- Before it changes a file, it copies it to `<file>.safectx.bak`. A second run finds nothing to
+  change and writes nothing.
+- If a file does not parse, `init` stops before it writes anything and tells you which file.
+- It never writes a token. If an entry it replaces already sets variables, it keeps them and
+  warns about any that look like a credential. `--gh-cli` adds `SAFECTX_GH_CLI=1` instead.
+- `--project` (the default where the client has a project file) or `--user` picks the scope.
+  `--no-hook`, `--no-mcp` and `--no-config` skip a part. The starter `.safectx.json` never replaces
+  an existing one.
+
+With no client named, `init` sets up the clients whose directory or config is already in the
+project (`.cursor/`, `.vscode/`, `.gemini/`, `.codex/`, `opencode.json`, ...). It lists the clients
+installed for your user and the command for each, but leaves their user-level files alone.
+
+No key is required. A `GITHUB_TOKEN` helps with large monorepos and upgrade guides; see
+[GitHub rate limit](#github-rate-limit). Put it in the environment that starts your agent.
+
+### Install links
+
+<!-- generated:install-links (scripts/distribution.ts; do not edit by hand) -->
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=safectx&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInNhZmVjdHgiXX0%3D)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_safectx-0098FF?style=flat-square)](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522safectx%2522%252C%2522type%2522%253A%2522stdio%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522-y%2522%252C%2522safectx%2522%255D%257D)
+[![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_safectx-24bfa5?style=flat-square)](https://insiders.vscode.dev/redirect?url=vscode-insiders%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522safectx%2522%252C%2522type%2522%253A%2522stdio%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522-y%2522%252C%2522safectx%2522%255D%257D)
+<!-- /generated:install-links -->
+
+These links add the MCP server only. Run `init` in the project for the hook.
+
+### Clients
+
+| Client | MCP server | Pre-install hook | `init` |
+|---|---|---|---|
+| Claude Code | yes | yes (`PreToolUse`) | yes |
+| Claude Desktop | yes | no hooks in the app | yes, or the `.mcpb` extension below |
+| Cursor | yes | yes (`beforeShellExecution`, `preToolUse`) | yes |
+| VS Code (GitHub Copilot) | yes | yes, preview (`.github/hooks`) | yes |
+| Windsurf (Devin Desktop) | yes, user only | yes (`pre_run_command`, `pre_write_code`) | yes |
+| OpenAI Codex | yes | yes (`PreToolUse`, Bash and `apply_patch`) | yes |
+| Gemini CLI | yes | yes (`BeforeTool`) | yes |
+| Zed | yes | no hooks (`agent.tool_permissions` deny lists only) | yes |
+| JetBrains Junie | yes | no hooks | yes |
+| JetBrains AI Assistant | yes, in the IDE settings | no hooks | prints the JSON to paste |
+| Cline | yes, user only | not wired: Cline hooks are executable files and run on macOS and Linux only | yes |
+| Roo Code | yes, project only | no hooks | yes |
+| Continue | yes, project only | no hooks | yes |
+| Amp | yes | not wired: Amp intercepts tools through TypeScript plugins | yes |
+| opencode | yes | not wired: opencode intercepts tools through JS plugins | yes |
+| Kiro | yes | not wired: Kiro's docs do not describe the tool input a hook receives | yes |
+
+Where a client has no hook, the MCP tools still give the agent the verdict when it asks for one,
+and `safectx audit` in CI catches what got through.
+
+Some clients need one more step after `init`:
+
+- Codex reads a project's `.codex/` only when you trust the project, and runs a new hook only after
+  you review it in `/hooks`.
+- Gemini CLI asks before it runs a project hook it has not seen.
+- Claude Code asks once to approve the servers in `.mcp.json`. Amp needs `amp mcp approve safectx`
+  for a workspace server.
+- Claude Desktop and Windsurf load the server after a restart (Windsurf: refresh the MCP list).
+- VS Code hooks are a preview. The Copilot agent reads `.github/hooks/`; for local agent sessions,
+  turn on `chat.useHooks`.
+
+On native Windows, a client that cannot start `npx` directly works with `cmd` as the command and
+`["/c", "npx", "-y", "safectx"]` as the arguments.
+
+<!-- generated:clients (scripts/distribution.ts; do not edit by hand) -->
+#### Claude Code
+
+Server: project `.mcp.json`; user `~/.claude.json`.
+Hook (`safectx hook claude`): project `.claude/settings.json`; user `~/.claude/settings.json`.
 
 ```bash
 npx -y safectx init claude
 ```
 
-Cursor:
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### Claude Desktop
+
+Server: user `~/.config/Claude/claude_desktop_config.json` (Linux), `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS), `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
+
+```bash
+npx -y safectx init claude-desktop
+```
+
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### Cursor
+
+Server: project `.cursor/mcp.json`; user `~/.cursor/mcp.json`.
+Hook (`safectx hook cursor`): project `.cursor/hooks.json`; user `~/.cursor/hooks.json`.
 
 ```bash
 npx -y safectx init cursor
 ```
 
-`init` writes `.mcp.json` and `.claude/settings.json` (or `.cursor/mcp.json` and
-`.cursor/hooks.json`), keeping what is already there. `--no-hook` or `--no-mcp` installs one half.
-It also writes a commented starter [`.safectx.json`](#team-policy-safectxjson) when the project has
-none (`--no-config` skips it); it never overwrites an existing one. At the end it says how safectx
-will authenticate to GitHub; `--gh-cli` adds `SAFECTX_GH_CLI=1` to the MCP entry.
-
-Any other MCP client:
-
 ```json
-{ "mcpServers": { "safectx": { "command": "npx", "args": ["-y", "safectx"] } } }
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
 ```
 
-No key is required. A `GITHUB_TOKEN` helps with large monorepos and upgrade guides; see
-[GitHub rate limit](#github-rate-limit). `init` never writes a token into these files.
+#### VS Code (GitHub Copilot)
+
+Server: project `.vscode/mcp.json`; user `~/.config/Code/User/mcp.json` (Linux), `~/Library/Application Support/Code/User/mcp.json` (macOS), `%APPDATA%\Code\User\mcp.json` (Windows).
+Hook (`safectx hook copilot`): project `.github/hooks/safectx.json`; user `~/.copilot/hooks/safectx.json`.
+
+```bash
+npx -y safectx init vscode
+```
+
+```json
+{
+  "servers": {
+    "safectx": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### Windsurf (Devin Desktop)
+
+Server: user `~/.config/devin/mcp_config.json` (Linux, macOS), `%APPDATA%\devin\mcp_config.json` (Windows).
+Hook (`safectx hook windsurf`): project `.devin/hooks.json`; user `~/.codeium/windsurf/hooks.json`.
+
+```bash
+npx -y safectx init windsurf
+```
+
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### Zed
+
+Server: project `.zed/settings.json`; user `~/.config/zed/settings.json` (Linux, macOS), `%APPDATA%\Zed\settings.json` (Windows).
+
+```bash
+npx -y safectx init zed
+```
+
+```json
+{
+  "context_servers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### JetBrains Junie
+
+Server: project `.junie/mcp/mcp.json`; user `~/.junie/mcp/mcp.json`.
+
+```bash
+npx -y safectx init junie
+```
+
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### JetBrains AI Assistant
+
+AI Assistant keeps its MCP servers in the IDE settings, not in a file safectx can edit. Settings | Tools | AI Assistant | Model Context Protocol (MCP) > Add > STDIO, and paste:
+
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### OpenAI Codex
+
+Server: project `.codex/config.toml`; user `~/.codex/config.toml`.
+Hook (`safectx hook codex`): project `.codex/hooks.json`; user `~/.codex/hooks.json`.
+
+```bash
+npx -y safectx init codex
+```
+
+```toml
+[mcp_servers.safectx]
+command = "npx"
+args = ["-y", "safectx"]
+```
+
+#### Gemini CLI
+
+Server: project `.gemini/settings.json`; user `~/.gemini/settings.json`.
+Hook (`safectx hook gemini`): project `.gemini/settings.json`; user `~/.gemini/settings.json`.
+
+```bash
+npx -y safectx init gemini
+```
+
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### Cline
+
+Server: user `~/.cline/data/settings/cline_mcp_settings.json`.
+
+```bash
+npx -y safectx init cline
+```
+
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### Roo Code
+
+Server: project `.roo/mcp.json`.
+
+```bash
+npx -y safectx init roo
+```
+
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### Continue
+
+Server: project `.continue/mcpServers/safectx.yaml`.
+
+```bash
+npx -y safectx init continue
+```
+
+```yaml
+name: safectx
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: safectx
+    type: stdio
+    command: "npx"
+    args: ["-y", "safectx"]
+```
+
+#### Amp
+
+Server: project `.amp/settings.json`; user `~/.config/amp/settings.json`.
+
+```bash
+npx -y safectx init amp
+```
+
+```json
+{
+  "amp.mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+
+#### opencode
+
+Server: project `opencode.json`; user `~/.config/opencode/opencode.json`.
+
+```bash
+npx -y safectx init opencode
+```
+
+```json
+{
+  "mcp": {
+    "safectx": {
+      "type": "local",
+      "command": ["npx", "-y", "safectx"],
+      "enabled": true
+    }
+  }
+}
+```
+
+#### Kiro
+
+Server: project `.kiro/settings/mcp.json`; user `~/.kiro/settings/mcp.json`.
+
+```bash
+npx -y safectx init kiro
+```
+
+```json
+{
+  "mcpServers": {
+    "safectx": {
+      "command": "npx",
+      "args": ["-y", "safectx"]
+    }
+  }
+}
+```
+<!-- /generated:clients -->
+
+### Claude Desktop extension
+
+`npm run build:mcpb` builds `build/mcpb/safectx-<version>.mcpb`, a Claude Desktop extension that
+bundles the server with its dependencies and asks for an optional GitHub token, which Claude Desktop
+keeps in the OS keychain. The build validates the manifest against the MCPB 0.3 schema and with the
+official `mcpb` CLI. It is not published anywhere yet.
 
 ## What the agent sees
 
@@ -110,8 +474,20 @@ Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `
 
 ## The hook
 
-`safectx hook claude` (a `PreToolUse` hook on `Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit`) and `safectx hook cursor`
-(`beforeShellExecution` and `preToolUse`) read what the agent is about to do:
+`safectx hook <agent>` reads what the agent is about to do, in each agent's hook format:
+
+| Agent | Command | Events `init` registers | How it blocks |
+|---|---|---|---|
+| Claude Code | `hook claude` | `PreToolUse` on `Bash\|PowerShell\|Write\|Edit\|MultiEdit\|NotebookEdit` | `permissionDecision` deny or ask |
+| Cursor | `hook cursor` | `beforeShellExecution`, `preToolUse` | `permission` deny or ask |
+| VS Code / Copilot | `hook copilot` | `PreToolUse` in `.github/hooks/safectx.json` | `permissionDecision` deny or ask |
+| OpenAI Codex | `hook codex` | `PreToolUse` on `Bash\|apply_patch` | `permissionDecision` deny |
+| Gemini CLI | `hook gemini` | `BeforeTool` on `run_shell_command\|write_file\|replace` | `decision` deny |
+| Windsurf | `hook windsurf` | `pre_run_command`, `pre_write_code` | exit code 2, reason on stderr |
+
+Codex, Gemini CLI and Windsurf have no "ask a human" answer, so where Claude Code would ask,
+safectx denies there and says why. For Codex `apply_patch`, the hook reads each added or updated
+file out of the patch. What it checks:
 
 - installs: `npm`/`pnpm`/`yarn`/`bun add|install`, `npx`/`pnpm dlx`/`bunx`, `pip install` (also `-r file`),
   `uv add`/`uv pip install`, `uvx`, `pipx`, `poetry add`, `pdm add`, `cargo add|install`, `go get|install`,
@@ -700,6 +1076,9 @@ npx tsx scripts/audit.ts package-lock.json # whole-tree audit
 npx tsx scripts/upgrade.ts npm next 15.5.28 16.4.3 "middleware"   # what upgrade-guide returns
 npm run bench:agents                       # agent benchmark, see bench/agents/
 npm pack --ignore-scripts --json > pack.json && node scripts/check-pack.mjs pack.json  # what would ship
+npm run smoke:clients                      # the packed tarball, started from the config init writes per client
+npm run dist:artifacts                     # regenerate server.json and the README client blocks
+npm run build:mcpb                         # Claude Desktop extension into build/mcpb/ (not published)
 ```
 
 ## License
