@@ -42,11 +42,9 @@ about:
 | `cdn.jsdelivr.net`, `data.jsdelivr.com` | package name, version, file path | docs from the published package |
 | `api.github.com`, `raw.githubusercontent.com` | repository, tag, file path | docs from the repo, upgrade guides, GitHub Actions audit |
 | The package's own docs site | a request for `/llms.txt`, `/llms-full.txt` and the pages it lists | docs and upgrade guides, when the package metadata names a site |
-| `context7.com` | library id and the agent's docs question | only when local docs are thin; `SAFECTX_CONTEXT7=off` turns it off |
 
-Credentials are optional and stay with their service: `GITHUB_TOKEN` / `GH_TOKEN` goes only to
-`api.github.com`, and `CONTEXT7_API_KEY` only to `context7.com`. safectx never sends your source
-code, file contents or environment. The names and versions of the dependencies you check do reach
+The only credential, `GITHUB_TOKEN` / `GH_TOKEN`, is optional and goes only to `api.github.com`.
+safectx never sends your source code, file contents or environment. The names and versions of the dependencies you check do reach
 the services above, so a private package name you check does too.
 
 ## URLs that come from package metadata
@@ -75,7 +73,7 @@ separate guard (`src/safeFetch.ts`). The guard:
 - keeps a timeout over the whole exchange and a 10 MB cap on the body.
 
 safectx treats whatever comes back as text. Requests to the fixed services in the table above
-(registries, deps.dev, OSV, jsDelivr, GitHub, Context7) use the ordinary client. safectx accepts
+(registries, deps.dev, OSV, jsDelivr, GitHub) use the ordinary client. safectx accepts
 a GitHub owner and repository from metadata only when they match GitHub's own name rules.
 
 ## Network settings

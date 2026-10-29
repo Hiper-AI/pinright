@@ -15,7 +15,6 @@ import { getPackage, getProjectPackageVersions, getVersion } from './advisories/
 import { compareVersionsDesc } from './advisories/resolve.js';
 import { cached } from './cache.js';
 import { config } from './config.js';
-import { parseLibraryId } from './context7.js';
 import { ALIASES } from './data/aliases.js';
 import { type Ecosystem, fromDepsDevSystem, parseEcosystem } from './ecosystems.js';
 import { getText, isNotFound } from './http.js';
@@ -234,4 +233,13 @@ export async function resolvePackage(
   if (picked) return hints.packageName ? { ...picked, name: hints.packageName, via: 'explicit' } : picked;
   if (hints.packageName) return { ecosystem: eco ?? 'npm', name: hints.packageName, via: 'explicit' };
   return undefined;
+}
+
+/** "/vercel/next.js" or "/vercel/next.js/v15.1.8": a GitHub repo, optionally with a version. */
+export function parseLibraryId(libraryId: string): { owner: string; repo: string; version?: string; base: string } {
+  const parts = libraryId.replace(/^\/+/, '').split('/').filter(Boolean);
+  if (parts.length < 2) throw new Error(`Invalid library id: ${libraryId}`);
+  const [owner, repo, ...rest] = parts;
+  const version = rest.length ? rest.join('/') : undefined;
+  return { owner, repo, version, base: `/${owner}/${repo}` };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { securityNotice } from '../src/format.js';
-import { parseLibraryId, withVersion } from '../src/context7.js';
+import { parseLibraryId } from '../src/mapping.js';
 import { installCommand, parseEcosystem } from '../src/ecosystems.js';
 import type { PackageReport } from '../src/advisories/resolve.js';
 
@@ -60,7 +60,6 @@ describe('context7 ids', () => {
   it('parses ids with and without a version', () => {
     expect(parseLibraryId('/vercel/next.js')).toEqual({ owner: 'vercel', repo: 'next.js', version: undefined, base: '/vercel/next.js' });
     expect(parseLibraryId('/vercel/next.js/v15.1.8').version).toBe('v15.1.8');
-    expect(withVersion('/vercel/next.js/v14', 'v15.1.8')).toBe('/vercel/next.js/v15.1.8');
     expect(() => parseLibraryId('next')).toThrow();
   });
 });

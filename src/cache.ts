@@ -1,6 +1,6 @@
 /**
  * Tiny on-disk cache: one JSON file per key, with a TTL.
- * Context7's free tier is 1,000 calls/month, so caching is not optional.
+ * Registries and advisory databases are slow and rate-limited; most answers repeat.
  * Everything fails soft: a cache problem never breaks a lookup.
  */
 import { createHash } from 'node:crypto';
@@ -13,26 +13,9 @@ interface Entry<T> {
   value: T;
 }
 
-/**
- * Keys with this prefix hold Context7 output. They live in their own folder so
- * that content can be deleted on its own: Upstash may ask for cached Outputs
- * to be deleted (docs/CONTEXT7.md).
- */
-export const CONTEXT7_KEY_PREFIX = 'c7:';
-
-export function context7CacheDir(): string {
-  return path.join(config.cacheDir, 'context7');
-}
-
 function fileFor(key: string): string {
   const hash = createHash('sha1').update(key).digest('hex');
-  const dir = key.startsWith(CONTEXT7_KEY_PREFIX) ? context7CacheDir() : config.cacheDir;
-  return path.join(dir, hash.slice(0, 2), `${hash}.json`);
-}
-
-/** Deletes every cached Context7 answer. */
-export function clearContext7Cache(): void {
-  fs.rmSync(context7CacheDir(), { recursive: true, force: true });
+  return path.join(config.cacheDir, hash.slice(0, 2), `${hash}.json`);
 }
 
 export function cacheGet<T>(key: string): T | undefined {

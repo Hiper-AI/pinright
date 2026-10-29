@@ -1,11 +1,9 @@
 /**
  * Documentation for one package version, assembled locally:
  * package files and repo docs at the exact version, plus the project's
- * llms.txt, ranked with BM25 against the agent's question. Context7 is only a
- * fallback, and only when SAFECTX_CONTEXT7 is not "off".
+ * llms.txt, ranked with BM25 against the agent's question. No third-party docs index.
  */
 import { config } from '../config.js';
-import { fetchDocs as context7Docs, searchLibraries } from '../context7.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { packageMeta, type PackageMeta } from '../registry.js';
 import { docsSourceFor } from '../data/docsRepos.js';
@@ -18,7 +16,7 @@ import {
 export interface DocsResult {
   text: string;
   sources: { label: string; url: string; versionAccurate: boolean }[];
-  via: 'local' | 'context7' | 'none';
+  via: 'local' | 'none';
   meta: PackageMeta;
   note?: string;
 }
@@ -33,8 +31,6 @@ const TRANSLATION =
 const TYPE_FILES = 3;
 const LLMS_PAGES = 4;
 const CURATED_LLMS_PAGES = 8;
-/** Below this BM25 score the local docs did not really answer the question. */
-const WEAK_SCORE = 2;
 
 async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
@@ -188,19 +184,6 @@ export async function getDocs(opts: {
       ? packageNotes({ name: meta.name, version: meta.version, query: opts.query, text, importNames: pyApi?.importNames ?? [], requiresDist: pyApi?.requiresDist ?? [] })
       : [];
 
-  if (best < WEAK_SCORE && config.context7Mode !== 'off') {
-    const c7 = await context7Fallback(meta, opts.query).catch(() => undefined);
-    if (c7) {
-      const notes = notesFor(c7.text);
-      return {
-        meta,
-        via: 'context7',
-        sources: [{ label: `Context7 ${c7.id}`, url: `https://context7.com${c7.id}`, versionAccurate: c7.versioned }],
-        text: `Docs for ${meta.name}@${meta.version}: local sources were thin, so these come from Context7 (${c7.id}${c7.versioned ? '' : ', not pinned to this version'}).\n${notes.length ? `${notes.join('\n')}\n` : ''}\n${c7.text}`,
-      };
-    }
-  }
-
   if (!ranked.length || best <= 0) {
     const notes = notesFor('');
     return {
@@ -225,13 +208,3 @@ export async function getDocs(opts: {
   return { meta, via: 'local', sources, text: format(meta, picked, header) };
 }
 
-async function context7Fallback(meta: PackageMeta, query: string): Promise<{ id: string; text: string; versioned: boolean } | undefined> {
-  const libs = await searchLibraries(meta.name.replace(/^@[^/]+\//, ''), query);
-  const repoId = meta.repo ? `/${meta.repo.owner}/${meta.repo.repo}`.toLowerCase() : undefined;
-  const lib = libs.find((l) => repoId && l.id.toLowerCase() === repoId) ?? libs[0];
-  if (!lib) return undefined;
-  const v = (lib.versions ?? []).find((x) => x.replace(/^v/, '') === meta.version);
-  const id = v ? `${lib.id}/${v}` : lib.id;
-  const text = await context7Docs(id, query);
-  return { id, text, versioned: Boolean(v) };
-}

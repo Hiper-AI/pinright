@@ -5,7 +5,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.SAFECTX_NO_CACHE = '1';
-process.env.SAFECTX_CONTEXT7 = 'off';
 delete process.env.GITHUB_TOKEN;
 delete process.env.GH_TOKEN;
 

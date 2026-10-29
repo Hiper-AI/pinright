@@ -2,7 +2,7 @@
  * The MCP server. resolve-library-id and query-docs keep Context7's names so
  * "use context7"-style prompts work unchanged, but the docs come from the
  * package itself (published files and the repo at the release tag) and the
- * project's llms.txt; Context7 is only a fallback. check-package,
+ * project's llms.txt, never from a docs index. check-package,
  * check-packages and check-manifest are the security verdict on their own.
  */
 import fs from 'node:fs';

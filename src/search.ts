@@ -7,10 +7,8 @@
 import { getPackage, getProject, getVersion } from './advisories/depsdev.js';
 import { cached } from './cache.js';
 import { config } from './config.js';
-import { searchLibraries } from './context7.js';
 import { type Ecosystem, ECOSYSTEMS, parseEcosystem } from './ecosystems.js';
 import { getJson } from './http.js';
-import { resolvePackage } from './mapping.js';
 
 export interface LibraryHit {
   id: string;
@@ -19,7 +17,7 @@ export interface LibraryHit {
   repo?: string;
   stars?: number;
   latestVersion?: string;
-  via: 'name' | 'alias' | 'registry-search' | 'context7';
+  via: 'name' | 'alias' | 'registry-search';
   score: number;
 }
 
@@ -160,15 +158,6 @@ export async function searchPackages(libraryName: string, query = '', ecosystem?
   });
   const hits = (await Promise.all(unique.map((t) => describe(t.eco, t.name, t.via, t.base)))).filter((h): h is LibraryHit => Boolean(h));
 
-  if (!hits.length && config.context7Mode !== 'off') {
-    const libs = await searchLibraries(libraryName, query || libraryName).catch(() => []);
-    for (const lib of libs.slice(0, 3)) {
-      const ref = await resolvePackage(lib.id, { title: lib.title }).catch(() => undefined);
-      if (!ref) continue;
-      const h = await describe(ref.ecosystem, ref.name, 'context7', 1);
-      if (h) hits.push(h);
-    }
-  }
   // One entry per repo+ecosystem: "next" and "next.js"-the-squatter both claim vercel/next.js only if they really do.
   return hits.sort((a, b) => b.score - a.score).slice(0, 5);
 }

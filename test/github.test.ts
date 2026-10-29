@@ -6,7 +6,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.SAFECTX_NO_CACHE = '1';
-process.env.SAFECTX_CONTEXT7 = 'off';
 
 type Opts = { headers?: Record<string, string>; method?: string; rawBody?: string };
 let route: (url: string, opts?: Opts) => unknown;

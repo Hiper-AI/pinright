@@ -7,7 +7,7 @@
  * safectx audit [path] [--json] [--fail-on low|moderate|high|critical|none] [--sarif <file>] [--config <file>]
  * safectx upgrade <eco> <name> <from> [to] [--query="..."]
  * safectx init [claude|cursor] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]
- * safectx cache clear [context7]
+ * safectx cache clear
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,7 +16,6 @@ import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { AuditInputError, auditExitCode, auditJson, formatAuditRun, parseFailOn, runAudit, runToSarif, sarifRoot } from './auditRun.js';
 import { PKG_VERSION } from './pkg.js';
 import { parseEcosystem } from './ecosystems.js';
-import { clearContext7Cache, context7CacheDir } from './cache.js';
 import { config } from './config.js';
 import { securityNotice } from './format.js';
 import { ghCliLoggedIn, githubAuthAdvice, mcpEntryEnv, trackGitHub } from './github.js';
@@ -211,16 +210,14 @@ function initFiles(args: string[]): number {
   return 2;
 }
 
-/** `cache clear` empties the disk cache; `cache clear context7` only the Context7 answers in it. */
+/** `cache clear` empties the disk cache. */
 function cache(args: string[]): number {
-  if (args[0] !== 'clear' || (args[1] && args[1] !== 'context7')) {
-    console.error('usage: safectx cache clear [context7]');
+  if (args[0] !== 'clear' || args[1]) {
+    console.error('usage: safectx cache clear');
     return 2;
   }
-  const dir = args[1] ? context7CacheDir() : config.cacheDir;
-  if (args[1]) clearContext7Cache();
-  else fs.rmSync(dir, { recursive: true, force: true });
-  console.log(`cleared ${dir}`);
+  fs.rmSync(config.cacheDir, { recursive: true, force: true });
+  console.log(`cleared ${config.cacheDir}`);
   return 0;
 }
 

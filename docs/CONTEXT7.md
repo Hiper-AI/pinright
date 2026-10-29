@@ -1,4 +1,10 @@
-# Context7 in safectx: what Upstash's terms allow
+# Context7 and safectx: what Upstash's terms say
+
+> **Status (2026-10-29): safectx no longer calls Context7.** The fallback was removed: developers
+> and agents should not need a third-party account, and the benchmarks already ran with it off.
+> This note stays because two points below still apply: the tool names (`resolve-library-id`,
+> `query-docs`) and publishing benchmarks that include a Context7 arm. The "How safectx uses
+> Context7" section describes the code before the removal.
 
 > **Not legal advice.** An engineer wrote this, reading the terms on 2026-10-29. Get a legal
 > review before safectx goes public or commercial, and re-read the terms then: Upstash can change

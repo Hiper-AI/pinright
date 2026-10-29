@@ -2060,16 +2060,9 @@ function cacheDir() {
   const base = process.env.XDG_CACHE_HOME || (process.platform === "win32" ? process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local") : path.join(os.homedir(), ".cache"));
   return path.join(base, "safectx");
 }
-function context7ModeFrom(env2) {
-  return env2.CONTEXT7_API_KEY && env2.SAFECTX_CONTEXT7 !== "off" ? "fallback" : "off";
-}
 var config = {
-  context7ApiKey: process.env.CONTEXT7_API_KEY ?? "",
-  /** "fallback": Context7 only when local docs are thin, and only with CONTEXT7_API_KEY. "off" (default): never call it. */
-  context7Mode: context7ModeFrom(process.env),
   /** Characters of documentation returned per query-docs call (about 4 per token). */
   docsBudgetChars: intEnv("SAFECTX_DOCS_BUDGET", 1e4),
-  context7BaseUrl: process.env.CONTEXT7_BASE_URL ?? "https://context7.com",
   depsDevBaseUrl: process.env.DEPSDEV_BASE_URL ?? "https://api.deps.dev",
   osvBaseUrl: process.env.OSV_BASE_URL ?? "https://api.osv.dev",
   /** Versions published fewer than this many days ago are not considered "safe" yet. */
@@ -2085,8 +2078,6 @@ var config = {
     versions: 24 * 36e5,
     advisories: 24 * 36e5,
     registry: 24 * 36e5,
-    /** Context7 answers: a day, within the "several hours or days" its API guide suggests. */
-    context7: 24 * 36e5,
     /** A repo's file list at a release tag does not change: keep it a year. */
     tagged: 365 * 24 * 36e5
   }
@@ -2097,14 +2088,9 @@ function applyCooldownDays(days) {
 }
 
 // src/cache.ts
-var CONTEXT7_KEY_PREFIX = "c7:";
-function context7CacheDir() {
-  return path2.join(config.cacheDir, "context7");
-}
 function fileFor(key) {
   const hash2 = createHash("sha1").update(key).digest("hex");
-  const dir = key.startsWith(CONTEXT7_KEY_PREFIX) ? context7CacheDir() : config.cacheDir;
-  return path2.join(dir, hash2.slice(0, 2), `${hash2}.json`);
+  return path2.join(config.cacheDir, hash2.slice(0, 2), `${hash2}.json`);
 }
 function cacheGet(key) {
   if (config.cacheDisabled) return void 0;
