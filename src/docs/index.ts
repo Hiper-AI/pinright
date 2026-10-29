@@ -7,7 +7,8 @@ import { config } from '../config.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { packageMeta, type PackageMeta } from '../registry.js';
 import { docsSourceFor } from '../data/docsRepos.js';
-import { apiDocFiles, packageNotes, pythonApi } from './python.js';
+import { UntrustedOutput } from '../untrusted/index.js';
+import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
 import { chunkFile, rank, rankPaths, select, type Chunk, type DocFile } from './retrieve.js';
 import {
   docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
@@ -99,14 +100,20 @@ function dedupe(chunks: Chunk[]): Chunk[] {
   });
 }
 
-function format(meta: PackageMeta, chunks: Chunk[], header: string[]): string {
-  const parts = [...header, ''];
+/** Where a chunk comes from, for its untrusted-data fence. */
+function chunkSource(meta: PackageMeta, c: Chunk): string {
+  return `${c.file.label}, ${meta.name}@${meta.version}${c.file.versionAccurate ? '' : ' (current site docs)'}`;
+}
+
+function format(meta: PackageMeta, chunks: Chunk[], header: string[], out: UntrustedOutput): string {
+  const parts = [...header, ...out.notes, ''];
   for (const c of chunks) {
     // The label says where it comes from; the full URL is listed once per file at the end.
-    parts.push(`### ${c.title || c.file.label} [${c.file.label}${c.file.versionAccurate ? '' : ', current site docs'}]`);
+    const head = `### ${c.title || c.file.label} [${c.file.label}${c.file.versionAccurate ? '' : ', current site docs'}]`;
     // Python docstrings often hold ``` examples: fence them with a longer run of backticks.
     const fence = c.file.lang === 'python' && c.text.includes('```') ? '````' : '```';
-    parts.push(c.file.kind === 'types' ? fence + (c.file.lang ?? 'ts') + '\n' + c.text + '\n' + fence : c.text);
+    const body = c.file.kind === 'types' ? fence + (c.file.lang ?? 'ts') + '\n' + c.text + '\n' + fence : c.text;
+    parts.push(out.block(`${head}\n${body}`, chunkSource(meta, c), out.scan(c.text)));
     parts.push('');
   }
   const urls = [...new Set(chunks.map((c) => c.file.url))];
@@ -114,7 +121,7 @@ function format(meta: PackageMeta, chunks: Chunk[], header: string[]): string {
   return parts.join('\n');
 }
 
-export async function getDocs(opts: {
+export interface DocsOptions {
   ecosystem: Ecosystem;
   name: string;
   version: string;
@@ -122,8 +129,21 @@ export async function getDocs(opts: {
   budgetChars?: number;
   /** Include changelogs and migration guides (set when the fix crosses a major). */
   upgrade?: boolean;
-}): Promise<DocsResult> {
+}
+
+export async function getDocs(opts: DocsOptions): Promise<DocsResult> {
   const budget = opts.budgetChars ?? config.docsBudgetChars;
+  const out = new UntrustedOutput();
+  const { meta, docFiles, pyApi } = await collectDocs(opts);
+  // Normalized before chunking: hidden text never reaches a chunk, and hiding instructions is a finding.
+  for (const d of docFiles) d.content = out.prepare(d.content, `${d.label}, ${meta.name}@${meta.version}`, d.kind === 'types' ? 'code' : 'markdown');
+  const result = await assemble(opts, budget, meta, docFiles, pyApi, out);
+  out.record(opts.ecosystem, meta.name, meta.version);
+  return result;
+}
+
+/** Every document gathered for one package version, before ranking (exported for bench/injection). */
+export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMeta; docFiles: DocFile[]; pyApi?: PythonApi; wantUpgrade: boolean }> {
   const meta = await packageMeta(opts.ecosystem, opts.name, opts.version);
   const wantUpgrade = Boolean(opts.upgrade) || UPGRADE_TERMS.test(opts.query);
 
@@ -174,7 +194,10 @@ export async function getDocs(opts: {
       if (content) docFiles.push({ label: e.title, url: e.url, content: keep(content), kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.8 : 1 });
     }
   }
+  return { meta, docFiles, pyApi, wantUpgrade };
+}
 
+function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput): DocsResult {
   const ranked = dedupe(rank(docFiles.flatMap(chunkFile), opts.query));
   const best = ranked[0]?.score ?? 0;
   const sources = docFiles.map((d) => ({ label: d.label, url: d.url, versionAccurate: d.versionAccurate }));
@@ -192,11 +215,10 @@ export async function getDocs(opts: {
       sources,
       text: `No documentation found for ${meta.name}@${meta.version} that matches "${opts.query}".` +
         (meta.docsUrl ? ` Project docs: ${meta.docsUrl}` : '') + (meta.repo ? ` Source: https://github.com/${meta.repo.owner}/${meta.repo.repo}` : '') +
-        (notes.length ? `\n${notes.join('\n')}` : ''),
+        (notes.length ? `\n${notes.join('\n')}` : '') + (out.notes.length ? `\n${out.notes.join('\n')}` : ''),
     };
   }
-
-  const picked = select(ranked, budget);
+  const picked = out.select(ranked, (pool) => select(pool, budget), (c) => chunkSource(meta, c));
   const accurate = picked.filter((c) => c.file.versionAccurate).length;
   const header = [
     `Docs for ${meta.name}@${meta.version} (${opts.ecosystem}), ${picked.length} sections` +
@@ -205,6 +227,6 @@ export async function getDocs(opts: {
         : `: ${accurate} from the package or the repo at its release tag, ${picked.length - accurate} from the current site docs (may describe a newer version).`),
     ...notesFor(picked.map((c) => c.text).join('\n')),
   ];
-  return { meta, via: 'local', sources, text: format(meta, picked, header) };
+  return { meta, via: 'local', sources, text: format(meta, picked, header, out) };
 }
 

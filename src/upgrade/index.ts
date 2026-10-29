@@ -13,6 +13,7 @@ import { config } from '../config.js';
 import { chunkMarkdown, rank, select, type Chunk, type DocFile } from '../docs/retrieve.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { packageMeta } from '../registry.js';
+import { UntrustedOutput } from '../untrusted/index.js';
 import { checkPackage, type Verdict } from '../verdict.js';
 import { dedupeItems, extractItems, headingCategory, parseChangelog, sectionsInRange, type Category, type ChangeItem } from './changelog.js';
 import { apiSurface, diffSurfaces, type EntryDiff } from './dts.js';
@@ -157,7 +158,7 @@ export function cleanMdx(s: string): string {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-function guideChunks(docs: UpgradeDoc[], query: string | undefined, budget: number): Chunk[] {
+function guideChunks(docs: UpgradeDoc[], query: string | undefined, budget: number, out?: UntrustedOutput): Chunk[] {
   const files: DocFile[] = docs.map((d) => ({ label: d.label, url: d.url, content: cleanMdx(d.content), kind: 'markdown', versionAccurate: d.versionAccurate }));
   const chunks = files.flatMap((f) => chunkMarkdown(f.content, /\.rst$/i.test(f.url)).map((p) => ({ file: f, title: p.title, text: p.text, score: 0 })));
   const ranked = rank(chunks, `${query ?? ''} ${UPGRADE_QUERY}`);
@@ -178,7 +179,7 @@ function guideChunks(docs: UpgradeDoc[], query: string | undefined, budget: numb
     seen.add(k);
     return true;
   });
-  return select(unique, budget, 6);
+  return out ? out.select(unique, (pool) => select(pool, budget, 6), (c) => c.file.label) : select(unique, budget, 6);
 }
 
 /**
@@ -216,15 +217,21 @@ export function guideToc(docs: UpgradeDoc[], shown: Chunk[], majors: number[], m
   return lines.join('\n');
 }
 
-function formatGuides(chunks: Chunk[]): string {
+/** One untrusted block per excerpt; the table of contents (the guides' own headings) rides in the last one. */
+function formatGuides(chunks: Chunk[], out: UntrustedOutput, toc = ''): string {
   const parts: string[] = [];
-  for (const c of chunks) {
-    parts.push(`### ${c.title || c.file.label}`);
-    parts.push(`Source: ${c.file.label}${c.file.versionAccurate ? '' : ' (current site, may describe a newer version)'} ${c.file.url}`);
-    // The heading is already in the title line above.
-    parts.push(c.text.replace(/^#{1,6}\s+.*\n+/, ''));
+  chunks.forEach((c, i) => {
+    // The heading is already in the title line.
+    const body = c.text.replace(/^#{1,6}\s+.*\n+/, '');
+    const text = [
+      `### ${c.title || c.file.label}`,
+      `Source: ${c.file.label}${c.file.versionAccurate ? '' : ' (current site, may describe a newer version)'} ${c.file.url}`,
+      body,
+      ...(toc && i === chunks.length - 1 ? ['', toc] : []),
+    ].join('\n');
+    parts.push(out.block(text, c.file.label, out.scan(i === chunks.length - 1 ? `${body}\n${toc}` : body)));
     parts.push('');
-  }
+  });
   return parts.join('\n').trim();
 }
 
@@ -334,6 +341,10 @@ export async function upgradeGuide(opts: UpgradeOptions): Promise<UpgradeResult>
       : Promise.resolve([undefined, undefined] as const),
   ]);
   if (releases.note) notes.push(releases.note);
+  // Changelogs, release bodies and guides are third-party text: normalize them before parsing.
+  const out = new UntrustedOutput();
+  for (const d of [...changelogs, ...guides]) d.content = out.prepare(d.content, d.label);
+  for (const n of releases.notes) n.body = out.prepare(n.body ?? '', `GitHub release ${n.tag}`);
 
   // Changelog entries for (from, to]. A "changelog" without version sections is a migration guide (zod's v4/changelog.mdx).
   const majors = majorsInRange(from, to);
@@ -369,8 +380,10 @@ export async function upgradeGuide(opts: UpgradeOptions): Promise<UpgradeResult>
   const announcements = (
     await Promise.all([...links.entries()].slice(0, MAX_ANNOUNCEMENTS).map(([u, tag]) => fetchAnnouncement(u, tag).catch(() => undefined)))
   ).filter((d): d is UpgradeDoc => Boolean(d));
+  for (const d of announcements) d.content = out.prepare(d.content, d.label);
 
-  const unique = dedupeItems(items);
+  // An entry that addresses the agent with instructions is dropped; the rest of its release stays.
+  const unique = out.select(dedupeItems(items), (pool) => pool, (i) => i.source);
   const ranked = rankItems(unique, from, opts.query);
   const act = ranked.filter((i) => i.category === 'breaking' || i.category === 'package' || i.category === 'config');
   const deprecations = ranked.filter((i) => i.category === 'deprecation');
@@ -396,7 +409,8 @@ export async function upgradeGuide(opts: UpgradeOptions): Promise<UpgradeResult>
 
   const actOut = formatItems(act, share(W.act));
   carry += share(W.act) - actOut.used;
-  if (actOut.text) parts.push(`## Breaking changes, config/default changes and new packages (changelogs and release notes)\n${actOut.text}`);
+  const itemsBlock = (text: string) => out.block(text, `${name} changelogs and release notes, sources per version line`);
+  if (actOut.text) parts.push(`## Breaking changes, config/default changes and new packages (changelogs and release notes)\n${itemsBlock(actOut.text)}`);
 
   let apiText = '';
   const [apiFrom, apiTo] = api;
@@ -406,7 +420,7 @@ export async function upgradeGuide(opts: UpgradeOptions): Promise<UpgradeResult>
     apiText = `- BREAKING: ${name}@${from} ships type definitions for ${[...apiFrom.entries.keys()].join(', ')}; ${name}@${to} has none for its root entry. The public API changed or moved.`;
   }
   if (apiText) {
-    parts.push(`## Exported API diff (.d.ts, ${name}@${from} vs ${name}@${to}, https://cdn.jsdelivr.net/npm/${name}@${to}/)\n${apiText}`);
+    parts.push(`## Exported API diff (.d.ts, ${name}@${from} vs ${name}@${to}, https://cdn.jsdelivr.net/npm/${name}@${to}/)\n${out.block(apiText, `.d.ts of ${name}@${from} and @${to}`)}`);
     carry += share(W.api) - apiText.length;
   } else carry += share(W.api);
 
@@ -414,20 +428,20 @@ export async function upgradeGuide(opts: UpgradeOptions): Promise<UpgradeResult>
   if (allGuides.length) {
     const gBudget = share(W.guide) + Math.max(0, carry);
     const tocBudget = Math.min(1500, Math.floor(gBudget * 0.15));
-    const chunks = guideChunks(allGuides, opts.query, gBudget - tocBudget);
+    const chunks = guideChunks(allGuides, opts.query, gBudget - tocBudget, out);
     const toc = guideToc(allGuides, chunks, majors, tocBudget);
     const used = chunks.reduce((a, c) => a + c.text.length + c.title.length + 80, 0) + toc.length;
     carry = gBudget - used;
-    if (chunks.length) parts.push(`## Migration guide and release announcement excerpts\n${formatGuides(chunks)}${toc ? `\n\n${toc}` : ''}`);
+    if (chunks.length) parts.push(`## Migration guide and release announcement excerpts\n${formatGuides(chunks, out, toc)}`);
   } else carry += share(W.guide);
 
   const depOut = formatItems(deprecations, share(W.dep) + Math.max(0, carry));
   carry = share(W.dep) + Math.max(0, carry) - depOut.used;
-  if (depOut.text) parts.push(`## Deprecations\n${depOut.text}`);
+  if (depOut.text) parts.push(`## Deprecations\n${itemsBlock(depOut.text)}`);
 
   if (other.length) {
     const otherOut = formatItems(other, Math.max(0, carry));
-    if (otherOut.text) parts.push(`## Other changes matching "${opts.query}"\n${otherOut.text}`);
+    if (otherOut.text) parts.push(`## Other changes matching "${opts.query}"\n${itemsBlock(otherOut.text)}`);
   }
 
   const counts = [
@@ -441,5 +455,8 @@ export async function upgradeGuide(opts: UpgradeOptions): Promise<UpgradeResult>
   }
   parts.push(`Read: ${counts.join(', ')}. Entries marked BREAKING/CONFIG/NEW PACKAGE need action; for the ${to} API itself call query-docs with libraryId "${eco}:${name}@${to}".`);
   if (notes.length) parts.push(notes.join('\n'));
+  // What was removed goes right under the header, where it is read first.
+  if (out.notes.length) parts.splice(1, 0, out.notes.join('\n'));
+  out.record(eco, name, to);
   return { text: parts.filter(Boolean).join('\n\n'), from, to, crossesMajor: crossing };
 }

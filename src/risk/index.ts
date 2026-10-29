@@ -7,6 +7,7 @@
 import { getPackage, type DepsDevVersionSummary } from '../advisories/depsdev.js';
 import { isPrerelease } from '../advisories/resolve.js';
 import { type Ecosystem } from '../ecosystems.js';
+import { findingsFor } from '../untrusted/index.js';
 import { DENY_SIGNALS, riskSignals, riskThresholds, type RiskReport, type VersionFacts } from './signals.js';
 import { depsDevFacts, DOWNLOAD_ECOSYSTEMS, npmVersionFacts, weeklyDownloads } from './sources.js';
 
@@ -27,7 +28,12 @@ export function previousVersions(versions: DepsDevVersionSummary[], version: str
     .slice(0, limit);
 }
 
-export async function assessRisk(eco: Ecosystem, name: string, version: string, now = Date.now()): Promise<RiskReport> {
+/**
+ * `agentText`: registry text of this version already judged as addressing an agent (the
+ * deprecation message, from the verdict). Docs findings come from earlier query-docs and
+ * upgrade-guide answers for the same version (src/untrusted).
+ */
+export async function assessRisk(eco: Ecosystem, name: string, version: string, now = Date.now(), agentText: string[] = []): Promise<RiskReport> {
   const t = riskThresholds();
   const unknown: string[] = [];
   const sources = new Set<string>();
@@ -97,7 +103,8 @@ export async function assessRisk(eco: Ecosystem, name: string, version: string, 
     // The registry's own field for npm; elsewhere only a positive answer from deps.dev counts.
     provenance: current ? current.provenance || dd.provenance === true : dd.provenance,
   };
-  const facts = { current: cur, previous, firstPublishedAt, weeklyDownloads: downloads, scorecard: dd.scorecard };
+  const seen = findingsFor(eco, name, version).map((f) => `${f.where} (${f.reasons.join(', ')})`);
+  const facts = { current: cur, previous, firstPublishedAt, weeklyDownloads: downloads, scorecard: dd.scorecard, agentText: [...agentText, ...seen] };
   return {
     version,
     signals: riskSignals(facts, now, t),

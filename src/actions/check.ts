@@ -22,6 +22,7 @@ import { cvss3Of } from '../advisories/cvss.js';
 import type { HookDecision } from '../hook/policy.js';
 import { latestRelease, resolveRef, specificTag, tagForSha } from './github.js';
 import { actionName, useKey, type ActionUse } from './workflow.js';
+import { cleanText } from '../untrusted/index.js';
 
 const OSV_ECOSYSTEM = 'GitHub Actions';
 const MAX_CHECKS = 25;
@@ -168,7 +169,7 @@ export async function checkAction(use: ActionUse): Promise<ActionReport> {
         hits.map((v) => ({
           id: v.id,
           aliases: v.aliases ?? [],
-          title: v.summary,
+          title: cleanText(v.summary),
           severity: severityOf(v),
           cvss3Score: cvss3Of(v),
           fixedIn: fixedVersions(v, name),

@@ -24,6 +24,7 @@ import { normalizePypiName } from '../tree/lockfiles.js';
 import semver from 'semver';
 import { GRAPH_ECOSYSTEMS, pickVersion, satisfiesPep440 } from '../tree/resolveManifest.js';
 import { belowThreshold, checkLicenses, denyEntry, denyMessage, isAllowed, type Policy, resolvePolicy, severityLevel } from '../teamConfig.js';
+import { stripInvisible } from '../untrusted/index.js';
 import { checkPackage, type Verdict } from '../verdict.js';
 import { type DepIntent } from './intent.js';
 
@@ -372,16 +373,29 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
   return { action, problems, warnings, checked: Math.min(changed.length, MAX_CHECKS) };
 }
 
+/** Longest line of a hook message: problems quote registry text (deprecation messages, script names). */
+const MAX_ITEM = 700;
+
+/**
+ * One problem or warning as it goes into permissionDecisionReason / additionalContext.
+ * Registry fields are already cleaned at their source; this is the last pass: one line,
+ * no invisible characters, capped, so nothing a publisher wrote can open a new paragraph.
+ */
+function hookLine(s: string): string {
+  const one = stripInvisible(s).text.replace(/\s+/g, ' ').trim();
+  return `- ${one.length > MAX_ITEM ? `${one.slice(0, MAX_ITEM - 3)}...` : one}`;
+}
+
 export function agentMessage(d: HookDecision): string {
   const lines: string[] = [];
   if (d.action !== 'allow') {
     lines.push(`safectx ${d.action === 'deny' ? 'blocked' : 'needs approval for'} this dependency change:`);
-    for (const p of d.problems) lines.push(`- ${p}`);
+    for (const p of d.problems) lines.push(hookLine(p));
     if (d.action === 'deny') lines.push('Change the version (or the name) and try again. check-package and query-docs from the safectx MCP server explain each case.');
   }
   if (d.warnings.length) {
     lines.push(d.action === 'allow' ? 'safectx notes about the dependencies in this change:' : 'Also:');
-    for (const w of d.warnings) lines.push(`- ${w}`);
+    for (const w of d.warnings) lines.push(hookLine(w));
   }
   return lines.join('\n');
 }

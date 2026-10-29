@@ -11,6 +11,7 @@ import { config } from '../config.js';
 import { packagistAdvisoryInfo } from '../composer/packagist.js';
 import { type Ecosystem, NO_DEPS_DEV } from '../ecosystems.js';
 import { getAdvisory, getPackage, getVersion, type DepsDevVersionSummary } from './depsdev.js';
+import { cleanField, cleanText } from '../untrusted/index.js';
 import { fixedVersions, isMalware, queryVersion, severityOf } from './osv.js';
 
 export type Verdict =
@@ -36,10 +37,13 @@ export interface RequestedVersionReport {
   version: string;
   verdict: Verdict;
   isDeprecated?: boolean;
+  /** The publisher's message, cleaned (one line, capped, withheld when it addresses the agent). */
   deprecatedReason?: string;
   publishedAt?: string;
   licenses?: string[];
   advisories: AdvisoryInfo[];
+  /** Publisher text of this version that reads as instructions to an AI agent ("deprecation message: ..."). */
+  agentText?: string[];
 }
 
 export interface PackageReport {
@@ -154,7 +158,7 @@ async function describeAdvisories(
     out.push({
       id,
       aliases: vuln?.aliases ?? dd?.aliases ?? pk?.aliases ?? [],
-      title: vuln?.summary ?? dd?.title ?? pk?.title,
+      title: cleanText(vuln?.summary ?? dd?.title ?? pk?.title),
       severity: vuln ? severityOf(vuln) : pk?.severity,
       cvss3Score: dd?.cvss3Score,
       fixedIn: vuln ? fixedVersions(vuln, name) : pk?.fixedIn,
@@ -380,13 +384,16 @@ async function assessRequested(
   if (advisories.some((a) => isMalware(a.id))) verdict = 'malicious';
   else if (advisories.length > 0) verdict = 'vulnerable';
   else if (detail.isDeprecated) verdict = 'deprecated';
+  // The deprecation message is written by whoever controls the package: it goes to the agent and the hook.
+  const reason = cleanField(detail.deprecatedReason || undefined, 300);
   return {
     version: clean,
     verdict,
     isDeprecated: detail.isDeprecated,
-    deprecatedReason: detail.deprecatedReason || undefined,
+    deprecatedReason: reason.text,
     publishedAt: detail.publishedAt,
     licenses: detail.licenses,
     advisories,
+    ...(reason.level === 'high' ? { agentText: [`deprecation message (${reason.flags.join(', ')})`] } : {}),
   };
 }

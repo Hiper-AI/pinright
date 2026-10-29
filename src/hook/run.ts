@@ -13,6 +13,7 @@ import { loadTeamConfig, resolvePolicy } from '../teamConfig.js';
 import { agentMessage, decide, type HookDecision } from './policy.js';
 import { type DepIntent, fromCommand, fromFileWrite, isWatchedFile } from './intent.js';
 import { decideActions } from '../actions/check.js';
+import { stripInvisible } from '../untrusted/index.js';
 import { type ActionUse, changedUses, isWorkflowFile } from '../actions/workflow.js';
 import { languageOf, undeclaredImportNotes } from './imports.js';
 
@@ -193,7 +194,7 @@ export async function runCursorHook(): Promise<number> {
   process.stdout.write(
     JSON.stringify({
       permission: d.action,
-      ...(msg ? { agent_message: msg, user_message: d.action === 'allow' ? undefined : `safectx: ${d.problems[0] ?? 'dependency check'}` } : {}),
+      ...(msg ? { agent_message: msg, user_message: d.action === 'allow' ? undefined : `safectx: ${stripInvisible(d.problems[0] ?? 'dependency check').text.replace(/\s+/g, ' ').slice(0, 300)}` } : {}),
     }),
   );
   return 0;

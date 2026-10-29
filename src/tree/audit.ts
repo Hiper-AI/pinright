@@ -13,6 +13,7 @@ import { fixedVersions, getVuln, isMalware, queryBatch, severityOf } from '../ad
 import { assessPackage, dedupeAdvisories, recommendedUpgrade, type AdvisoryInfo } from '../advisories/resolve.js';
 import { packagistAuditExtras } from '../composer/packagist.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
+import { cleanText } from '../untrusted/index.js';
 import { normalizePypiName, type ParsedTree, type TreePackage } from './lockfiles.js';
 import { GRAPH_ECOSYSTEMS, resolveManifest } from './resolveManifest.js';
 
@@ -149,7 +150,7 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean; 
         return {
           id,
           aliases: v?.aliases ?? [],
-          title: v?.summary,
+          title: cleanText(v?.summary),
           severity: v ? severityOf(v) : undefined,
           cvss3Score: v ? cvss3Of(v) : undefined,
           fixedIn: v ? fixedVersions(v, p.name) : undefined,

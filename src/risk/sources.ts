@@ -8,6 +8,7 @@ import { cached } from '../cache.js';
 import { getProject, getVersion } from '../advisories/depsdev.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { getJson, isNotFound } from '../http.js';
+import { cleanField, cleanText } from '../untrusted/index.js';
 import { type ScorecardFacts, type VersionFacts } from './signals.js';
 
 const DAY = 24 * 3600_000;
@@ -25,16 +26,30 @@ interface NpmVersionDoc {
   dist?: { attestations?: { url?: string; provenance?: { predicateType?: string } } };
   _npmUser?: { name?: string } | string;
   maintainers?: ({ name?: string } | string)[];
+  description?: unknown;
+  deprecated?: unknown;
 }
 
 function npmPath(name: string): string {
   return encodeURIComponent(name).replace('%40', '@');
 }
 
+/** Account names are publisher-controlled text that ends up in notices and hook messages. */
 function userName(u: { name?: string } | string | undefined): string | undefined {
   if (!u) return undefined;
-  if (typeof u === 'string') return u.replace(/\s*<.*$/, '').trim() || undefined;
-  return u.name || undefined;
+  const raw = typeof u === 'string' ? u.replace(/\s*<.*$/, '') : u.name;
+  return cleanText(typeof raw === 'string' ? raw : undefined, 60) || undefined;
+}
+
+/** Description and deprecation message of the version, when they address an AI agent. */
+function agentTextOf(doc: NpmVersionDoc): string[] {
+  const out: string[] = [];
+  for (const [field, value] of [['description', doc.description], ['deprecation message', doc.deprecated]] as const) {
+    if (typeof value !== 'string') continue;
+    const f = cleanField(value, 300);
+    if (f.level === 'high') out.push(`${field} (${f.flags.join(', ')})`);
+  }
+  return out;
 }
 
 /** The lifecycle scripts npm runs on install, as "hook: command". */
@@ -42,7 +57,7 @@ export function installScriptsOf(doc: NpmVersionDoc): string[] {
   const out: string[] = [];
   for (const hook of INSTALL_HOOKS) {
     const cmd = doc.scripts?.[hook];
-    if (typeof cmd === 'string' && cmd.trim()) out.push(`${hook}: ${cmd.trim()}`);
+    if (typeof cmd === 'string' && cmd.trim()) out.push(`${hook}: ${cleanText(cmd, 200)}`);
   }
   // npm runs "node-gyp rebuild" for a binding.gyp without an explicit install script.
   if (!out.length && doc.gypfile) out.push('install: node-gyp rebuild (binding.gyp)');
@@ -51,12 +66,14 @@ export function installScriptsOf(doc: NpmVersionDoc): string[] {
 }
 
 export function versionFactsFromDoc(version: string, doc: NpmVersionDoc): VersionFacts {
+  const agentText = agentTextOf(doc);
   return {
     version,
     installScripts: installScriptsOf(doc),
     provenance: Boolean(doc.dist?.attestations?.provenance),
     publisher: userName(doc._npmUser),
     maintainers: (doc.maintainers ?? []).map(userName).filter((m): m is string => Boolean(m)),
+    ...(agentText.length ? { agentText } : {}),
   };
 }
 

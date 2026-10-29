@@ -44,7 +44,8 @@ export async function checkPackage(
   const r = v.report;
   const target = version ? r.requested?.version : r.latestVersion;
   if (!target || r.verdict === 'unknown-package' || r.verdict === 'malicious' || r.verdict === 'unknown') return v;
-  v.risk = await assessRisk(eco, name, target).catch(() => ({ version: target, signals: [], unknown: ['risk signals'], sources: [] }));
+  const agentText = version && r.requested?.version === target ? (r.requested.agentText ?? []) : [];
+  v.risk = await assessRisk(eco, name, target, Date.now(), agentText).catch(() => ({ version: target, signals: [], unknown: ['risk signals'], sources: [] }));
   return v;
 }
 

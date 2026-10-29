@@ -10,7 +10,11 @@ const ddPackages = new Map<string, { versionKey: { version: string }; publishedA
 const ddVersions = new Map<string, unknown>();
 const ddProjects = new Map<string, unknown>();
 
-vi.mock('../src/cache.js', () => ({ cached: (_k: string, _t: number, load: () => Promise<unknown>) => load() }));
+vi.mock('../src/cache.js', () => ({
+  cached: (_k: string, _t: number, load: () => Promise<unknown>) => load(),
+  cacheGet: () => undefined,
+  cacheSet: () => undefined,
+}));
 vi.mock('../src/http.js', async (orig) => ({
   ...(await orig<typeof import('../src/http.js')>()),
   getJson: vi.fn(async (url: string) => {

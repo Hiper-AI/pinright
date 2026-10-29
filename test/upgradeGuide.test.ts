@@ -127,8 +127,8 @@ describe('upgradeGuide', () => {
     const big = await upgradeGuide({ ecosystem: 'npm', name: 'lib', from: '1.2.0', to: '2.x', budgetChars: 20_000 });
     expect(small.to).toBe('2.1.0');
     expect(small.text.length).toBeLessThan(big.text.length);
-    // Header, security and footer are fixed (about 900 characters here); the sections share the budget.
-    expect(small.text.length).toBeLessThan(600 + 1000);
+    // Header, security, footer and the untrusted-data fences (about 100 characters each) are fixed; the sections share the budget.
+    expect(small.text.length).toBeLessThan(600 + 1400);
     expect(small.text).toContain('- BREAKING: Removed `oldFn`');
     const q = await upgradeGuide({ ecosystem: 'npm', name: 'lib', from: '1.2.0', to: '2.1.0', query: 'newThing' });
     expect(q.text).toContain('## Other changes matching "newThing"');
