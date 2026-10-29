@@ -22,11 +22,12 @@ often months old and carry known vulnerabilities. safectx gives the agent:
 In the project you want to protect (Node 20.9 or newer):
 
 ```bash
-npx -y safectx init claude     # or: npx -y safectx init cursor
-npx -y safectx doctor          # optional: shows what answers, what is wired, what is missing
+npx -y safectx init           # the clients this project already uses; or name one: claude, cursor, codex, ...
+npx -y safectx doctor         # optional: shows what answers, what is wired, what is missing
 ```
 
-Restart the agent so it picks up `.mcp.json` and the hook. From then on, every install command and
+Restart the agent so it picks up the MCP server and the hook ([Clients](#clients) lists what each
+one needs). From then on, every install command and
 every write to a manifest or workflow goes through the hook first. When the agent runs
 `npm install lodash@4.17.20`, it gets this back and the command does not run:
 
@@ -41,8 +42,9 @@ nothing pass without a network call; a check of one package takes a few seconds 
 and well under a second once cached (see [Latency](#latency)).
 
 To let one package through (a private one, say), add it to `"allow"` in `.safectx.json`. To turn
-the hook off, delete the safectx entry under `hooks.PreToolUse` in `.claude/settings.json` (Cursor:
-`.cursor/hooks.json`); the MCP tools keep working. When deps.dev or OSV cannot be reached, the hook
+the hook off, delete the safectx entry from the client's hook file (Claude Code: `hooks.PreToolUse`
+in `.claude/settings.json`; Cursor: `.cursor/hooks.json`; the others under [Clients](#clients)); the
+MCP tools keep working. When deps.dev or OSV cannot be reached, the hook
 allows the change and tells the agent it was not verified; `"onError": "ask"` or `"deny"` changes
 that (see [When a source is down](#when-a-source-is-down)).
 
@@ -967,8 +969,8 @@ OSV, the npm registry, PyPI, Packagist and jsDelivr answer, with the time each t
 OSV are the verdict, so those two failing fails the run); the cache directory, writable or not,
 with its size; how safectx authenticates to GitHub (`GITHUB_TOKEN`, `GH_TOKEN`, the GitHub CLI
 login or anonymous) and how many API requests are left this hour, never the token; which agents
-have safectx configured (Claude Code, Cursor, VS Code, Windsurf, Codex, Gemini CLI, project and
-user files) and whether the pre-install hook is wired; the nearest `.safectx.json` and whether it
+have safectx configured, from the same client list `init` uses (project and user files), and for
+those with a hook whether it is wired; the nearest `.safectx.json` and whether it
 parses; and how long the hook takes on a command that installs nothing. `--json` prints the same
 as JSON, `--offline` skips the network probes.
 
