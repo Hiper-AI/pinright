@@ -117,7 +117,9 @@ const blocks = new Map<string, number>();
 const blockKey = (authenticated: boolean) => `gh:ratelimit:${authenticated ? 'token' : 'anon'}`;
 
 function blockedUntil(authenticated: boolean, now = Date.now()): number | undefined {
-  const until = Math.max(blocks.get(blockKey(authenticated)) ?? 0, cacheGet<number>(blockKey(authenticated)) ?? 0);
+  // What another process wrote is believed only within the 2-hour cap limitedUntil applies.
+  const shared = Math.min(Number(cacheGet<number>(blockKey(authenticated))) || 0, now + 2 * HOUR);
+  const until = Math.max(blocks.get(blockKey(authenticated)) ?? 0, shared);
   return until > now ? until : undefined;
 }
 

@@ -86,6 +86,8 @@ runs:
         SAFECTX_INPUT_SUPPLY_CHAIN: ${{ inputs.supply-chain }}
         SAFECTX_INPUT_ANNOTATIONS: ${{ inputs.annotations }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        # Per job: on a shared self-hosted runner another job could otherwise leave advisory data in ~/.cache.
+        SAFECTX_CACHE_DIR: ${{ runner.temp }}/safectx-cache
       run: node "$GITHUB_ACTION_PATH/action-dist/index.mjs"
 
     - name: Upload SARIF to code scanning
