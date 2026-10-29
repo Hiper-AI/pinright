@@ -7,6 +7,7 @@
  * safectx audit [path] [--json] [--fail-on low|moderate|high|critical|none] [--sarif <file>] [--config <file>]
  * safectx upgrade <eco> <name> <from> [to] [--query="..."]
  * safectx init [claude|cursor] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]
+ * safectx cache clear [context7]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,6 +16,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { AuditInputError, auditExitCode, auditJson, formatAuditRun, parseFailOn, runAudit, runToSarif, sarifRoot } from './auditRun.js';
 import { PKG_VERSION } from './pkg.js';
 import { parseEcosystem } from './ecosystems.js';
+import { clearContext7Cache, context7CacheDir } from './cache.js';
+import { config } from './config.js';
 import { securityNotice } from './format.js';
 import { ghCliLoggedIn, githubAuthAdvice, mcpEntryEnv, trackGitHub } from './github.js';
 import { runClaudeHook, runCursorHook } from './hook/run.js';
@@ -208,6 +211,19 @@ function initFiles(args: string[]): number {
   return 2;
 }
 
+/** `cache clear` empties the disk cache; `cache clear context7` only the Context7 answers in it. */
+function cache(args: string[]): number {
+  if (args[0] !== 'clear' || (args[1] && args[1] !== 'context7')) {
+    console.error('usage: safectx cache clear [context7]');
+    return 2;
+  }
+  const dir = args[1] ? context7CacheDir() : config.cacheDir;
+  if (args[1]) clearContext7Cache();
+  else fs.rmSync(dir, { recursive: true, force: true });
+  console.log(`cleared ${dir}`);
+  return 0;
+}
+
 /** What GitHub's rate limit left out, on stderr so `--json` output stays parseable. */
 async function noticed(run: () => Promise<number>): Promise<number> {
   const { value, notice } = await trackGitHub(run);
@@ -232,12 +248,14 @@ async function main(): Promise<number> {
       return noticed(() => upgrade(args));
     case 'init':
       return init(args);
+    case 'cache':
+      return cache(args);
     case '--version':
     case '-v':
       console.log(PKG_VERSION);
       return 0;
     default:
-      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor]]');
+      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor] | cache clear [context7]]');
       return 2;
   }
 }

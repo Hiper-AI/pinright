@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * safectx over stdio. Configure it in your agent like Context7:
+ * safectx over stdio. Configure it in your agent as an MCP server:
  *   { "mcpServers": { "safectx": { "command": "npx", "args": ["-y", "safectx"] } } }
  */
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';

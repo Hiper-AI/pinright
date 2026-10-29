@@ -18,10 +18,19 @@ function cacheDir(): string {
   return path.join(base, 'safectx');
 }
 
+/**
+ * Context7 is opt-in and bring-your-own-key: the user's own CONTEXT7_API_KEY
+ * turns the fallback on (their account, under Upstash's terms; see
+ * docs/CONTEXT7.md), and SAFECTX_CONTEXT7=off turns it off again.
+ */
+export function context7ModeFrom(env: NodeJS.ProcessEnv): 'off' | 'fallback' {
+  return env.CONTEXT7_API_KEY && env.SAFECTX_CONTEXT7 !== 'off' ? 'fallback' : 'off';
+}
+
 export const config = {
   context7ApiKey: process.env.CONTEXT7_API_KEY ?? '',
-  /** "fallback" (default): Context7 only when local docs are thin. "off": never call it. */
-  context7Mode: (process.env.SAFECTX_CONTEXT7 === "off" ? "off" : "fallback") as "off" | "fallback",
+  /** "fallback": Context7 only when local docs are thin, and only with CONTEXT7_API_KEY. "off" (default): never call it. */
+  context7Mode: context7ModeFrom(process.env),
   /** Characters of documentation returned per query-docs call (about 4 per token). */
   docsBudgetChars: intEnv("SAFECTX_DOCS_BUDGET", 10_000),
   context7BaseUrl: process.env.CONTEXT7_BASE_URL ?? 'https://context7.com',
@@ -40,6 +49,8 @@ export const config = {
     versions: 24 * 3600_000,
     advisories: 24 * 3600_000,
     registry: 24 * 3600_000,
+    /** Context7 answers: a day, within the "several hours or days" its API guide suggests. */
+    context7: 24 * 3600_000,
     /** A repo's file list at a release tag does not change: keep it a year. */
     tagged: 365 * 24 * 3600_000,
   },

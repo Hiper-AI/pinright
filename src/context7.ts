@@ -3,9 +3,11 @@
  * The MCP tool names map 1:1 onto these two endpoints:
  *   resolve-library-id -> GET /api/v2/libs/search
  *   query-docs         -> GET /api/v2/context
- * The key is optional: without one the API answers with low rate limits.
+ * Only called with the user's own CONTEXT7_API_KEY (config.context7Mode).
+ * Answers are cached for a day in their own folder (cache.ts), so they can be
+ * deleted on request: `safectx cache clear context7`. See docs/CONTEXT7.md.
  */
-import { cached } from './cache.js';
+import { cached, CONTEXT7_KEY_PREFIX } from './cache.js';
 import { config } from './config.js';
 import { getJson, getText } from './http.js';
 
@@ -42,8 +44,8 @@ export async function searchLibraries(
   const url = new URL('/api/v2/libs/search', config.context7BaseUrl);
   url.searchParams.set('libraryName', libraryName);
   url.searchParams.set('query', query);
-  const key = `c7:search:${url.search}`;
-  const res = await cached(key, config.ttl.search, () =>
+  const key = `${CONTEXT7_KEY_PREFIX}search:${url.search}`;
+  const res = await cached(key, config.ttl.context7, () =>
     getJson<SearchResponse>(url.toString(), { headers: headers() }),
   );
   return res.results ?? [];
@@ -58,8 +60,8 @@ export async function fetchDocs(
   url.searchParams.set('libraryId', libraryId);
   url.searchParams.set('query', query);
   if (language) url.searchParams.set('language', language);
-  const key = `c7:docs:${url.search}`;
-  return cached(key, config.ttl.docs, () =>
+  const key = `${CONTEXT7_KEY_PREFIX}docs:${url.search}`;
+  return cached(key, config.ttl.context7, () =>
     getText(url.toString(), { headers: headers() }),
   );
 }

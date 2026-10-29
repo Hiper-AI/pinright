@@ -8,7 +8,7 @@ often months old and carry known vulnerabilities. safectx gives the agent:
 
 - **Docs for a specific version**, taken from the package itself: the README, docs and type
   definitions published at that version, the source repository at its release tag, and the
-  project's `llms.txt`. No index service in between. Context7 is an optional fallback.
+  project's `llms.txt`. No index service in between. Context7 is an opt-in fallback with your own key.
 - **A verdict before every dependency**: known advisories (CVE/GHSA), malware records, deprecation,
   typosquat lookalikes, and the newest clean version, preferring one on the release line the
   project already uses so the upgrade does not break the API.
@@ -26,7 +26,7 @@ agent --MCP--> safectx --> registry + jsDelivr     package files at the exact ve
                        --> api.osv.dev             CVE details, fixed versions, malware (MAL-*)
                        --> packagist.org           Composer versions and advisories
                        --> github.com (git)        commits and tags behind GitHub Actions refs
-                       --> context7.com            only when the above came back thin (optional)
+                       --> context7.com            only with your CONTEXT7_API_KEY, when the above came back thin
 ```
 
 ## Install
@@ -375,7 +375,11 @@ before deps.dev mirrors them.
    another repo or site (LangChain, LangGraph, PyYAML, Streamlit, Selenium) are mapped to it in
    `src/data/docsRepos.ts`. For LangChain's split packages, the answer lists the sibling packages
    the question needs that are not dependencies (`langchain-text-splitters`, `langchain-community`).
-4. Context7, only when the three above return nothing relevant. `SAFECTX_CONTEXT7=off` disables it.
+4. Context7, only when you set your own `CONTEXT7_API_KEY` and the three above return nothing
+   relevant. The answer says it comes from Context7. Your key means your account, under
+   [Upstash's terms](https://upstash.com/trust/context7addendum.pdf); safectx caches its answers for
+   a day in their own folder, and `safectx cache clear context7` deletes them. See
+   [docs/CONTEXT7.md](docs/CONTEXT7.md).
 
 Sections are ranked locally with BM25 against the question, and the answer is capped at about
 2,500 tokens (`tokens` argument, or `SAFECTX_DOCS_BUDGET` in characters).
@@ -390,6 +394,7 @@ npx safectx upgrade npm zod 3.25.76 4.6.7  # what changes between two versions
 npx safectx audit .github/workflows        # GitHub Actions: advisories and SHA pinning
 npx safectx check composer guzzlehttp/guzzle:7.4.0
 npx safectx audit . --fail-on high --sarif safectx.sarif   # SARIF 2.1.0 for code scanning
+npx safectx cache clear context7          # delete cached Context7 answers (or the whole cache without it)
 ```
 
 `audit` flags: `--fail-on low|moderate|high|critical|none` (default `low`; `none` reports
@@ -482,13 +487,13 @@ severity), plus `safectx/malware`, `safectx/typosquat`, `safectx/unknown-package
 |---|---|---|
 | `SAFECTX_COOLDOWN_DAYS` | `3` | Minimum age of a version to be recommended. |
 | `SAFECTX_MAX_CANDIDATES` | `12` | Versions inspected, newest first, before giving up on a safe one. |
-| `SAFECTX_CONTEXT7` | `fallback` | `off` never calls Context7. |
-| `CONTEXT7_API_KEY` | none | Raises Context7's rate limit when it is used. |
+| `CONTEXT7_API_KEY` | none | Your own Context7 key. Setting it turns on the Context7 fallback; your questions then go to Upstash, which stores them, under [its terms](docs/CONTEXT7.md). |
+| `SAFECTX_CONTEXT7` | unset | `off` never calls Context7, even with a key. |
 | `GITHUB_TOKEN` / `GH_TOKEN` | none | Raises GitHub's API limit from 60 to 5,000 requests an hour. Read-only use; sent only to `api.github.com`. |
 | `SAFECTX_GH_CLI` | unset | `1` uses the GitHub CLI login (`gh auth token`) when no `GITHUB_TOKEN` is set. |
 | `SAFECTX_DEBUG_HTTP` | unset | `1` logs each request (method, URL, status; never headers) to stderr. |
 | `SAFECTX_DOCS_BUDGET` | `10000` | Characters of docs per answer. |
-| `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Disk cache (docs 7 days, advisories 24 h). |
+| `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Disk cache (docs 7 days, advisories 24 h, repo listings at a tag 1 year, Context7 1 day). |
 | `SAFECTX_NO_CACHE` | unset | `1` disables the cache. |
 | `SAFECTX_TIMEOUT_MS` | `15000` | Per-request timeout. |
 | `SAFECTX_PROJECT_DIR` | working directory | Project to read installed versions and `.safectx.json` from, when the client does not announce roots. |

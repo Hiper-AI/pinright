@@ -71,9 +71,9 @@ var require_constants = __commonJS({
 var require_debug = __commonJS({
   "node_modules/semver/internal/debug.js"(exports, module) {
     "use strict";
-    var debug = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
+    var debug2 = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
     };
-    module.exports = debug;
+    module.exports = debug2;
   }
 });
 
@@ -86,7 +86,7 @@ var require_re = __commonJS({
       MAX_SAFE_BUILD_LENGTH,
       MAX_LENGTH
     } = require_constants();
-    var debug = require_debug();
+    var debug2 = require_debug();
     exports = module.exports = {};
     var re = exports.re = [];
     var safeRe = exports.safeRe = [];
@@ -109,7 +109,7 @@ var require_re = __commonJS({
     var createToken = (name, value, isGlobal) => {
       const safe = makeSafeRegex(value);
       const index = R++;
-      debug(name, index, value);
+      debug2(name, index, value);
       t[name] = index;
       src[index] = value;
       safeSrc[index] = safe;
@@ -213,7 +213,7 @@ var require_identifiers = __commonJS({
 var require_semver = __commonJS({
   "node_modules/semver/classes/semver.js"(exports, module) {
     "use strict";
-    var debug = require_debug();
+    var debug2 = require_debug();
     var { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants();
     var { safeRe: re, t } = require_re();
     var parseOptions = require_parse_options();
@@ -247,7 +247,7 @@ var require_semver = __commonJS({
             `version is longer than ${MAX_LENGTH} characters`
           );
         }
-        debug("SemVer", version3, options);
+        debug2("SemVer", version3, options);
         this.options = options;
         this.loose = !!options.loose;
         this.includePrerelease = !!options.includePrerelease;
@@ -295,7 +295,7 @@ var require_semver = __commonJS({
         return this.version;
       }
       compare(other) {
-        debug("SemVer.compare", this.version, this.options, other);
+        debug2("SemVer.compare", this.version, this.options, other);
         if (!(other instanceof _SemVer)) {
           if (typeof other === "string" && other === this.version) {
             return 0;
@@ -346,7 +346,7 @@ var require_semver = __commonJS({
         do {
           const a = this.prerelease[i];
           const b = other.prerelease[i];
-          debug("prerelease compare", i, a, b);
+          debug2("prerelease compare", i, a, b);
           if (a === void 0 && b === void 0) {
             return 0;
           } else if (b === void 0) {
@@ -368,7 +368,7 @@ var require_semver = __commonJS({
         do {
           const a = this.build[i];
           const b = other.build[i];
-          debug("build compare", i, a, b);
+          debug2("build compare", i, a, b);
           if (a === void 0 && b === void 0) {
             return 0;
           } else if (b === void 0) {
@@ -1039,21 +1039,21 @@ var require_range = __commonJS({
         const loose = this.options.loose;
         const hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE];
         range = range.replace(hr, hyphenReplace(this.options.includePrerelease));
-        debug("hyphen replace", range);
+        debug2("hyphen replace", range);
         range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace);
-        debug("comparator trim", range);
+        debug2("comparator trim", range);
         range = range.replace(re[t.TILDETRIM], tildeTrimReplace);
-        debug("tilde trim", range);
+        debug2("tilde trim", range);
         range = range.replace(re[t.CARETTRIM], caretTrimReplace);
-        debug("caret trim", range);
+        debug2("caret trim", range);
         let rangeList = range.split(" ").map((comp) => parseComparator(comp, this.options)).join(" ").split(/\s+/).map((comp) => replaceGTE0(comp, this.options));
         if (loose) {
           rangeList = rangeList.filter((comp) => {
-            debug("loose invalid filter", comp, this.options);
+            debug2("loose invalid filter", comp, this.options);
             return !!comp.match(re[t.COMPARATORLOOSE]);
           });
         }
-        debug("range list", rangeList);
+        debug2("range list", rangeList);
         const rangeMap = /* @__PURE__ */ new Map();
         const comparators = rangeList.map((comp) => new Comparator(comp, this.options));
         for (const comp of comparators) {
@@ -1108,7 +1108,7 @@ var require_range = __commonJS({
     var cache = new LRU();
     var parseOptions = require_parse_options();
     var Comparator = require_comparator();
-    var debug = require_debug();
+    var debug2 = require_debug();
     var SemVer = require_semver();
     var {
       safeRe: re,
@@ -1136,15 +1136,15 @@ var require_range = __commonJS({
     };
     var parseComparator = (comp, options) => {
       comp = comp.replace(re[t.BUILD], "");
-      debug("comp", comp, options);
+      debug2("comp", comp, options);
       comp = replaceCarets(comp, options);
-      debug("caret", comp);
+      debug2("caret", comp);
       comp = replaceTildes(comp, options);
-      debug("tildes", comp);
+      debug2("tildes", comp);
       comp = replaceXRanges(comp, options);
-      debug("xrange", comp);
+      debug2("xrange", comp);
       comp = replaceStars(comp, options);
-      debug("stars", comp);
+      debug2("stars", comp);
       return comp;
     };
     var isX = (id) => !id || id.toLowerCase() === "x" || id === "*";
@@ -1156,7 +1156,7 @@ var require_range = __commonJS({
       const r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE];
       const z2 = options.includePrerelease ? "-0" : "";
       return comp.replace(r, (_, M, m, p, pr) => {
-        debug("tilde", comp, _, M, m, p, pr);
+        debug2("tilde", comp, _, M, m, p, pr);
         let ret;
         if (isX(M)) {
           ret = "";
@@ -1165,12 +1165,12 @@ var require_range = __commonJS({
         } else if (isX(p)) {
           ret = `>=${M}.${m}.0${z2} <${M}.${+m + 1}.0-0`;
         } else if (pr) {
-          debug("replaceTilde pr", pr);
+          debug2("replaceTilde pr", pr);
           ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
         } else {
           ret = `>=${M}.${m}.${p} <${M}.${+m + 1}.0-0`;
         }
-        debug("tilde return", ret);
+        debug2("tilde return", ret);
         return ret;
       });
     };
@@ -1178,11 +1178,11 @@ var require_range = __commonJS({
       return comp.trim().split(/\s+/).map((c) => replaceCaret(c, options)).join(" ");
     };
     var replaceCaret = (comp, options) => {
-      debug("caret", comp, options);
+      debug2("caret", comp, options);
       const r = options.loose ? re[t.CARETLOOSE] : re[t.CARET];
       const z2 = options.includePrerelease ? "-0" : "";
       return comp.replace(r, (_, M, m, p, pr) => {
-        debug("caret", comp, _, M, m, p, pr);
+        debug2("caret", comp, _, M, m, p, pr);
         let ret;
         if (isX(M)) {
           ret = "";
@@ -1195,7 +1195,7 @@ var require_range = __commonJS({
             ret = `>=${M}.${m}.0${z2} <${+M + 1}.0.0-0`;
           }
         } else if (pr) {
-          debug("replaceCaret pr", pr);
+          debug2("replaceCaret pr", pr);
           if (M === "0") {
             if (m === "0") {
               ret = `>=${M}.${m}.${p}-${pr} <${M}.${m}.${+p + 1}-0`;
@@ -1206,7 +1206,7 @@ var require_range = __commonJS({
             ret = `>=${M}.${m}.${p}-${pr} <${+M + 1}.0.0-0`;
           }
         } else {
-          debug("no pr");
+          debug2("no pr");
           if (M === "0") {
             if (m === "0") {
               ret = `>=${M}.${m}.${p} <${M}.${m}.${+p + 1}-0`;
@@ -1217,19 +1217,19 @@ var require_range = __commonJS({
             ret = `>=${M}.${m}.${p} <${+M + 1}.0.0-0`;
           }
         }
-        debug("caret return", ret);
+        debug2("caret return", ret);
         return ret;
       });
     };
     var replaceXRanges = (comp, options) => {
-      debug("replaceXRanges", comp, options);
+      debug2("replaceXRanges", comp, options);
       return comp.split(/\s+/).map((c) => replaceXRange(c, options)).join(" ");
     };
     var replaceXRange = (comp, options) => {
       comp = comp.trim();
       const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE];
       return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
-        debug("xRange", comp, ret, gtlt, M, m, p, pr);
+        debug2("xRange", comp, ret, gtlt, M, m, p, pr);
         if (invalidXRangeOrder(M, m, p)) {
           return comp;
         }
@@ -1279,16 +1279,16 @@ var require_range = __commonJS({
         } else if (xp) {
           ret = `>=${M}.${m}.0${pr} <${M}.${+m + 1}.0-0`;
         }
-        debug("xRange return", ret);
+        debug2("xRange return", ret);
         return ret;
       });
     };
     var replaceStars = (comp, options) => {
-      debug("replaceStars", comp, options);
+      debug2("replaceStars", comp, options);
       return comp.trim().replace(re[t.STAR], "");
     };
     var replaceGTE0 = (comp, options) => {
-      debug("replaceGTE0", comp, options);
+      debug2("replaceGTE0", comp, options);
       return comp.trim().replace(re[options.includePrerelease ? t.GTE0PRE : t.GTE0], "");
     };
     var hyphenReplace = (incPr) => ($0, from, fM, fm, fp, fpr, fb, to, tM, tm, tp, tpr) => {
@@ -1326,7 +1326,7 @@ var require_range = __commonJS({
       }
       if (version3.prerelease.length && !options.includePrerelease) {
         for (let i = 0; i < set2.length; i++) {
-          debug(set2[i].semver);
+          debug2(set2[i].semver);
           if (set2[i].semver === Comparator.ANY) {
             continue;
           }
@@ -1363,7 +1363,7 @@ var require_comparator = __commonJS({
           }
         }
         comp = comp.trim().split(/\s+/).join(" ");
-        debug("comparator", comp, options);
+        debug2("comparator", comp, options);
         this.options = options;
         this.loose = !!options.loose;
         this.parse(comp);
@@ -1372,7 +1372,7 @@ var require_comparator = __commonJS({
         } else {
           this.value = this.operator + this.semver.version;
         }
-        debug("comp", this);
+        debug2("comp", this);
       }
       parse(comp) {
         const r = this.options.loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR];
@@ -1394,7 +1394,7 @@ var require_comparator = __commonJS({
         return this.value;
       }
       test(version3) {
-        debug("Comparator.test", version3, this.options.loose);
+        debug2("Comparator.test", version3, this.options.loose);
         if (this.semver === ANY || version3 === ANY) {
           return true;
         }
@@ -1451,7 +1451,7 @@ var require_comparator = __commonJS({
     var parseOptions = require_parse_options();
     var { safeRe: re, t } = require_re();
     var cmp2 = require_cmp();
-    var debug = require_debug();
+    var debug2 = require_debug();
     var SemVer = require_semver();
     var Range = require_range();
   }
@@ -2060,10 +2060,13 @@ function cacheDir() {
   const base = process.env.XDG_CACHE_HOME || (process.platform === "win32" ? process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local") : path.join(os.homedir(), ".cache"));
   return path.join(base, "safectx");
 }
+function context7ModeFrom(env2) {
+  return env2.CONTEXT7_API_KEY && env2.SAFECTX_CONTEXT7 !== "off" ? "fallback" : "off";
+}
 var config = {
   context7ApiKey: process.env.CONTEXT7_API_KEY ?? "",
-  /** "fallback" (default): Context7 only when local docs are thin. "off": never call it. */
-  context7Mode: process.env.SAFECTX_CONTEXT7 === "off" ? "off" : "fallback",
+  /** "fallback": Context7 only when local docs are thin, and only with CONTEXT7_API_KEY. "off" (default): never call it. */
+  context7Mode: context7ModeFrom(process.env),
   /** Characters of documentation returned per query-docs call (about 4 per token). */
   docsBudgetChars: intEnv("SAFECTX_DOCS_BUDGET", 1e4),
   context7BaseUrl: process.env.CONTEXT7_BASE_URL ?? "https://context7.com",
@@ -2081,7 +2084,11 @@ var config = {
     search: 24 * 36e5,
     versions: 24 * 36e5,
     advisories: 24 * 36e5,
-    registry: 24 * 36e5
+    registry: 24 * 36e5,
+    /** Context7 answers: a day, within the "several hours or days" its API guide suggests. */
+    context7: 24 * 36e5,
+    /** A repo's file list at a release tag does not change: keep it a year. */
+    tagged: 365 * 24 * 36e5
   }
 };
 function applyCooldownDays(days) {
@@ -2090,9 +2097,14 @@ function applyCooldownDays(days) {
 }
 
 // src/cache.ts
+var CONTEXT7_KEY_PREFIX = "c7:";
+function context7CacheDir() {
+  return path2.join(config.cacheDir, "context7");
+}
 function fileFor(key) {
   const hash2 = createHash("sha1").update(key).digest("hex");
-  return path2.join(config.cacheDir, hash2.slice(0, 2), `${hash2}.json`);
+  const dir = key.startsWith(CONTEXT7_KEY_PREFIX) ? context7CacheDir() : config.cacheDir;
+  return path2.join(dir, hash2.slice(0, 2), `${hash2}.json`);
 }
 function cacheGet(key) {
   if (config.cacheDisabled) return void 0;
@@ -2117,13 +2129,27 @@ function cacheSet(key, value, ttlMs) {
   } catch {
   }
 }
+var inflight = /* @__PURE__ */ new Map();
 async function cached(key, ttlMs, load) {
   const hit = cacheGet(key);
   if (hit !== void 0) return hit;
-  const value = await load();
-  cacheSet(key, value, ttlMs);
-  return value;
+  const pending = inflight.get(key);
+  if (pending) return pending;
+  const p = load().then((value) => {
+    cacheSet(key, value, ttlMs);
+    return value;
+  });
+  inflight.set(key, p);
+  try {
+    return await p;
+  } finally {
+    inflight.delete(key);
+  }
 }
+
+// src/github.ts
+import { AsyncLocalStorage } from "node:async_hooks";
+import { execFile, spawnSync } from "node:child_process";
 
 // src/pkg.ts
 import fs2 from "node:fs";
@@ -2142,18 +2168,28 @@ var PKG_VERSION = readVersion();
 
 // src/http.ts
 var HttpError = class extends Error {
-  constructor(status, url2, retryAfterSec) {
+  constructor(status, url2, retryAfterSec, rateLimit) {
     super(`HTTP ${status} from ${url2}`);
     this.status = status;
     this.url = url2;
     this.retryAfterSec = retryAfterSec;
+    this.rateLimit = rateLimit;
     this.name = "HttpError";
   }
   status;
   url;
   retryAfterSec;
+  rateLimit;
 };
 var USER_AGENT = `safectx/${PKG_VERSION} (+https://github.com/Hiper-AI/safectx)`;
+function debug(method, url2, status) {
+  if (process.env.SAFECTX_DEBUG_HTTP === "1") process.stderr.write(`[safectx:http] ${method} ${url2} ${status}
+`);
+}
+function intHeader(res, name) {
+  const n = Number.parseInt(res.headers.get(name) ?? "", 10);
+  return Number.isFinite(n) ? n : void 0;
+}
 async function request(url2, opts = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.requestTimeoutMs);
@@ -2165,14 +2201,19 @@ async function request(url2, opts = {}) {
       ...opts.body !== void 0 ? { "content-type": "application/json" } : {},
       ...opts.headers
     },
-    body: opts.body !== void 0 ? JSON.stringify(opts.body) : void 0,
+    body: opts.rawBody ?? (opts.body !== void 0 ? JSON.stringify(opts.body) : void 0),
     signal: controller.signal
   };
   try {
-    const res = await fetch(url2, init);
+    const res = await fetch(url2, init).catch((err) => {
+      debug(init.method ?? "GET", url2, "ERR");
+      throw err;
+    });
+    debug(init.method ?? "GET", url2, res.status);
     if (!res.ok) {
-      const retry = Number.parseInt(res.headers.get("retry-after") ?? "", 10);
-      throw new HttpError(res.status, url2, Number.isFinite(retry) ? retry : void 0);
+      const remaining = intHeader(res, "x-ratelimit-remaining");
+      const resetSec = intHeader(res, "x-ratelimit-reset");
+      throw new HttpError(res.status, url2, intHeader(res, "retry-after"), remaining !== void 0 || resetSec !== void 0 ? { remaining, resetSec } : void 0);
     }
     return res;
   } finally {
@@ -2189,6 +2230,114 @@ async function getText(url2, opts) {
 }
 function isNotFound(err) {
   return err instanceof HttpError && err.status === 404;
+}
+
+// src/github.ts
+var GITHUB_API = (process.env.GITHUB_API_URL ?? "https://api.github.com").replace(/\/+$/, "");
+function ghCliOptIn() {
+  return process.env.SAFECTX_GH_CLI === "1";
+}
+function githubAuthConfigured() {
+  return Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ghCliOptIn());
+}
+var cliToken;
+function readGhCli() {
+  return new Promise((resolve2) => {
+    execFile(
+      "gh",
+      ["auth", "token", "--hostname", "github.com"],
+      { timeout: 5e3, windowsHide: true, env: { ...process.env, GH_PROMPT_DISABLED: "1", NO_COLOR: "1" } },
+      // Whatever goes wrong (no gh, not logged in), anonymous; the output is never logged.
+      (err, stdout) => {
+        const token = err ? "" : String(stdout).trim();
+        resolve2(/^[A-Za-z0-9_]{20,255}$/.test(token) ? token : void 0);
+      }
+    );
+  });
+}
+async function githubToken() {
+  const env2 = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  if (env2) return env2;
+  if (!ghCliOptIn()) return void 0;
+  cliToken ??= readGhCli();
+  return cliToken;
+}
+function mayAuthenticate(url2) {
+  try {
+    const u = new URL(url2);
+    return u.protocol === "https:" && u.origin === new URL(GITHUB_API).origin;
+  } catch {
+    return false;
+  }
+}
+var HOUR = 36e5;
+var blocks = /* @__PURE__ */ new Map();
+var blockKey = (authenticated) => `gh:ratelimit:${authenticated ? "token" : "anon"}`;
+function blockedUntil(authenticated, now = Date.now()) {
+  const until = Math.max(blocks.get(blockKey(authenticated)) ?? 0, cacheGet(blockKey(authenticated)) ?? 0);
+  return until > now ? until : void 0;
+}
+function block(authenticated, until) {
+  blocks.set(blockKey(authenticated), until);
+  cacheSet(blockKey(authenticated), until, until - Date.now());
+}
+function limitedUntil(err, now = Date.now()) {
+  if (!(err instanceof HttpError) || err.status !== 403 && err.status !== 429) return void 0;
+  let until;
+  if (err.retryAfterSec !== void 0) until = now + err.retryAfterSec * 1e3;
+  else if (err.rateLimit?.remaining === 0 && err.rateLimit.resetSec) until = err.rateLimit.resetSec * 1e3;
+  else if (err.status === 429) until = now + 6e4;
+  return until === void 0 ? void 0 : Math.min(Math.max(until, now + 3e4), now + 2 * HOUR);
+}
+var hhmm = (ms) => new Date(ms).toISOString().slice(11, 16);
+var GitHubRateLimitError = class extends HttpError {
+  constructor(url2, until, authenticated) {
+    super(429, url2, Math.max(1, Math.ceil((until - Date.now()) / 1e3)));
+    this.until = until;
+    this.authenticated = authenticated;
+    this.name = "GitHubRateLimitError";
+    this.message = `GitHub API rate limit reached (${authenticated ? "token" : "no token"}); safectx stops calling it until ${hhmm(until)} UTC`;
+  }
+  until;
+  authenticated;
+};
+var scope = new AsyncLocalStorage();
+function note(what, until, authenticated) {
+  const s = scope.getStore();
+  if (!s) return;
+  s.what.add(what);
+  s.until = Math.max(s.until, until);
+  s.authenticated = authenticated;
+}
+async function call(path10, opts, get) {
+  const url2 = `${GITHUB_API}${path10}`;
+  const token = mayAuthenticate(url2) ? await githubToken() : void 0;
+  const authenticated = Boolean(token);
+  const until = blockedUntil(authenticated);
+  if (until) {
+    note(opts.what, until, authenticated);
+    throw new GitHubRateLimitError(url2, until, authenticated);
+  }
+  const headers = {
+    accept: opts.accept ?? "application/vnd.github+json",
+    "x-github-api-version": "2022-11-28",
+    ...token ? { authorization: `Bearer ${token}` } : {}
+  };
+  try {
+    return await get(url2, headers);
+  } catch (err) {
+    const limit = limitedUntil(err);
+    if (limit === void 0) throw err;
+    block(authenticated, limit);
+    note(opts.what, limit, authenticated);
+    throw new GitHubRateLimitError(url2, limit, authenticated);
+  }
+}
+function githubJson(path10, opts) {
+  return call(path10, opts, (url2, headers) => getJson(url2, { headers }));
+}
+function githubText(path10, opts) {
+  return call(path10, opts, (url2, headers) => getText(url2, { headers }));
 }
 
 // src/advisories/resolve.ts
@@ -3031,22 +3180,51 @@ function cvss3Of(vuln) {
 }
 
 // src/actions/github.ts
-var API2 = process.env.GITHUB_API_URL ?? "https://api.github.com";
-var HOUR = 36e5;
-function headers(accept = "application/vnd.github+json") {
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  return { accept, "x-github-api-version": "2022-11-28", ...token ? { authorization: `Bearer ${token}` } : {} };
-}
+var HOUR2 = 36e5;
+var WHAT = "GitHub Actions ref checks";
 function missing(err) {
   return err instanceof HttpError && (err.status === 404 || err.status === 422);
 }
 var enc2 = encodeURIComponent;
+var pkt = (line) => `${(line.length + 4).toString(16).padStart(4, "0")}${line}`;
+var LS_REFS_BODY = `${pkt("command=ls-refs\n")}0001${pkt("peel\n")}${pkt("ref-prefix refs/tags/\n")}${pkt("ref-prefix refs/heads/\n")}0000`;
+function parseLsRefs(body) {
+  const refs = { tags: {}, heads: {} };
+  let n = 0;
+  for (const piece of body.split("\n")) {
+    const m = piece.slice(4).match(/^([0-9a-f]{40}) refs\/(tags|heads)\/(\S+)(?: peeled:([0-9a-f]{40}))?$/);
+    if (!m) continue;
+    refs[m[2]][m[3]] = m[4] ?? m[1];
+    n++;
+  }
+  return n ? refs : void 0;
+}
+async function repoRefs(owner, repo) {
+  if (GITHUB_API !== "https://api.github.com") return void 0;
+  return cached(`gh:lsrefs:${owner}/${repo}`, HOUR2, async () => {
+    const body = await getText(`https://github.com/${enc2(owner)}/${enc2(repo)}.git/git-upload-pack`, {
+      method: "POST",
+      headers: { "git-protocol": "version=2", "content-type": "application/x-git-upload-pack-request", accept: "application/x-git-upload-pack-result" },
+      rawBody: LS_REFS_BODY
+    });
+    const refs = parseLsRefs(body);
+    if (!refs) throw new Error("no refs in the git response");
+    return refs;
+  }).catch(() => void 0);
+}
+var looksLikeSha = (ref) => /^[0-9a-f]{7,40}$/i.test(ref);
 async function resolveRef(owner, repo, ref) {
+  const refs = await repoRefs(owner, repo);
+  if (refs) {
+    const sha = refs.tags[ref] ?? refs.heads[ref];
+    if (sha) return sha.toLowerCase();
+    if (!looksLikeSha(ref)) return void 0;
+  }
   try {
     const sha = await cached(
       `gh:ref:${owner}/${repo}@${ref}`,
-      HOUR,
-      () => getText(`${API2}/repos/${enc2(owner)}/${enc2(repo)}/commits/${enc2(ref)}`, { headers: headers("application/vnd.github.sha") })
+      HOUR2,
+      () => githubText(`/repos/${enc2(owner)}/${enc2(repo)}/commits/${enc2(ref)}`, { what: WHAT, accept: "application/vnd.github.sha" })
     );
     return /^[0-9a-f]{40}$/i.test(sha.trim()) ? sha.trim().toLowerCase() : void 0;
   } catch (err) {
@@ -3054,19 +3232,26 @@ async function resolveRef(owner, repo, ref) {
     throw err;
   }
 }
+var bySpecificity = (a, b) => b.split(".").length - a.split(".").length || b.localeCompare(a, void 0, { numeric: true });
+var underPrefix = (name, prefix) => name === prefix || name.startsWith(`${prefix}.`);
 async function specificTag(owner, repo, prefix, sha) {
-  let refs;
+  const want = sha.toLowerCase();
+  const refs = await repoRefs(owner, repo);
+  if (refs) {
+    return Object.keys(refs.tags).filter((name) => underPrefix(name, prefix)).sort(bySpecificity).find((name) => refs.tags[name].toLowerCase() === want);
+  }
+  let matching;
   try {
-    refs = await cached(
+    matching = await cached(
       `gh:tags:${owner}/${repo}:${prefix}`,
-      HOUR,
-      () => getJson(`${API2}/repos/${enc2(owner)}/${enc2(repo)}/git/matching-refs/tags/${enc2(prefix)}`, { headers: headers() })
+      HOUR2,
+      () => githubJson(`/repos/${enc2(owner)}/${enc2(repo)}/git/matching-refs/tags/${enc2(prefix)}`, { what: WHAT })
     );
   } catch (err) {
     if (missing(err)) return void 0;
     throw err;
   }
-  const names = refs.map((r) => ({ name: r.ref.replace(/^refs\/tags\//, ""), r })).filter((x) => x.name === prefix || x.name.startsWith(`${prefix}.`)).sort((a, b) => b.name.split(".").length - a.name.split(".").length || b.name.localeCompare(a.name, void 0, { numeric: true }));
+  const names = matching.map((r) => ({ name: r.ref.replace(/^refs\/tags\//, ""), r })).filter((x) => underPrefix(x.name, prefix)).sort((a, b) => bySpecificity(a.name, b.name));
   let annotated = 0;
   for (const { name, r } of names) {
     let commit = r.object.type === "commit" ? r.object.sha : void 0;
@@ -3074,22 +3259,28 @@ async function specificTag(owner, repo, prefix, sha) {
       const t = await cached(
         `gh:tagobj:${owner}/${repo}:${r.object.sha}`,
         config.ttl.versions,
-        () => getJson(`${API2}/repos/${enc2(owner)}/${enc2(repo)}/git/tags/${r.object.sha}`, { headers: headers() })
+        () => githubJson(`/repos/${enc2(owner)}/${enc2(repo)}/git/tags/${r.object.sha}`, { what: WHAT })
       ).catch(() => void 0);
       commit = t?.object?.sha;
     }
-    if (commit?.toLowerCase() === sha.toLowerCase()) return name;
+    if (commit?.toLowerCase() === want) return name;
   }
   return void 0;
 }
 async function tagForSha(owner, repo, sha) {
+  const want = sha.toLowerCase();
+  const refs = await repoRefs(owner, repo);
+  if (refs) {
+    const hits = Object.keys(refs.tags).filter((name) => refs.tags[name].toLowerCase() === want);
+    return hits.sort((a, b) => b.split(".").length - a.split(".").length)[0];
+  }
   try {
     const tags = await cached(
       `gh:taglist:${owner}/${repo}`,
-      HOUR,
-      () => getJson(`${API2}/repos/${enc2(owner)}/${enc2(repo)}/tags?per_page=100`, { headers: headers() })
+      HOUR2,
+      () => githubJson(`/repos/${enc2(owner)}/${enc2(repo)}/tags?per_page=100`, { what: WHAT })
     );
-    const hits = tags.filter((t) => t.commit.sha.toLowerCase() === sha.toLowerCase()).map((t) => t.name);
+    const hits = tags.filter((t) => t.commit.sha.toLowerCase() === want).map((t) => t.name);
     return hits.sort((a, b) => b.split(".").length - a.split(".").length)[0];
   } catch (err) {
     if (missing(err)) return void 0;
@@ -3100,8 +3291,8 @@ async function latestRelease(owner, repo) {
   try {
     const r = await cached(
       `gh:latest:${owner}/${repo}`,
-      HOUR,
-      () => getJson(`${API2}/repos/${enc2(owner)}/${enc2(repo)}/releases/latest`, { headers: headers() })
+      HOUR2,
+      () => githubJson(`/repos/${enc2(owner)}/${enc2(repo)}/releases/latest`, { what: "the latest release of a vulnerable action" })
     );
     return r.tag_name;
   } catch (err) {
@@ -3247,7 +3438,7 @@ async function checkAction(use) {
       report.version = await specificTag(use.owner, use.repo, use.ref, report.sha) ?? use.ref;
     }
   } catch (err) {
-    report.unverified ??= `GitHub did not answer (${err.message}); set GITHUB_TOKEN or GH_TOKEN if this is the rate limit`;
+    report.unverified ??= err instanceof GitHubRateLimitError ? err.message : `GitHub did not answer (${err.message})`;
   }
   if (vulns?.length) {
     if (report.version && coerce(report.version)) {
@@ -3281,6 +3472,8 @@ async function checkAction(use) {
   }
   return report;
 }
+var limited = (unverified) => unverified.startsWith("GitHub API rate limit");
+var TOKEN_HINT = "GitHub rate limit: without a token GitHub allows 60 API requests an hour. Set GITHUB_TOKEN (or SAFECTX_GH_CLI=1 to use the GitHub CLI login) and re-run to verify the rest.";
 async function auditActions(files) {
   const byKey = /* @__PURE__ */ new Map();
   for (const f of files) {
@@ -3311,7 +3504,7 @@ async function auditActions(files) {
   const rank2 = (f) => f.advisories.length ? 0 : !f.exists ? 1 : f.unverified ? 2 : !f.pinned ? 3 : 4;
   findings.sort((a, b) => rank2(a) - rank2(b));
   const notes = [];
-  if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) notes.push("No GITHUB_TOKEN: GitHub allows 60 requests an hour; large audits may come back unverified.");
+  if (findings.some((f) => f.unverified && limited(f.unverified)) && !githubAuthConfigured()) notes.push(TOKEN_HINT);
   return {
     files: files.map((f) => f.file),
     actions: findings.length,
@@ -3351,7 +3544,7 @@ function formatActionsAudit(a, maxFindings = 50) {
   }
   if (a.findings.length > maxFindings) lines.push(`  - ... and ${a.findings.length - maxFindings} more`);
   for (const n of a.notes) lines.push(`Note: ${n}`);
-  lines.push(`Verified against osv.dev (GitHub Actions) + api.github.com on ${a.checkedAt.slice(0, 10)}.`);
+  lines.push(`Verified against osv.dev (GitHub Actions) + GitHub (git refs, REST API) on ${a.checkedAt.slice(0, 10)}.`);
   return lines.join("\n");
 }
 function actionsAuditFails(a, floor, levels) {
@@ -3485,7 +3678,7 @@ function parseGradleLockfile(file2, content, siblings = {}) {
 }
 
 // src/jvm/maven.ts
-var tag = (block, name) => block.match(new RegExp(`<${name}>\\s*([^<]*?)\\s*</${name}>`))?.[1];
+var tag = (block2, name) => block2.match(new RegExp(`<${name}>\\s*([^<]*?)\\s*</${name}>`))?.[1];
 function stripBlocks(xml, names) {
   let out = xml;
   for (const n of names) out = out.replace(new RegExp(`<${n}>[\\s\\S]*?</${n}>`, "g"), "");
@@ -3493,8 +3686,8 @@ function stripBlocks(xml, names) {
 }
 function pomProperties(xml) {
   const props = /* @__PURE__ */ new Map();
-  for (const block of xml.match(/<properties>[\s\S]*?<\/properties>/g) ?? []) {
-    for (const m of block.matchAll(/<([A-Za-z0-9_.-]+)>\s*([^<]*?)\s*<\/\1>/g)) props.set(m[1], m[2]);
+  for (const block2 of xml.match(/<properties>[\s\S]*?<\/properties>/g) ?? []) {
+    for (const m of block2.matchAll(/<([A-Za-z0-9_.-]+)>\s*([^<]*?)\s*<\/\1>/g)) props.set(m[1], m[2]);
   }
   const top = stripBlocks(xml, ["parent", "dependencies", "dependencyManagement", "build", "profiles", "properties", "reporting", "plugins"]);
   const parent = xml.match(/<parent>[\s\S]*?<\/parent>/)?.[0] ?? "";
@@ -3877,10 +4070,10 @@ function directFromPyproject(content) {
 }
 function parseTomlLock(file2, content, ecosystem, direct) {
   const packages = [];
-  for (const block of content.split(/^\[\[package\]\]\s*$/m).slice(1)) {
-    const name = block.match(/^name\s*=\s*"([^"]+)"/m)?.[1];
-    const version3 = block.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
-    if (!name || !version3 || /source\s*=\s*\{\s*(editable|virtual)\s*=/.test(block)) continue;
+  for (const block2 of content.split(/^\[\[package\]\]\s*$/m).slice(1)) {
+    const name = block2.match(/^name\s*=\s*"([^"]+)"/m)?.[1];
+    const version3 = block2.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
+    if (!name || !version3 || /source\s*=\s*\{\s*(editable|virtual)\s*=/.test(block2)) continue;
     const n = ecosystem === "pypi" ? normalizePypiName(name) : name;
     packages.push({ name: n, version: version3, direct: direct ? direct.has(n) : void 0 });
   }
@@ -6522,8 +6715,8 @@ function anchor(source) {
 }
 var date = /* @__PURE__ */ anchor(dateSource);
 function timeSource(args) {
-  const hhmm = `(?:[01]\\d|2[0-3]):[0-5]\\d`;
-  const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : args.seconds ? `${hhmm}:[0-5]\\d(?:\\.\\d+)?` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
+  const hhmm2 = `(?:[01]\\d|2[0-3]):[0-5]\\d`;
+  const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm2}` : args.precision === 0 ? `${hhmm2}:[0-5]\\d` : `${hhmm2}:[0-5]\\d\\.\\d{${args.precision}}` : args.seconds ? `${hhmm2}:[0-5]\\d(?:\\.\\d+)?` : `${hhmm2}(?::[0-5]\\d(?:\\.\\d+)?)?`;
   return regex;
 }
 function time(args) {
