@@ -1,0 +1,70 @@
+/**
+ * What the agent reads. Plain text, worst news first, and the sources with a date,
+ * so the model cannot mistake a cached verdict for a fresh one.
+ */
+import { installCommand } from './ecosystems.js';
+import { type PackageReport } from './advisories/resolve.js';
+import { type TyposquatReport } from './typosquat.js';
+
+export function securityNotice(report: PackageReport, typo?: TyposquatReport): string {
+  const lines: string[] = [];
+  const pkg = `${report.package} (${report.ecosystem})`;
+  const req = report.requested;
+
+  switch (report.verdict) {
+    case 'malicious':
+      lines.push(`SECURITY NOTICE: ${pkg}@${req?.version} is flagged as MALWARE. Do not install or document it.`);
+      break;
+    case 'vulnerable':
+      if (req) {
+        lines.push(`SECURITY NOTICE: ${pkg}@${req.version} has ${req.advisories.length} known advisor${req.advisories.length === 1 ? 'y' : 'ies'}.`);
+      } else {
+        lines.push(`SECURITY NOTICE: no recent stable version of ${pkg} is free of known advisories.`);
+      }
+      break;
+    case 'deprecated':
+      lines.push(`NOTICE: ${pkg}@${req?.version} is deprecated by its maintainers${req?.deprecatedReason ? `: ${req.deprecatedReason}` : '.'}`);
+      break;
+    case 'possible-typosquat':
+      lines.push(`SECURITY NOTICE: "${report.package}" looks like a typo of the popular package "${typo?.lookalikeOf}"${typo?.existsInRegistry === false ? ' and does not exist in the registry' : ''}. Confirm the name before installing.`);
+      break;
+    case 'unknown-package':
+      if (req && report.latestVersion) {
+        lines.push(`SECURITY NOTICE: version ${req.version} of ${pkg} is not in the registry (never published, or removed; removed versions are often the malicious ones). Do not use it.`);
+      } else {
+        lines.push(`NOTICE: ${pkg} could not be found in deps.dev${typo?.existsInRegistry === false ? ' nor in the official registry' : ''}. ${report.reason ?? ''}`.trim());
+      }
+      break;
+    case 'unknown':
+      lines.push(`NOTICE: no security verdict for ${pkg}: ${report.reason ?? 'a data source did not answer'}. Treat as unverified.`);
+      break;
+    case 'ok':
+      lines.push(`Security check: ${pkg}${req ? `@${req.version}` : ''} has no known advisories.`);
+      break;
+  }
+
+  if (req && req.advisories.length) {
+    for (const a of req.advisories.slice(0, 8)) {
+      const alias = a.aliases.find((x) => x.startsWith('CVE-'));
+      const sev = a.severity ?? (a.cvss3Score != null ? `CVSS ${a.cvss3Score}` : undefined);
+      const fixed = a.fixedIn?.length ? ` fixed in ${a.fixedIn.join(', ')}` : '';
+      lines.push(`  - ${a.id}${alias ? ` (${alias})` : ''}${sev ? ` [${sev}]` : ''}: ${a.title ?? ''}${fixed}`);
+    }
+    if (req.advisories.length > 8) lines.push(`  - ... and ${req.advisories.length - 8} more`);
+  }
+
+  if (report.safeVersion) {
+    const isUpgrade = req && req.version !== report.safeVersion;
+    lines.push(
+      `Recommended version: ${report.safeVersion}` +
+        (report.latestVersion && report.latestVersion !== report.safeVersion
+          ? ` (latest is ${report.latestVersion}, which is either newer than the cooldown window, pre-release or has an advisory)`
+          : ' (latest)') +
+        (isUpgrade ? `. Upgrade: ${installCommand(report.ecosystem, report.package, report.safeVersion)}` : '.'),
+    );
+    if (report.safeVersionLicenses?.length) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
+  }
+
+  lines.push(`Verified against ${report.sources.join(' + ')} on ${report.checkedAt.slice(0, 10)}.`);
+  return lines.join('\n');
+}
