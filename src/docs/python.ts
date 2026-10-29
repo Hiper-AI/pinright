@@ -17,7 +17,7 @@ import { IMPORT_TO_PYPI, normalizePypiName, siblingsFor, type SiblingPackage } f
 import { getBytes, getJson, isNotFound } from '../http.js';
 import { readTarGz, readZip } from './archive.js';
 import { distLayout, renderDistribution, wantEntry, type DistLayout } from './pyapi.js';
-import { rank, type DocFile } from './retrieve.js';
+import { rank, topics, topicsFirst, type DocFile } from './retrieve.js';
 
 const MAX_ARCHIVE_BYTES = 30_000_000;
 const MAX_ENTRY_BYTES = 1_000_000;
@@ -138,10 +138,11 @@ export function apiDocFiles(api: PythonApi, query: string, max = API_MODULES): D
     // Compatibility layers (pydantic.v1, deprecated/) match every query about the old API.
     boost: LEGACY_MODULE.test(m.path) ? 0.5 : 1,
   }));
-  return rank(files.map((file) => ({ file, title: file.label, text: file.content, score: 0 })), query)
-    .filter((c) => c.score > 0)
-    .slice(0, max)
-    .map((c) => c.file);
+  // A question with several topics gets the best module of each topic first.
+  const tl = topics(query);
+  const ranked = rank(files.map((file) => ({ file, title: file.label, text: file.content, score: 0 })), query, tl).filter((c) => c.score > 0);
+  const perTopic = tl.map((_, i) => ranked.filter((c) => (c.topicScores?.[i] ?? 0) > 0).sort((a, b) => (b.topicScores?.[i] ?? 0) - (a.topicScores?.[i] ?? 0)));
+  return topicsFirst(ranked, perTopic, max, (c) => c.file.url).map((c) => c.file);
 }
 
 // ------------------------------------------------------------ import notes --

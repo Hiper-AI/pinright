@@ -9,7 +9,7 @@ import { packageMeta, type PackageMeta } from '../registry.js';
 import { docsSourceFor } from '../data/docsRepos.js';
 import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
-import { chunkFile, coverPaths, notUserDocs, rank, rankPaths, select, type Chunk, type DocFile } from './retrieve.js';
+import { chunkFile, coverPaths, notUserDocs, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile } from './retrieve.js';
 import {
   docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
 } from './sources.js';
@@ -188,11 +188,17 @@ export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMet
   } else if (llms?.index?.entries.length) {
     const entries = llms.index.entries.filter((e) => wantUpgrade || !/\/(blog|changelog|releases?|news)\b/i.test(e.url));
     // A curated index (docsRepos.ts) covers a whole product family: favor this package's pages, read more of them.
-    const ranked = rankPaths(
-      entries.map((e) => ({ ...e, path: `${e.title} ${e.description} ${new URL(e.url).pathname}` })),
-      opts.query,
-      docsSource?.llmsIndex ? [meta.name] : [],
-    ).slice(0, docsSource?.llmsIndex ? CURATED_LLMS_PAGES : LLMS_PAGES);
+    const paths = entries.map((e) => ({ ...e, path: `${e.title} ${e.description} ${new URL(e.url).pathname}` }));
+    const extra = docsSource?.llmsIndex ? [meta.name] : [];
+    const max = docsSource?.llmsIndex ? CURATED_LLMS_PAGES : LLMS_PAGES;
+    // Several topics: the best page of each, then the best overall, one more page per extra topic.
+    const tl = topics(opts.query);
+    const ranked = topicsFirst(
+      rankPaths(paths, opts.query, extra),
+      tl.map((t) => rankPaths(paths, t, extra).filter((e) => e.score > 0)),
+      Math.max(max, Math.min(tl.length, CURATED_LLMS_PAGES)),
+      (e) => e.url,
+    );
     const pages = await pool(ranked, 4, async (e) => ({ e, content: await fetchLlmsPage(e.url) }));
     for (const { e, content } of pages) {
       if (content) docFiles.push({ label: e.title, url: e.url, content: keep(content), kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.8 : 1 });
@@ -202,7 +208,7 @@ export async function collectDocs(opts: DocsOptions): Promise<{ meta: PackageMet
 }
 
 function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput): DocsResult {
-  const ranked = dedupe(rank(docFiles.flatMap(chunkFile), opts.query));
+  const ranked = dedupe(rank(docFiles.flatMap(chunkFile), opts.query, topics(opts.query)));
   const best = ranked[0]?.score ?? 0;
   const sources = docFiles.map((d) => ({ label: d.label, url: d.url, versionAccurate: d.versionAccurate }));
   // PyPI: import name and sibling packages to install, checked against the query and the returned text.

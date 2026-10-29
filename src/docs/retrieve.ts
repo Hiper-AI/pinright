@@ -23,6 +23,8 @@ export interface Chunk {
   title: string;
   text: string;
   score: number;
+  /** Score against each topic of a question that asks several things (see `topics`). */
+  topicScores?: number[];
 }
 
 const STOP = new Set(
@@ -243,8 +245,25 @@ export function chunkFile(file: DocFile): Chunk[] {
     .filter((c) => c.text);
 }
 
-/** BM25 over the chunks; title and file path count twice. */
-export function rank(chunks: Chunk[], query: string): Chunk[] {
+/**
+ * The topics of a question that asks several things at once ("reject unknown keys; enum from a
+ * TypeScript enum; record of strings", "ConfigDict frozen, field_validator, model_validator, Field
+ * pattern"): ranked as one bag of words, the topic with the most matching text takes the whole
+ * answer. Split on semicolons, commas, colons and line breaks; empty when there is one topic.
+ */
+export function topics(query: string): string[] {
+  const parts = query
+    .split(/[;\n]|[,:?](?=\s)|\s+(?:\d+[.)]|-)\s+/)
+    .map((p) => p.trim())
+    .filter((p) => tokenize(p).length);
+  return parts.length >= 2 ? [...new Set(parts)].slice(0, 8) : [];
+}
+
+/**
+ * BM25 over the chunks; title and file path count twice. With `topicList`, each chunk also gets
+ * a score per topic (same statistics), which `select` uses to give every topic a section.
+ */
+export function rank(chunks: Chunk[], query: string, topicList: string[] = []): Chunk[] {
   const q = [...new Set(tokenize(query))];
   if (!q.length || !chunks.length) return chunks;
   const docs = chunks.map((c) => {
@@ -254,24 +273,40 @@ export function rank(chunks: Chunk[], query: string): Chunk[] {
     return { len: toks.length, tf };
   });
   const avg = docs.reduce((a, d) => a + d.len, 0) / docs.length;
+  const topicTerms = topicList.map((t) => [...new Set(tokenize(t))]);
   const df = new Map<string, number>();
-  for (const t of q) df.set(t, docs.filter((d) => d.tf.has(t)).length);
+  for (const t of new Set([...q, ...topicTerms.flat()])) df.set(t, docs.filter((d) => d.tf.has(t)).length);
   const k1 = 1.2;
   const b = 0.75;
   const N = docs.length;
-  chunks.forEach((c, i) => {
+  const bm25 = (i: number, terms: string[]) => {
     let s = 0;
-    for (const t of q) {
+    for (const t of terms) {
       const f = docs[i].tf.get(t) ?? 0;
       if (!f) continue;
       const idf = Math.log(1 + (N - (df.get(t) ?? 0) + 0.5) / ((df.get(t) ?? 0) + 0.5));
       s += idf * ((f * (k1 + 1)) / (f + k1 * (1 - b + (b * docs[i].len) / avg)));
     }
+    return s;
+  };
+  chunks.forEach((c, i) => {
     // Code examples are what agents copy; favor chunks that carry some.
-    if (/```|^\s{4}\S/m.test(c.text)) s *= 1.15;
-    c.score = s * (c.file.boost ?? 1);
+    const weight = (/```|^\s{4}\S/m.test(c.text) ? 1.15 : 1) * (c.file.boost ?? 1);
+    c.score = bm25(i, q) * weight;
+    c.topicScores = topicTerms.length ? topicTerms.map((terms) => bm25(i, terms) * weight) : undefined;
   });
   return [...chunks].sort((a, b2) => b2.score - a.score);
+}
+
+/** Up to `max` items: the best of each topic's ranking first, then the overall ranking. */
+export function topicsFirst<T>(overall: T[], perTopic: T[][], max: number, key: (t: T) => string): T[] {
+  const out = new Map<string, T>();
+  for (const list of perTopic) if (list[0] && out.size < max && !out.has(key(list[0]))) out.set(key(list[0]), list[0]);
+  for (const t of overall) {
+    if (out.size >= max) break;
+    if (!out.has(key(t))) out.set(key(t), t);
+  }
+  return [...out.values()];
 }
 
 /** Share of distinct tokens two texts have in common (Jaccard). */
@@ -293,21 +328,39 @@ export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk
   const picked: Set<string>[] = [];
   const count = new Map<string, number>();
   let used = 0;
-  for (const c of ranked) {
-    if (c.score <= 0) break;
+  const sizeOf = (c: Chunk) => c.text.length + c.title.length + 80;
+  const take = (c: Chunk, limit: number): boolean => {
     const n = count.get(c.file.url) ?? 0;
-    if (n >= perFile) continue;
-    const size = c.text.length + c.title.length + 80;
-    if (used + size > budgetChars) {
-      if (used > budgetChars * 0.6) break;
-      continue;
-    }
+    if (n >= perFile || out.includes(c) || used + sizeOf(c) > limit) return false;
     const toks = new Set(tokenize(c.text));
-    if (toks.size >= 20 && picked.some((p) => overlap(toks, p) >= NEAR_DUPLICATE)) continue;
+    if (toks.size >= 20 && picked.some((p) => overlap(toks, p) >= NEAR_DUPLICATE)) return false;
     out.push(c);
     picked.push(toks);
     count.set(c.file.url, n + 1);
-    used += size;
+    used += sizeOf(c);
+    return true;
+  };
+
+  // A question with several topics: first the best section for each topic, each within its share of
+  // the budget (a topic whose best section is already in covers itself), then the rest by overall score.
+  const nTopics = ranked.find((c) => c.topicScores)?.topicScores?.length ?? 0;
+  if (nTopics) {
+    const share = Math.max(budgetChars / nTopics, 1500);
+    for (let t = 0; t < nTopics; t++) {
+      const best = ranked.filter((c) => (c.topicScores?.[t] ?? 0) > 0).sort((a, b) => (b.topicScores?.[t] ?? 0) - (a.topicScores?.[t] ?? 0));
+      if (best[0] && out.includes(best[0])) continue;
+      for (const c of best.slice(0, 5)) if (sizeOf(c) <= share * 1.5 && take(c, budgetChars)) break;
+    }
+  }
+
+  for (const c of ranked) {
+    if (c.score <= 0) break;
+    if (out.includes(c)) continue;
+    if (used + sizeOf(c) > budgetChars) {
+      if (used > budgetChars * 0.6) break;
+      continue;
+    }
+    take(c, budgetChars);
   }
   return out;
 }

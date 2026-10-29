@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, rank, rankPaths, select, singular, tidy, tokenize, type DocFile } from '../src/docs/retrieve.js';
+import { chunkFile, chunkMarkdown, chunkTypes, coverPaths, notUserDocs, rank, rankPaths, select, singular, tidy, tokenize, topics, topicsFirst, type DocFile } from '../src/docs/retrieve.js';
 import { parseLlmsIndex, tagCandidates } from '../src/docs/sources.js';
 import { ecosystemHint, formatLibraryId, nameVariants, parseLibraryRef } from '../src/search.js';
 
@@ -99,6 +99,38 @@ describe('ranking', () => {
     // Error-message pages count when the question is about an error.
     expect(notUserDocs('errors/no-cache.mdx', 'set up caching')).toBe(true);
     expect(notUserDocs('errors/no-cache.mdx', 'fix the no-cache error')).toBe(false);
+  });
+
+  it('topics: a question that asks several things splits into its topics; a single question does not', () => {
+    expect(topics('reject unknown keys in an object; enum from a TypeScript enum; record of strings')).toEqual([
+      'reject unknown keys in an object', 'enum from a TypeScript enum', 'record of strings',
+    ]);
+    expect(topics('ConfigDict frozen extra forbid, field_validator, model_validator mode after, Field pattern')).toHaveLength(4);
+    expect(topics('Next.js route handler: streamText with tools, multi-step stopWhen, system prompt')).toEqual([
+      'Next.js route handler', 'streamText with tools', 'multi-step stopWhen', 'system prompt',
+    ]);
+    expect(topics('protect /dashboard routes with middleware')).toEqual([]);
+    expect(topics('z.email, z.strictObject')).toEqual(['z.email', 'z.strictObject']);
+  });
+
+  it('select gives each topic its best section before filling by overall score', () => {
+    // The enum and record docs share many words with the whole question; strictObject's section few.
+    const enumDoc = 'z.enum accepts a TypeScript enum. Enum values, enum from a native enum, enum options, record of enum keys. '.repeat(6);
+    const recordDoc = 'z.record(z.string(), z.number()) a record of strings to numbers. Record keys from an enum. '.repeat(6);
+    const strictDoc = `z.strictObject throws on unknown keys. ${'Lorem ipsum dolor sit amet. '.repeat(20)}`;
+    const chunks = [
+      { file: file('enum.md', ''), title: 'Enums', text: enumDoc, score: 0 },
+      { file: file('record.md', ''), title: 'Records', text: recordDoc, score: 0 },
+      { file: file('strict.md', ''), title: 'Strict objects', text: strictDoc, score: 0 },
+    ];
+    const q = 'reject unknown keys in an object; enum from a TypeScript enum; record of strings';
+    const budget = 2 * (enumDoc.length + 100);
+    expect(select(rank(chunks, q), budget).map((c) => c.title)).toEqual(['Enums', 'Records']);
+    expect(select(rank(chunks, q, topics(q)), budget).map((c) => c.title)).toEqual(['Strict objects', 'Enums']);
+  });
+
+  it('topicsFirst takes the best item of each topic, then the overall ranking, without repeats', () => {
+    expect(topicsFirst(['a', 'b', 'c', 'd'], [['c', 'a'], ['a'], []], 3, (x) => x)).toEqual(['c', 'a', 'b']);
   });
 
   it('select skips near-duplicate sections (the same step in several framework guides)', () => {
