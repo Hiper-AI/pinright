@@ -46,10 +46,16 @@ workflow already passes.
       pinned to a full SHA if the org offers that policy.
 - [ ] Settings > Code security: private vulnerability reporting (SECURITY.md sends reporters
       there), Dependabot alerts and security updates, secret scanning and push protection.
-- [ ] Runners: `release.yml` and `scorecard.yml` must run on GitHub-hosted runners. npm trusted
-      publishing does not accept self-hosted runners. If the org's Actions billing is still
-      blocked, fix it before the first release; `ci.yml` can move to a self-hosted runner, the
-      publish job cannot.
+- [ ] Runners. `ci.yml` and the `verify` job of `release.yml` run on Hiper AI's own runner
+      (label `hiperai-ci`, VM `hiperai-ci-linux`). Register one for this repository there, as
+      for the other repos: without it those jobs stay queued with no error. Two jobs still use
+      GitHub-hosted minutes, because the services behind them reject self-hosted runners:
+      `publish` in `release.yml` (npm trusted publishing and provenance) and `scorecard.yml`
+      (`publish_results`). Both are about a minute each, the first once per release and the
+      second weekly. GitHub-hosted runners must be able to start for them.
+- [ ] Before making the repository public: Settings > Actions > General > "Require approval for
+      all external contributors". `ci.yml` already skips pull requests from forks, so code from
+      outside the organization never runs on the shared runner; this setting is the second lock.
 
 ### 3. npm
 

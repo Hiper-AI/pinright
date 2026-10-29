@@ -10,19 +10,24 @@ on:
 permissions:
   contents: read
 
+# The jobs run on Hiper AI's own runner (hiperai-ci), not GitHub-hosted minutes. That machine
+# also serves other repositories, so a pull request from a fork never runs here: code from
+# outside the organization does not execute on it. Fork PRs are reviewed and pushed to a
+# branch of this repository by a maintainer to get CI.
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
-    name: test (${{ matrix.os }}, node ${{ matrix.node }})
-    runs-on: ${{ matrix.os }}
+    name: test (node ${{ matrix.node }})
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: hiperai-ci # self-hosted (GCP hiperai-ci-linux); see the note on fork PRs above
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
         node: [20, 22, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,7 +47,8 @@ jobs:
   self-audit:
     # safectx checks its own supply chain with the CLI it just built.
     name: self-audit
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: hiperai-ci
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,7 +72,8 @@ jobs:
   package:
     # What would be published: only dist, docs and the license; installs and runs without scripts.
     name: package contents
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: hiperai-ci
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

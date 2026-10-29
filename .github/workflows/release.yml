@@ -28,8 +28,8 @@ jobs:
   verify:
     # Builds and checks the exact tarball to publish. No publishing credential here.
     name: verify and pack
-    # Trusted publishing and provenance need GitHub-hosted runners.
-    runs-on: ubuntu-latest
+    # Build and checks run on Hiper AI's own runner; only the publish job below needs GitHub's.
+    runs-on: hiperai-ci
     timeout-minutes: 20
     permissions:
       contents: read
@@ -128,6 +128,9 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # npm trusted publishing (OIDC) and provenance do not support self-hosted runners
+    # (docs.npmjs.com/trusted-publishers), so this one job uses GitHub-hosted minutes:
+    # about a minute per release.
     environment: npm-publish
     permissions:
       contents: read
