@@ -28,7 +28,11 @@ export function githubRepo(url: string | undefined): { owner: string; repo: stri
   if (!url) return undefined;
   const m = url.match(/github\.com[/:]([^/\s#?]+)\/([^/\s#?]+)/i);
   if (!m) return undefined;
-  return { owner: m[1], repo: m[2].replace(/\.git$/, '') };
+  const owner = m[1];
+  const repo = m[2].replace(/\.git$/, '');
+  // Both go into api.github.com paths (with the token): GitHub's own charset, no dot segments.
+  if (!/^[A-Za-z0-9-]{1,39}$/.test(owner) || !/^[\w.-]{1,100}$/.test(repo) || /^\.+$/.test(repo)) return undefined;
+  return { owner, repo };
 }
 
 const CODE_HOSTS = /(^|\.)(github\.com|gitlab\.com|npmjs\.com|npmjs\.org|pypi\.org|crates\.io|rubygems\.org|pkg\.go\.dev|nuget\.org|bitbucket\.org)$/i;

@@ -12,7 +12,8 @@ import { cached } from '../cache.js';
 import { config } from '../config.js';
 import { fetchFile, fetchLlmsPage, llmsDocs, npmPackageFiles, parseLlmsIndex, repoFiles } from '../docs/sources.js';
 import { type Ecosystem } from '../ecosystems.js';
-import { getJson, getText, HttpError } from '../http.js';
+import { getJson, HttpError } from '../http.js';
+import { getUntrustedText } from '../safeFetch.js';
 import { docsSite, type PackageMeta } from '../registry.js';
 import { majorsInRange, inUpgradeRange, isPrereleaseVersion, versionFromTag } from './versions.js';
 
@@ -243,7 +244,7 @@ export function htmlToMarkdown(html: string): string {
 export async function fetchAnnouncement(url: string, tag: string): Promise<UpgradeDoc | undefined> {
   const text = await cached(`html:${url}`, config.ttl.docs, async () => {
     try {
-      const raw = await getText(url);
+      const raw = await getUntrustedText(url);
       return /^\s*(<!doctype html|<html|<head|<body)/i.test(raw.slice(0, 500)) ? htmlToMarkdown(raw) : raw;
     } catch {
       return '';

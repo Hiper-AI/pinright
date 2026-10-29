@@ -378,7 +378,9 @@ npx safectx check composer guzzlehttp/guzzle:7.4.0
 
 No telemetry. Requests go from your machine to the public APIs above and nowhere else. Docs
 content is data for the agent; safectx does not execute anything it downloads. [SECURITY.md](SECURITY.md)
-lists each service and what it receives, and how to report a vulnerability. Behind a proxy, set
+lists each service and what it receives, and how to report a vulnerability. A docs-site URL from
+package metadata goes through a guard that refuses loopback, private and cloud-metadata addresses
+(see SECURITY.md). Behind a proxy, set
 `HTTPS_PROXY` with `NODE_USE_ENV_PROXY=1` (recent Node 22 and 24).
 
 ## Benchmark

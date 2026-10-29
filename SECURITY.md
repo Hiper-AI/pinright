@@ -49,9 +49,34 @@ Credentials are optional and stay with their service: `GITHUB_TOKEN` / `GH_TOKEN
 code, file contents or environment. The names and versions of the dependencies you check do reach
 the services above, so a private package name you check does too.
 
-The docs-site row deserves a note: the site URL comes from the package's own metadata, which its
-publisher controls. safectx skips code hosts and non-HTTP URLs there, and treats whatever comes
-back as text, but the request itself goes to that host.
+## URLs that come from package metadata
+
+The package's publisher picks the docs-site URL, the pages its `llms.txt` lists and the
+announcement links in its GitHub release notes. A malicious package could point them at your
+cloud metadata service or a host on your internal network, so safectx fetches those URLs through a
+separate guard (`src/safeFetch.ts`). The guard:
+
+- uses https only. It upgrades an `http://` link from metadata to `https://` on the same host and
+  refuses a redirect to `http://`. Plain http would let anyone on the path inject text into what the
+  agent reads.
+- refuses credentials in the URL and any port other than the default one.
+- refuses `localhost`, single-label names and names under `.local`, `.internal`, `.localdomain`,
+  `.home.arpa` and similar suffixes before any DNS lookup.
+- refuses literal addresses outside public unicast, after URL parsing has normalized decimal,
+  octal and hex forms (`http://2130706433/` is `127.0.0.1`). The blocked ranges cover loopback,
+  RFC 1918, CGNAT, link-local (`169.254.169.254`), multicast and reserved IPv4, and for IPv6
+  everything outside `2000::/3` (`::1`, ULA `fc00::/7` such as `fd00:ec2::254`, link-local,
+  site-local), documentation ranges, 6to4 and Teredo. For IPv4-mapped and NAT64 addresses it
+  judges the IPv4 inside.
+- resolves the name and refuses it if any address is not public. The check runs inside the
+  socket's own lookup, and the socket connects to the address that passed, so a DNS answer that
+  changes between check and connect (rebinding) cannot send the request inward.
+- follows at most 3 redirects by hand and runs every check again on each hop.
+- keeps a timeout over the whole exchange and a 10 MB cap on the body.
+
+safectx treats whatever comes back as text. Requests to the fixed services in the table above
+(registries, deps.dev, OSV, jsDelivr, GitHub, Context7) use the ordinary client. safectx accepts
+a GitHub owner and repository from metadata only when they match GitHub's own name rules.
 
 ## Network settings
 
@@ -59,3 +84,9 @@ safectx uses Node's built-in `fetch`. Behind a corporate proxy, set `HTTPS_PROXY
 if needed) together with `NODE_USE_ENV_PROXY=1`, which recent Node 22 and 24 releases honour
 (checked on Node 24.20).
 `SAFECTX_TIMEOUT_MS` sets the per-request timeout.
+
+Through a proxy, the proxy resolves and connects to the docs site, so safectx cannot pin the
+address. It still applies the URL, name and literal-address checks and refuses a name whose local
+DNS answer is not public. A name that answers differently to the proxy, or rebinds between the two
+lookups, can get past that. If your proxy can reach internal services or cloud metadata, block
+those destinations at the proxy. Hosts that `NO_PROXY` exempts get the direct, pinned connection.

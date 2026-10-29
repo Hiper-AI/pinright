@@ -4,6 +4,7 @@
  */
 // Node's built-in fetch (undici bundled in the runtime): no extra dependency.
 // Behind a proxy, recent Node 22/24 honour HTTP(S)_PROXY when NODE_USE_ENV_PROXY=1 (see SECURITY.md).
+// These helpers are for fixed, trusted hosts; a URL taken from package metadata goes through safeFetch.ts.
 import { config } from './config.js';
 import { PKG_VERSION } from './pkg.js';
 
@@ -24,7 +25,7 @@ export interface HttpOptions {
   body?: unknown;
 }
 
-const USER_AGENT = `safectx/${PKG_VERSION} (+https://github.com/Hiper-AI/safectx)`;
+export const USER_AGENT =`safectx/${PKG_VERSION} (+https://github.com/Hiper-AI/safectx)`;
 
 async function request(url: string, opts: HttpOptions = {}) {
   const controller = new AbortController();

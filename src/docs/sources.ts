@@ -14,6 +14,7 @@
 import { cached } from '../cache.js';
 import { config } from '../config.js';
 import { getJson, getText, HttpError } from '../http.js';
+import { getUntrustedText } from '../safeFetch.js';
 import { type DocsSource } from '../data/docsRepos.js';
 import { type PackageMeta } from '../registry.js';
 
@@ -167,7 +168,7 @@ function looksLikeHtml(text: string): boolean {
 async function fetchTextDoc(url: string): Promise<string | undefined> {
   const text = await cached(`llms:${url}`, config.ttl.docs, async () => {
     try {
-      return await getText(url);
+      return await getUntrustedText(url);
     } catch {
       return '';
     }
