@@ -2161,16 +2161,19 @@ import { execFile, spawnSync } from "node:child_process";
 import fs2 from "node:fs";
 import path3 from "node:path";
 import { fileURLToPath } from "node:url";
-function readVersion() {
+function readPackage() {
   try {
     const file2 = path3.join(path3.dirname(fileURLToPath(import.meta.url)), "..", "package.json");
-    const v = JSON.parse(fs2.readFileSync(file2, "utf8")).version;
-    return typeof v === "string" ? v : "0.0.0";
+    return JSON.parse(fs2.readFileSync(file2, "utf8"));
   } catch {
-    return "0.0.0";
+    return {};
   }
 }
-var PKG_VERSION = readVersion();
+var pkg = readPackage();
+var str = (v, fallback) => typeof v === "string" && v ? v : fallback;
+var PKG_VERSION = str(pkg.version, "0.0.0");
+var PKG_NAME = str(pkg.name, "safectx");
+var MCP_NAME = str(pkg.mcpName, `io.github.Hiper-AI/${PKG_NAME}`);
 
 // src/http.ts
 var HttpError = class extends Error {
@@ -2187,7 +2190,7 @@ var HttpError = class extends Error {
   retryAfterSec;
   rateLimit;
 };
-var USER_AGENT = `safectx/${PKG_VERSION} (+https://github.com/Hiper-AI/safectx)`;
+var USER_AGENT = `${PKG_NAME}/${PKG_VERSION} (+https://github.com/Hiper-AI/${PKG_NAME})`;
 function debug(method, url2, status) {
   if (process.env.SAFECTX_DEBUG_HTTP === "1") process.stderr.write(`[safectx:http] ${method} ${url2} ${status}
 `);
@@ -2258,8 +2261,15 @@ var GITHUB_API = (process.env.GITHUB_API_URL ?? "https://api.github.com").replac
 function ghCliOptIn() {
   return process.env.SAFECTX_GH_CLI === "1";
 }
+function envToken() {
+  for (const v of [process.env.GITHUB_TOKEN, process.env.GH_TOKEN]) {
+    const t = v?.trim();
+    if (t && !/^\$\{[^}]*\}$/.test(t)) return t;
+  }
+  return void 0;
+}
 function githubAuthConfigured() {
-  return Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ghCliOptIn());
+  return Boolean(envToken() || ghCliOptIn());
 }
 var cliToken;
 function readGhCli() {
@@ -2277,7 +2287,7 @@ function readGhCli() {
   });
 }
 async function githubToken() {
-  const env2 = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const env2 = envToken();
   if (env2) return env2;
   if (!ghCliOptIn()) return void 0;
   cliToken ??= readGhCli();
@@ -3467,9 +3477,9 @@ async function assessPackage(eco, name, requestedVersion) {
   const registry2 = NO_DEPS_DEV.includes(eco) ? "packagist.org" : "deps.dev";
   const sources = [registry2, "osv.dev"];
   const base = { package: name, ecosystem: eco, checkedAt, sources };
-  let pkg;
+  let pkg2;
   try {
-    pkg = await getPackage(eco, name);
+    pkg2 = await getPackage(eco, name);
   } catch (err) {
     return {
       ...base,
@@ -3477,10 +3487,10 @@ async function assessPackage(eco, name, requestedVersion) {
       reason: `${registry2} did not answer (${err.message}); no verdict possible`
     };
   }
-  if (!pkg || pkg.versions.length === 0) {
+  if (!pkg2 || pkg2.versions.length === 0) {
     return { ...base, verdict: "unknown-package", reason: `${registry2} has no package "${name}" in ${eco}` };
   }
-  const versions = [...pkg.versions].sort(compareVersionsDesc);
+  const versions = [...pkg2.versions].sort(compareVersionsDesc);
   const latest = versions.find((v) => v.isDefault) ?? versions.find((v) => !isPrerelease(v.versionKey.version)) ?? versions[0];
   const now = Date.now();
   const eligible = versions.filter((v) => !v.isDeprecated && !isPrerelease(v.versionKey.version)).filter((v) => olderThanCooldown(v.publishedAt, now));
@@ -4635,9 +4645,9 @@ function cargoDeps(content) {
       const m = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*(?:"([^"]*)"|\{([^}]*)\})/);
       if (!m) continue;
       if (m[3] && /\b(path|git)\s*=/.test(m[3]) && !/\bversion\s*=/.test(m[3])) continue;
-      const pkg = m[3]?.match(/package\s*=\s*"([^"]+)"/)?.[1];
+      const pkg2 = m[3]?.match(/package\s*=\s*"([^"]+)"/)?.[1];
       const spec = m[2] ?? m[3]?.match(/version\s*=\s*"([^"]+)"/)?.[1] ?? "";
-      out.push({ name: pkg ?? m[1], spec, dev });
+      out.push({ name: pkg2 ?? m[1], spec, dev });
     }
   }
   return out;
@@ -5099,14 +5109,14 @@ function buildSarif(input3) {
     const manifest = manifestFile ? { file: manifestFile, content: read(manifestFile) } : void 0;
     const inManifest = (name) => manifest ? locatePackage(manifest.file, manifest.content, eco, name) : void 0;
     const where = (name, version3) => {
-      const pkg = pkgs.find((p) => p.name === name && (!version3 || p.version === version3)) ?? pkgs.find((p) => p.name === name);
-      const parent = pkg && !pkg.direct && pkg.path && pkg.path.length > 1 ? pkg.path[0] : void 0;
-      const via = pkg?.direct ? "direct dependency" : pkg?.path && pkg.path.length > 1 ? `via ${pkg.path.join(" > ")}` : "transitive dependency";
+      const pkg2 = pkgs.find((p) => p.name === name && (!version3 || p.version === version3)) ?? pkgs.find((p) => p.name === name);
+      const parent = pkg2 && !pkg2.direct && pkg2.path && pkg2.path.length > 1 ? pkg2.path[0] : void 0;
+      const via = pkg2?.direct ? "direct dependency" : pkg2?.path && pkg2.path.length > 1 ? `via ${pkg2.path.join(" > ")}` : "transitive dependency";
       if (!content) return { loc: location(a.file, void 0), related: [], via };
-      const own2 = a.source === "lockfile" || pkg?.direct !== false ? locatePackage(a.file, content, eco, name, version3) : void 0;
-      if (pkg?.direct && manifest) {
+      const own2 = a.source === "lockfile" || pkg2?.direct !== false ? locatePackage(a.file, content, eco, name, version3) : void 0;
+      if (pkg2?.direct && manifest) {
         const declared = inManifest(name);
-        if (declared) return { loc: location(manifest.file, declared), related: own2 ? [location(a.file, own2, `${name}@${pkg.version} locked here`)] : [], via };
+        if (declared) return { loc: location(manifest.file, declared), related: own2 ? [location(a.file, own2, `${name}@${pkg2.version} locked here`)] : [], via };
       }
       if (!parent) return { loc: location(a.file, own2), related: [], via };
       const parentVersion = pkgs.find((p) => p.name === parent)?.version;
@@ -6064,14 +6074,14 @@ function promiseAllObject(promisesObj) {
 }
 function randomString(length = 10) {
   const chars = "abcdefghijklmnopqrstuvwxyz";
-  let str = "";
+  let str2 = "";
   for (let i = 0; i < length; i++) {
-    str += chars[Math.floor(Math.random() * chars.length)];
+    str2 += chars[Math.floor(Math.random() * chars.length)];
   }
-  return str;
+  return str2;
 }
-function esc2(str) {
-  return JSON.stringify(str);
+function esc2(str2) {
+  return JSON.stringify(str2);
 }
 function slugify(input3) {
   return input3.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -6185,8 +6195,8 @@ var primitiveTypes = /* @__PURE__ */ new Set([
   "symbol",
   "undefined"
 ]);
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function escapeRegex(str2) {
+  return str2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function clone(inst, def, params) {
   const cl = new inst._zod.constr(def ?? inst._zod.def);
@@ -6452,13 +6462,13 @@ function getSizableOrigin(input3) {
   return "unknown";
 }
 var highSurrogate = /[\uD800-\uDBFF]/;
-function codePointLength(str) {
-  const units = str.length;
-  if (!highSurrogate.test(str))
+function codePointLength(str2) {
+  const units = str2.length;
+  if (!highSurrogate.test(str2))
     return units;
   let count = units;
   for (let i = 0; i < units - 1; i++) {
-    if ((str.charCodeAt(i) & 64512) === 55296 && (str.charCodeAt(i + 1) & 64512) === 56320) {
+    if ((str2.charCodeAt(i) & 64512) === 55296 && (str2.charCodeAt(i + 1) & 64512) === 56320) {
       count--;
       i++;
     }
@@ -25013,12 +25023,12 @@ async function resolveManifest(tree, notes) {
   const out = /* @__PURE__ */ new Map();
   for (const d of tree.declared ?? []) {
     const name = eco === "pypi" ? normalizePypiName(d.name) : d.name;
-    const pkg = await getPackage(eco, name).catch(() => void 0);
-    if (!pkg) {
+    const pkg2 = await getPackage(eco, name).catch(() => void 0);
+    if (!pkg2) {
       notes.push(`${name}: not found in the ${eco} registry (${eco === "composer" ? "Packagist" : "deps.dev"}).`);
       continue;
     }
-    const version3 = pickVersion(eco, d.spec, pkg.versions);
+    const version3 = pickVersion(eco, d.spec, pkg2.versions);
     if (!version3) {
       notes.push(`${name}: no published version satisfies "${d.spec}".`);
       continue;
@@ -25277,8 +25287,8 @@ async function treePolicyHits(p, tree) {
         try {
           let version3 = d.version;
           if (!version3) {
-            const pkg = await getPackage(eco, d.name);
-            version3 = pkg ? pickVersion(eco, d.spec ?? "", pkg.versions) : void 0;
+            const pkg2 = await getPackage(eco, d.name);
+            version3 = pkg2 ? pickVersion(eco, d.spec ?? "", pkg2.versions) : void 0;
           }
           if (!version3) continue;
           const detail = await getVersion(eco, d.name, version3);
@@ -32781,8 +32791,8 @@ async function checkTyposquat(eco, name) {
 // src/verdict.ts
 var YOUNG_PACKAGE_DAYS = 60;
 async function firstPublishedAt(eco, name) {
-  const pkg = await getPackage(eco, name).catch(() => void 0);
-  const dates = (pkg?.versions ?? []).map((v) => v.publishedAt ? Date.parse(v.publishedAt) : NaN).filter((d) => Number.isFinite(d));
+  const pkg2 = await getPackage(eco, name).catch(() => void 0);
+  const dates = (pkg2?.versions ?? []).map((v) => v.publishedAt ? Date.parse(v.publishedAt) : NaN).filter((d) => Number.isFinite(d));
   return dates.length ? Math.min(...dates) : void 0;
 }
 async function checkPackage(eco, name, version3, opts = {}) {

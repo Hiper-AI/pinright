@@ -17,7 +17,7 @@ import { ECOSYSTEMS, type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
 import { trackGitHub } from './github.js';
 import { HttpError } from './http.js';
-import { PKG_VERSION } from './pkg.js';
+import { PKG_NAME, PKG_VERSION } from './pkg.js';
 import { readProjectFile } from './projectFile.js';
 import { resolvePackage } from './mapping.js';
 import { describeInstalled, manifestsIn, Project, readSiblings, watchRoots } from './project.js';
@@ -33,7 +33,7 @@ import { checkPackage, type Verdict } from './verdict.js';
 // Moved to project.ts; re-exported for existing importers.
 export { manifestsIn, readSiblings };
 
-export const SERVER_INFO = { name: 'safectx', version: PKG_VERSION } as const;
+export const SERVER_INFO = { name: PKG_NAME, version: PKG_VERSION } as const;
 
 const VERDICT_RESULTS = 3;
 

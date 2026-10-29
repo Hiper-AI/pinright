@@ -1,29 +1,30 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-explicit-any -- untyped JSON from registries, lockfiles and agent hooks, read defensively */
 /**
  * safectx                      MCP server over stdio (what agents launch)
- * safectx hook claude|cursor   pre-install hook: reads the agent's hook JSON on stdin
+ * safectx hook <agent>         pre-install hook: reads the agent's hook JSON on stdin
+ *                              (claude, cursor, codex, gemini, copilot, windsurf)
  * safectx check <eco> <name>[@version]
  * safectx audit [path] [--json] [--fail-on low|moderate|high|critical|none] [--sarif <file>] [--config <file>]
  * safectx upgrade <eco> <name> <from> [to] [--query="..."]
- * safectx init [claude|cursor] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]
+ * safectx init [client] [--project|--user] [--print] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]
  * safectx cache clear
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { AuditInputError, auditExitCode, auditJson, formatAuditRun, parseFailOn, runAudit, runToSarif, sarifRoot } from './auditRun.js';
-import { PKG_VERSION } from './pkg.js';
+import { npxLauncher, PKG_VERSION } from './pkg.js';
 import { parseEcosystem } from './ecosystems.js';
 import { config } from './config.js';
 import { securityNotice } from './format.js';
 import { fenceCommands } from './sarif/summary.js';
-import { ghCliLoggedIn, githubAuthAdvice, mcpEntryEnv, trackGitHub } from './github.js';
-import { runClaudeHook, runCursorHook } from './hook/run.js';
+import { ghCliLoggedIn, githubAuthAdvice, trackGitHub } from './github.js';
+import { HOOK_AGENTS, isHookAgent, runHook } from './hook/run.js';
+import { INIT_USAGE, runInit } from './clients/init.js';
 import { splitNpmSpec } from './hook/intent.js';
 import { buildMcpServer } from './mcp.js';
-import { CONFIG_FILE, STARTER_CONFIG } from './teamConfig.js';
 import { upgradeGuide } from './upgrade/index.js';
 import { checkPackage } from './verdict.js';
 
@@ -116,99 +117,37 @@ async function audit(args: string[]): Promise<number> {
   return auditExitCode(run, failOn);
 }
 
-function readJson(p: string): any {
-  try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch {
-    return {};
-  }
-}
-
-function writeJson(p: string, data: unknown) {
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, `${JSON.stringify(data, null, 2)}\n`);
-  console.log(`wrote ${path.relative(process.cwd(), p) || p}`);
-}
-
-/** How the agent should launch us: the published package, or this checkout with --local. */
-function launcher(local: boolean): { command: string; args: string[] } {
-  if (!local) return { command: 'npx', args: ['-y', 'safectx'] };
+/** How the agent should launch us: the published package, or this checkout with --dev. */
+function launcher(dev: boolean): { command: string; args: string[] } {
+  if (!dev) return npxLauncher();
   return { command: 'node', args: [fileURLToPath(import.meta.url)] };
 }
 
-/** safectx's MCP entry: the launcher, and the env the user had (with SAFECTX_GH_CLI per --gh-cli). Never a token. */
-function mcpEntry(previous: any, l: { command: string; args: string[] }, ghCli: boolean) {
-  const { env, warnings } = mcpEntryEnv(previous?.env, ghCli);
-  for (const w of warnings) console.log(`warning: ${w}`);
-  return { command: l.command, args: l.args, ...(env ? { env } : {}) };
-}
-
 function init(args: string[]): number {
-  const code = initFiles(args);
-  if (code === 0) {
-    console.log(githubAuthAdvice({ envToken: Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN), ghLoggedIn: ghCliLoggedIn(), optIn: args.includes('--gh-cli') }));
+  const { flags, positional } = parseFlags(args, []);
+  if (positional.length > 1 || (flags.user && (flags.project || flags.local))) {
+    console.error(INIT_USAGE);
+    return 2;
   }
-  return code;
-}
-
-function initFiles(args: string[]): number {
-  const agent = args.find((a) => !a.startsWith('--')) ?? 'claude';
-  const local = args.includes('--local');
-  const withHook = !args.includes('--no-hook');
-  const withMcp = !args.includes('--no-mcp');
-  const ghCli = args.includes('--gh-cli');
-  const l = launcher(local);
-  const shell = (extra: string[]) => [l.command, ...l.args, ...extra].map((s) => (/\s/.test(s) ? `"${s}"` : s)).join(' ');
-  // The team policy starter, never over an existing one: that file belongs to the team.
-  if ((agent === 'claude' || agent === 'cursor') && !args.includes('--no-config')) {
-    const team = path.resolve(CONFIG_FILE);
-    if (fs.existsSync(team)) console.log(`kept ${CONFIG_FILE} (already present)`);
-    else {
-      fs.writeFileSync(team, STARTER_CONFIG);
-      console.log(`wrote ${CONFIG_FILE}`);
-    }
+  const r = runInit(
+    { cwd: process.cwd(), home: os.homedir(), platform: process.platform, env: process.env },
+    {
+      client: positional[0],
+      // --local is the project scope too (the files live in this checkout of the project).
+      scope: flags.user ? 'user' : flags.project || flags.local ? 'project' : undefined,
+      mcp: !flags['no-mcp'],
+      hook: !flags['no-hook'],
+      config: !flags['no-config'],
+      print: Boolean(flags.print),
+      launch: launcher(Boolean(flags.dev)),
+      ghCli: Boolean(flags['gh-cli']),
+    },
+  );
+  for (const line of r.lines) (r.code === 2 ? console.error : console.log)(line);
+  if (r.code === 0 && !flags.print) {
+    console.log(githubAuthAdvice({ envToken: Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN), ghLoggedIn: ghCliLoggedIn(), optIn: Boolean(flags['gh-cli']) }));
   }
-  if (agent === 'claude') {
-    if (withMcp) {
-      const p = path.resolve('.mcp.json');
-      const j = readJson(p);
-      j.mcpServers = { ...(j.mcpServers ?? {}), safectx: mcpEntry(j.mcpServers?.safectx, l, ghCli) };
-      writeJson(p, j);
-    }
-    if (withHook) {
-      const p = path.resolve('.claude', 'settings.json');
-      const j = readJson(p);
-      const entry = { matcher: 'Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: shell(['hook', 'claude']), timeout: 60 }] };
-      const pre = (j.hooks?.PreToolUse ?? []).filter((h: any) => !JSON.stringify(h).includes('safectx'));
-      j.hooks = { ...(j.hooks ?? {}), PreToolUse: [...pre, entry] };
-      writeJson(p, j);
-    }
-    return 0;
-  }
-  if (agent === 'cursor') {
-    if (withMcp) {
-      const p = path.resolve('.cursor', 'mcp.json');
-      const j = readJson(p);
-      j.mcpServers = { ...(j.mcpServers ?? {}), safectx: mcpEntry(j.mcpServers?.safectx, l, ghCli) };
-      writeJson(p, j);
-    }
-    if (withHook) {
-      const p = path.resolve('.cursor', 'hooks.json');
-      const j = readJson(p);
-      const cmd = { command: shell(['hook', 'cursor']), timeout: 60 };
-      const keep = (list: any[] | undefined) => (list ?? []).filter((h) => !JSON.stringify(h).includes('safectx'));
-      j.version = j.version ?? 1;
-      j.hooks = {
-        ...(j.hooks ?? {}),
-        beforeShellExecution: [...keep(j.hooks?.beforeShellExecution), cmd],
-        preToolUse: [...keep(j.hooks?.preToolUse), cmd],
-      };
-      writeJson(p, j);
-    }
-    return 0;
-  }
-  console.error('usage: safectx init [claude|cursor] [--local] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]');
-  return 2;
+  return r.code;
 }
 
 /** `cache clear` empties the disk cache. */
@@ -237,7 +176,13 @@ async function main(): Promise<number> {
     case 'mcp':
       return serve();
     case 'hook':
-      return args[0] === 'cursor' ? runCursorHook() : runClaudeHook();
+      // No agent named: Claude Code, as before the other agents existed.
+      if (args[0] !== undefined && !isHookAgent(args[0])) {
+        // Exit 2 blocks every tool call in most agents; 1 lets the agent go on, as a crash does.
+        console.error(`usage: safectx hook <${HOOK_AGENTS.join('|')}>`);
+        return 1;
+      }
+      return runHook(args[0] ?? 'claude');
     case 'check':
       return noticed(() => check(args));
     case 'audit':
@@ -253,7 +198,7 @@ async function main(): Promise<number> {
       console.log(PKG_VERSION);
       return 0;
     default:
-      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor] | cache clear]');
+      console.error('usage: safectx [serve | hook <agent> | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [client] | cache clear]');
       return 2;
   }
 }

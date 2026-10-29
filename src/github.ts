@@ -26,9 +26,22 @@ export function ghCliOptIn(): boolean {
   return process.env.SAFECTX_GH_CLI === '1';
 }
 
+/**
+ * GITHUB_TOKEN or GH_TOKEN. Blank, or a placeholder a client left unexpanded (the
+ * Claude Desktop extension maps an optional setting to `${user_config.github_token}`),
+ * is no token: sending it would only earn a 401.
+ */
+function envToken(): string | undefined {
+  for (const v of [process.env.GITHUB_TOKEN, process.env.GH_TOKEN]) {
+    const t = v?.trim();
+    if (t && !/^\$\{[^}]*\}$/.test(t)) return t;
+  }
+  return undefined;
+}
+
 /** Whether a token is configured; the CLI's counts once opted in, although it is only read on first use. */
 export function githubAuthConfigured(): boolean {
-  return Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ghCliOptIn());
+  return Boolean(envToken() || ghCliOptIn());
 }
 
 let cliToken: Promise<string | undefined> | undefined;
@@ -49,7 +62,7 @@ function readGhCli(): Promise<string | undefined> {
 }
 
 async function githubToken(): Promise<string | undefined> {
-  const env = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const env = envToken();
   if (env) return env;
   if (!ghCliOptIn()) return undefined;
   cliToken ??= readGhCli();

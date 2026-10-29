@@ -162,6 +162,16 @@ describe('the token', () => {
     expect(calls.filter((c) => !c.url.startsWith('https://api.github.com/')).every((c) => !JSON.stringify(c.headers ?? {}).includes(ENV_TOKEN))).toBe(true);
   });
 
+  it('a blank or unexpanded ${...} value is no token (the Claude Desktop extension leaves one for an unset setting)', async () => {
+    for (const value of ['${user_config.github_token}', '  ']) {
+      process.env.GITHUB_TOKEN = value;
+      expect(gh.githubAuthConfigured()).toBe(false);
+      calls.length = 0;
+      await gh.githubJson('/p', { what: 'P' }).catch(() => undefined);
+      expect(calls.every((c) => !c.headers?.authorization)).toBe(true);
+    }
+  });
+
   it('never appears in errors or notices', async () => {
     process.env.GITHUB_TOKEN = ENV_TOKEN;
     route = (url) => primaryLimit(url);

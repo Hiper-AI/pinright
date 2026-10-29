@@ -6,7 +6,7 @@
 // Behind a proxy, recent Node 22/24 honour HTTP(S)_PROXY when NODE_USE_ENV_PROXY=1 (see SECURITY.md).
 // These helpers are for fixed, trusted hosts; a URL taken from package metadata goes through safeFetch.ts.
 import { config } from './config.js';
-import { PKG_VERSION } from './pkg.js';
+import { PKG_NAME, PKG_VERSION } from './pkg.js';
 
 export class HttpError extends Error {
   constructor(
@@ -30,7 +30,7 @@ export interface HttpOptions {
   rawBody?: string;
 }
 
-export const USER_AGENT =`safectx/${PKG_VERSION} (+https://github.com/Hiper-AI/safectx)`;
+export const USER_AGENT = `${PKG_NAME}/${PKG_VERSION} (+https://github.com/Hiper-AI/${PKG_NAME})`;
 
 /** SAFECTX_DEBUG_HTTP=1 logs one line per request to stderr: method, URL and status. Never headers. */
 function debug(method: string, url: string, status: number | string): void {

@@ -1,6 +1,7 @@
 {
   "name": "safectx",
   "version": "0.2.0",
+  "mcpName": "io.github.Hiper-AI/safectx",
   "description": "Version-accurate library docs for coding agents, with a supply-chain verdict: safe versions, whole-tree audit and a pre-install hook (deps.dev + OSV).",
   "keywords": [
     "mcp",
@@ -60,10 +61,14 @@
     "coverage:ecosystem": "tsx scripts/coverage.ts",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "npm run typecheck && npm run lint && npm test",
-    "bundle:action": "tsx scripts/bundle-action.ts"
+    "bundle:action": "tsx scripts/bundle-action.ts",
+    "dist:artifacts": "tsx scripts/distribution.ts",
+    "build:mcpb": "npm run build && tsx scripts/build-mcpb.ts",
+    "smoke:clients": "npm run build && tsx scripts/smoke-clients.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0",
+    "jsonc-parser": "3.3.1",
     "semver": "7.8.5",
     "zod": "4.6.7"
   },
