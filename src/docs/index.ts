@@ -9,6 +9,7 @@ import { packageMeta, type PackageMeta } from '../registry.js';
 import { docsSourceFor } from '../data/docsRepos.js';
 import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
+import { expandIncludes } from './includes.js';
 import { applicableRenames, expandQuery, packageRenames, renamesNote, type Rename } from './renames.js';
 import { chunkFile, coverPaths, notUserDocs, olderMajorPath, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile } from './retrieve.js';
 import {
@@ -224,7 +225,7 @@ export async function collectDocs(opts: DocsOptions): Promise<{
   return { meta, docFiles, pyApi, wantUpgrade, query, renames };
 }
 
-function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput, renames: Rename[] = []): DocsResult {
+async function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput, renames: Rename[] = []): Promise<DocsResult> {
   // Sections the injection scanner flags stay apart, so dropping one never takes clean neighbors with it.
   const chunks = docFiles.flatMap((d) => chunkFile(d, (t) => out.scan(t).level === 'none'));
   const ranked = dedupe(rank(chunks, opts.query, topics(opts.query)));
@@ -247,7 +248,18 @@ function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles
         (notes.length ? `\n${notes.join('\n')}` : '') + (out.notes.length ? `\n${out.notes.join('\n')}` : ''),
     };
   }
-  const picked = out.select(ranked, (pool) => select(pool, budget), (c) => chunkSource(meta, c));
+  const selected = out.select(ranked, (pool) => select(pool, budget), (c) => chunkSource(meta, c));
+  // Code the picked sections only point to ({* docs_src/x.py *}, --8<--, literalinclude): read it, within the
+  // budget left plus a third (it is what the agent came for). A section whose code scans high keeps its directive.
+  const used = selected.reduce((a, c) => a + c.text.length + c.title.length + 80, 0);
+  let room = Math.max(0, budget - used) + Math.round(budget / 3);
+  const picked: Chunk[] = [];
+  for (const c of selected) {
+    const { text, added } = room > 200 ? await expandIncludes(c.text, c.file.url, { budget: room, prepare: (code, src) => out.prepare(code, `${src}, ${meta.name}@${meta.version}`, 'code') }) : { text: c.text, added: 0 };
+    const keep = added > 0 && out.scan(text).level !== 'high';
+    picked.push(keep ? { ...c, text } : c);
+    if (keep) room -= added;
+  }
   const accurate = picked.filter((c) => c.file.versionAccurate).length;
   const header = [
     `Docs for ${meta.name}@${meta.version} (${opts.ecosystem}), ${picked.length} sections` +
