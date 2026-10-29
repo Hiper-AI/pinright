@@ -632,28 +632,28 @@ cache key or a tool answer, and `init` never writes it into `.mcp.json` or setti
 
 Claude Code (Sonnet 5.5) in headless mode on 12 coding tasks (8 npm, 4 PyPI) that ask for pinned
 versions, twice per arm. Each project is then audited with `npm audit` or `pip-audit`, which share
-nothing with safectx, and installed and built for real. Run of 2026-10-29, full report in
+nothing with safectx, and installed and built for real. Run of 2026-10-29 (v5), full report in
 [bench/AGENTS.md](bench/AGENTS.md):
 
 | | No docs | safectx MCP | Hook only | MCP + hook |
 |---|---|---|---|---|
 | Direct deps with a known advisory | 41% | 0% | 0% | 0% |
-| Whole-tree alerts, 24 projects | 749 | 2 | 10 | 2 |
-| Critical + high alerts (npm) | 181 | 0 | 4 | 0 |
-| Projects that install and build | 24 | 23 | 22 | 23 |
-| Turns per run | 3.9 | 6.3 | 5.7 | 6.6 |
+| Whole-tree alerts (sum over projects) | 678 (22) | 6 (24) | 10 (22) | 2 (24) |
+| Critical + high alerts (npm) | 159 | 2 | 4 | 0 |
+| Projects that install and build | 22/22 | 24/24 | 22/22 | 22/24 |
+| Turns per run | 4.1 | 6.2 | 5.8 | 6.1 |
 | Cost per run (USD) | 0.03 | 0.05 | 0.04 | 0.05 |
 
-Against the previous run (v0.2), MCP + hook went from 6 to 2 alerts, from 11.1 to 6.6 turns and
-from USD 0.07 to 0.05 per run, mostly thanks to `check-packages`. The two remaining alerts are a
-Nuxt advisory with no fixed release yet. The builds that fail are `next-auth` 4 on Next 16
-(`middleware` became `proxy`) and, in the hook-only arm, a LangChain import the agent never
-declared. The hook-only arm of two Python tasks was rerun after fixing a pin-matching bug the run
-exposed (`idna==3.10` against the `3.10.0` deps.dev lists).
+Four of the 96 agent runs wrote their files outside the working directory (the model mangled the
+path) and have no manifest to score: two in the no-docs arm, two in the hook-only arm. The remaining
+alerts come from two places: `next` 15.5.28, the fix on the 15.x line, still pulls a `postcss` with
+advisories that only Next 16 clears, and a Nuxt advisory with no fixed release yet. The two builds
+that fail are `next-auth` 4 code written for the wrong Next.js major.
 
-On the same 108 lockfiles, `check-manifest` flagged the same vulnerable packages as `npm audit`
-and `pip-audit` (mean Jaccard 0.94 for npm, 1.00 for PyPI).
-These numbers come from one model, one day and tasks we wrote; they are not a guarantee.
+On the same 104 lockfiles, `check-manifest` flagged the same vulnerable packages as `npm audit`
+and `pip-audit` (mean Jaccard 0.93 for npm, 1.00 for PyPI). [bench/DOCS.md](bench/DOCS.md) measures
+whether the code the agent writes uses the current API of eight libraries. These numbers come from
+one model, one day and tasks we wrote; they are not a guarantee.
 
 ### Docs: does the agent write the current API?
 
