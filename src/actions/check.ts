@@ -17,6 +17,7 @@ import { config } from '../config.js';
 import { getJson } from '../http.js';
 import { dedupeAdvisories, type AdvisoryInfo } from '../advisories/resolve.js';
 import { fixedVersions, severityOf, type OsvVuln } from '../advisories/osv.js';
+import { cvss3Of } from '../advisories/cvss.js';
 import type { HookDecision } from '../hook/policy.js';
 import { latestRelease, resolveRef, specificTag, tagForSha } from './github.js';
 import { actionName, useKey, type ActionUse } from './workflow.js';
@@ -44,6 +45,16 @@ function coerce(v: string): semver.SemVer | undefined {
   return semver.coerce(v.replace(/^v/i, ''), { includePrerelease: false }) ?? undefined;
 }
 
+/** True when GitHub's "last known affected" bound ("< 3.0.0", "<= 2.4.1") excludes `v`. */
+function aboveLastKnown(aff: NonNullable<OsvVuln['affected']>[number], v: semver.SemVer): boolean {
+  const bound = (aff as { database_specific?: { last_known_affected_version_range?: unknown } }).database_specific?.last_known_affected_version_range;
+  const m = typeof bound === 'string' ? bound.trim().match(/^(<=?)\s*v?(\S+)$/) : null;
+  const at = m ? coerce(m[2]) : undefined;
+  if (!m || !at) return false;
+  const c = semver.compare(v, at);
+  return m[1] === '<' ? c >= 0 : c > 0;
+}
+
 /** Does this advisory cover `version` of `name`? Explicit version lists first, then ECOSYSTEM/SEMVER ranges. */
 export function affects(vuln: OsvVuln, name: string, version: string): boolean {
   const v = coerce(version);
@@ -68,6 +79,9 @@ export function affects(vuln: OsvVuln, name: string, version: string): boolean {
         else if (e.kind === 'fixed' && c >= 0) hit = false;
         else if (e.kind === 'last_affected' && c > 0) hit = false;
       }
+      // An open range ("introduced: 2.26.11", no fix on that line) is bounded by GitHub's
+      // last_known_affected_version_range ("< 3.0.0"); without it every later major would match.
+      if (hit && !events.some((e) => e.kind !== 'introduced') && aboveLastKnown(aff, v)) hit = false;
       if (hit) return true;
     }
   }
@@ -155,6 +169,7 @@ export async function checkAction(use: ActionUse): Promise<ActionReport> {
           aliases: v.aliases ?? [],
           title: v.summary,
           severity: severityOf(v),
+          cvss3Score: cvss3Of(v),
           fixedIn: fixedVersions(v, name),
           url: `https://osv.dev/vulnerability/${v.id}`,
         })),

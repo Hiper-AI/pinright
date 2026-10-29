@@ -1,0 +1,91 @@
+name: action self-test
+
+on:
+  pull_request:
+    paths:
+      - action.yml
+      - action-dist/**
+      - src/**
+      - scripts/bundle-action.ts
+      - test/fixtures/action/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/action-selftest.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle-is-fresh:
+    runs-on: hiperai-ci
+    # Shared self-hosted runner: never run code from a fork's pull request on it.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - run: npm run bundle:action
+      - name: action-dist matches the source
+        run: |
+          if ! git diff --exit-code --stat -- action-dist; then
+            echo "::error::action-dist/index.mjs is stale. Run npm run bundle:action and commit it."
+            exit 1
+          fi
+
+  run-the-action:
+    runs-on: hiperai-ci
+    # Shared self-hosted runner: never run code from a fork's pull request on it.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The unsafe fixture lives as *.fixture so Dependabot and code scanning never see it in the repo.
+      - name: Lay out the fixture project
+        run: |
+          mkdir -p .selftest/fx/.github/workflows
+          cp test/fixtures/action/package.json.fixture .selftest/fx/package.json
+          cp test/fixtures/action/package-lock.json.fixture .selftest/fx/package-lock.json
+          cp test/fixtures/action/workflow.yml.fixture .selftest/fx/.github/workflows/ci.yml
+
+      - name: Audit, failing on high
+        id: strict
+        continue-on-error: true
+        uses: ./
+        with:
+          path: .selftest/fx
+          fail-on: high
+          upload-sarif: false
+
+      - name: Audit, report only
+        id: report
+        uses: ./
+        with:
+          path: .selftest/fx
+          fail-on: none
+          upload-sarif: false
+          annotations: false
+
+      - name: Check the outcomes
+        env:
+          STRICT_OUTCOME: ${{ steps.strict.outcome }}
+          STRICT_CODE: ${{ steps.strict.outputs.exit-code }}
+          REPORT_CODE: ${{ steps.report.outputs.exit-code }}
+          SARIF: ${{ steps.report.outputs.sarif-file }}
+          RESULTS: ${{ steps.report.outputs.results }}
+        run: |
+          set -eu
+          test "$STRICT_OUTCOME" = failure
+          test "$STRICT_CODE" = 1
+          test "$REPORT_CODE" = 0
+          test "$RESULTS" -gt 0
+          for rule in GHSA-35jh-r3h4-6jhm GHSA-xvch-5gv4-984h safectx/typosquat safectx/action-unpinned GHSA-mrrh-fwg8-r2c3; do
+            grep -q "\"ruleId\":\"$rule\"" "$SARIF" || { echo "::error::missing $rule in the SARIF"; exit 1; }
+          done
+          grep -q '"uri":".selftest/fx/package.json"' "$SARIF"

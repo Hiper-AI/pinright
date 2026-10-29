@@ -187,7 +187,7 @@ export function dedupeAdvisories(list: AdvisoryInfo[]): AdvisoryInfo[] {
     }
     const better = (!prev.title && a.title) || (prev.title && a.title && a.id.startsWith('GHSA-') && !prev.id.startsWith('GHSA-'));
     if (better) {
-      byCve.set(cve, { ...a, fixedIn: a.fixedIn?.length ? a.fixedIn : prev.fixedIn, severity: a.severity ?? prev.severity });
+      byCve.set(cve, { ...a, fixedIn: a.fixedIn?.length ? a.fixedIn : prev.fixedIn, severity: a.severity ?? prev.severity, cvss3Score: a.cvss3Score ?? prev.cvss3Score });
     } else if (!prev.fixedIn?.length && a.fixedIn?.length) {
       prev.fixedIn = a.fixedIn;
     }

@@ -4,7 +4,7 @@
  * safectx                      MCP server over stdio (what agents launch)
  * safectx hook claude|cursor   pre-install hook: reads the agent's hook JSON on stdin
  * safectx check <eco> <name>[@version]
- * safectx audit [path] [--json] [--fail-on=low|moderate|high|critical]
+ * safectx audit [path] [--json] [--fail-on low|moderate|high|critical|none] [--sarif <file>] [--config <file>]
  * safectx upgrade <eco> <name> <from> [to] [--query="..."]
  * safectx init [claude|cursor] [--no-hook] [--no-mcp] [--no-config]
  */
@@ -12,17 +12,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { actionsAuditFails, auditActions, formatActionsAudit } from './actions/check.js';
-import { parseUses, workflowFiles } from './actions/workflow.js';
+import { AuditInputError, auditExitCode, auditJson, formatAuditRun, parseFailOn, runAudit, runToSarif, sarifRoot } from './auditRun.js';
 import { PKG_VERSION } from './pkg.js';
 import { parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
 import { runClaudeHook, runCursorHook } from './hook/run.js';
 import { splitNpmSpec } from './hook/intent.js';
-import { buildMcpServer, manifestsIn, readSiblings } from './mcp.js';
-import { auditTree, formatTreeAudit, type TreeAudit } from './tree/audit.js';
+import { buildMcpServer } from './mcp.js';
 import { CONFIG_FILE, STARTER_CONFIG } from './teamConfig.js';
-import { parseFile } from './tree/lockfiles.js';
 import { upgradeGuide } from './upgrade/index.js';
 import { checkPackage } from './verdict.js';
 
@@ -64,28 +61,55 @@ async function upgrade(args: string[]): Promise<number> {
   return r.to ? 0 : 1;
 }
 
-const SEV = ['low', 'moderate', 'high', 'critical'];
+/** `--name value` or `--name=value`; the positionals are what is left. */
+function parseFlags(args: string[], valued: string[]): { flags: Record<string, string | true>; positional: string[] } {
+  const flags: Record<string, string | true> = {};
+  const positional: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (!a.startsWith('--')) {
+      positional.push(a);
+      continue;
+    }
+    const eq = a.indexOf('=');
+    const name = a.slice(2, eq > 0 ? eq : undefined);
+    if (eq > 0) flags[name] = a.slice(eq + 1);
+    else if (valued.includes(name) && i + 1 < args.length && !args[i + 1].startsWith('--')) flags[name] = args[++i];
+    else flags[name] = true;
+  }
+  return { flags, positional };
+}
+
+const AUDIT_USAGE =
+  'usage: safectx audit [path] [--fail-on low|moderate|high|critical|none] [--json] [--sarif <file>] [--sarif-root <dir>] [--config <.safectx.json>] [--no-supply-chain]';
 
 async function audit(args: string[]): Promise<number> {
-  const json = args.includes('--json');
-  const failOn = args.find((a) => a.startsWith('--fail-on='))?.split('=')[1] ?? 'low';
-  const target = path.resolve(args.find((a) => !a.startsWith('--')) ?? '.');
-  const wf = workflowFiles(target);
-  const files = fs.statSync(target).isDirectory() ? manifestsIn(target) : wf.length ? [] : [target];
-  if (!files.length && !wf.length) {
-    console.error(`No supported lockfile, manifest or workflow in ${target}`);
+  const { flags, positional } = parseFlags(args, ['fail-on', 'sarif', 'sarif-root', 'config']);
+  const failOn = parseFailOn(typeof flags['fail-on'] === 'string' ? flags['fail-on'] : undefined);
+  if (!failOn || flags.sarif === true || flags.config === true || flags['fail-on'] === true) {
+    console.error(AUDIT_USAGE);
     return 2;
   }
-  const audits: TreeAudit[] = [];
-  for (const f of files) audits.push(await auditTree(parseFile(f, fs.readFileSync(f, 'utf8'), readSiblings(f))));
-  const actions = wf.length ? await auditActions(wf.map((f) => ({ file: f, uses: parseUses(fs.readFileSync(f, 'utf8'), f) }))) : undefined;
-  if (json) console.log(JSON.stringify(actions ? [...audits, { actions }] : audits, null, 2));
-  else console.log([...audits.map((a) => formatTreeAudit(a, 50)), ...(actions ? [formatActionsAudit(actions, 50)] : [])].join('\n\n'));
-  const floor = Math.max(0, SEV.indexOf(failOn));
-  const bad = audits.some(
-    (a) => a.malicious > 0 || SEV.slice(floor).some((s) => a.bySeverity[s as keyof TreeAudit['bySeverity']] > 0) || (floor === 0 && a.bySeverity.unknown > 0),
-  );
-  return bad || (actions && actionsAuditFails(actions, floor, SEV)) ? 1 : 0;
+  const target = path.resolve(positional[0] ?? '.');
+  let run;
+  try {
+    run = await runAudit({ target, config: flags.config as string | undefined, supplyChain: !flags['no-supply-chain'] });
+  } catch (err) {
+    if (err instanceof AuditInputError) {
+      console.error(err.message);
+      return 2;
+    }
+    throw err;
+  }
+  if (flags.json) console.log(JSON.stringify(auditJson(run), null, 2));
+  else console.log(formatAuditRun(run, 50));
+  if (typeof flags.sarif === 'string') {
+    const log = runToSarif(run, { root: sarifRoot(target, flags['sarif-root'] as string | undefined), toolVersion: PKG_VERSION });
+    fs.mkdirSync(path.dirname(path.resolve(flags.sarif)), { recursive: true });
+    fs.writeFileSync(flags.sarif, `${JSON.stringify(log, null, 2)}\n`);
+    console.error(`[safectx] SARIF written to ${flags.sarif} (${log.runs[0].results.length} results)`);
+  }
+  return auditExitCode(run, failOn);
 }
 
 function readJson(p: string): any {

@@ -386,7 +386,92 @@ npx safectx audit package-lock.json --json
 npx safectx upgrade npm zod 3.25.76 4.6.7  # what changes between two versions
 npx safectx audit .github/workflows        # GitHub Actions: advisories and SHA pinning
 npx safectx check composer guzzlehttp/guzzle:7.4.0
+npx safectx audit . --fail-on high --sarif safectx.sarif   # SARIF 2.1.0 for code scanning
 ```
+
+`audit` flags: `--fail-on low|moderate|high|critical|none` (default `low`; `none` reports
+and exits 0), `--json`, `--sarif <file>`, `--sarif-root <dir>` (SARIF paths are relative to
+it; default is the git repository root), `--config <file>` (a `.safectx.json` other than the
+nearest one) and `--no-supply-chain` (skip the per-package checks below).
+
+Besides the advisories of the whole tree, `audit` checks each direct dependency for a
+typosquat name, a package or version the registry does not have, deprecation and the
+[supply-chain signals](#supply-chain-signals), and applies the deny and license rules of
+`.safectx.json`. Exit codes: 0 clean, 1 findings, 2 bad input or nothing to audit. At any
+`--fail-on` level other than `none`, these findings fail the run whatever their severity:
+malware, a typosquat, an install script in a brand-new package or from a new publisher, a
+package or license the policy denies, and an action ref that does not exist. A
+`.safectx.json` that does not parse fails it even with `none`. A missing version, deprecation
+and the other risk signals show up in the report and never fail it.
+
+## GitHub Action / CI
+
+The repository root is a GitHub Action. It runs `safectx audit`, writes a job summary,
+annotates the pull request and uploads SARIF, so the findings land in Security > Code
+scanning on the manifest or lockfile line that brings each package in.
+
+```yaml
+name: dependencies
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 6 * * 1'   # new advisories appear without a commit
+
+permissions:
+  contents: read
+
+jobs:
+  safectx:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload-sarif; drop it with upload-sarif: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Hiper-AI/safectx@<commit SHA> # pin the release you reviewed
+        with:
+          fail-on: high
+```
+
+| Input | Default | Meaning |
+|---|---|---|
+| `path` | `.` | Directory, dependency file or workflow, relative to the workspace. A directory also gets its `.github/workflows` and `action.yml` checked. |
+| `fail-on` | `high` | Lowest advisory severity that fails the step: `low`, `moderate`, `high`, `critical`, or `none` to report only. |
+| `sarif` | `true` | Write SARIF (output `sarif-file`). |
+| `upload-sarif` | `true` | Upload it with `github/codeql-action/upload-sarif` (pinned by SHA in `action.yml`). |
+| `category` | `safectx` | Code scanning category. Give each run its own when you audit several paths. |
+| `config` | nearest `.safectx.json` | Team policy file. |
+| `supply-chain` | `true` | Typosquat, registry, deprecation and risk checks of direct dependencies, one lookup each. |
+| `annotations` | `true` | Annotate the worst findings on the pull request diff. |
+| `github-token` | `github.token` | Resolves action tags to commits and authenticates the upload. |
+
+Outputs: `exit-code` (0 clean, 1 findings, 2 bad input, 3 the audit could not run),
+`sarif-file` and `results`.
+
+The action carries its own Node bundle (`action-dist/index.mjs`, built by
+`npm run bundle:action` from `src/action/main.ts`), so a run installs nothing from npm. It uses
+the runner's Node (20.9 or newer) and sets up Node 22 with `actions/setup-node` only when the
+runner lacks one, so it also works on self-hosted Linux, macOS and Windows runners (it needs
+`bash`, which Git for Windows provides). A self-test workflow rebuilds the bundle on each pull request and fails if the
+committed file differs from the source.
+
+Code scanning on a private repository needs GitHub Code Security (part of GitHub Advanced
+Security), sold for Team and Enterprise plans. Without it, set `upload-sarif: false`: you still
+get the job summary, the annotations and the exit code, and you can keep the SARIF as an
+artifact.
+
+Each result has a stable `primaryLocationLineHash` built from the rule, the file and the
+package name, without line or version, so GitHub keeps one alert per advisory and package
+across lockfile churn and closes it when you fix the package. Rules: one per advisory (GHSA
+id, CVE in the description and tags, `security-severity` from the CVSS v3 vector or the GitHub
+severity), plus `safectx/malware`, `safectx/typosquat`, `safectx/unknown-package`,
+`safectx/unpublished-version`, `safectx/deprecated`, `safectx/policy-deny`,
+`safectx/policy-license`, `safectx/risk/<signal>`, `safectx/action-unpinned`,
+`safectx/action-missing-ref` and `safectx/action-unverified`.
 
 ## Configuration
 

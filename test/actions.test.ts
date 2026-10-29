@@ -128,6 +128,27 @@ describe('advisory ranges', () => {
     expect(affects(lastAffected, 'tj-actions/changed-files', '2.3.1')).toBe(false);
     expect(affects(lastAffected, 'tj-actions/changed-files', '1.9.0')).toBe(false);
   });
+
+  it('bounds an open range by last_known_affected_version_range (GHSA-vqf5-2xx6-9wfm, codeql-action)', () => {
+    const codeql = {
+      id: 'GHSA-vqf5-2xx6-9wfm',
+      affected: [
+        { package: { name: 'github/codeql-action', ecosystem: 'GitHub Actions' }, ranges: [{ type: 'ECOSYSTEM', events: [{ introduced: '3.26.11' }, { fixed: '3.28.3' }] }] },
+        {
+          package: { name: 'github/codeql-action', ecosystem: 'GitHub Actions' },
+          ranges: [{ type: 'ECOSYSTEM', events: [{ introduced: '2.26.11' }] }],
+          database_specific: { last_known_affected_version_range: '< 3.0.0' },
+        },
+      ],
+    };
+    expect(affects(codeql, 'github/codeql-action', 'v2.28.0')).toBe(true);
+    expect(affects(codeql, 'github/codeql-action', 'v3.27.0')).toBe(true);
+    expect(affects(codeql, 'github/codeql-action', 'v3.28.3')).toBe(false);
+    expect(affects(codeql, 'github/codeql-action', 'v4.39.1')).toBe(false);
+    const inclusive = { ...codeql, affected: [{ ...codeql.affected[1], ranges: [{ type: 'ECOSYSTEM', events: [{ introduced: '0' }] }], database_specific: { last_known_affected_version_range: '<= 2.4.1' } }] };
+    expect(affects(inclusive, 'github/codeql-action', '2.4.1')).toBe(true);
+    expect(affects(inclusive, 'github/codeql-action', '2.4.2')).toBe(false);
+  });
 });
 
 describe('checkAction and the hook', () => {

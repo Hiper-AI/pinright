@@ -1,0 +1,110 @@
+name: safectx audit
+description: Audit dependency trees and GitHub Actions for known advisories, malware, typosquats and policy violations; report to code scanning as SARIF.
+author: Hiper AI
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  path:
+    description: Project directory, dependency file or workflow to audit, relative to the workspace.
+    required: false
+    default: .
+  fail-on:
+    description: Lowest advisory severity that fails the step (low, moderate, high, critical, or none to only report). Malware, typosquats and policy denials always fail.
+    required: false
+    default: high
+  sarif:
+    description: Write a SARIF file (its path is the sarif-file output).
+    required: false
+    default: 'true'
+  upload-sarif:
+    description: Upload the SARIF to code scanning. Needs security-events write permission, and GitHub Code Security on private repositories.
+    required: false
+    default: 'true'
+  category:
+    description: Code scanning category, to tell several safectx runs apart (one per path in a monorepo).
+    required: false
+    default: safectx
+  config:
+    description: Path to a .safectx.json team policy. Default is the nearest one above the path.
+    required: false
+    default: ''
+  supply-chain:
+    description: Check direct dependencies for typosquats, unpublished versions, deprecation and risk signals (one lookup each).
+    required: false
+    default: 'true'
+  annotations:
+    description: Write the worst findings as workflow annotations (shown on the pull request even without code scanning).
+    required: false
+    default: 'true'
+  github-token:
+    description: Token for GitHub API lookups of action tags and for the SARIF upload.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  exit-code:
+    description: 0 clean, 1 findings at or above fail-on, 2 nothing to audit or bad input, 3 the audit could not run.
+    value: ${{ steps.audit.outputs.exit-code }}
+  sarif-file:
+    description: Path of the SARIF file, empty when sarif is false.
+    value: ${{ steps.audit.outputs.sarif-file }}
+  results:
+    description: Number of SARIF results.
+    value: ${{ steps.audit.outputs.results }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check Node.js
+      id: node
+      shell: bash
+      run: |
+        if command -v node >/dev/null 2>&1 && node -e 'const [a,b]=process.versions.node.split(".").map(Number);process.exit(a>20||(a===20&&b>=9)?0:1)'; then
+          echo "missing=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "missing=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Set up Node.js
+      if: steps.node.outputs.missing == 'true'
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 22
+
+    # Inputs go through the environment, never into the script text.
+    - name: Audit
+      id: audit
+      shell: bash
+      env:
+        SAFECTX_INPUT_PATH: ${{ inputs.path }}
+        SAFECTX_INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        SAFECTX_INPUT_SARIF: ${{ inputs.sarif }}
+        SAFECTX_INPUT_UPLOAD: ${{ inputs.upload-sarif }}
+        SAFECTX_INPUT_CONFIG: ${{ inputs.config }}
+        SAFECTX_INPUT_SUPPLY_CHAIN: ${{ inputs.supply-chain }}
+        SAFECTX_INPUT_ANNOTATIONS: ${{ inputs.annotations }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: node "$GITHUB_ACTION_PATH/action-dist/index.mjs"
+
+    - name: Upload SARIF to code scanning
+      if: always() && inputs.sarif == 'true' && inputs.upload-sarif == 'true' && steps.audit.outputs.sarif-file != ''
+      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+      with:
+        sarif_file: ${{ steps.audit.outputs.sarif-file }}
+        category: ${{ inputs.category }}
+        token: ${{ inputs.github-token }}
+
+    - name: Result
+      if: always()
+      shell: bash
+      env:
+        CODE: ${{ steps.audit.outputs.exit-code }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        case "$CODE" in
+          0) echo "safectx: no findings at or above $FAIL_ON." ;;
+          1) echo "::error title=safectx::Findings at or above $FAIL_ON, or blocked by malware, typosquat or policy checks. See the job summary."; exit 1 ;;
+          *) echo "::error title=safectx::The audit did not complete (exit ${CODE:-unknown})."; exit "${CODE:-3}" ;;
+        esac

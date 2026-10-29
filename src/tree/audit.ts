@@ -8,6 +8,7 @@
  */
 import semver from 'semver';
 import { getDependencies } from '../advisories/depsdev.js';
+import { cvss3Of } from '../advisories/cvss.js';
 import { fixedVersions, getVuln, isMalware, queryBatch, severityOf } from '../advisories/osv.js';
 import { assessPackage, dedupeAdvisories, recommendedUpgrade, type AdvisoryInfo } from '../advisories/resolve.js';
 import { packagistAuditExtras } from '../composer/packagist.js';
@@ -111,7 +112,8 @@ function overrideHint(eco: Ecosystem, name: string, version: string): string {
   }
 }
 
-export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean } = {}): Promise<TreeAudit> {
+/** `packagesOut` receives the packages audited (for a manifest, the tree deps.dev resolved). */
+export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean; packagesOut?: TreePackage[] } = {}): Promise<TreeAudit> {
   const notes: string[] = [];
   const eco = tree.ecosystem;
   let packages: TreePackage[] = tree.packages;
@@ -124,6 +126,7 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean }
     );
   }
   if (opts.includeDev === false) packages = packages.filter((p) => !p.dev);
+  opts.packagesOut?.push(...packages);
 
   const ids = await queryBatch(packages.map((p) => ({ ecosystem: eco, name: p.name, version: p.version })));
   // Packagist also publishes FriendsOfPHP advisories that OSV does not carry.
@@ -148,6 +151,7 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean }
           aliases: v?.aliases ?? [],
           title: v?.summary,
           severity: v ? severityOf(v) : undefined,
+          cvss3Score: v ? cvss3Of(v) : undefined,
           fixedIn: v ? fixedVersions(v, p.name) : undefined,
           url: `https://osv.dev/vulnerability/${id}`,
         };

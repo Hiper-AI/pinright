@@ -325,22 +325,30 @@ export function policyFindings(p: Policy, eco: Ecosystem, name: string, licenses
 
 const MAX_LICENSE_LOOKUPS = 60;
 
+/** One policy finding for a dependency file, structured for SARIF; `text` is the line the tools show. */
+export interface PolicyHit {
+  kind: 'deny' | 'license' | 'note';
+  name?: string;
+  version?: string;
+  text: string;
+}
+
 /**
  * Policy findings for a whole dependency file: the deny list over every package
  * (direct and transitive, no network), and licenses of the direct dependencies
  * (one deps.dev lookup each, cached).
  */
-export async function treePolicyFindings(p: Policy, tree: ParsedTree): Promise<string[]> {
+export async function treePolicyHits(p: Policy, tree: ParsedTree): Promise<PolicyHit[]> {
   const restrictsLicenses = Boolean(p.licenses.allow?.length || p.licenses.deny?.length);
   if (!p.deny.length && !restrictsLicenses) return [];
   const eco = tree.ecosystem;
-  const out: string[] = [];
+  const out: PolicyHit[] = [];
   const all = new Map<string, string | undefined>();
   for (const pk of tree.packages) if (!all.has(pk.name)) all.set(pk.name, pk.version);
   for (const d of tree.declared ?? []) if (!all.has(d.name)) all.set(d.name, undefined);
-  for (const name of all.keys()) {
+  for (const [name, version] of all) {
     const d = isAllowed(p, eco, name) ? undefined : denyEntry(p, eco, name);
-    if (d) out.push(`${name}: ${denyMessage(p, d)}`);
+    if (d) out.push({ kind: 'deny', name, version, text: `${name}: ${denyMessage(p, d)}` });
   }
   if (!restrictsLicenses) return out;
 
@@ -350,7 +358,7 @@ export async function treePolicyFindings(p: Policy, tree: ParsedTree): Promise<s
       ? tree.packages.filter((pk) => (hasDirect ? pk.direct : true)).map((pk) => ({ name: pk.name, version: pk.version }))
       : (tree.declared ?? []).map((d) => ({ name: d.name, spec: d.spec }));
   const todo = direct.filter((d) => !isAllowed(p, eco, d.name)).slice(0, MAX_LICENSE_LOOKUPS);
-  const lines: (string | undefined)[] = new Array(todo.length);
+  const hits: (PolicyHit | undefined)[] = new Array(todo.length);
   let next = 0;
   await Promise.all(
     Array.from({ length: Math.min(8, todo.length) }, async () => {
@@ -367,18 +375,23 @@ export async function treePolicyFindings(p: Policy, tree: ParsedTree): Promise<s
           const detail = await getVersion(eco, d.name, version);
           if (!detail) continue;
           const l = checkLicenses(p, detail.licenses);
-          if (l.message) lines[k] = `${d.name}@${version}: ${l.message}`;
+          if (l.message) hits[k] = { kind: l.action === 'deny' ? 'license' : 'note', name: d.name, version, text: `${d.name}@${version}: ${l.message}` };
         } catch (err) {
-          lines[k] = `${d.name}: license not verified (${(err as Error).message}).`;
+          hits[k] = { kind: 'note', name: d.name, text: `${d.name}: license not verified (${(err as Error).message}).` };
         }
       }
     }),
   );
-  out.push(...lines.filter((l): l is string => Boolean(l)));
+  out.push(...hits.filter((h): h is PolicyHit => Boolean(h)));
   if (direct.length > todo.length + direct.filter((d) => isAllowed(p, eco, d.name)).length) {
-    out.push(`Licenses checked for the first ${MAX_LICENSE_LOOKUPS} direct dependencies only.`);
+    out.push({ kind: 'note', text: `Licenses checked for the first ${MAX_LICENSE_LOOKUPS} direct dependencies only.` });
   }
   return out;
+}
+
+/** The same findings as lines, for the agent-facing tools. */
+export async function treePolicyFindings(p: Policy, tree: ParsedTree): Promise<string[]> {
+  return (await treePolicyHits(p, tree)).map((h) => h.text);
 }
 
 /** The starter file `safectx init` writes. Comments are allowed; safectx strips them. */
