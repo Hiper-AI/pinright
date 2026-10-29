@@ -1,5 +1,5 @@
 /** The package ecosystems we can give a verdict for, and how each upstream names them. */
-export type Ecosystem = 'npm' | 'pypi' | 'cargo' | 'go' | 'maven' | 'nuget' | 'rubygems';
+export type Ecosystem = 'npm' | 'pypi' | 'cargo' | 'go' | 'maven' | 'nuget' | 'rubygems' | 'composer';
 
 export const ECOSYSTEMS: readonly Ecosystem[] = [
   'npm',
@@ -9,7 +9,11 @@ export const ECOSYSTEMS: readonly Ecosystem[] = [
   'maven',
   'nuget',
   'rubygems',
+  'composer',
 ];
+
+/** deps.dev does not index Packagist: composer versions come from repo.packagist.org (see composer/packagist.ts). */
+export const NO_DEPS_DEV: readonly Ecosystem[] = ['composer'];
 
 const DEPS_DEV_SYSTEM: Record<Ecosystem, string> = {
   npm: 'npm',
@@ -19,6 +23,7 @@ const DEPS_DEV_SYSTEM: Record<Ecosystem, string> = {
   maven: 'maven',
   nuget: 'nuget',
   rubygems: 'rubygems',
+  composer: 'packagist',
 };
 
 const OSV_ECOSYSTEM: Record<Ecosystem, string> = {
@@ -29,6 +34,7 @@ const OSV_ECOSYSTEM: Record<Ecosystem, string> = {
   maven: 'Maven',
   nuget: 'NuGet',
   rubygems: 'RubyGems',
+  composer: 'Packagist',
 };
 
 const FROM_DEPS_DEV: Record<string, Ecosystem> = {
@@ -86,6 +92,9 @@ export function parseEcosystem(raw: string | undefined): Ecosystem | undefined {
     gem: 'rubygems',
     gems: 'rubygems',
     ruby: 'rubygems',
+    composer: 'composer',
+    packagist: 'composer',
+    php: 'composer',
   };
   return aliases[s];
 }
@@ -107,5 +116,7 @@ export function installCommand(eco: Ecosystem, name: string, version: string): s
       return `dotnet add package ${name} --version ${version}`;
     case 'rubygems':
       return `gem install ${name} -v ${version}`;
+    case 'composer':
+      return `composer require ${name}:${version}`;
   }
 }

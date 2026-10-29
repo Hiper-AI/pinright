@@ -26,9 +26,13 @@ const LOCK_PRIORITY = [
   'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-lock.yaml', 'yarn.lock',
   'uv.lock', 'poetry.lock', 'pdm.lock', 'Cargo.lock', 'go.mod', 'Gemfile.lock', 'packages.lock.json',
   'requirements.txt', 'pyproject.toml', 'package.json', 'Cargo.toml',
+  'gradle.lockfile', 'pom.xml', 'build.gradle.kts', 'build.gradle', 'gradle/libs.versions.toml',
+  'composer.lock', 'composer.json',
 ];
 
 function ecosystemOfFile(f: string): string {
+  if (/gradle|pom\.xml|libs\.versions/.test(f)) return 'jvm';
+  if (/composer/.test(f)) return 'composer';
   if (/package|pnpm|yarn|shrinkwrap/.test(f)) return /packages\.lock/.test(f) ? 'nuget' : 'npm';
   if (/Cargo/.test(f)) return 'cargo';
   if (/go\.mod/.test(f)) return 'go';
@@ -53,10 +57,13 @@ export function manifestsIn(dir: string): string[] {
 export function readSiblings(file: string): Record<string, string> {
   const dir = path.dirname(file);
   const out: Record<string, string> = {};
-  for (const s of ['package.json', 'pyproject.toml', 'Cargo.toml']) {
+  for (const s of ['package.json', 'pyproject.toml', 'Cargo.toml', 'composer.json', 'build.gradle.kts', 'build.gradle', 'gradle.properties']) {
     const p = path.join(dir, s);
     if (path.basename(file) !== s && fs.existsSync(p)) out[s] = fs.readFileSync(p, 'utf8');
   }
+  // Gradle's version catalog lives in gradle/ next to the build script.
+  const catalog = path.join(dir, 'gradle', 'libs.versions.toml');
+  if (fs.existsSync(catalog)) out['libs.versions.toml'] = fs.readFileSync(catalog, 'utf8');
   return out;
 }
 

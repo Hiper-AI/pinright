@@ -8,7 +8,9 @@
 import semver from 'semver';
 import { getDependencies, getPackage, type DepsDevVersionSummary } from '../advisories/depsdev.js';
 import { compareVersionsDesc, isPrerelease } from '../advisories/resolve.js';
+import { pickComposerVersion } from '../composer/constraint.js';
 import { type Ecosystem } from '../ecosystems.js';
+import { pickMavenVersion } from '../jvm/maven.js';
 import { type ParsedTree, type TreePackage, normalizePypiName } from './lockfiles.js';
 
 export const GRAPH_ECOSYSTEMS: Ecosystem[] = ['npm', 'pypi', 'cargo', 'maven'];
@@ -70,6 +72,12 @@ export function pickVersion(eco: Ecosystem, spec: string, versions: DepsDevVersi
     const range = eco === 'cargo' && /^\d/.test(s) ? `^${s}` : s;
     if (names.includes(s)) return s;
     return semver.maxSatisfying(names, range, { loose: true }) ?? undefined;
+  }
+  if (eco === 'composer') return pickComposerVersion(s, names);
+  if (eco === 'maven') {
+    // An exact Maven version is a pin even when it is a milestone; ranges and "1.+" pick among releases.
+    if (versions.some((v) => v.versionKey.version === s)) return s;
+    return pickMavenVersion(s, names, def);
   }
   return names.includes(s) ? s : def;
 }

@@ -10,6 +10,8 @@ import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { checkPackages, formatBatch, MAX_BATCH } from './batch.js';
+import { auditActions, formatActionsAudit } from './actions/check.js';
+import { type ActionUse, isWorkflowFile, parseUses, workflowFiles } from './actions/workflow.js';
 import { getDocs } from './docs/index.js';
 import { ECOSYSTEMS, type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
@@ -113,7 +115,7 @@ export function buildMcpServer(): McpServer {
       inputSchema: {
         libraryName: z.string().describe('Library name, e.g. "next.js", "requests", "tokio".'),
         query: z.string().describe('What you want to do with it; also used to guess the language.'),
-        ecosystem: z.string().optional().describe('npm, pypi, cargo, go, maven, nuget or rubygems, when you know it.'),
+        ecosystem: z.string().optional().describe('npm, pypi, cargo, go, maven, nuget, rubygems or composer, when you know it.'),
       },
     },
     async ({ libraryName, query, ecosystem }) => {
@@ -214,7 +216,7 @@ export function buildMcpServer(): McpServer {
         'and typosquat lookalikes. For several packages use check-packages, one call for the whole list.',
       inputSchema: {
         name: z.string().describe('Package name as the registry knows it, e.g. "lodash", "requests".'),
-        ecosystem: z.string().describe('npm, pypi, cargo, go, maven, nuget or rubygems (aliases like "python" work).'),
+        ecosystem: z.string().describe('npm, pypi, cargo, go, maven, nuget, rubygems or composer (aliases like "python" work).'),
         version: z.string().optional().describe('Version you intend to install or already use.'),
         detail: z.boolean().optional().describe('Return the full JSON report (every advisory, dates, sources) instead of the summary.'),
       },
@@ -298,7 +300,8 @@ export function buildMcpServer(): McpServer {
         'Audits every package in a lockfile (direct and transitive) against OSV, the way Dependabot would, and says ' +
         'how to fix each finding: the direct upgrade on the same release line, the parent upgrade that clears a ' +
         'transitive one, or an override. Pass a project directory or a file path, or the file content with its name. ' +
-        `Supported: ${SUPPORTED_FILES.join(', ')}, requirements*.txt. Without a lockfile the tree is resolved through deps.dev.`,
+        `Supported: ${SUPPORTED_FILES.join(', ')}, requirements*.txt. Without a lockfile the tree is resolved through deps.dev. ` +
+        'GitHub workflows (.github/workflows/*.yml, action.yml, or the directory) get an Actions check: advisories and SHA pinning.',
       inputSchema: {
         path: z.string().optional().describe('Project directory or path to a lockfile/manifest.'),
         content: z.string().optional().describe('File content, when the file is not on disk yet.'),
@@ -309,13 +312,19 @@ export function buildMcpServer(): McpServer {
     async ({ path: p, content, fileName, includeDev }) => {
       try {
         const targets: { file: string; content: string; siblings: Record<string, string> }[] = [];
+        const workflows: { file: string; uses: ActionUse[] }[] = [];
         if (content) {
-          if (!fileName || !detectKind(fileName)) return errorText(new Error(`fileName must be one of: ${SUPPORTED_FILES.join(', ')}, requirements*.txt.`));
-          targets.push({ file: fileName, content, siblings: {} });
+          if (fileName && !detectKind(fileName) && (isWorkflowFile(fileName) || /\.ya?ml$/i.test(fileName))) {
+            workflows.push({ file: fileName, uses: parseUses(content, fileName) });
+          } else if (!fileName || !detectKind(fileName)) {
+            return errorText(new Error(`fileName must be one of: ${SUPPORTED_FILES.join(', ')}, requirements*.txt, a GitHub workflow (.yml) or action.yml.`));
+          } else targets.push({ file: fileName, content, siblings: {} });
         } else if (p) {
           const abs = path.resolve(p);
-          const files = fs.statSync(abs).isDirectory() ? manifestsIn(abs) : [abs];
-          if (!files.length) return text(`No supported lockfile or manifest in ${abs}.`);
+          const wf = workflowFiles(abs);
+          for (const f of wf) workflows.push({ file: f, uses: parseUses(fs.readFileSync(f, 'utf8'), f) });
+          const files = fs.statSync(abs).isDirectory() ? manifestsIn(abs) : wf.length ? [] : [abs];
+          if (!files.length && !wf.length) return text(`No supported lockfile, manifest or workflow in ${abs}.`);
           for (const f of files) {
             // Only dependency files: this tool never reads anything else from disk.
             if (!detectKind(f)) return errorText(new Error(`Unsupported file ${f}.`));
@@ -334,6 +343,7 @@ export function buildMcpServer(): McpServer {
           const found = await treePolicyFindings(policy, tree);
           parts.push([formatTreeAudit(audit, 25), ...(found.length ? [`Project policy (${policy.file ? path.basename(policy.file) : 'env'}):`, ...found.map((f) => `- ${f}`)] : [])].join('\n'));
         }
+        if (workflows.length) parts.push(formatActionsAudit(await auditActions(workflows), 25));
         return text(parts.join('\n\n'));
       } catch (err) {
         return errorText(err);

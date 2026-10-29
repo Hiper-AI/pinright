@@ -7,7 +7,10 @@
  * Every reader is a small line-oriented parser on purpose: no YAML/TOML
  * dependency, and a malformed file yields fewer packages, never a crash.
  */
+import { parseComposerJson, parseComposerLock } from '../composer/manifest.js';
 import { type Ecosystem } from '../ecosystems.js';
+import { parseGradleBuild, parseGradleLockfile, parseVersionCatalog } from '../jvm/gradle.js';
+import { parsePom } from '../jvm/maven.js';
 
 export interface TreePackage {
   name: string;
@@ -32,6 +35,8 @@ export const SUPPORTED_FILES = [
   'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-lock.yaml', 'yarn.lock', 'package.json',
   'requirements.txt', 'poetry.lock', 'uv.lock', 'pdm.lock', 'pyproject.toml',
   'Cargo.lock', 'Cargo.toml', 'go.mod', 'Gemfile.lock', 'packages.lock.json',
+  'gradle.lockfile', 'pom.xml', 'build.gradle', 'build.gradle.kts', 'libs.versions.toml',
+  'composer.lock', 'composer.json',
 ];
 
 /** Which reader to use for a file name. requirements-dev.txt and friends count as requirements. */
@@ -71,6 +76,19 @@ export function parseFile(fileName: string, content: string, siblings: Record<st
       return parseGemfileLock(fileName, content);
     case 'packages.lock.json':
       return parseNugetLock(fileName, content);
+    case 'pom.xml':
+      return parsePom(fileName, content);
+    case 'build.gradle':
+    case 'build.gradle.kts':
+      return parseGradleBuild(fileName, content, siblings);
+    case 'libs.versions.toml':
+      return parseVersionCatalog(fileName, content);
+    case 'gradle.lockfile':
+      return parseGradleLockfile(fileName, content, siblings);
+    case 'composer.json':
+      return parseComposerJson(fileName, content);
+    case 'composer.lock':
+      return parseComposerLock(fileName, content, siblings['composer.json']);
     default:
       throw new Error(`Unsupported file "${fileName}". Supported: ${SUPPORTED_FILES.join(', ')}, requirements*.txt.`);
   }

@@ -51,7 +51,8 @@ async function versionFor(eco: Ecosystem, name: string, spec: string | undefined
   const pinned =
     spec &&
     ((eco === 'npm' && /^\d+\.\d+\.\d+/.test(spec)) || (eco === 'pypi' && /^==/.test(spec)) || (eco === 'cargo' && /^=/.test(spec)) ||
-      eco === 'go' || ((eco === 'rubygems' || eco === 'nuget') && /^\d/.test(spec)));
+      eco === 'go' || ((eco === 'rubygems' || eco === 'nuget') && /^\d/.test(spec)) ||
+      (eco === 'maven' && /^\d[^[\](),+]*$/.test(spec)) || (eco === 'composer' && /^v?\d+\.\d+\.\d+(\.\d+)?$/.test(spec)));
   if (pinned) return { version: eco === 'go' ? `v${exact?.replace(/^v/, '')}` : exact, implicit: false, exists: true };
   return { version: pickVersion(eco, spec ?? '', pkg.versions), implicit: !spec, exists: true };
 }

@@ -10,6 +10,7 @@ import semver from 'semver';
 import { getDependencies } from '../advisories/depsdev.js';
 import { fixedVersions, getVuln, isMalware, queryBatch, severityOf } from '../advisories/osv.js';
 import { assessPackage, dedupeAdvisories, type AdvisoryInfo } from '../advisories/resolve.js';
+import { packagistAuditExtras } from '../composer/packagist.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { normalizePypiName, type ParsedTree, type TreePackage } from './lockfiles.js';
 import { GRAPH_ECOSYSTEMS, resolveManifest } from './resolveManifest.js';
@@ -101,6 +102,10 @@ function overrideHint(eco: Ecosystem, name: string, version: string): string {
       return `go get ${name}@v${version.replace(/^v/, '')} && go mod tidy`;
     case 'rubygems':
       return `bundle update ${name} (needs ${version} or newer)`;
+    case 'composer':
+      return `composer update ${name} --with-all-dependencies (needs ${version} or newer; or require "${name}": "^${version}")`;
+    case 'maven':
+      return `pin ${name}:${version} in <dependencyManagement> (Maven) or with a constraints block (Gradle)`;
     default:
       return installCommand(eco, name, version);
   }
@@ -121,11 +126,16 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean }
   if (opts.includeDev === false) packages = packages.filter((p) => !p.dev);
 
   const ids = await queryBatch(packages.map((p) => ({ ecosystem: eco, name: p.name, version: p.version })));
-  const allIds = [...new Set(ids.flat())];
+  // Packagist also publishes FriendsOfPHP advisories that OSV does not carry.
+  const extra = eco === 'composer' ? await packagistAuditExtras(packages, ids).catch(() => undefined) : undefined;
+  if (eco === 'composer' && !extra) notes.push("Packagist's advisories API did not answer: only OSV advisories were checked.");
+  extra?.ids.forEach((more, i) => ids[i].push(...more));
+  const allIds = [...new Set(ids.flat())].filter((id) => !extra?.details.has(id));
   if (allIds.length > MAX_VULN_DETAILS) notes.push(`${allIds.length} advisories found; details fetched for the first ${MAX_VULN_DETAILS}.`);
   const details = new Map(
     (await pool(allIds.slice(0, MAX_VULN_DETAILS), 8, async (id) => [id, await getVuln(id).catch(() => undefined)] as const)),
   );
+  for (const [id, v] of extra?.details ?? []) details.set(id, v);
 
   const findings: TreeFinding[] = [];
   packages.forEach((p, i) => {
@@ -314,6 +324,6 @@ export function formatTreeAudit(a: TreeAudit, maxFindings = 15): string {
     }
   }
   for (const n of a.notes) lines.push(`Note: ${n}`);
-  lines.push(`Verified against osv.dev + deps.dev on ${a.checkedAt.slice(0, 10)}.`);
+  lines.push(`Verified against osv.dev + ${a.ecosystem === 'composer' ? 'packagist.org' : 'deps.dev'} on ${a.checkedAt.slice(0, 10)}.`);
   return lines.join('\n');
 }

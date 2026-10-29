@@ -12,6 +12,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { actionsAuditFails, auditActions, formatActionsAudit } from './actions/check.js';
+import { parseUses, workflowFiles } from './actions/workflow.js';
 import { parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
 import { runClaudeHook, runCursorHook } from './hook/run.js';
@@ -33,10 +35,13 @@ async function serve(): Promise<number> {
 async function check(args: string[]): Promise<number> {
   const eco = parseEcosystem(args[0]);
   if (!eco || !args[1]) {
-    console.error('usage: safectx check <npm|pypi|cargo|go|maven|nuget|rubygems> <name>[@version]');
+    console.error('usage: safectx check <npm|pypi|cargo|go|maven|nuget|rubygems|composer> <name>[@version]');
     return 2;
   }
-  const [name, version] = eco === 'pypi' && args[1].includes('==') ? args[1].split('==') : splitNpmSpec(args[1]);
+  const [name, version] =
+    eco === 'pypi' && args[1].includes('==') ? args[1].split('==')
+    : eco === 'composer' && /^[^@:]+\/[^@:]+:/.test(args[1]) ? args[1].split(':')
+    : splitNpmSpec(args[1]);
   const v = await checkPackage(eco, name, version);
   console.log(securityNotice(v.report, v.typo, v.risk));
   return v.report.verdict === 'ok' ? 0 : 1;
@@ -62,20 +67,22 @@ async function audit(args: string[]): Promise<number> {
   const json = args.includes('--json');
   const failOn = args.find((a) => a.startsWith('--fail-on='))?.split('=')[1] ?? 'low';
   const target = path.resolve(args.find((a) => !a.startsWith('--')) ?? '.');
-  const files = fs.statSync(target).isDirectory() ? manifestsIn(target) : [target];
-  if (!files.length) {
-    console.error(`No supported lockfile or manifest in ${target}`);
+  const wf = workflowFiles(target);
+  const files = fs.statSync(target).isDirectory() ? manifestsIn(target) : wf.length ? [] : [target];
+  if (!files.length && !wf.length) {
+    console.error(`No supported lockfile, manifest or workflow in ${target}`);
     return 2;
   }
   const audits: TreeAudit[] = [];
   for (const f of files) audits.push(await auditTree(parseFile(f, fs.readFileSync(f, 'utf8'), readSiblings(f))));
-  if (json) console.log(JSON.stringify(audits, null, 2));
-  else console.log(audits.map((a) => formatTreeAudit(a, 50)).join('\n\n'));
+  const actions = wf.length ? await auditActions(wf.map((f) => ({ file: f, uses: parseUses(fs.readFileSync(f, 'utf8'), f) }))) : undefined;
+  if (json) console.log(JSON.stringify(actions ? [...audits, { actions }] : audits, null, 2));
+  else console.log([...audits.map((a) => formatTreeAudit(a, 50)), ...(actions ? [formatActionsAudit(actions, 50)] : [])].join('\n\n'));
   const floor = Math.max(0, SEV.indexOf(failOn));
   const bad = audits.some(
     (a) => a.malicious > 0 || SEV.slice(floor).some((s) => a.bySeverity[s as keyof TreeAudit['bySeverity']] > 0) || (floor === 0 && a.bySeverity.unknown > 0),
   );
-  return bad ? 1 : 0;
+  return bad || (actions && actionsAuditFails(actions, floor, SEV)) ? 1 : 0;
 }
 
 function readJson(p: string): any {

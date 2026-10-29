@@ -8,7 +8,8 @@
  */
 import semver from 'semver';
 import { config } from '../config.js';
-import { type Ecosystem } from '../ecosystems.js';
+import { packagistAdvisoryInfo } from '../composer/packagist.js';
+import { type Ecosystem, NO_DEPS_DEV } from '../ecosystems.js';
 import { getAdvisory, getPackage, getVersion, type DepsDevVersionSummary } from './depsdev.js';
 import { fixedVersions, isMalware, queryVersion, severityOf } from './osv.js';
 
@@ -121,15 +122,17 @@ async function describeAdvisories(
   const out: AdvisoryInfo[] = [];
   for (const id of allIds) {
     const vuln = byId.get(id);
-    const dd = vuln ? undefined : await getAdvisory(id).catch(() => undefined);
+    // Packagist ids (FriendsOfPHP) are not in deps.dev; Packagist's own API describes them.
+    const pk = !vuln && eco === 'composer' ? await packagistAdvisoryInfo(name, id) : undefined;
+    const dd = vuln || eco === 'composer' ? undefined : await getAdvisory(id).catch(() => undefined);
     out.push({
       id,
-      aliases: vuln?.aliases ?? dd?.aliases ?? [],
-      title: vuln?.summary ?? dd?.title,
-      severity: vuln ? severityOf(vuln) : undefined,
+      aliases: vuln?.aliases ?? dd?.aliases ?? pk?.aliases ?? [],
+      title: vuln?.summary ?? dd?.title ?? pk?.title,
+      severity: vuln ? severityOf(vuln) : pk?.severity,
       cvss3Score: dd?.cvss3Score,
-      fixedIn: vuln ? fixedVersions(vuln, name) : undefined,
-      url: dd?.url ?? `https://osv.dev/vulnerability/${id}`,
+      fixedIn: vuln ? fixedVersions(vuln, name) : pk?.fixedIn,
+      url: dd?.url ?? pk?.url ?? `https://osv.dev/vulnerability/${id}`,
     });
   }
   return dedupeAdvisories(out);
@@ -179,7 +182,9 @@ export async function assessPackage(
   requestedVersion?: string,
 ): Promise<PackageReport> {
   const checkedAt = new Date().toISOString();
-  const sources = ['deps.dev', 'osv.dev'];
+  // Composer is not in deps.dev: versions from Packagist, advisories from Packagist and OSV.
+  const registry = NO_DEPS_DEV.includes(eco) ? 'packagist.org' : 'deps.dev';
+  const sources = [registry, 'osv.dev'];
   const base = { package: name, ecosystem: eco, checkedAt, sources };
 
   let pkg;
@@ -189,11 +194,11 @@ export async function assessPackage(
     return {
       ...base,
       verdict: 'unknown',
-      reason: `deps.dev did not answer (${(err as Error).message}); no verdict possible`,
+      reason: `${registry} did not answer (${(err as Error).message}); no verdict possible`,
     };
   }
   if (!pkg || pkg.versions.length === 0) {
-    return { ...base, verdict: 'unknown-package', reason: `deps.dev has no package "${name}" in ${eco}` };
+    return { ...base, verdict: 'unknown-package', reason: `${registry} has no package "${name}" in ${eco}` };
   }
 
   const versions = [...pkg.versions].sort(compareVersionsDesc);
@@ -285,7 +290,7 @@ export async function assessPackage(
 
   if (sourceDown) {
     report.verdict = 'unknown';
-    report.reason = `deps.dev did not answer while scanning versions (${sourceDown})`;
+    report.reason = `${registry} did not answer while scanning versions (${sourceDown})`;
   } else if (!safe) {
     report.verdict = 'vulnerable';
     report.reason =

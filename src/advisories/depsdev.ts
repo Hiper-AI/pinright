@@ -7,6 +7,7 @@ import { cached } from '../cache.js';
 import { config } from '../config.js';
 import { type Ecosystem, toDepsDevSystem } from '../ecosystems.js';
 import { getJson, isNotFound } from '../http.js';
+import { packagistPackage, packagistVersion } from '../composer/packagist.js';
 
 export interface DepsDevVersionSummary {
   versionKey: { system: string; name: string; version: string };
@@ -53,6 +54,7 @@ export async function getPackage(
   eco: Ecosystem,
   name: string,
 ): Promise<DepsDevPackage | undefined> {
+  if (eco === 'composer') return packagistPackage(name);
   const url = `${config.depsDevBaseUrl}/v3/systems/${toDepsDevSystem(eco)}/packages/${enc(name)}`;
   try {
     return await cached(`dd:pkg:${eco}:${name}`, config.ttl.versions, () =>
@@ -69,6 +71,7 @@ export async function getVersion(
   name: string,
   version: string,
 ): Promise<DepsDevVersion | undefined> {
+  if (eco === 'composer') return packagistVersion(name, version);
   const url =
     `${config.depsDevBaseUrl}/v3/systems/${toDepsDevSystem(eco)}/packages/${enc(name)}` +
     `/versions/${enc(version)}`;
@@ -128,6 +131,7 @@ export async function getDependencies(
   name: string,
   version: string,
 ): Promise<DepsDevGraph | undefined> {
+  if (eco === 'composer') return undefined; // deps.dev resolves no Packagist graphs
   const url =
     `${config.depsDevBaseUrl}/v3/systems/${toDepsDevSystem(eco)}/packages/${enc(name)}` +
     `/versions/${enc(version)}:dependencies`;

@@ -24,6 +24,8 @@ agent --MCP--> safectx --> registry + jsDelivr     package files at the exact ve
                        --> project site            llms.txt / llms-full.txt
                        --> api.deps.dev            versions, advisories, licenses, dependency graphs
                        --> api.osv.dev             CVE details, fixed versions, malware (MAL-*)
+                       --> packagist.org           Composer versions and advisories
+                       --> api.github.com          commits and tags behind GitHub Actions refs
                        --> context7.com            only when the above came back thin (optional)
 ```
 
@@ -96,7 +98,7 @@ safectx blocked this dependency change:
 | `upgrade-guide` | What changes between two versions: breaking changes, removed or renamed APIs, config and default changes, packages that split off, deprecations, and the advisories the move fixes. Without `to` it targets the recommended version. |
 | `check-packages` | The verdict for up to 50 packages in one call: one table row each (verdict, version to pin, short reason), and the full notice only for the ones that need attention. The cheap way to vet a dependency list. |
 | `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes, and team policy violations. Without a version it checks the installed one. |
-| `check-manifest` | Whole-tree audit of `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `Cargo.lock`, `go.mod`, `Gemfile.lock`, `packages.lock.json`, or a bare `package.json` / `pyproject.toml` / `Cargo.toml` resolved through deps.dev. Each finding comes with its chain and fix, followed by team policy violations (denied packages anywhere in the tree, licenses of direct dependencies). |
+| `check-manifest` | Whole-tree audit of `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `Cargo.lock`, `go.mod`, `Gemfile.lock`, `packages.lock.json`, or a bare `package.json` / `pyproject.toml` / `Cargo.toml` resolved through deps.dev. Also Maven, Gradle, Composer and GitHub Actions files (see [Ecosystems](#ecosystems)). Each finding comes with its chain and fix. |
 
 Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `unknown-package`,
 `unknown`. `unknown` means a data source did not answer; safectx never says `ok` when it could not check.
@@ -108,10 +110,12 @@ Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `
 
 - installs: `npm`/`pnpm`/`yarn`/`bun add|install`, `npx`/`pnpm dlx`/`bunx`, `pip install` (also `-r file`),
   `uv add`/`uv pip install`, `uvx`, `pipx`, `poetry add`, `pdm add`, `cargo add|install`, `go get|install`,
-  `gem install`, `bundle add`, `dotnet add package`;
-- writes to `package.json`, `requirements*.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`: only
+  `gem install`, `bundle add`, `dotnet add package`, `composer require`, `composer create-project`;
+- writes to `package.json`, `requirements*.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`,
+  `build.gradle`, `build.gradle.kts`, `gradle/libs.versions.toml`, `composer.json`: only
   dependencies that are new or changed version count, so editing an old project does not re-open
-  every old dependency.
+  every old dependency;
+- writes to `.github/workflows/*.yml` and `action.yml`: new or re-pointed `uses:` lines.
 
 It blocks malware, typosquats, packages or versions that do not exist, versions with known advisories
 when a clean one exists, deprecated versions with a maintained successor, and dependencies whose
@@ -138,6 +142,7 @@ override the file:
 | `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check; on timeout it behaves as `SAFECTX_HOOK_ON_ERROR`. |
 | `SAFECTX_HOOK_RISK` | `enforce` | Supply-chain signals: `enforce` blocks the two patterns above, `warn` only notes them, `off` ignores them. |
 | `SAFECTX_SEVERITY_THRESHOLD` | `low` | Advisories below this severity (`low`, `moderate`, `high`, `critical`) become notes instead of blocks. |
+| `SAFECTX_ACTIONS_PIN` | `warn` | `enforce` blocks a GitHub Action referenced by a tag or branch instead of a commit SHA. |
 
 ## Supply-chain signals
 
@@ -271,6 +276,45 @@ the hook denies every dependency change with the error until someone fixes the f
 start their answer with `POLICY ERROR`. Editing `.safectx.json` itself is not a dependency change, so
 the agent can fix it.
 
+## Ecosystems
+
+| Ecosystem | Hook: commands | Hook: file writes | `check-manifest` / `audit` | Versions and advisories |
+|---|---|---|---|---|
+| npm | `npm`/`pnpm`/`yarn`/`bun`, `npx`, `pnpm dlx` | `package.json` | `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`, `package.json` | deps.dev + OSV |
+| PyPI | `pip`, `uv`, `uvx`, `pipx`, `poetry`, `pdm` | `requirements*.txt`, `pyproject.toml` | `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `pyproject.toml` | deps.dev + OSV |
+| Cargo | `cargo add\|install` | `Cargo.toml` | `Cargo.lock`, `Cargo.toml` | deps.dev + OSV |
+| Go | `go get\|install` | `go.mod` | `go.mod` | deps.dev + OSV (no graphs) |
+| RubyGems | `gem install`, `bundle add` | | `Gemfile.lock` | deps.dev + OSV (no graphs) |
+| NuGet | `dotnet add package` | | `packages.lock.json` | deps.dev + OSV (no graphs) |
+| Maven / Gradle | | `pom.xml`, `build.gradle`, `build.gradle.kts`, `gradle/libs.versions.toml` | `gradle.lockfile`, or the build files resolved through deps.dev | deps.dev + OSV |
+| Composer | `composer require`, `create-project` | `composer.json` | `composer.lock`, `composer.json` | Packagist + OSV + Packagist advisories |
+| GitHub Actions | | `.github/workflows/*.yml`, `action.yml` | a workflow, `action.yml`, `.github/workflows`, or the project root | OSV + GitHub API |
+
+**Maven and Gradle.** In `pom.xml`, `${...}` versions resolve from `<properties>` and `project.version`
+in the same file. In Gradle scripts, safectx reads `"g:a:v"` and map notation, `$var` from simple
+assignments and `gradle.properties`, and `libs.*` references to the version catalog. A dependency
+without a version (managed by a parent POM, a BOM or a platform) or with a computed one is skipped:
+checking some other version would be a guess. Without `gradle.lockfile`, deps.dev resolves the tree of
+each direct dependency.
+
+**Composer.** deps.dev does not index Packagist, so versions come from `repo.packagist.org/p2` and
+advisories from two sources: OSV (`Packagist`) and Packagist's security advisories API, which also
+carries FriendsOfPHP records. A version is clean only when both agree. Constraints (`^`, `~`, `*`,
+ranges, `|`/`||`) resolve the way Composer does. Packagist has no dependency graphs, so the transitive
+check needs `composer.lock`. Dev branches (`dev-main`) are not releases and are never recommended.
+An abandoned package shows as deprecated, with its replacement.
+
+**GitHub Actions.** For every `uses: owner/repo[/path]@ref` (local `./` actions and `docker://` images
+are skipped), safectx resolves the ref to its commit and its most specific tag (`v4` to `v4.2.2`) and
+checks the OSV `GitHub Actions` advisories for that release. OSV cannot compare versions for this
+ecosystem, so safectx reads the affected ranges itself. A compromised or vulnerable action
+(`tj-actions/changed-files`, GHSA-mrrh-fwg8-r2c3) is blocked, with the fixed release pinned to its
+SHA. A tag or branch ref gets a warning with the same release pinned to its SHA and the version as a
+comment; `SAFECTX_ACTIONS_PIN=enforce` blocks it. A branch, or a SHA that matches no recent tag, has
+no known version: when the action has advisories, the result is "unverified", never clean.
+`GITHUB_TOKEN` or `GH_TOKEN` raises GitHub's limit from 60 requests an hour; each action costs two to
+four requests, cached for an hour, because tags can move.
+
 ## How the safe version is chosen
 
 The newest version that is stable (no `rc`, `beta`, `canary`, Go pseudo-versions), not deprecated,
@@ -313,6 +357,8 @@ npx safectx check npm axios@1.7.9          # exit 1 if not ok
 npx safectx audit . --fail-on=high         # whole-tree audit for CI, exit 1 on findings
 npx safectx audit package-lock.json --json
 npx safectx upgrade npm zod 3.25.76 4.6.7  # what changes between two versions
+npx safectx audit .github/workflows        # GitHub Actions: advisories and SHA pinning
+npx safectx check composer guzzlehttp/guzzle:7.4.0
 ```
 
 ## Configuration
@@ -323,7 +369,7 @@ npx safectx upgrade npm zod 3.25.76 4.6.7  # what changes between two versions
 | `SAFECTX_MAX_CANDIDATES` | `12` | Versions inspected, newest first, before giving up on a safe one. |
 | `SAFECTX_CONTEXT7` | `fallback` | `off` never calls Context7. |
 | `CONTEXT7_API_KEY` | none | Raises Context7's rate limit when it is used. |
-| `GITHUB_TOKEN` / `GH_TOKEN` | none | Raises GitHub's rate limit for repo docs. Read-only use. |
+| `GITHUB_TOKEN` / `GH_TOKEN` | none | Raises GitHub's rate limit for repo docs and the Actions check. Read-only use. |
 | `SAFECTX_DOCS_BUDGET` | `10000` | Characters of docs per answer. |
 | `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Disk cache (docs 7 days, advisories 24 h). |
 | `SAFECTX_NO_CACHE` | unset | `1` disables the cache. |

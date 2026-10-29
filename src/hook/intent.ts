@@ -6,6 +6,7 @@
  */
 import path from 'node:path';
 import { type Ecosystem } from '../ecosystems.js';
+import { isPlatformPackage } from '../composer/manifest.js';
 import { normalizePypiName, parseFile, detectKind } from '../tree/lockfiles.js';
 
 export interface DepIntent {
@@ -71,7 +72,7 @@ export function splitPySpec(spec: string): [string, string | undefined] | undefi
 const VALUE_FLAGS = new Set([
   '-r', '--requirement', '-c', '--constraint', '-i', '--index-url', '--extra-index-url', '-t', '--target', '-e', '--editable',
   '--registry', '--prefix', '-C', '--cwd', '--dir', '--filter', '-w', '--workspace', '--python', '-p', '--group',
-  '--vers', '--version', '-v', '--features', '-F', '--source', '--rev', '--branch', '--tag', '--package',
+  '--vers', '--version', '-v', '--features', '-F', '--source', '--rev', '--branch', '--tag', '--package', '--working-dir',
 ]);
 
 function positional(args: string[]): { positional: string[]; flags: Map<string, string> } {
@@ -197,6 +198,10 @@ export function fromCommand(command: string, cwd: string, readFile: (p: string) 
       case 'dotnet':
         if (pos[0] === 'add' && pos[1] === 'package' && pos[2]) out.push({ ecosystem: 'nuget', name: pos[2], spec: flags.get('--version') ?? flags.get('-v'), source: src });
         break;
+      case 'composer':
+      case 'composer.phar':
+        out.push(...composerIntents(pos[0] === 'global' ? pos.slice(1) : pos, src));
+        break;
       default:
         break;
     }
@@ -204,19 +209,49 @@ export function fromCommand(command: string, cwd: string, readFile: (p: string) 
   return out;
 }
 
-const WATCHED = /(^|[\\/])(package\.json|requirements[^\\/]*\.(txt|in)|pyproject\.toml|Cargo\.toml|go\.mod)$/i;
-
-export function isWatchedFile(file: string): boolean {
-  return WATCHED.test(file) && !/node_modules/.test(file);
+/**
+ * composer require vendor/pkg[:constraint] (also "=constraint", or the constraint
+ * as the next argument) and composer create-project vendor/pkg [dir] [version].
+ */
+function composerIntents(pos: string[], src: string): DepIntent[] {
+  const out: DepIntent[] = [];
+  if (pos[0] === 'create-project' && pos[1]?.includes('/')) {
+    const [name, inline] = pos[1].split(/[:=]/);
+    out.push({ ecosystem: 'composer', name: name.toLowerCase(), spec: inline || pos[3], source: src, executes: true });
+    return out;
+  }
+  if (pos[0] !== 'require' && pos[0] !== 'req' && pos[0] !== 'r') return out;
+  const args = pos.slice(1);
+  for (let k = 0; k < args.length; k++) {
+    const a = args[k];
+    if (!a.includes('/')) continue;
+    const [raw, inline] = a.split(/[:= ](.*)/s);
+    const name = raw.trim().toLowerCase();
+    if (isPlatformPackage(name) || SKIP_SPEC.test(name)) continue;
+    let spec = inline?.trim() || undefined;
+    if (!spec && args[k + 1] && !args[k + 1].includes('/') && /^[\^~<>=!*v\d]/.test(args[k + 1])) spec = args[++k];
+    out.push({ ecosystem: 'composer', name, spec, source: src });
+  }
+  return out;
 }
 
-/** Dependencies added or re-versioned by a write, comparing against the file on disk. */
-export function fromFileWrite(file: string, newContent: string, oldContent: string | undefined): DepIntent[] {
+const WATCHED =
+  /(^|[\\/])(package\.json|requirements[^\\/]*\.(txt|in)|pyproject\.toml|Cargo\.toml|go\.mod|pom\.xml|build\.gradle(\.kts)?|libs\.versions\.toml|composer\.json)$/i;
+
+export function isWatchedFile(file: string): boolean {
+  return WATCHED.test(file) && !/node_modules|[\\/]vendor[\\/]/.test(file);
+}
+
+/**
+ * Dependencies added or re-versioned by a write, comparing against the file on disk.
+ * `siblings` carries what a build script resolves from other files (libs.versions.toml, gradle.properties).
+ */
+export function fromFileWrite(file: string, newContent: string, oldContent: string | undefined, siblings: Record<string, string> = {}): DepIntent[] {
   if (!isWatchedFile(file) || !detectKind(file)) return [];
   const declared = (content: string | undefined) => {
     if (!content) return new Map<string, string>();
     try {
-      const t = parseFile(path.basename(file), content);
+      const t = parseFile(path.basename(file), content, siblings);
       const list = t.declared ?? t.packages.map((p) => ({ name: p.name, spec: p.version }));
       return new Map(list.map((d) => [d.name, d.spec]));
     } catch {
@@ -242,5 +277,7 @@ function parseFileEcosystem(file: string): Ecosystem {
   if (/package\.json$/i.test(file)) return 'npm';
   if (/Cargo\.toml$/i.test(file)) return 'cargo';
   if (/go\.mod$/i.test(file)) return 'go';
+  if (/(pom\.xml|\.gradle(\.kts)?|libs\.versions\.toml)$/i.test(file)) return 'maven';
+  if (/composer\.json$/i.test(file)) return 'composer';
   return 'pypi';
 }
