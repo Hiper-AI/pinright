@@ -2,40 +2,74 @@
   "name": "safectx",
   "version": "0.2.0",
   "description": "Version-accurate library docs for coding agents, with a supply-chain verdict: safe versions, whole-tree audit and a pre-install hook (deps.dev + OSV).",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "supply-chain",
+    "security",
+    "sca",
+    "osv",
+    "deps.dev",
+    "npm",
+    "pypi",
+    "dependencies",
+    "vulnerabilities",
+    "typosquatting",
+    "provenance",
+    "coding-agents",
+    "claude-code",
+    "cursor",
+    "documentation"
+  ],
+  "homepage": "https://github.com/Hiper-AI/safectx#readme",
+  "bugs": {
+    "url": "https://github.com/Hiper-AI/safectx/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hiper-AI/safectx.git"
+  },
   "license": "MIT",
+  "author": "Hiper AI",
   "type": "module",
-  "main": "dist/cli.js",
   "bin": {
     "safectx": "dist/cli.js"
   },
   "files": [
-    "dist",
+    "dist/**/*.js",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "SECURITY.md"
   ],
   "engines": {
     "node": ">=20.9.0"
   },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "start": "node dist/cli.js",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "test": "vitest run",
     "bench": "tsx bench/run.ts",
+    "bench:agents": "tsx bench/agents/run.ts",
     "coverage:ecosystem": "tsx scripts/coverage.ts",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build",
-    "bench:agents": "tsx bench/agents/run.ts"
+    "prepack": "npm run clean && npm run build",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "semver": "^7.7.1",
-    "undici": "^6.21.0",
-    "zod": "^4.6.7"
+    "@modelcontextprotocol/server": "2.4.0",
+    "semver": "7.8.5",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^22.20.5",
     "@types/semver": "^7.5.8",
     "eslint": "^9.20.0",

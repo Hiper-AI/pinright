@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { checkPackages, formatBatch, MAX_BATCH } from './batch.js';
 import { auditActions, formatActionsAudit } from './actions/check.js';
@@ -16,6 +16,7 @@ import { getDocs } from './docs/index.js';
 import { ECOSYSTEMS, type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
 import { HttpError } from './http.js';
+import { PKG_VERSION } from './pkg.js';
 import { resolvePackage } from './mapping.js';
 import { describeInstalled, manifestsIn, Project, readSiblings, watchRoots } from './project.js';
 import { ecosystemHint, formatLibraryId, parseLibraryRef, searchPackages } from './search.js';
@@ -29,7 +30,7 @@ import { checkPackage, type Verdict } from './verdict.js';
 // Moved to project.ts; re-exported for existing importers.
 export { manifestsIn, readSiblings };
 
-export const SERVER_INFO = { name: 'safectx', version: '0.2.0' } as const;
+export const SERVER_INFO = { name: 'safectx', version: PKG_VERSION } as const;
 
 const VERDICT_RESULTS = 3;
 

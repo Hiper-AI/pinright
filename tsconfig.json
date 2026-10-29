@@ -12,7 +12,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": false,
-    "sourceMap": true
+    "sourceMap": false
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "bench", "scripts"]

@@ -13,8 +13,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { RootsListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
+import { type Server } from '@modelcontextprotocol/server';
 import { getPackage } from './advisories/depsdev.js';
 import { applyCooldownDays } from './config.js';
 import { type Ecosystem } from './ecosystems.js';
@@ -354,5 +353,5 @@ export function watchRoots(server: Server, project: Project): void {
     previous?.();
     refresh();
   };
-  server.setNotificationHandler(RootsListChangedNotificationSchema, async () => refresh());
+  server.setNotificationHandler('notifications/roots/list_changed', async () => refresh());
 }

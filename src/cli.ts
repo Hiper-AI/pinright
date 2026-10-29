@@ -11,9 +11,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { actionsAuditFails, auditActions, formatActionsAudit } from './actions/check.js';
 import { parseUses, workflowFiles } from './actions/workflow.js';
+import { PKG_VERSION } from './pkg.js';
 import { parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
 import { runClaudeHook, runCursorHook } from './hook/run.js';
@@ -185,7 +186,7 @@ async function main(): Promise<number> {
       return init(args);
     case '--version':
     case '-v':
-      console.log(readJson(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')).version);
+      console.log(PKG_VERSION);
       return 0;
     default:
       console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor]]');

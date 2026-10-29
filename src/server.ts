@@ -3,7 +3,7 @@
  * safectx over stdio. Configure it in your agent like Context7:
  *   { "mcpServers": { "safectx": { "command": "npx", "args": ["-y", "safectx"] } } }
  */
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { buildMcpServer } from './mcp.js';
 
 async function main(): Promise<void> {

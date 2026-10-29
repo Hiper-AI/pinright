@@ -2,8 +2,10 @@
  * One HTTP helper for every upstream. Timeouts always; errors carry the
  * status so callers can tell "not found" from "service down".
  */
-import { fetch, type RequestInit } from 'undici';
+// Node's built-in fetch (undici bundled in the runtime): no extra dependency.
+// Behind a proxy, recent Node 22/24 honour HTTP(S)_PROXY when NODE_USE_ENV_PROXY=1 (see SECURITY.md).
 import { config } from './config.js';
+import { PKG_VERSION } from './pkg.js';
 
 export class HttpError extends Error {
   constructor(
@@ -22,7 +24,7 @@ export interface HttpOptions {
   body?: unknown;
 }
 
-const USER_AGENT = 'safectx/0.1 (+https://github.com/Hiper-AI/safectx)';
+const USER_AGENT = `safectx/${PKG_VERSION} (+https://github.com/Hiper-AI/safectx)`;
 
 async function request(url: string, opts: HttpOptions = {}) {
   const controller = new AbortController();
