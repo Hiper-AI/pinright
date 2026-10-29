@@ -2030,19 +2030,19 @@ var require_semver2 = __commonJS({
 });
 
 // src/action/main.ts
-import fs7 from "node:fs";
-import path9 from "node:path";
+import fs8 from "node:fs";
+import path10 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/auditRun.ts
-import fs6 from "node:fs";
-import path8 from "node:path";
+import fs7 from "node:fs";
+import path9 from "node:path";
 
 // src/actions/check.ts
 var import_semver2 = __toESM(require_semver2(), 1);
 
 // src/cache.ts
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path2 from "node:path";
 
@@ -2088,29 +2088,49 @@ function applyCooldownDays(days) {
 }
 
 // src/cache.ts
+var MAX_TTL_MS = 366 * 24 * 36e5;
 function fileFor(key2) {
-  const hash2 = createHash("sha1").update(key2).digest("hex");
+  const hash2 = createHash("sha256").update(key2).digest("hex");
   return path2.join(config.cacheDir, hash2.slice(0, 2), `${hash2}.json`);
 }
+var vetted = /* @__PURE__ */ new Map();
+function cacheDirTrusted(dir = config.cacheDir) {
+  const hit = vetted.get(dir);
+  if (hit !== void 0) return hit;
+  let ok = false;
+  try {
+    fs.mkdirSync(dir, { recursive: true, mode: 448 });
+    const st = fs.lstatSync(dir);
+    const uid = process.getuid?.();
+    ok = st.isDirectory() && (uid === void 0 || st.uid === uid && (st.mode & 18) === 0);
+  } catch {
+    ok = false;
+  }
+  if (!ok && process.env.SAFECTX_DEBUG_HTTP === "1") process.stderr.write(`[safectx] cache disabled: ${dir} is not a private directory of this user
+`);
+  vetted.set(dir, ok);
+  return ok;
+}
 function cacheGet(key2) {
-  if (config.cacheDisabled) return void 0;
+  if (config.cacheDisabled || !cacheDirTrusted()) return void 0;
   try {
     const raw = fs.readFileSync(fileFor(key2), "utf8");
     const entry2 = JSON.parse(raw);
-    if (entry2.expiresAt < Date.now()) return void 0;
+    const now = Date.now();
+    if (typeof entry2?.expiresAt !== "number" || entry2.expiresAt < now || entry2.expiresAt > now + MAX_TTL_MS) return void 0;
     return entry2.value;
   } catch {
     return void 0;
   }
 }
 function cacheSet(key2, value, ttlMs) {
-  if (config.cacheDisabled) return;
+  if (config.cacheDisabled || !cacheDirTrusted()) return;
   try {
     const file2 = fileFor(key2);
-    fs.mkdirSync(path2.dirname(file2), { recursive: true });
-    const entry2 = { expiresAt: Date.now() + ttlMs, value };
-    const tmp = `${file2}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(entry2));
+    fs.mkdirSync(path2.dirname(file2), { recursive: true, mode: 448 });
+    const entry2 = { expiresAt: Date.now() + Math.min(ttlMs, MAX_TTL_MS), value };
+    const tmp = `${file2}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(entry2), { flag: "wx", mode: 384 });
     fs.renameSync(tmp, file2);
   } catch {
   }
@@ -2176,7 +2196,8 @@ function intHeader(res, name) {
   const n = Number.parseInt(res.headers.get(name) ?? "", 10);
   return Number.isFinite(n) ? n : void 0;
 }
-async function request(url2, opts = {}) {
+var MAX_TEXT_BYTES = 64e6;
+async function requestText(url2, opts = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.requestTimeoutMs);
   const init = {
@@ -2197,22 +2218,36 @@ async function request(url2, opts = {}) {
     });
     debug(init.method ?? "GET", url2, res.status);
     if (!res.ok) {
+      await res.body?.cancel().catch(() => void 0);
       const remaining = intHeader(res, "x-ratelimit-remaining");
       const resetSec = intHeader(res, "x-ratelimit-reset");
       throw new HttpError(res.status, url2, intHeader(res, "retry-after"), remaining !== void 0 || resetSec !== void 0 ? { remaining, resetSec } : void 0);
     }
-    return res;
+    const tooLarge = () => new Error(`${url2} is larger than ${MAX_TEXT_BYTES} bytes`);
+    if (Number.parseInt(res.headers.get("content-length") ?? "", 10) > MAX_TEXT_BYTES) {
+      controller.abort();
+      throw tooLarge();
+    }
+    const chunks = [];
+    let total = 0;
+    for await (const chunk of res.body ?? []) {
+      total += chunk.length;
+      if (total > MAX_TEXT_BYTES) {
+        controller.abort();
+        throw tooLarge();
+      }
+      chunks.push(Buffer.from(chunk));
+    }
+    return new TextDecoder("utf-8").decode(Buffer.concat(chunks));
   } finally {
     clearTimeout(timer);
   }
 }
 async function getJson(url2, opts) {
-  const res = await request(url2, opts);
-  return await res.json();
+  return JSON.parse(await requestText(url2, opts));
 }
 async function getText(url2, opts) {
-  const res = await request(url2, opts);
-  return await res.text();
+  return await requestText(url2, opts);
 }
 function isNotFound(err) {
   return err instanceof HttpError && err.status === 404;
@@ -2260,7 +2295,8 @@ var HOUR = 36e5;
 var blocks = /* @__PURE__ */ new Map();
 var blockKey = (authenticated) => `gh:ratelimit:${authenticated ? "token" : "anon"}`;
 function blockedUntil(authenticated, now = Date.now()) {
-  const until = Math.max(blocks.get(blockKey(authenticated)) ?? 0, cacheGet(blockKey(authenticated)) ?? 0);
+  const shared = Math.min(Number(cacheGet(blockKey(authenticated))) || 0, now + 2 * HOUR);
+  const until = Math.max(blocks.get(blockKey(authenticated)) ?? 0, shared);
   return until > now ? until : void 0;
 }
 function block(authenticated, until) {
@@ -2295,8 +2331,8 @@ function note(what, until, authenticated) {
   s.until = Math.max(s.until, until);
   s.authenticated = authenticated;
 }
-async function call(path10, opts, get) {
-  const url2 = `${GITHUB_API}${path10}`;
+async function call(path11, opts, get) {
+  const url2 = `${GITHUB_API}${path11}`;
   const token = mayAuthenticate(url2) ? await githubToken() : void 0;
   const authenticated = Boolean(token);
   const until = blockedUntil(authenticated);
@@ -2319,11 +2355,11 @@ async function call(path10, opts, get) {
     throw new GitHubRateLimitError(url2, limit, authenticated);
   }
 }
-function githubJson(path10, opts) {
-  return call(path10, opts, (url2, headers) => getJson(url2, { headers }));
+function githubJson(path11, opts) {
+  return call(path11, opts, (url2, headers) => getJson(url2, { headers }));
 }
-function githubText(path10, opts) {
-  return call(path10, opts, (url2, headers) => getText(url2, { headers }));
+function githubText(path11, opts) {
+  return call(path11, opts, (url2, headers) => getText(url2, { headers }));
 }
 
 // src/advisories/resolve.ts
@@ -2430,7 +2466,7 @@ function conjunction(group) {
 function satisfiesComposer(version3, constraint) {
   const v = parseVersion(version3);
   if (!v) return void 0;
-  const groups = constraint.split(/\s*\|\|?\s*/).filter((x) => x.trim());
+  const groups = constraint.split(/\|\|?/).map((x) => x.trim()).filter(Boolean);
   if (!groups.length) return true;
   let readable = false;
   for (const g of groups) {
@@ -2443,7 +2479,7 @@ function satisfiesComposer(version3, constraint) {
 }
 function fixedFromConstraint(constraint) {
   const out = [];
-  for (const g of constraint.split(/\s*\|\|?\s*/)) {
+  for (const g of constraint.split(/\|\|?/).map((x) => x.trim())) {
     const m = g.match(/(?:^|[\s,])<\s*v?(\d[^\s,]*)/);
     if (m) out.push(m[1]);
   }
@@ -2458,7 +2494,7 @@ function pickComposerVersion(constraint, versions) {
 var REPO = process.env.PACKAGIST_REPO_URL ?? "https://repo.packagist.org";
 var API = process.env.PACKAGIST_API_URL ?? "https://packagist.org";
 function isComposerName(name) {
-  return /^[a-z0-9]([_.-]?[a-z0-9]+)*\/[a-z0-9](([_.]|-{1,2})?[a-z0-9]+)*$/.test(name);
+  return /^[a-z0-9]+(?:[_.-][a-z0-9]+)*\/[a-z0-9]+(?:(?:[_.]|-{1,2})[a-z0-9]+)*$/.test(name);
 }
 function expandMinified(list) {
   const out = [];
@@ -2882,8 +2918,8 @@ function splitFences(text) {
   const out = [];
   let buf = [];
   let fence;
-  const flush = (code) => {
-    if (buf.length) out.push({ code, text: buf.join("\n") });
+  const flush = (code2) => {
+    if (buf.length) out.push({ code: code2, text: buf.join("\n") });
     buf = [];
   };
   for (const line of text.split("\n")) {
@@ -3157,7 +3193,7 @@ function lineAround(text, index) {
   const end = text.indexOf("\n", index);
   return { line: text.slice(start, end === -1 ? void 0 : end), col: index - start };
 }
-function hitsIn(segment, skel, code, offset) {
+function hitsIn(segment, skel, code2, offset) {
   const hits = [];
   for (const r of RULES) {
     const src = r.raw ? segment : skel;
@@ -3166,7 +3202,7 @@ function hitsIn(segment, skel, code, offset) {
       const index = m.index ?? 0;
       const { line, col } = lineAround(src, index);
       const descriptive = Boolean(r.imperative) && DESCRIPTIVE_BEFORE.test(line.slice(Math.max(0, col - 40), col));
-      const example = descriptive || r.kind !== "agent" && (code || quotedAt(line, col));
+      const example = descriptive || r.kind !== "agent" && (code2 || quotedAt(line, col));
       const weight = example ? r.example ?? r.weight * 0.5 : r.weight;
       hits.push({ id: r.id, kind: r.kind, weight, index: offset + index, direct: !example });
     }
@@ -3308,6 +3344,9 @@ async function queryBatch(items) {
       `${config.osvBaseUrl}/v1/querybatch`,
       { method: "POST", body }
     );
+    if (!Array.isArray(res?.results) || res.results.length !== chunk.length) {
+      throw new Error(`OSV querybatch returned ${Array.isArray(res?.results) ? res.results.length : "no"} results for ${chunk.length} queries`);
+    }
     for (let j = 0; j < chunk.length; j++) {
       const r = res.results[j];
       let ids = (r?.vulns ?? []).map((v) => v.id);
@@ -3533,7 +3572,8 @@ async function assessPackage(eco, name, requestedVersion) {
   }
   if (requestedVersion) {
     report.requested = await assessRequested(eco, name, requestedVersion);
-    if (report.requested.verdict !== "ok" && report.verdict === "ok") {
+    const definite = report.requested.verdict === "malicious" || report.requested.verdict === "unknown-package";
+    if (report.requested.verdict !== "ok" && (report.verdict === "ok" || definite)) {
       report.verdict = report.requested.verdict;
       report.reason = report.requested.verdict === "unknown-package" ? `version ${requestedVersion} of ${name} does not exist in ${eco}` : void 0;
     }
@@ -3853,6 +3893,7 @@ async function checkAction(use) {
     vulns = await actionAdvisories(name);
   } catch (err) {
     report.unverified = `osv.dev did not answer (${err.message})`;
+    report.advisoriesUnknown = true;
   }
   try {
     report.sha = report.pinned ? use.ref.toLowerCase() : await resolveRef(use.owner, use.repo, use.ref);
@@ -3883,8 +3924,9 @@ async function checkAction(use) {
           url: `https://osv.dev/vulnerability/${v.id}`
         }))
       );
-    } else if (!report.unverified) {
-      report.unverified = `${vulns.length} advisor${vulns.length === 1 ? "y exists" : "ies exist"} for ${name} and the release behind "${use.ref}" could not be told`;
+    } else {
+      report.unverified ??= `${vulns.length} advisor${vulns.length === 1 ? "y exists" : "ies exist"} for ${name} and the release behind "${use.ref}" could not be told`;
+      report.advisoriesUnknown = true;
     }
   }
   if (report.advisories.length) {
@@ -3940,6 +3982,7 @@ async function auditActions(files) {
     vulnerable: findings.filter((f) => f.advisories.length).length,
     unpinned: findings.filter((f) => !f.pinned).length,
     unverified: findings.filter((f) => f.unverified && !f.advisories.length).length,
+    advisoriesUnknown: findings.filter((f) => f.advisoriesUnknown && !f.advisories.length).length,
     missing: findings.filter((f) => !f.exists).length,
     bySeverity,
     malicious: 0,
@@ -3979,23 +4022,96 @@ function formatActionsAudit(a, maxFindings = 50) {
 function actionsAuditFails(a, floor, levels) {
   const s = a.bySeverity;
   if (levels.slice(floor).some((l) => s[l] > 0) || floor === 0 && s.unknown > 0) return true;
-  if (a.missing) return true;
+  if (a.missing || a.advisoriesUnknown) return true;
   return process.env.SAFECTX_ACTIONS_PIN === "enforce" && a.unpinned > 0;
+}
+
+// src/projectFile.ts
+import fs4 from "node:fs";
+import path5 from "node:path";
+var MAX_PROJECT_FILE_BYTES = 32 * 1024 * 1024;
+var ProjectFileError = class extends Error {
+  constructor(file2, reason) {
+    super(`${file2} not read: ${reason}`);
+    this.file = file2;
+    this.name = "ProjectFileError";
+  }
+  file;
+};
+function inside(dir, file2) {
+  const rel = path5.relative(dir, file2);
+  return rel === "" || !rel.startsWith("..") && !path5.isAbsolute(rel);
+}
+function readProjectFile(file2, opts = {}) {
+  const maxBytes = opts.maxBytes ?? MAX_PROJECT_FILE_BYTES;
+  let real;
+  try {
+    real = fs4.realpathSync(file2);
+  } catch (err) {
+    throw new ProjectFileError(file2, err.code ?? "cannot be resolved");
+  }
+  if (!opts.allowOutside) {
+    let root;
+    try {
+      root = fs4.realpathSync(opts.root ?? path5.dirname(path5.resolve(file2)));
+    } catch {
+      throw new ProjectFileError(file2, "its directory cannot be resolved");
+    }
+    if (!inside(root, real)) throw new ProjectFileError(file2, `it links outside ${opts.root ?? path5.dirname(path5.resolve(file2))}`);
+  }
+  const st = fs4.statSync(real);
+  if (!st.isFile()) throw new ProjectFileError(file2, "not a regular file");
+  if (st.size > maxBytes) throw new ProjectFileError(file2, `larger than ${maxBytes} bytes`);
+  const fd = fs4.openSync(real, "r");
+  try {
+    const buf = Buffer.alloc(Math.min(maxBytes + 1, Math.max(st.size + 1, 64 * 1024)));
+    let total = 0;
+    for (; ; ) {
+      if (total === buf.length) {
+        if (total > maxBytes) throw new ProjectFileError(file2, `larger than ${maxBytes} bytes`);
+        return readRest(fd, buf, maxBytes, file2);
+      }
+      const n = fs4.readSync(fd, buf, total, buf.length - total, null);
+      if (n === 0) return buf.subarray(0, total).toString("utf8");
+      total += n;
+    }
+  } finally {
+    fs4.closeSync(fd);
+  }
+}
+function readRest(fd, head, maxBytes, file2) {
+  const chunks = [head];
+  let total = head.length;
+  const chunk = Buffer.alloc(64 * 1024);
+  for (; ; ) {
+    const n = fs4.readSync(fd, chunk, 0, chunk.length, null);
+    if (n === 0) return Buffer.concat(chunks).toString("utf8");
+    total += n;
+    if (total > maxBytes) throw new ProjectFileError(file2, `larger than ${maxBytes} bytes`);
+    chunks.push(Buffer.from(chunk.subarray(0, n)));
+  }
+}
+function readProjectFileIfOk(file2, opts) {
+  try {
+    return readProjectFile(file2, opts);
+  } catch {
+    return void 0;
+  }
 }
 
 // src/sarif/build.ts
 import { createHash as createHash2 } from "node:crypto";
-import path5 from "node:path";
+import path6 from "node:path";
 import { pathToFileURL } from "node:url";
 
 // src/jvm/gradle.ts
 var CONF = String.raw`\b(\w*(?:implementation|Implementation|api|Api|compileOnly|CompileOnly|runtimeOnly|RuntimeOnly|compile|Compile|runtime|annotationProcessor|AnnotationProcessor|kapt|Kapt|ksp|Ksp|classpath))`;
-var STRING_DEP = new RegExp(`${CONF}\\s*\\(?\\s*(?:(?:platform|enforcedPlatform)\\s*\\(\\s*)?["']([^"'\\s]+:[^"'\\s]+)["']`, "g");
+var STRING_DEP = new RegExp(`${CONF}\\s*(?:\\(\\s*)?(?:(?:platform|enforcedPlatform)\\s*\\(\\s*)?["']([^"'\\s]+:[^"'\\s]+)["']`, "g");
 var MAP_DEP = new RegExp(
-  `${CONF}\\s*\\(?\\s*group\\s*[:=]\\s*["']([^"']+)["']\\s*,\\s*name\\s*[:=]\\s*["']([^"']+)["']\\s*(?:,\\s*version\\s*[:=]\\s*["']([^"']+)["'])?`,
+  `${CONF}\\s*(?:\\(\\s*)?group\\s*[:=]\\s*["']([^"']+)["']\\s*,\\s*name\\s*[:=]\\s*["']([^"']+)["']\\s*(?:,\\s*version\\s*[:=]\\s*["']([^"']+)["'])?`,
   "g"
 );
-var CATALOG_DEP = new RegExp(`${CONF}\\s*\\(?\\s*(?:(?:platform|enforcedPlatform)\\s*\\(\\s*)?libs\\.([A-Za-z0-9_.]+)`, "g");
+var CATALOG_DEP = new RegExp(`${CONF}\\s*(?:\\(\\s*)?(?:(?:platform|enforcedPlatform)\\s*\\(\\s*)?libs\\.([A-Za-z0-9_.]+)`, "g");
 var isTestConf = (c) => /^(test|androidTest|testFixtures)/.test(c);
 var catalogKey = (alias) => alias.replace(/[-_]/g, ".").toLowerCase();
 function variables(content, gradleProperties) {
@@ -4004,7 +4120,7 @@ function variables(content, gradleProperties) {
     const m = line.match(/^\s*([A-Za-z0-9_.-]+)\s*[=:]\s*(\S.*?)\s*$/);
     if (m && !line.trim().startsWith("#")) vars.set(m[1], m[2]);
   }
-  for (const m of content.matchAll(/^\s*(?:val|var|def|ext\.|project\.ext\.)?\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*["']([^"'$]+)["']/gm)) vars.set(m[1], m[2]);
+  for (const m of content.matchAll(/^[ \t]*(?:(?:val|var|def)[ \t]+|ext\.|project\.ext\.)?([A-Za-z_][A-Za-z0-9_]*)[ \t]*=[ \t]*["']([^"'$]+)["']/gm)) vars.set(m[1], m[2]);
   for (const m of content.matchAll(/extra\[\s*"([^"]+)"\s*\]\s*=\s*"([^"$]+)"/g)) vars.set(m[1], m[2]);
   for (const m of content.matchAll(/\bset\(\s*["']([^"']+)["']\s*,\s*["']([^"'$]+)["']\s*\)/g)) vars.set(m[1], m[2]);
   return vars;
@@ -4059,8 +4175,8 @@ function parseVersionCatalog(file2, content) {
   return { ecosystem: "maven", kind: "manifest", file: file2, packages: [], declared: [...parseCatalog(content).libraries.values()] };
 }
 function gradleDependencies(content, siblings = {}) {
-  const code = content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-  const vars = variables(code, siblings["gradle.properties"]);
+  const code2 = content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  const vars = variables(code2, siblings["gradle.properties"]);
   const catalog = siblings["libs.versions.toml"] ? parseCatalog(siblings["libs.versions.toml"]) : void 0;
   const out = [];
   const push = (conf, name, spec) => {
@@ -4068,14 +4184,14 @@ function gradleDependencies(content, siblings = {}) {
     const v = interpolate(spec, vars);
     if (v) out.push({ name, spec: v, dev: isTestConf(conf) || void 0 });
   };
-  for (const m of code.matchAll(STRING_DEP)) {
+  for (const m of code2.matchAll(STRING_DEP)) {
     const s = interpolate(m[2], vars);
     const coord = s ? coordinates(s) : void 0;
     if (coord) push(m[1], coord.name, coord.spec);
   }
-  for (const m of code.matchAll(MAP_DEP)) push(m[1], `${m[2]}:${m[3]}`, m[4]);
+  for (const m of code2.matchAll(MAP_DEP)) push(m[1], `${m[2]}:${m[3]}`, m[4]);
   if (catalog) {
-    for (const m of code.matchAll(CATALOG_DEP)) {
+    for (const m of code2.matchAll(CATALOG_DEP)) {
       const key2 = m[2].replace(/\.get\(\)$/, "").toLowerCase();
       if (key2.startsWith("versions.") || key2.startsWith("plugins.")) continue;
       const keys = key2.startsWith("bundles.") ? catalog.bundles.get(key2.slice("bundles.".length)) ?? [] : [key2];
@@ -4325,16 +4441,16 @@ function parseNpmLock(file2, content) {
     for (const [key2, e] of Object.entries(entries)) {
       if (!key2 || e.link || !e.version || !key2.includes("node_modules/")) continue;
       const name = npmNameFromKey(key2);
-      const path10 = pathOf.get(key2);
-      packages.push({ name, version: e.version, direct: key2 === `node_modules/${name}` && directNames.has(name), dev: Boolean(e.dev), path: path10 });
+      const path11 = pathOf.get(key2);
+      packages.push({ name, version: e.version, direct: key2 === `node_modules/${name}` && directNames.has(name), dev: Boolean(e.dev), path: path11 });
     }
   } else if (j.dependencies) {
     const walk = (deps, chain) => {
       for (const [name, d] of Object.entries(deps)) {
         if (!d?.version || String(d.version).startsWith("file:")) continue;
-        const path10 = [...chain, name];
-        packages.push({ name, version: d.version, direct: chain.length === 0, dev: Boolean(d.dev), path: path10 });
-        if (d.dependencies) walk(d.dependencies, path10);
+        const path11 = [...chain, name];
+        packages.push({ name, version: d.version, direct: chain.length === 0, dev: Boolean(d.dev), path: path11 });
+        if (d.dependencies) walk(d.dependencies, path11);
       }
     };
     walk(j.dependencies, []);
@@ -4633,14 +4749,14 @@ function inJsonSection(lines, section, key2, needle) {
   return void 0;
 }
 function inTomlTable(lines, table, key2, needle) {
-  let inside = false;
+  let inside2 = false;
   for (let i = 0; i < lines.length; i++) {
     const header = lines[i].match(/^\s*\[\[?([^\]]+)\]\]?\s*(#.*)?$/);
     if (header) {
-      inside = table.test(header[1].trim());
+      inside2 = table.test(header[1].trim());
       continue;
     }
-    if (inside && key2.test(lines[i])) return region(lines, i, needle);
+    if (inside2 && key2.test(lines[i])) return region(lines, i, needle);
   }
   return void 0;
 }
@@ -4933,11 +5049,11 @@ var MANIFEST_OF = {
   "gradle.lockfile": ["build.gradle.kts", "build.gradle"]
 };
 function manifestOf(lockfile, exists) {
-  const names = MANIFEST_OF[path5.basename(lockfile)] ?? [];
-  return names.map((n) => path5.join(path5.dirname(lockfile), n)).find(exists);
+  const names = MANIFEST_OF[path6.basename(lockfile)] ?? [];
+  return names.map((n) => path6.join(path6.dirname(lockfile), n)).find(exists);
 }
 function toUri(root, file2) {
-  const rel = path5.relative(root, path5.resolve(root, file2)).split(path5.sep).join("/");
+  const rel = path6.relative(root, path6.resolve(root, file2)).split(path6.sep).join("/");
   return rel.split("/").map(encodeURIComponent).join("/");
 }
 function buildSarif(input3) {
@@ -5068,7 +5184,7 @@ function buildSarif(input3) {
   }
   const ruleList = [...rules.values()].sort((x, y) => x.id.localeCompare(y.id));
   const index = new Map(ruleList.map((r, i) => [r.id, i]));
-  const rootUri = pathToFileURL(path5.resolve(input3.root)).href.replace(/\/?$/, "/");
+  const rootUri = pathToFileURL(path6.resolve(input3.root)).href.replace(/\/?$/, "/");
   return {
     $schema: SARIF_SCHEMA,
     version: "2.1.0",
@@ -5109,9 +5225,9 @@ function fixText(a, f) {
 }
 
 // src/teamConfig.ts
-import fs4 from "node:fs";
+import fs5 from "node:fs";
 import os2 from "node:os";
-import path6 from "node:path";
+import path7 from "node:path";
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -5930,10 +6046,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path10) {
-  if (!path10)
+function getElementAtPath(obj, path11) {
+  if (!path11)
     return obj;
-  return path10.reduce((acc, key2) => acc?.[key2], obj);
+  return path11.reduce((acc, key2) => acc?.[key2], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -6273,11 +6389,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path10, issues) {
+function prefixIssues(path11, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path10);
+    iss.path.unshift(path11);
     return iss;
   });
 }
@@ -6739,16 +6855,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path10 = []) => {
+  const processError = (error63, path11 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path10, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else {
-        const fullpath = [...path10, ...issue2.path];
+        const fullpath = [...path11, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -6787,17 +6903,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path10 = []) => {
+  const processError = (error63, path11 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path10, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else {
-        const fullpath = [...path10, ...issue2.path];
+        const fullpath = [...path11, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -6836,8 +6952,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path10 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path10) {
+  const path11 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path11) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -8214,12 +8330,12 @@ function isIso7064Mod97(iban3) {
   let remainder = 0;
   const len = iban3.length;
   for (let i = 4; i < len; i++) {
-    const code = iban3.charCodeAt(i);
-    remainder = (code >= 65 ? remainder * 100 + (code - 55) : remainder * 10 + (code - 48)) % 97;
+    const code2 = iban3.charCodeAt(i);
+    remainder = (code2 >= 65 ? remainder * 100 + (code2 - 55) : remainder * 10 + (code2 - 48)) % 97;
   }
   for (let i = 0; i < 4; i++) {
-    const code = iban3.charCodeAt(i);
-    remainder = (code >= 65 ? remainder * 100 + (code - 55) : remainder * 10 + (code - 48)) % 97;
+    const code2 = iban3.charCodeAt(i);
+    remainder = (code2 >= 65 ? remainder * 100 + (code2 - 55) : remainder * 10 + (code2 - 48)) % 97;
   }
   return remainder === 1;
 }
@@ -18165,12 +18281,12 @@ function compileFn(schema, options) {
   doc.write(outputAccessor === null ? `return true;` : `return ${outputAccessor};`);
   const constantNames = ["INVALID", ...ctx.constants.keys()];
   const constantValues = [INVALID, ...ctx.constants.values()];
-  const code = doc.content.join("\n");
+  const code2 = doc.content.join("\n");
   const fullCode = options?.debug ? constantNames.length > 0 ? `// Constants: ${constantNames.join(", ")}
-${code}` : code : "";
+${code2}` : code2 : "";
   const F = Function;
   const factoryCode = `return (input) => {
-${code}
+${code2}
 }`;
   let fn;
   try {
@@ -23975,13 +24091,13 @@ function resolveRef2(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path10 = ref.slice(1).split("/").filter(Boolean);
-  if (path10.length === 0) {
+  const path11 = ref.slice(1).split("/").filter(Boolean);
+  if (path11.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path10[0] === defsKey) {
-    const key2 = path10[1] === void 0 ? void 0 : decodeJSONPointerSegment(path10[1]);
+  if (path11[0] === defsKey) {
+    const key2 = path11[1] === void 0 ? void 0 : decodeJSONPointerSegment(path11[1]);
     if (!key2 || !ctx.defs[key2]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -25008,13 +25124,13 @@ function parseTeamConfig(content, file2 = CONFIG_FILE) {
   return { file: file2, config: parsed.data };
 }
 function findConfigFile(dir) {
-  const home = path6.resolve(os2.homedir());
-  let cur = path6.resolve(dir);
+  const home = path7.resolve(os2.homedir());
+  let cur = path7.resolve(dir);
   for (; ; ) {
-    const candidate = path6.join(cur, CONFIG_FILE);
-    if (fs4.existsSync(candidate)) return candidate;
-    if (fs4.existsSync(path6.join(cur, ".git")) || cur === home) return void 0;
-    const up = path6.dirname(cur);
+    const candidate = path7.join(cur, CONFIG_FILE);
+    if (fs5.existsSync(candidate)) return candidate;
+    if (fs5.existsSync(path7.join(cur, ".git")) || cur === home) return void 0;
+    const up = path7.dirname(cur);
     if (up === cur) return void 0;
     cur = up;
   }
@@ -25025,7 +25141,7 @@ function loadTeamConfig(dir) {
   if (!file2) return {};
   let stat;
   try {
-    stat = fs4.statSync(file2);
+    stat = fs5.statSync(file2);
   } catch (err) {
     return { file: file2, error: `${file2} cannot be read: ${err.message}` };
   }
@@ -25033,7 +25149,7 @@ function loadTeamConfig(dir) {
   if (hit && hit.mtimeMs === stat.mtimeMs) return hit.result;
   let result;
   try {
-    result = parseTeamConfig(fs4.readFileSync(file2, "utf8"), file2);
+    result = parseTeamConfig(readProjectFile(file2, { maxBytes: 1e6 }), file2);
   } catch (err) {
     result = { file: file2, error: `${file2} cannot be read: ${err.message}` };
   }
@@ -25074,7 +25190,7 @@ function denyEntry(p, eco, name) {
   return p.deny.find((d) => (!d.ecosystem || d.ecosystem === eco) && same(eco, d.name, name));
 }
 function denyMessage(p, d) {
-  return `denied by the project policy${p.file ? ` (${path6.basename(p.file)})` : ""}${d.reason ? `: ${d.reason}` : "."}`;
+  return `denied by the project policy${p.file ? ` (${path7.basename(p.file)})` : ""}${d.reason ? `: ${d.reason}` : "."}`;
 }
 var UNKNOWN_LICENSE = /^(non-standard|noassertion|unknown|unlicensed|other|)$/i;
 function licenseBranches(licenses) {
@@ -25132,7 +25248,7 @@ function checkLicenses(p, licenses) {
     }
     return { action: "ok" };
   }
-  return { action: "deny", message: `license ${shown} is not allowed by the project policy${p.file ? ` (${path6.basename(p.file)})` : ""}.` };
+  return { action: "deny", message: `license ${shown} is not allowed by the project policy${p.file ? ` (${path7.basename(p.file)})` : ""}.` };
 }
 var MAX_LICENSE_LOOKUPS = 60;
 async function treePolicyHits(p, tree) {
@@ -25253,8 +25369,15 @@ async function auditTree(tree, opts = {}) {
   extra?.ids.forEach((more, i) => ids[i].push(...more));
   const allIds = [...new Set(ids.flat())].filter((id) => !extra?.details.has(id));
   if (allIds.length > MAX_VULN_DETAILS) notes.push(`${allIds.length} advisories found; details fetched for the first ${MAX_VULN_DETAILS}.`);
+  const failed = new Set(allIds.slice(MAX_VULN_DETAILS));
   const details = new Map(
-    await pool(allIds.slice(0, MAX_VULN_DETAILS), 8, async (id) => [id, await getVuln(id).catch(() => void 0)])
+    await pool(allIds.slice(0, MAX_VULN_DETAILS), 8, async (id) => {
+      const v = await getVuln(id).catch(() => {
+        failed.add(id);
+        return void 0;
+      });
+      return [id, v];
+    })
   );
   for (const [id, v] of extra?.details ?? []) details.set(id, v);
   const findings = [];
@@ -25292,9 +25415,11 @@ async function auditTree(tree, opts = {}) {
   const remediation = await remediate(eco, packages, findings, notes);
   const bySeverity = { critical: 0, high: 0, moderate: 0, low: 0, unknown: 0 };
   let alerts = 0;
+  let unverifiedAlerts = 0;
   for (const f of findings) {
     for (const a of f.advisories) {
       alerts++;
+      if (failed.has(a.id)) unverifiedAlerts++;
       const s = (a.severity ?? "").toUpperCase();
       if (s === "CRITICAL") bySeverity.critical++;
       else if (s === "HIGH") bySeverity.high++;
@@ -25302,6 +25427,9 @@ async function auditTree(tree, opts = {}) {
       else if (s === "LOW") bySeverity.low++;
       else bySeverity.unknown++;
     }
+  }
+  if (unverifiedAlerts) {
+    notes.push(`${unverifiedAlerts} alert${unverifiedAlerts === 1 ? "" : "s"} could not be rated: OSV did not return the advisory details. Their severity is unknown, so they fail the audit at any threshold; run it again.`);
   }
   return {
     ecosystem: eco,
@@ -25312,6 +25440,7 @@ async function auditTree(tree, opts = {}) {
     alerts,
     bySeverity,
     malicious: findings.filter((f) => f.malicious).length,
+    unverifiedAlerts,
     findings,
     remediation,
     notes,
@@ -25430,8 +25559,8 @@ function formatTreeAudit(a, maxFindings = 15) {
 }
 
 // src/tree/discover.ts
-import fs5 from "node:fs";
-import path7 from "node:path";
+import fs6 from "node:fs";
+import path8 from "node:path";
 var LOCK_PRIORITY = [
   "package-lock.json",
   "npm-shrinkwrap.json",
@@ -25469,23 +25598,26 @@ function manifestsIn(dir) {
   const chosen = [];
   const taken = /* @__PURE__ */ new Set();
   for (const f of LOCK_PRIORITY) {
-    if (!fs5.existsSync(path7.join(dir, f))) continue;
+    if (!fs6.existsSync(path8.join(dir, f))) continue;
     const eco = ecosystemOfFile(f);
     if (taken.has(eco)) continue;
     taken.add(eco);
-    chosen.push(path7.join(dir, f));
+    chosen.push(path8.join(dir, f));
   }
   return chosen;
 }
 function readSiblings(file2) {
-  const dir = path7.dirname(file2);
+  const dir = path8.dirname(file2);
   const out = {};
   for (const s of ["package.json", "pyproject.toml", "Cargo.toml", "composer.json", "build.gradle.kts", "build.gradle", "gradle.properties"]) {
-    const p = path7.join(dir, s);
-    if (path7.basename(file2) !== s && fs5.existsSync(p)) out[s] = fs5.readFileSync(p, "utf8");
+    const p = path8.join(dir, s);
+    if (path8.basename(file2) === s || !fs6.existsSync(p)) continue;
+    const text2 = readProjectFileIfOk(p);
+    if (text2 !== void 0) out[s] = text2;
   }
-  const catalog = path7.join(dir, "gradle", "libs.versions.toml");
-  if (fs5.existsSync(catalog)) out["libs.versions.toml"] = fs5.readFileSync(catalog, "utf8");
+  const catalog = path8.join(dir, "gradle", "libs.versions.toml");
+  const text = fs6.existsSync(catalog) ? readProjectFileIfOk(catalog, { root: dir }) : void 0;
+  if (text !== void 0) out["libs.versions.toml"] = text;
   return out;
 }
 
@@ -32721,6 +32853,10 @@ function toFindings(p, v) {
   const out = [];
   const base = { name: p.name, version: p.version };
   const r = v.report;
+  if (r.verdict === "malicious" || r.requested?.verdict === "malicious") {
+    out.push({ ...base, kind: "malware", blocking: true, level: "error", message: `${p.name}@${p.version} is flagged as MALWARE. Remove it and rotate any secret the machine had access to.` });
+    return out;
+  }
   if (r.verdict === "possible-typosquat") {
     const like = v.typo?.lookalikeOf;
     out.push({
@@ -32783,14 +32919,14 @@ var AuditInputError = class extends Error {
 function loadPolicy(target, configFile) {
   let team;
   if (configFile) {
-    const file2 = path8.resolve(configFile);
+    const file2 = path9.resolve(configFile);
     try {
-      team = parseTeamConfig(fs6.readFileSync(file2, "utf8"), file2);
+      team = parseTeamConfig(readProjectFile(file2, { allowOutside: true }), file2);
     } catch (err) {
       team = { file: file2, error: `${file2} cannot be read: ${err.message}` };
     }
   } else {
-    const dir = fs6.statSync(target).isDirectory() ? target : path8.dirname(target);
+    const dir = fs7.statSync(target).isDirectory() ? target : path9.dirname(target);
     team = loadTeamConfig(dir);
   }
   if (team.error) return { policy: resolvePolicy(void 0, process.env, team.file), error: team.error };
@@ -32800,16 +32936,16 @@ function loadPolicy(target, configFile) {
   return { policy };
 }
 async function runAudit(opts) {
-  const target = path8.resolve(opts.target);
-  if (!fs6.existsSync(target)) throw new AuditInputError(`${target} does not exist`);
+  const target = path9.resolve(opts.target);
+  if (!fs7.existsSync(target)) throw new AuditInputError(`${target} does not exist`);
   const wf = workflowFiles(target);
-  const files = fs6.statSync(target).isDirectory() ? manifestsIn(target) : wf.length ? [] : [target];
+  const files = fs7.statSync(target).isDirectory() ? manifestsIn(target) : wf.length ? [] : [target];
   if (!files.length && !wf.length) throw new AuditInputError(`No supported lockfile, manifest or workflow in ${target}`);
   const { policy, error: error62 } = loadPolicy(target, opts.config);
   const out = [];
   const notes = [];
   for (const f of files) {
-    const tree = parseFile(f, fs6.readFileSync(f, "utf8"), readSiblings(f));
+    const tree = parseFile(f, readProjectFile(f), readSiblings(f));
     const packages = [];
     const audit = await auditTree(tree, { packagesOut: packages });
     const policyHits = await treePolicyHits(policy, tree).catch((err) => [{ kind: "note", text: `Policy not checked: ${err.message}` }]);
@@ -32822,7 +32958,7 @@ async function runAudit(opts) {
     }
     out.push({ tree, audit, packages, policy: policyHits, supply });
   }
-  const actions = wf.length ? await auditActions(wf.map((f) => ({ file: f, uses: parseUses(fs6.readFileSync(f, "utf8"), f) }))) : void 0;
+  const actions = wf.length ? await auditActions(wf.map((f) => ({ file: f, uses: parseUses(readProjectFile(f), f) }))) : void 0;
   return { target, files: out, actions, policy, policyError: error62, notes };
 }
 function auditExitCode(run, failOn) {
@@ -32831,7 +32967,7 @@ function auditExitCode(run, failOn) {
   const floor = SEVERITIES2.indexOf(failOn);
   const levels = SEVERITIES2;
   const bad = run.files.some(
-    (f) => f.audit.malicious > 0 || levels.slice(floor).some((s) => f.audit.bySeverity[s] > 0) || floor === 0 && f.audit.bySeverity.unknown > 0 || f.policy.some((h) => h.kind === "deny" || h.kind === "license") || f.supply.some((s) => s.blocking)
+    (f) => f.audit.malicious > 0 || f.audit.unverifiedAlerts > 0 || levels.slice(floor).some((s) => f.audit.bySeverity[s] > 0) || floor === 0 && f.audit.bySeverity.unknown > 0 || f.policy.some((h) => h.kind === "deny" || h.kind === "license") || f.supply.some((s) => s.blocking)
   );
   return bad || run.actions && actionsAuditFails(run.actions, floor, [...levels]) ? 1 : 0;
 }
@@ -32846,7 +32982,7 @@ function formatAuditRun(run, maxFindings = 50) {
   for (const f of run.files) {
     const lines = [formatTreeAudit(f.audit, maxFindings)];
     if (f.policy.length) {
-      lines.push(`Project policy (${run.policy.file ? path8.basename(run.policy.file) : "env"}):`, ...f.policy.map((h) => `  - ${h.text}`));
+      lines.push(`Project policy (${run.policy.file ? path9.basename(run.policy.file) : "env"}):`, ...f.policy.map((h) => `  - ${h.text}`));
     }
     if (f.supply.length) {
       lines.push("Supply chain (direct dependencies):", ...f.supply.slice(0, maxFindings).map((s) => `  - [${s.blocking ? "block" : s.level}] ${s.message}`));
@@ -32858,18 +32994,18 @@ function formatAuditRun(run, maxFindings = 50) {
   return parts.join("\n\n");
 }
 function sarifRoot(target, explicit) {
-  if (explicit) return path8.resolve(explicit);
-  const abs = path8.resolve(target);
-  const inside = (dir) => {
-    const rel = path8.relative(dir, abs);
-    return !rel.startsWith("..") && !path8.isAbsolute(rel);
+  if (explicit) return path9.resolve(explicit);
+  const abs = path9.resolve(target);
+  const inside2 = (dir) => {
+    const rel = path9.relative(dir, abs);
+    return !rel.startsWith("..") && !path9.isAbsolute(rel);
   };
-  const ws = process.env.GITHUB_WORKSPACE ? path8.resolve(process.env.GITHUB_WORKSPACE) : void 0;
-  if (ws && inside(ws)) return ws;
-  const start = fs6.existsSync(abs) && !fs6.statSync(abs).isDirectory() ? path8.dirname(abs) : abs;
+  const ws = process.env.GITHUB_WORKSPACE ? path9.resolve(process.env.GITHUB_WORKSPACE) : void 0;
+  if (ws && inside2(ws)) return ws;
+  const start = fs7.existsSync(abs) && !fs7.statSync(abs).isDirectory() ? path9.dirname(abs) : abs;
   for (let cur = start; ; ) {
-    if (fs6.existsSync(path8.join(cur, ".git"))) return cur;
-    const up = path8.dirname(cur);
+    if (fs7.existsSync(path9.join(cur, ".git"))) return cur;
+    const up = path9.dirname(cur);
     if (up === cur) return start;
     cur = up;
   }
@@ -32883,7 +33019,7 @@ function runToSarif(run, opts) {
     notes: [...run.policyError ? [`Policy error: ${run.policyError}`] : [], ...run.files.flatMap((f) => f.audit.notes), ...run.actions?.notes ?? []],
     read: (file2) => {
       try {
-        return fs6.readFileSync(file2, "utf8");
+        return readProjectFile(file2);
       } catch {
         return void 0;
       }
@@ -32892,6 +33028,7 @@ function runToSarif(run, opts) {
 }
 
 // src/sarif/summary.ts
+import { randomUUID } from "node:crypto";
 function sarifRows(log) {
   const run = log.runs[0];
   const rules = new Map((run?.tool?.driver?.rules ?? []).map((r) => [r.id, r]));
@@ -32911,7 +33048,8 @@ function sarifRows(log) {
   });
 }
 var bucket = (r) => r.score === void 0 ? r.level === "error" ? "high" : r.level === "warning" ? "unrated" : "note" : r.score >= 9 ? "critical" : r.score >= 7 ? "high" : r.score >= 4 ? "medium" : "low";
-var cell = (s) => s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+var cell = (s) => s.replace(/\r?\n/g, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/([\\`*_[\]()!|~])/g, "\\$1");
+var code = (s) => `\`${s.replace(/\r?\n/g, " ").replace(/`/g, "'").replace(/\|/g, "\\|")}\``;
 var rank = (r) => r.score ?? (r.level === "error" ? 7 : r.level === "warning" ? 4 : 0);
 function summaryMarkdown(log, opts) {
   const rows = sarifRows(log);
@@ -32931,7 +33069,7 @@ function summaryMarkdown(log, opts) {
   if (rows.length) {
     const top = [...rows].sort((a, b) => rank(b) - rank(a)).slice(0, max);
     out.push("", "| Severity | Rule | Where | Finding |", "| --- | --- | --- | --- |");
-    for (const r of top) out.push(`| ${bucket(r)} | \`${cell(r.ruleId)}\` | \`${cell(r.file)}:${r.line}\` | ${cell(r.message)} |`);
+    for (const r of top) out.push(`| ${bucket(r)} | ${code(r.ruleId)} | ${code(`${r.file}:${r.line}`)} | ${cell(r.message)} |`);
     if (rows.length > top.length) out.push("", `... and ${rows.length - top.length} more.`);
   }
   if (opts.sarifFile) out.push("", `SARIF: \`${opts.sarifFile}\`${opts.uploaded ? ", uploaded to code scanning by the next step" : ""}.`);
@@ -32953,6 +33091,13 @@ function annotations(log, max = 10) {
   }
   return out;
 }
+function fenceCommands(text, opts = {}) {
+  if (!(opts.actions ?? process.env.GITHUB_ACTIONS === "true")) return text;
+  const token = opts.token ?? randomUUID().replace(/-/g, "");
+  return `::stop-commands::${token}
+${text.split(token).join("[token]")}
+::${token}::`;
+}
 
 // src/action/main.ts
 var env = process.env;
@@ -32963,20 +33108,20 @@ var flag = (name, fallback) => {
 };
 function setOutput(name, value) {
   const file2 = env.GITHUB_OUTPUT;
-  if (file2) fs7.appendFileSync(file2, `${name}=${value}
+  if (file2) fs8.appendFileSync(file2, `${name}=${value}
 `);
   else console.log(`[safectx] output ${name}=${value}`);
 }
 function version2() {
   try {
-    return JSON.parse(fs7.readFileSync(path9.join(path9.dirname(fileURLToPath2(import.meta.url)), "..", "package.json"), "utf8")).version;
+    return JSON.parse(fs8.readFileSync(path10.join(path10.dirname(fileURLToPath2(import.meta.url)), "..", "package.json"), "utf8")).version;
   } catch {
     return "0.0.0";
   }
 }
 async function main() {
   const workspace = env.GITHUB_WORKSPACE ?? process.cwd();
-  const target = path9.resolve(workspace, input2("PATH", "."));
+  const target = path10.resolve(workspace, input2("PATH", "."));
   const failOnRaw = input2("FAIL_ON", "high");
   const failOn = parseFailOn(failOnRaw);
   if (!failOn) {
@@ -32988,7 +33133,7 @@ async function main() {
   try {
     run = await runAudit({
       target,
-      config: configInput ? path9.resolve(workspace, configInput) : void 0,
+      config: configInput ? path10.resolve(workspace, configInput) : void 0,
       supplyChain: flag("SUPPLY_CHAIN", true)
     });
   } catch (err) {
@@ -32996,35 +33141,35 @@ async function main() {
     console.log(`::error title=safectx::${msg.replace(/\r?\n/g, " ")}`);
     return err instanceof AuditInputError ? 2 : 3;
   }
-  const code = auditExitCode(run, failOn);
+  const code2 = auditExitCode(run, failOn);
   console.log("::group::safectx report");
-  console.log(formatAuditRun(run, 100));
+  console.log(fenceCommands(formatAuditRun(run, 100), { actions: true }));
   console.log("::endgroup::");
   const log = runToSarif(run, { root: sarifRoot(target, workspace), toolVersion: version2() });
   let sarifFile = "";
   if (flag("SARIF", true)) {
-    sarifFile = path9.join(env.RUNNER_TEMP ?? path9.join(workspace, ".safectx"), "safectx", "results.sarif");
-    fs7.mkdirSync(path9.dirname(sarifFile), { recursive: true });
-    fs7.writeFileSync(sarifFile, JSON.stringify(log));
+    sarifFile = path10.join(env.RUNNER_TEMP ?? path10.join(workspace, ".safectx"), "safectx", "results.sarif");
+    fs8.mkdirSync(path10.dirname(sarifFile), { recursive: true });
+    fs8.writeFileSync(sarifFile, JSON.stringify(log));
   }
   if (flag("ANNOTATIONS", true)) for (const line of annotations(log)) console.log(line);
   if (env.GITHUB_STEP_SUMMARY) {
-    fs7.appendFileSync(
+    fs8.appendFileSync(
       env.GITHUB_STEP_SUMMARY,
-      summaryMarkdown(log, { exitCode: code, failOn, sarifFile: sarifFile ? path9.basename(sarifFile) : void 0, uploaded: Boolean(sarifFile) && flag("UPLOAD", true) })
+      summaryMarkdown(log, { exitCode: code2, failOn, sarifFile: sarifFile ? path10.basename(sarifFile) : void 0, uploaded: Boolean(sarifFile) && flag("UPLOAD", true) })
     );
   }
   setOutput("sarif-file", sarifFile);
   setOutput("results", log.runs[0].results.length);
-  return code;
+  return code2;
 }
 main().then(
-  (code) => {
-    setOutput("exit-code", code);
+  (code2) => {
+    setOutput("exit-code", code2);
     process.exit(0);
   },
   (err) => {
-    console.log(`::error title=safectx::${err.message}`);
+    console.log(`::error title=safectx::${err.message.replace(/\r?\n/g, " ")}`);
     setOutput("exit-code", 3);
     process.exit(0);
   }
