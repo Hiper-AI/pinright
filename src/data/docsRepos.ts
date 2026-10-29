@@ -4,13 +4,18 @@
  * index, a wiki. Also the "split" families (LangChain) whose features ship in
  * sibling packages that a project has to install by name.
  *
- * Only PyPI entries for now; npm discovery is unchanged.
+ * npm packages normally document themselves (published files, repo at the tag);
+ * the npm entries are the exceptions whose docs live only in a site repo.
  */
 import { type Ecosystem } from '../ecosystems.js';
 
 export interface DocsSource {
-  /** A GitHub repo holding the docs; `paths` are path prefixes (or exact files) inside it. */
-  repo?: { owner: string; repo: string; paths: string[]; exclude?: RegExp };
+  /**
+   * A GitHub repo holding the docs; `paths` are path prefixes (or exact files) inside it.
+   * `fill` marks the guide pages that may fill the answer without a path match when the
+   * docs set is too large for all of it to (Tailwind's 200 pages are mostly one per utility).
+   */
+  repo?: { owner: string; repo: string; paths: string[]; exclude?: RegExp; fill?: RegExp };
   /** An llms.txt-style index (markdown list of links) whose pages are served as markdown. */
   llmsIndex?: string;
   /** Docs written for several languages with `:::python` / `:::js` blocks: keep this one. */
@@ -42,12 +47,28 @@ const PYPI: { match: RegExp; source: DocsSource }[] = [
   },
 ];
 
+const NPM: { match: RegExp; source: DocsSource }[] = [
+  // tailwindcss.com is built from this repo: one .mdx per page, no llms.txt; the npm package ships only a README.
+  {
+    match: /^(tailwindcss|@tailwindcss\/.+)$/,
+    source: {
+      repo: {
+        owner: 'tailwindlabs',
+        repo: 'tailwindcss.com',
+        paths: ['src/docs/'],
+        fill: /\/(theme|adding-custom-styles|functions-and-directives|dark-mode|styling-with-utility-classes|hover-focus-and-other-states|responsive-design|detecting-classes-in-source-files|preflight|compatibility)\.mdx$/,
+      },
+    },
+  },
+];
+
 /** PyPI normalizes names: case-insensitive, with "-", "_" and "." equivalent. */
 export function normalizePypiName(name: string): string {
   return name.toLowerCase().replace(/[-_.]+/g, '-');
 }
 
 export function docsSourceFor(eco: Ecosystem, name: string): DocsSource | undefined {
+  if (eco === 'npm') return NPM.find((e) => e.match.test(name))?.source;
   if (eco !== 'pypi') return undefined;
   const n = normalizePypiName(name);
   return PYPI.find((e) => e.match.test(n))?.source;

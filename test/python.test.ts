@@ -285,7 +285,16 @@ describe('distributions and notes', () => {
     expect(notes).not.toContain('langchain-core'); // a declared dependency
   });
 
-  it('maps packages to docs living elsewhere, PyPI only', () => {
+  it('maps npm packages whose docs live only in a site repo (Tailwind)', () => {
+    const tw = docsSourceFor('npm', 'tailwindcss')?.repo;
+    expect(tw).toMatchObject({ owner: 'tailwindlabs', repo: 'tailwindcss.com', paths: ['src/docs/'] });
+    expect(docsSourceFor('npm', '@tailwindcss/vite')?.repo?.repo).toBe('tailwindcss.com');
+    expect(tw?.fill?.test('src/docs/theme.mdx')).toBe(true);
+    expect(tw?.fill?.test('src/docs/backdrop-filter-blur.mdx')).toBe(false);
+    expect(docsSourceFor('npm', 'tailwindcss-animate')).toBeUndefined();
+  });
+
+  it('maps packages to docs living elsewhere', () => {
     expect(normalizePypiName('LangChain_Text.Splitters')).toBe('langchain-text-splitters');
     expect(docsSourceFor('pypi', 'LangChain_Text-Splitters')?.llmsIndex).toMatch(/docs\.langchain\.com/);
     expect(docsSourceFor('pypi', 'langchain-core')?.repo?.repo).toBe('docs');

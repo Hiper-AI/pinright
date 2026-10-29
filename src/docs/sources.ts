@@ -192,7 +192,7 @@ export async function repoFiles(meta: PackageMeta): Promise<{ files: RemoteFile[
  * specific version.
  */
 export async function docsRepoFiles(src: NonNullable<DocsSource['repo']>): Promise<RemoteFile[]> {
-  const { owner, repo, paths, exclude } = src;
+  const { owner, repo, paths, exclude, fill } = src;
   const listing = await apiListing(owner, repo, 'HEAD').catch(() => undefined);
   const inScope = (p: string) => paths.some((prefix) => p === prefix || (prefix.endsWith('/') && p.startsWith(prefix)));
   const scoped = docsOnly(listing?.files ?? []).filter((f) => inScope(f.path) && !exclude?.test(f.path));
@@ -204,7 +204,7 @@ export async function docsRepoFiles(src: NonNullable<DocsSource['repo']>): Promi
     label: `${owner}/${repo}/${f.path} (docs repo, default branch)`,
     versionAccurate: false,
     // A small docs set can fill the budget; a large one (hundreds of integration pages) only by path match.
-    fill: scoped.length <= 60,
+    fill: scoped.length <= 60 || Boolean(fill?.test(f.path)),
   }));
 }
 
