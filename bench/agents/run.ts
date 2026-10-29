@@ -58,7 +58,6 @@ await runJobs(jobs, {
   model,
   concurrency,
   mcp: MCP,
-  // safectx arms run with Context7 off: this run measures safectx's own docs.
-  env: () => ({ SAFECTX_CONTEXT7: 'off' }),
+  env: () => ({}),
   settings: (arm) => (HOOKED.has(arm) ? hookSettings : undefined),
 });

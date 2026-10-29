@@ -5,6 +5,8 @@ tasks that only come out right with the API of a library's current major, run by
 headless mode with and without safectx. We install, build and smoke-test each project at runtime, and
 check it for the current API, for APIs the major removed and for deprecated ones.
 
+The runs predate a rename: the docs tool, `get-docs` now, was called `query-docs` then.
+
 Short version: with safectx the agent wrote the current API in 16 of 16 runs; without docs, in 12 of 16.
 One library explains most of the gap, AI SDK 7 (released 2026-06-25); two more runs broke on version
 pins. Sonnet 5.5 already knows Next 16, Tailwind 4, Zod 4, Express 5, ESLint 10, Pydantic 2 and
@@ -93,9 +95,9 @@ Each cell: runs with the current API / runs that work (build + smoke test) / run
 
 ### Docs tool usage
 
-| Arm | Calls by tool (total over all runs) | query-docs answers with no matching docs |
+| Arm | Calls by tool (total over all runs) | get-docs answers with no matching docs |
 |---|---|---|
-| safectx | safectx__check-packages 20, safectx__query-docs 32, safectx__check-package 3, safectx__check-manifest 1 | 2 |
+| safectx | safectx__check-packages 20, safectx__get-docs 32, safectx__check-package 3, safectx__check-manifest 1 | 2 |
 
 <!-- generated:end -->
 
@@ -114,7 +116,7 @@ Each cell: runs with the current API / runs that work (build + smoke test) / run
 
 `bench/docs/retrieval.ts` sends safectx's docs pipeline 25 questions an agent asks on these tasks, some
 phrased with the old API's words ("middleware", "darkMode class"), and checks that the answer shows the
-current API. `bench/docs/replay.ts` replays the exact `query-docs` calls the agents made in the run and
+current API. `bench/docs/replay.ts` replays the exact `get-docs` calls the agents made in the run and
 counts the task's new-API markers in the answers. On the base code it returns answers of the same
 length and with the same markers as the ones recorded in the transcripts.
 
@@ -202,7 +204,7 @@ npx tsx bench/docs/selftest.ts                      # scorer against reference a
 GITHUB_TOKEN=... npx tsx bench/docs/run.ts --reps 2 --concurrency 2 --stamp <stamp>
 npx tsx bench/docs/score.ts <stamp> --concurrency 2
 npx tsx bench/docs/report.ts <stamp>                # fills the Results section above
-SAFECTX_CONTEXT7=off GITHUB_TOKEN=... npx tsx bench/docs/retrieval.ts
-SAFECTX_CONTEXT7=off GITHUB_TOKEN=... npx tsx bench/docs/replay.ts <stamp>
+GITHUB_TOKEN=... npx tsx bench/docs/retrieval.ts
+GITHUB_TOKEN=... npx tsx bench/docs/replay.ts <stamp>
 npx tsx bench/docs/calls.ts <stamp> <task> safectx  # what each docs call returned
 ```

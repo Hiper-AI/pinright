@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { refFromId } from '../src/mcp.js';
 
-describe('query-docs library ids', () => {
+describe('get-docs library ids', () => {
   it('takes ecosystem and name from our ids', async () => {
     expect(await refFromId('npm:next@16.4.3')).toEqual({ ecosystem: 'npm', name: 'next', version: '16.4.3' });
     expect(await refFromId('pypi:pydantic')).toEqual({ ecosystem: 'pypi', name: 'pydantic' });

@@ -23,7 +23,7 @@ const pct = (n: number, d: number) => (d ? `${Math.round((100 * n) / d)}%` : 'n/
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
 const f1 = (x: number) => (Number.isFinite(x) ? x.toFixed(1) : 'n/a');
 const f2 = (x: number) => (Number.isFinite(x) ? x.toFixed(2) : 'n/a');
-const docsCalls = (s: DocsRunScore) => s.calls.filter((c) => /query-docs|get-library-docs|upgrade-guide/.test(c.tool));
+const docsCalls = (s: DocsRunScore) => s.calls.filter((c) => /(get|query)-docs|upgrade-guide/.test(c.tool));
 
 const L: string[] = [];
 const row = (cells: string[]) => L.push(`| ${cells.join(' | ')} |`);
@@ -101,12 +101,12 @@ for (const a of arms) {
 }
 
 L.push('### Docs tool usage', '');
-head(['Arm', 'Calls by tool (total over all runs)', 'query-docs answers with no matching docs']);
+head(['Arm', 'Calls by tool (total over all runs)', 'get-docs answers with no matching docs']);
 for (const a of arms.filter((x) => x !== 'no-docs')) {
   const calls = by(a).flatMap((r) => r.calls);
   const tools = new Map<string, number>();
   for (const c of calls) tools.set(c.tool, (tools.get(c.tool) ?? 0) + 1);
-  const q = calls.filter((c) => /query-docs$/.test(c.tool));
+  const q = calls.filter((c) => /(get|query)-docs$/.test(c.tool));
   row([
     label(a),
     [...tools.entries()].map(([k, n]) => `${k} ${n}`).join(', '),

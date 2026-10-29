@@ -1,11 +1,11 @@
 /**
- * Retrieval probe, no agent in the loop: asks safectx's query-docs pipeline
+ * Retrieval probe, no agent in the loop: asks safectx's get-docs pipeline
  * (src/docs getDocs) the questions an agent asks for each task, including the
  * ones phrased with the old API's words, and checks whether the answer shows
  * the current API. The agent runs mix docs quality with what the model already
  * knows; this isolates the docs.
  *
- *   SAFECTX_CONTEXT7=off GITHUB_TOKEN=... npx tsx bench/docs/retrieval.ts [--only task1,task2] [--show]
+ *   GITHUB_TOKEN=... npx tsx bench/docs/retrieval.ts [--only task1,task2] [--show]
  */
 import { getDocs } from '../../src/docs/index.js';
 import { type Ecosystem } from '../../src/ecosystems.js';
