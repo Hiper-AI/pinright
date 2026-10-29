@@ -137,7 +137,7 @@ function pythonDeclared(file: string, content: string, seen = new Set<string>())
       // unreadable: the loose pass below still runs
     }
     // -r / -c includes, relative to the file.
-    for (const m of content.matchAll(/^\s*-(?:r|c|-requirement|-constraint)[\s=]+(\S+)/gm)) {
+    for (const m of content.matchAll(/^[ \t]*-(?:r|c|-requirement|-constraint)[ \t=]+(\S+)/gm)) {
       const inc = path.resolve(path.dirname(file), m[1]);
       if (seen.has(inc)) continue;
       seen.add(inc);
@@ -151,8 +151,8 @@ function pythonDeclared(file: string, content: string, seen = new Set<string>())
   } else {
     // pyproject.toml, setup.py, setup.cfg, Pipfile: every quoted requirement and every "name =" key.
     for (const m of content.matchAll(/["']([A-Za-z0-9][A-Za-z0-9_.-]*)\s*(?:\[[^\]]*\])?\s*(?:[<>=!~;@ ][^"']*)?["']/g)) out.push(m[1]);
-    for (const m of content.matchAll(/^\s*([A-Za-z0-9][A-Za-z0-9_.-]*)\s*=/gm)) out.push(m[1]);
-    for (const m of content.matchAll(/^\s+([A-Za-z0-9][A-Za-z0-9_.-]*)\s*(?:[<>=!~;[]|$)/gm)) out.push(m[1]);
+    for (const m of content.matchAll(/^[ \t]*([A-Za-z0-9][A-Za-z0-9_.-]*)[ \t]*=/gm)) out.push(m[1]);
+    for (const m of content.matchAll(/^[ \t]+([A-Za-z0-9][A-Za-z0-9_.-]*)[ \t]*(?:[<>=!~;[]|$)/gm)) out.push(m[1]);
   }
   return out.map(normalizePypiName);
 }
@@ -329,7 +329,7 @@ export async function undeclaredImportNotes(abs: string, next: string, old: stri
   project.local = scan.local;
   if (lang === 'js') project.aliases = jsAliases(dir, project.local);
   if (lang === 'python') {
-    const own = read(path.join(dir, 'pyproject.toml'))?.match(/^\s*name\s*=\s*["']([^"']+)["']/m)?.[1];
+    const own = read(path.join(dir, 'pyproject.toml'))?.match(/^[ \t]*name[ \t]*=[ \t]*["']([^"']+)["']/m)?.[1];
     if (own) project.local.add(own.replace(/-/g, '_'));
   }
   if (!kind.manifest) {

@@ -44,7 +44,9 @@ export interface PackagistAdvisory {
 
 /** "vendor/pkg" with Composer's naming rules; anything else is not a Packagist name. */
 export function isComposerName(name: string): boolean {
-  return /^[a-z0-9]([_.-]?[a-z0-9]+)*\/[a-z0-9](([_.]|-{1,2})?[a-z0-9]+)*$/.test(name);
+  // Composer's own pattern nests an optional separator inside a repeated group, which backtracks
+  // exponentially ("aaaa...a!" of 30 characters takes minutes). Same language, one way to match it.
+  return /^[a-z0-9]+(?:[_.-][a-z0-9]+)*\/[a-z0-9]+(?:(?:[_.]|-{1,2})[a-z0-9]+)*$/.test(name);
 }
 
 /**

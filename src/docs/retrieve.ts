@@ -54,6 +54,19 @@ function splitLong(title: string, body: string): { title: string; text: string }
   return out;
 }
 
+/**
+ * "Title ##" -> "Title": an ATX heading's optional closing sequence, stripped by hand. The regex
+ * that did it (lazy text, then whitespace, hashes, whitespace) backtracked cubically on a heading
+ * full of spaces.
+ */
+export function closingHashes(s: string): string {
+  const t = s.trimEnd();
+  let end = t.length;
+  while (end > 0 && t[end - 1] === '#') end--;
+  const u = t.slice(0, end);
+  return u === t || u === '' || /\s$/.test(u) ? u.trimEnd() || t : t;
+}
+
 /** Markdown/MDX/RST: one chunk per heading, carrying the heading trail as title. */
 export function chunkMarkdown(content: string, rstHeadings = false): { title: string; text: string }[] {
   // YAML front matter: keep its title as the first heading, drop the rest.
@@ -76,7 +89,7 @@ export function chunkMarkdown(content: string, rstHeadings = false): { title: st
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
-    const md = !inFence && line.match(/^(#{1,4})\s+(.+?)\s*#*\s*$/);
+    const md = !inFence && line.match(/^(#{1,4})\s+(\S.*)$/);
     // RST: a title line followed by ==== / ---- / ~~~~ underline.
     const rst = rstHeadings && !inFence && /^[=\-~^]{3,}\s*$/.test(lines[i + 1] ?? '') && line.trim() && !/^[=\-~^]{3,}/.test(line);
     if (md || rst) {
@@ -84,7 +97,7 @@ export function chunkMarkdown(content: string, rstHeadings = false): { title: st
       const level = md ? md[1].length : ({ '=': 1, '-': 2, '~': 3, '^': 4 } as Record<string, number>)[lines[i + 1].trim()[0]] ?? 2;
       trail.length = level - 1;
       // "{ #anchor }" suffixes (mkdocs) are noise in a title.
-      trail[level - 1] = (md ? md[2] : line.trim()).replace(/\s*\{\s*#[^}]*\}\s*$/, '');
+      trail[level - 1] = (md ? closingHashes(md[2]) : line.trim()).replace(/(?<!\s)\s*\{\s*#[^{}]*\}\s*$/, '');
       buf.push(md ? line : `## ${line.trim()}`);
       if (rst) i++;
       continue;

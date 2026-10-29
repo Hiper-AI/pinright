@@ -154,7 +154,7 @@ export function formatApiDiff(d: { diffs: EntryDiff[]; removedEntries: string[];
 export function cleanMdx(s: string): string {
   return s
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-    .replace(/^\s*<\/?[A-Z][\w.]*(\s[^>]*)?\/?>\s*$/gm, '')
+    .replace(/^[ \t]*<\/?[A-Z][\w.]*(\s[^>]*)?\/?>\s*$/gm, '')
     .replace(/\n{3,}/g, '\n\n');
 }
 

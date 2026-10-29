@@ -127,7 +127,7 @@ export function parseDts(src: string): ParsedDts {
     }
     if ((m = stmt.match(/^export\s+(?:type\s+)?\{([^}]*)\}\s*(?:from\s+['"]([^'"]+)['"])?/))) {
       for (const part of m[1].split(',').map((p) => p.trim().replace(/^type\s+/, '')).filter(Boolean)) {
-        const [name, as] = part.split(/\s+as\s+/).map((x) => x.trim());
+        const [name, as] = part.split(/(?<!\s)\s+as\s+/).map((x) => x.trim());
         if (m[2]) res.namedFrom.push({ name, as: as ?? name, from: m[2] });
         else if (nsImports.has(name)) res.namespaceFrom.push({ as: as ?? name, from: nsImports.get(name) as string });
         else res.localExports.push({ name, as: as ?? name });

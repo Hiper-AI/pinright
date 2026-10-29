@@ -136,7 +136,7 @@ function conjunction(group: string): Check | undefined {
 export function satisfiesComposer(version: string, constraint: string): boolean | undefined {
   const v = parseVersion(version);
   if (!v) return undefined;
-  const groups = constraint.split(/\s*\|\|?\s*/).filter((x) => x.trim());
+  const groups = constraint.split(/\|\|?/).map((x) => x.trim()).filter(Boolean);
   if (!groups.length) return true;
   let readable = false;
   for (const g of groups) {
@@ -155,7 +155,7 @@ export function satisfiesComposer(version: string, constraint: string): boolean 
  */
 export function fixedFromConstraint(constraint: string): string[] {
   const out: string[] = [];
-  for (const g of constraint.split(/\s*\|\|?\s*/)) {
+  for (const g of constraint.split(/\|\|?/).map((x) => x.trim())) {
     const m = g.match(/(?:^|[\s,])<\s*v?(\d[^\s,]*)/);
     if (m) out.push(m[1]);
   }

@@ -80,7 +80,7 @@ export function pyStatements(source: string): Stmt[] {
       k++;
     }
     text += s.slice(seg, k);
-    out.push({ indent, text: text.replace(/\s+$/, '') });
+    out.push({ indent, text: text.trimEnd() });
     i = k + 1;
   }
   return out;
@@ -182,7 +182,7 @@ function parseImport(text: string): PyImport | undefined {
     .map((x) => x.trim())
     .filter(Boolean)
     .map((x) => {
-      const [name, alias] = x.split(/\s+as\s+/);
+      const [name, alias] = x.split(/(?<!\s)\s+as\s+/);
       return { name: name.trim(), alias: alias?.trim() };
     })
     .filter((x) => /^[A-Za-z_]\w*$/.test(x.name));

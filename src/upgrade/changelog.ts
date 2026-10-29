@@ -8,6 +8,7 @@
  * "# v2.0b3 (2023-05-01)", setext/RST underlines ("5.0.0 / 2024-09-10" over
  * "====="), and "langchain==1.0.0" in monorepo release titles.
  */
+import { closingHashes } from '../docs/retrieve.js';
 import { inUpgradeRange, versionInHeading } from './versions.js';
 
 export interface VersionSection {
@@ -45,9 +46,9 @@ function headings(lines: string[]): Heading[] {
     const line = lines[i];
     if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
     if (inFence) continue;
-    const atx = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+    const atx = line.match(/^(#{1,6})\s+(\S.*)$/);
     if (atx) {
-      out.push({ line: i, span: 1, level: atx[1].length, text: atx[2] });
+      out.push({ line: i, span: 1, level: atx[1].length, text: closingHashes(atx[2]) });
       continue;
     }
     const next = lines[i + 1] ?? '';
@@ -158,17 +159,18 @@ export function tidy(text: string): string {
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/<!--[\s\S]*?-->/g, '')
     // "by [@user](...) in [#123](...)", "in [pydantic/pydantic-core#1322](...)"
-    .replace(/\s+by \[@[\w-]+\]\([^)]*\)/g, '')
-    .replace(/\s+in \[[\w./-]*#\d+\]\([^)]*\)/g, '')
-    .replace(/\s+in \[[\w./-]*#\d+\]/g, '')
-    .replace(/\s*\(?\[#\d+\]\([^)]*\)\)?/g, '')
-    .replace(/\s*\(?\[[0-9a-f]{7,40}\]\([^)]*\)\)?/g, '')
-    .replace(/\s+by @[\w-]+(\[bot\])?( in (https?:\/\/\S+|#\d+))?/g, '')
-    .replace(/\s*in https:\/\/github\.com\/\S+\/pull\/\d+/g, '')
-    .replace(/\s*\(https:\/\/github\.com\/\S+\/(pull|issues|commit)\/\w+\)/g, '')
+    // (?<!\s): a whitespace run is tried once, from its start, not from every space in it (quadratic).
+    .replace(/(?<!\s)\s+by \[@[\w-]+\]\([^)]*\)/g, '')
+    .replace(/(?<!\s)\s+in \[[\w./-]*#\d+\]\([^)]*\)/g, '')
+    .replace(/(?<!\s)\s+in \[[\w./-]*#\d+\]/g, '')
+    .replace(/(?<!\s)\s*\(?\[#\d+\]\([^)]*\)\)?/g, '')
+    .replace(/(?<!\s)\s*\(?\[[0-9a-f]{7,40}\]\([^)]*\)\)?/g, '')
+    .replace(/(?<!\s)\s+by @[\w-]+(\[bot\])?( in (https?:\/\/\S+|#\d+))?/g, '')
+    .replace(/(?<!\s)\s*in https:\/\/github\.com\/\S+\/pull\/\d+/g, '')
+    .replace(/(?<!\s)\s*\(https:\/\/github\.com\/\S+\/(pull|issues|commit)\/\w+\)/g, '')
     .replace(/^(Commit\s+)?\[?`?[0-9a-f]{7,40}`?\]?(\([^)]*\))?:?\s+/i, '')
     .replace(/[ \t]+/g, ' ')
-    .replace(/\s+in$/gm, '')
+    .replace(/(?<!\s)\s+in$/gm, '')
     .trim();
 }
 
@@ -218,7 +220,7 @@ export function extractItems(section: VersionSection, source: string, url: strin
       if (h) {
         flushBullet();
         flushProse();
-        heading = h[1].replace(/\s*#+\s*$/, '');
+        heading = closingHashes(h[1]);
         under = headingCategory(heading);
         last = 'prose';
         continue;

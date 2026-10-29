@@ -12,12 +12,12 @@ import type { ParsedTree, TreePackage } from '../tree/lockfiles.js';
 import type { JvmDependency } from './maven.js';
 
 const CONF = String.raw`\b(\w*(?:implementation|Implementation|api|Api|compileOnly|CompileOnly|runtimeOnly|RuntimeOnly|compile|Compile|runtime|annotationProcessor|AnnotationProcessor|kapt|Kapt|ksp|Ksp|classpath))`;
-const STRING_DEP = new RegExp(`${CONF}\\s*\\(?\\s*(?:(?:platform|enforcedPlatform)\\s*\\(\\s*)?["']([^"'\\s]+:[^"'\\s]+)["']`, 'g');
+const STRING_DEP = new RegExp(`${CONF}\\s*(?:\\(\\s*)?(?:(?:platform|enforcedPlatform)\\s*\\(\\s*)?["']([^"'\\s]+:[^"'\\s]+)["']`, 'g');
 const MAP_DEP = new RegExp(
-  `${CONF}\\s*\\(?\\s*group\\s*[:=]\\s*["']([^"']+)["']\\s*,\\s*name\\s*[:=]\\s*["']([^"']+)["']\\s*(?:,\\s*version\\s*[:=]\\s*["']([^"']+)["'])?`,
+  `${CONF}\\s*(?:\\(\\s*)?group\\s*[:=]\\s*["']([^"']+)["']\\s*,\\s*name\\s*[:=]\\s*["']([^"']+)["']\\s*(?:,\\s*version\\s*[:=]\\s*["']([^"']+)["'])?`,
   'g',
 );
-const CATALOG_DEP = new RegExp(`${CONF}\\s*\\(?\\s*(?:(?:platform|enforcedPlatform)\\s*\\(\\s*)?libs\\.([A-Za-z0-9_.]+)`, 'g');
+const CATALOG_DEP = new RegExp(`${CONF}\\s*(?:\\(\\s*)?(?:(?:platform|enforcedPlatform)\\s*\\(\\s*)?libs\\.([A-Za-z0-9_.]+)`, 'g');
 
 const isTestConf = (c: string) => /^(test|androidTest|testFixtures)/.test(c);
 
@@ -31,7 +31,7 @@ function variables(content: string, gradleProperties?: string): Map<string, stri
     const m = line.match(/^\s*([A-Za-z0-9_.-]+)\s*[=:]\s*(\S.*?)\s*$/);
     if (m && !line.trim().startsWith('#')) vars.set(m[1], m[2]);
   }
-  for (const m of content.matchAll(/^\s*(?:val|var|def|ext\.|project\.ext\.)?\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*["']([^"'$]+)["']/gm)) vars.set(m[1], m[2]);
+  for (const m of content.matchAll(/^[ \t]*(?:(?:val|var|def)[ \t]+|ext\.|project\.ext\.)?([A-Za-z_][A-Za-z0-9_]*)[ \t]*=[ \t]*["']([^"'$]+)["']/gm)) vars.set(m[1], m[2]);
   for (const m of content.matchAll(/extra\[\s*"([^"]+)"\s*\]\s*=\s*"([^"$]+)"/g)) vars.set(m[1], m[2]);
   for (const m of content.matchAll(/\bset\(\s*["']([^"']+)["']\s*,\s*["']([^"'$]+)["']\s*\)/g)) vars.set(m[1], m[2]);
   return vars;
@@ -100,7 +100,7 @@ export function parseVersionCatalog(file: string, content: string): ParsedTree {
 
 /** Dependencies of a build.gradle / build.gradle.kts. `siblings` may carry libs.versions.toml and gradle.properties. */
 export function gradleDependencies(content: string, siblings: Record<string, string> = {}): JvmDependency[] {
-  const code = content.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const code = content.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
   const vars = variables(code, siblings['gradle.properties']);
   const catalog = siblings['libs.versions.toml'] ? parseCatalog(siblings['libs.versions.toml']) : undefined;
   const out: JvmDependency[] = [];

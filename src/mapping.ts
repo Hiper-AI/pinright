@@ -106,7 +106,7 @@ export async function goModulePath(owner: string, repo: string): Promise<string 
   return cached(`gomod-path:${owner}/${repo}`, config.ttl.versions, async (): Promise<string | ''> => {
     try {
       const text = await getText(url);
-      const m = text.match(/^\s*module\s+"?([^\s"]+)"?/m);
+      const m = text.match(/^[ \t]*module[ \t]+"?([^\s"]+)"?/m);
       return m ? m[1] : '';
     } catch (err) {
       if (isNotFound(err)) return '';
