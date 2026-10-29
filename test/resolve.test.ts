@@ -34,7 +34,7 @@ vi.mock('../src/http.js', async () => {
   };
 });
 
-const { assessPackage, compareVersionsDesc, dedupeAdvisories, isPrerelease } = await import('../src/advisories/resolve.js');
+const { assessPackage, compareVersionsDesc, dedupeAdvisories, isPrerelease, recommendedUpgrade } = await import('../src/advisories/resolve.js');
 const { HttpError } = await import('../src/http.js');
 
 const DAY = 86_400_000;
@@ -186,6 +186,60 @@ describe('same release line', () => {
     expect(r.safeVersionSameLine).toBeUndefined();
     expect(r.crossLineRequired).toBe(true);
     expect(r.safeVersion).toBe('1.0.0');
+    expect(r.safeVersionNearestLine).toBeUndefined();
+  });
+});
+
+describe('nearest newer line', () => {
+  function seed(eco: 'npm' | 'pypi' | 'maven', name: string, list: string[], dirty: string[], newest: string) {
+    const versions = list.map((v) => ({ ...version(v, { isDefault: v === newest }), versionKey: { system: eco.toUpperCase(), name, version: v } }));
+    for (const v of versions) {
+      fixtures.set(`/v3/systems/${eco}/packages/${encodeURIComponent(name)}/versions/${encodeURIComponent(v.versionKey.version)}`, {
+        ...v,
+        licenses: ['MIT'],
+        advisoryKeys: dirty.includes(v.versionKey.version) ? [{ id: 'GHSA-x' }] : [],
+      });
+    }
+    fixtures.set(`/v3/systems/${eco}/packages/${encodeURIComponent(name)}`, { packageKey: { system: eco.toUpperCase(), name }, versions });
+  }
+
+  it('maven: a fix on an older maintained major beats the newest major (spring-core 5.3 -> 6.2, not 7.0)', async () => {
+    seed('maven', 'org.springframework:spring-core', ['5.3.20', '5.3.39', '6.1.14', '6.2.18', '6.2.19', '7.0.9', '7.0.10'], ['5.3.20', '5.3.39', '6.1.14', '6.2.18'], '7.0.10');
+    const r = await assessPackage('maven', 'org.springframework:spring-core', '5.3.20');
+    expect(r.line).toBe('5.x');
+    expect(r.crossLineRequired).toBe(true);
+    expect(r.safeVersion).toBe('7.0.10');
+    expect(r.safeVersionNearestLine).toBe('6.2.19');
+    expect(r.nearestLine).toBe('6.x');
+  });
+
+  it('npm: skips intermediate lines with no clean release and stops at the first one that has it', async () => {
+    seed('npm', 'lib', ['13.5.6', '14.2.0', '15.5.0', '15.5.1', '16.0.0'], ['13.5.6', '14.2.0', '15.5.1'], '16.0.0');
+    const r = await assessPackage('npm', 'lib', '13.5.6');
+    expect(r.safeVersionNearestLine).toBe('15.5.0');
+    expect(r.nearestLine).toBe('15.x');
+  });
+
+  it('pypi: no nearest line when the only clean release is on the newest one', async () => {
+    seed('pypi', 'django', ['3.2.25', '4.2.20', '5.2.1'], ['3.2.25', '4.2.20'], '5.2.1');
+    const r = await assessPackage('pypi', 'django', '3.2.25');
+    expect(r.safeVersion).toBe('5.2.1');
+    expect(r.safeVersionNearestLine).toBeUndefined();
+  });
+
+  it('pypi: a clean 4.2 LTS is preferred over 5.x for a 3.2 project', async () => {
+    seed('pypi', 'django', ['3.2.25', '4.2.20', '4.2.21', '5.2.1'], ['3.2.25', '4.2.20'], '5.2.1');
+    const r = await assessPackage('pypi', 'django', '3.2.25');
+    expect(r.safeVersionNearestLine).toBe('4.2.21');
+    expect(recommendedUpgrade(r)).toBe('4.2.21');
+  });
+
+  it('keeps the same-line fix first when there is one', async () => {
+    seed('npm', 'lib', ['1.0.0', '1.0.1', '2.0.0', '3.0.0'], ['1.0.0'], '3.0.0');
+    const r = await assessPackage('npm', 'lib', '1.0.0');
+    expect(r.safeVersionSameLine).toBe('1.0.1');
+    expect(r.safeVersionNearestLine).toBeUndefined();
+    expect(recommendedUpgrade(r)).toBe('1.0.1');
   });
 });
 

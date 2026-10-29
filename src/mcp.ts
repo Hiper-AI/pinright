@@ -189,7 +189,7 @@ export function buildMcpServer(): McpServer {
         if (requested && r.requested && r.requested.verdict !== 'ok' && r.requested.verdict !== 'unknown') {
           if (r.safeVersionSameLine) docsVersion = r.safeVersionSameLine;
           else if (r.crossLineRequired && r.safeVersion) {
-            docsVersion = r.safeVersion;
+            docsVersion = r.safeVersionNearestLine ?? r.safeVersion;
             upgrade = true;
           } else if (r.requested.verdict === 'unknown-package') docsVersion = r.safeVersion ?? r.leastExposed?.version ?? r.latestVersion;
           else if (!r.safeVersion && r.leastExposed) docsVersion = r.leastExposed.version;

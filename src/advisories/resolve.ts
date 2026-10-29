@@ -62,6 +62,13 @@ export interface PackageReport {
   safeVersionSameLine?: string;
   /** True when no release on the line is clean and the fix needs a new major. */
   crossLineRequired?: boolean;
+  /**
+   * When the line has no clean release: the newest clean version on the nearest newer
+   * line that has one, if that is older than safeVersion's line (Spring 5.3 -> 6.2, not 7.0).
+   */
+  safeVersionNearestLine?: string;
+  /** Release line of safeVersionNearestLine ("6.x"). */
+  nearestLine?: string;
   /** The safe version's release line started less than a year ago. */
   recentMajor?: { line: string; since: string };
   /** When no version is clean: the one with the mildest worst advisory (then fewest), newest on ties. */
@@ -103,6 +110,23 @@ export function releaseLine(version: string): string | undefined {
   return v.major === 0 ? `0.${v.minor}.x` : `${v.major}.x`;
 }
 
+/** Order of two release lines as releaseLine writes them ("0.28.x" < "1.x" < "6.x"). */
+export function compareLines(a: string, b: string): number {
+  const va = semver.coerce(a.replace(/\.x$/, ''));
+  const vb = semver.coerce(b.replace(/\.x$/, ''));
+  return va && vb ? semver.compare(va, vb) : 0;
+}
+
+/**
+ * The upgrade to recommend for a requested version: the clean release on its line,
+ * then the nearest newer line with one, then the newest clean release.
+ */
+export function recommendedUpgrade(r: Pick<PackageReport, 'safeVersionSameLine' | 'safeVersionNearestLine' | 'safeVersion'>): string | undefined {
+  return r.safeVersionSameLine ?? r.safeVersionNearestLine ?? r.safeVersion;
+}
+
+/** Intermediate lines inspected for a nearer fix before falling back to the newest one. */
+const MAX_NEAREST_LINES = 4;
 const RECENT_MAJOR_DAYS = 365;
 
 function olderThanCooldown(publishedAt: string | undefined, now: number): boolean {
@@ -259,6 +283,25 @@ export async function assessPackage(
     report.line = line;
     report.safeVersionSameLine = safeSameLine?.versionKey.version;
     report.crossLineRequired = !safeSameLine && Boolean(safe);
+  }
+  if (line && safe && !safeSameLine && !sourceDown) {
+    // Before jumping to the newest major, try the lines in between, oldest first:
+    // a maintained older major (Spring 6.2 for a 5.3 project) breaks less than the newest one.
+    const safeLine = releaseLine(safe.versionKey.version) as string;
+    const between = [...new Set(eligible.map((v) => releaseLine(v.versionKey.version)).filter((l): l is string => Boolean(l)))]
+      .filter((l) => compareLines(l, line) > 0 && compareLines(l, safeLine) < 0)
+      .sort(compareLines)
+      .slice(0, MAX_NEAREST_LINES);
+    for (const l of between) {
+      const onLine = eligible.filter((v) => releaseLine(v.versionKey.version) === l).slice(0, config.maxCandidates);
+      const hit = (await firstClean(onLine))?.cand;
+      if (sourceDown) break;
+      if (hit) {
+        report.safeVersionNearestLine = hit.versionKey.version;
+        report.nearestLine = l;
+        break;
+      }
+    }
   }
   if (!safe && !sourceDown && candidates.length) {
     // Nothing is clean: point at the least exposed version instead of leaving the agent stuck.

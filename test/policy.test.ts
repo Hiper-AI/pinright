@@ -81,6 +81,18 @@ describe('decide', () => {
     expect(d.problems[0]).toContain('safectx upgrade npm jsonwebtoken 8.5.1 9.0.3');
   });
 
+  it('points to the nearest newer line with a fix before the newest major', async () => {
+    versions.set('org.springframework:spring-core', ['5.3.20', '6.2.19', '7.0.10']);
+    reports.set('org.springframework:spring-core@5.3.20', {
+      verdict: 'vulnerable', line: '5.x', crossLineRequired: true, safeVersion: '7.0.10', safeVersionNearestLine: '6.2.19', nearestLine: '6.x',
+      requested: { version: '5.3.20', verdict: 'vulnerable', advisories: [adv('5')] },
+    });
+    const d = await decide([{ ecosystem: 'maven', name: 'org.springframework:spring-core', spec: '5.3.20', source: 'pom.xml' }]);
+    expect(d.action).toBe('deny');
+    expect(d.problems[0]).toContain('nearest fix is on 6.x');
+    expect(d.problems[0]).toContain('org.springframework:spring-core:6.2.19');
+  });
+
   it('matches a short PyPI pin to the padded version deps.dev lists ("3.10" is 3.10.0)', async () => {
     versions.set('idna', ['3.10.0', '3.20.0']);
     reports.set('idna@3.10.0', {

@@ -92,4 +92,14 @@ describe('securityNotice with release lines', () => {
     expect(t).toContain('No 8.x release is free of known advisories. The fix needs 9.0.3, a different major');
     expect(t).toContain('call upgrade-guide from 8.5.1 to 9.0.3');
   });
+  it('points to the nearest newer line before the newest major', () => {
+    const t = securityNotice({
+      ...base, package: 'org.springframework:spring-core', ecosystem: 'maven', verdict: 'vulnerable', line: '5.x', crossLineRequired: true,
+      safeVersion: '7.0.10', safeVersionNearestLine: '6.2.19', nearestLine: '6.x', requested: { ...vuln, version: '5.3.20' },
+    });
+    expect(t).toContain('Nearest fix: 6.2.19 on 6.x, a different major line');
+    expect(t).toContain('org.springframework:spring-core:6.2.19');
+    expect(t).toContain('call upgrade-guide from 5.3.20 to 6.2.19');
+    expect(t).toContain('Newest safe overall: 7.0.10.');
+  });
 });

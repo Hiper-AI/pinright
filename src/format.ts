@@ -72,6 +72,14 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
         `Newest safe overall: ${report.safeVersion} (a different major: before switching, call upgrade-guide from ${req.version} to ${report.safeVersion} for what changes).`,
       );
     }
+  } else if (req && report.line && report.crossLineRequired && report.safeVersionNearestLine && report.nearestLine) {
+    const near = report.safeVersionNearestLine;
+    lines.push(
+      `No ${report.line} release is free of known advisories. Nearest fix: ${near} on ${report.nearestLine}, a different ` +
+        `${report.nearestLine.startsWith('0.') ? 'minor' : 'major'} line: expect breaking changes, though fewer than jumping to ${report.safeVersion}. Upgrade: ${cmd(near)}`,
+    );
+    lines.push(`Before rewriting code or config for it, call upgrade-guide from ${req.version} to ${near}.`);
+    if (report.safeVersion && report.safeVersion !== near) lines.push(`Newest safe overall: ${report.safeVersion}.`);
   } else if (req && report.line && report.crossLineRequired && report.safeVersion) {
     lines.push(
       `No ${report.line} release is free of known advisories. The fix needs ${report.safeVersion}, a different major: ` +
@@ -96,7 +104,7 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
         `Install: ${cmd(le.version)}`,
     );
   }
-  const recommended = sameLine && req && sameLine !== req.version ? sameLine : report.safeVersion;
+  const recommended = sameLine && req && sameLine !== req.version ? sameLine : (req && report.safeVersionNearestLine) || report.safeVersion;
   if (report.recentMajor && recommended && releaseLine(recommended) === report.recentMajor.line) {
     lines.push(
       `Heads-up: ${report.package} ${report.recentMajor.line} is a recent major (first release ${report.recentMajor.since}). ` +

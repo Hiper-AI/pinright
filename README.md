@@ -323,6 +323,10 @@ least 3 days ago. The cooldown exists because compromised releases are usually p
 
 When the project already uses a version, safectx also gives the newest clean version on its release
 line (`3.x`, or `0.28.x` before 1.0, where minors break), and says so when only a new major is clean.
+In that case it first tries the lines between the project's and the newest one, oldest first: a
+Spring 5.3 project is pointed at 6.2.19, still maintained, and not at 7.0, because the jump is
+smaller. The order is the same everywhere (notice, hook, `check-packages`, audit fixes, upgrade
+guide): same line, then the nearest newer line with a clean release, then the newest clean one.
 When the recommended version belongs to a major less than a year old, the notice says so and points
 the agent to that version's docs: its configuration may differ from what the model learned.
 

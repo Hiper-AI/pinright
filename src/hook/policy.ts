@@ -15,6 +15,7 @@
  */
 import { getDependencies, getPackage } from '../advisories/depsdev.js';
 import { getVuln, queryBatch, severityOf } from '../advisories/osv.js';
+import { recommendedUpgrade } from '../advisories/resolve.js';
 import { config } from '../config.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { riskOutcome } from '../risk/index.js';
@@ -139,7 +140,7 @@ async function parentUpgrade(c: Checked, names: string[]): Promise<{ to: string;
   if (!c.version) return undefined;
   const r = c.v?.report ?? (await checkPackage(c.i.ecosystem, c.i.name, c.version, { risk: false }).catch(() => undefined))?.report;
   if (!r) return undefined;
-  const candidates = [...new Set([r.safeVersionSameLine, r.safeVersion].filter((x): x is string => Boolean(x) && x !== c.version))];
+  const candidates = [...new Set([r.safeVersionSameLine, r.safeVersionNearestLine, r.safeVersion].filter((x): x is string => Boolean(x) && x !== c.version))];
   for (const to of candidates) {
     const g = await getDependencies(c.i.ecosystem, c.i.name, to).catch(() => undefined);
     if (!g?.nodes?.length) continue;
@@ -199,9 +200,13 @@ function judge(c: Checked, p: Policy): Outcome {
     const sev = req.advisories.find((a) => a.severity)?.severity;
     const head = `${label}${implicit ? ` resolves to ${version}, which` : ''} has ${req.advisories.length} known advisor${req.advisories.length === 1 ? 'y' : 'ies'} (${ids}${sev ? `, ${sev}` : ''}).`;
     if (belowThreshold(p, req.advisories)) {
-      return { action: 'allow', warning: `${head} All are below the project's severity threshold (${p.severityThreshold}); allowed.${fix(r.safeVersionSameLine ?? r.safeVersion, 'Clean version')}` };
+      return { action: 'allow', warning: `${head} All are below the project's severity threshold (${p.severityThreshold}); allowed.${fix(recommendedUpgrade(r), 'Clean version')}` };
     }
     if (r.safeVersionSameLine && r.safeVersionSameLine !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersionSameLine, `Use ${r.line} release`)}` };
+    if (r.safeVersionNearestLine && r.safeVersionNearestLine !== version) {
+      const guide = ` Call upgrade-guide (safectx MCP, or \`safectx upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersionNearestLine}\`) for the breaking changes before writing code for it.`;
+      return { action: 'deny', problem: `${head}${fix(r.safeVersionNearestLine, `No clean release on this line; the nearest fix is on ${r.nearestLine} (newest safe: ${r.safeVersion}),`)}${guide}` };
+    }
     if (r.safeVersion && r.safeVersion !== version) {
       const guide = ` Call upgrade-guide (safectx MCP, or \`safectx upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersion}\`) for the breaking changes before writing code for it.`;
       return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}${guide}` };
@@ -307,7 +312,7 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
     const parent = parentOf.get(c);
     const req = c.v?.report.requested;
     const name = norm(c.i.ecosystem, c.i.name);
-    const ownFix = c.v?.report.safeVersionSameLine ?? c.v?.report.safeVersion;
+    const ownFix = c.v ? recommendedUpgrade(c.v.report) : undefined;
     const range = parent?.requires?.get(name);
     // The package's own fix already fits the parent's range ("idna<4,>=2.5"): repinning it is enough.
     const fitsParent = Boolean(ownFix && range && satisfiesRequirement(c.i.ecosystem, ownFix, range));

@@ -307,8 +307,12 @@ export async function upgradeGuide(opts: UpgradeOptions): Promise<UpgradeResult>
   } else {
     const fromVulnerable = r.requested && r.requested.verdict !== 'ok' && r.requested.verdict !== 'unknown';
     const sameLineAhead = r.safeVersionSameLine && (compareVersions(r.safeVersionSameLine, from) ?? 0) > 0 ? r.safeVersionSameLine : undefined;
-    to = fromVulnerable && sameLineAhead ? sameLineAhead : r.safeVersion ?? sameLineAhead;
-    if (to) why = to === r.safeVersionSameLine && to !== r.safeVersion ? ' (recommended: newest version on the same release line with no known advisories)' : ' (recommended: newest version with no known advisories)';
+    to = fromVulnerable && sameLineAhead ? sameLineAhead : (fromVulnerable && r.safeVersionNearestLine) || r.safeVersion || sameLineAhead;
+    if (to) {
+      why = to === r.safeVersionSameLine && to !== r.safeVersion ? ' (recommended: newest version on the same release line with no known advisories)'
+        : to === r.safeVersionNearestLine && to !== r.safeVersion ? ` (recommended: nearest newer release line, ${r.nearestLine}, with a version free of known advisories; newest safe is ${r.safeVersion})`
+        : ' (recommended: newest version with no known advisories)';
+    }
   }
   if (!to) {
     return { text: `No version of ${name} (${eco}) is free of known advisories${r.verdict === 'unknown' ? ` (or a source did not answer: ${r.reason})` : ''}; pass "to" explicitly.`, from };

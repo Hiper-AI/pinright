@@ -4,6 +4,7 @@
  * fraction of that, and the full notice is still there for every package that
  * is not plainly ok.
  */
+import { recommendedUpgrade } from './advisories/resolve.js';
 import { type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
 import { pool } from './tree/audit.js';
@@ -33,7 +34,7 @@ export function versionToUse(v: Verdict): string | undefined {
   if (r.verdict === 'malicious' || r.verdict === 'possible-typosquat' || r.verdict === 'unknown') return undefined;
   const req = r.requested;
   if (req && req.verdict === 'ok') return req.version;
-  if (req && req.verdict !== 'unknown-package' && r.safeVersionSameLine) return r.safeVersionSameLine;
+  if (req && req.verdict !== 'unknown-package' && recommendedUpgrade(r)) return recommendedUpgrade(r);
   return r.safeVersion ?? r.leastExposed?.version;
 }
 
@@ -94,6 +95,7 @@ function row(r: BatchResult): string {
     case 'vulnerable':
       verdict = rep.requested ? `VULNERABLE (${n}${worstSeverity(v) ? `, ${worstSeverity(v)}` : ''})` : 'VULNERABLE (no clean version)';
       if (rep.requested && rep.safeVersionSameLine && use === rep.safeVersionSameLine) notes.push('fix on the same release line');
+      else if (rep.requested && rep.safeVersionNearestLine && use === rep.safeVersionNearestLine) notes.push(`nearest fix on ${rep.nearestLine}: breaking changes`);
       else if (rep.requested && rep.crossLineRequired) notes.push('fix needs a new major: breaking changes');
       else if (!rep.safeVersion && rep.leastExposed) notes.push('no clean version; least exposed');
       break;

@@ -9,7 +9,7 @@
 import semver from 'semver';
 import { getDependencies } from '../advisories/depsdev.js';
 import { fixedVersions, getVuln, isMalware, queryBatch, severityOf } from '../advisories/osv.js';
-import { assessPackage, dedupeAdvisories, type AdvisoryInfo } from '../advisories/resolve.js';
+import { assessPackage, dedupeAdvisories, recommendedUpgrade, type AdvisoryInfo } from '../advisories/resolve.js';
 import { packagistAuditExtras } from '../composer/packagist.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { normalizePypiName, type ParsedTree, type TreePackage } from './lockfiles.js';
@@ -211,7 +211,7 @@ async function remediate(eco: Ecosystem, packages: TreePackage[], findings: Tree
   // Direct findings: upgrade on the release line, or across it if there is no other way.
   for (const f of findings.filter((x) => x.direct)) {
     const r = await assessPackage(eco, f.name, f.version).catch(() => undefined);
-    const to = r?.safeVersionSameLine ?? r?.safeVersion ?? f.fixedVersion;
+    const to = (r && recommendedUpgrade(r)) ?? f.fixedVersion;
     if (!to) continue;
     out.push({
       target: f.name,
@@ -239,7 +239,7 @@ async function remediate(eco: Ecosystem, packages: TreePackage[], findings: Tree
       checked++;
       const current = versionOf.get(parent) as string;
       const r = await assessPackage(eco, parent, current).catch(() => undefined);
-      const candidates = [...new Set([r?.safeVersionSameLine, r?.safeVersion].filter((v): v is string => Boolean(v) && v !== current))];
+      const candidates = [...new Set([r?.safeVersionSameLine, r?.safeVersionNearestLine, r?.safeVersion].filter((v): v is string => Boolean(v) && v !== current))];
       let best: { to: string; cleared: TreeFinding[] } | undefined;
       for (const cand of candidates) {
         const graph = await getDependencies(eco, parent, cand).catch(() => undefined);
