@@ -2,10 +2,30 @@
  * What the agent reads. Plain text, worst news first, and the sources with a date,
  * so the model cannot mistake a cached verdict for a fresh one.
  */
+import { normalizePypiName, siblingsFor } from './data/docsRepos.js';
 import { installCommand } from './ecosystems.js';
 import { releaseLine, type PackageReport } from './advisories/resolve.js';
 import { riskLines, type RiskReport } from './risk/index.js';
 import { type TyposquatReport } from './typosquat.js';
+
+/**
+ * LangChain 1.x ships text splitters, community integrations and each provider as
+ * separate packages that `langchain` does not depend on (0.x still pulled the
+ * text splitters): importing one without declaring it fails.
+ */
+function splitFamilyLine(report: PackageReport): string | undefined {
+  if (report.ecosystem !== 'pypi' || report.verdict === 'malicious' || report.verdict === 'possible-typosquat') return undefined;
+  const name = normalizePypiName(report.package);
+  const version = report.requested?.version ?? report.safeVersion ?? report.latestVersion;
+  if (name !== 'langchain' || !version || Number.parseInt(version, 10) < 1) return undefined;
+  // langchain 1.x depends on langchain-core and langgraph: those come along.
+  const sibs = siblingsFor(name).filter((s) => /^langchain-/.test(s.pkg) && s.pkg !== 'langchain-core').slice(0, 8);
+  if (!sibs.length) return undefined;
+  return (
+    `Companion packages: ${report.package} ${version} does not depend on them, so declare each one the code imports: ` +
+    `${sibs.map((s) => `${s.pkg} (\`${s.importName}\`)`).join(', ')}.`
+  );
+}
 
 export function securityNotice(report: PackageReport, typo?: TyposquatReport, risk?: RiskReport): string {
   const lines: string[] = [];
@@ -111,6 +131,9 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
         `Its APIs and configuration may differ from what you know; read query-docs for ${recommended} before writing code or config for it.`,
     );
   }
+
+  const split = splitFamilyLine(report);
+  if (split) lines.push(split);
 
   lines.push(...riskLines(risk));
 

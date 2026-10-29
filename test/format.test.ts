@@ -103,3 +103,16 @@ describe('securityNotice with release lines', () => {
     expect(t).toContain('Newest safe overall: 7.0.10.');
   });
 });
+
+describe('split package families', () => {
+  it('langchain 1.x lists the companion packages it does not depend on', () => {
+    const t = securityNotice({ ...base, package: 'langchain', ecosystem: 'pypi', safeVersion: '1.4.7', latestVersion: '1.4.7' });
+    expect(t).toContain('Companion packages: langchain 1.4.7 does not depend on them');
+    expect(t).toContain('langchain-text-splitters (`langchain_text_splitters`)');
+    expect(t).not.toContain('langchain-core');
+  });
+  it('says nothing for langchain 0.x (it still pulled the splitters) or other packages', () => {
+    expect(securityNotice({ ...base, package: 'langchain', ecosystem: 'pypi', safeVersion: '0.3.27' })).not.toContain('Companion');
+    expect(securityNotice({ ...base, package: 'langchain-openai', ecosystem: 'pypi', safeVersion: '1.7.3' })).not.toContain('Companion');
+  });
+});

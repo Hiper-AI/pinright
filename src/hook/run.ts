@@ -14,6 +14,7 @@ import { agentMessage, decide, type HookDecision } from './policy.js';
 import { type DepIntent, fromCommand, fromFileWrite, isWatchedFile } from './intent.js';
 import { decideActions } from '../actions/check.js';
 import { type ActionUse, changedUses, isWorkflowFile } from '../actions/workflow.js';
+import { languageOf, undeclaredImportNotes } from './imports.js';
 
 function readIfExists(p: string): string | undefined {
   try {
@@ -81,6 +82,17 @@ export function actionUsesFromToolInput(input: Record<string, any>, cwd: string)
   return change ? changedUses(change.next, change.old, change.abs) : [];
 }
 
+/** Imports in the written file (or, for a manifest, in the project) that no manifest declares. Notes only. */
+export async function importNotesFromToolInput(input: Record<string, any>, cwd: string, ms = IMPORTS_DEADLINE_MS): Promise<string[]> {
+  if (typeof (input.command ?? input.cmd) === 'string') return [];
+  const change = fileChange(input, cwd, (f) => Boolean(languageOf(f)));
+  if (!change) return [];
+  const timeout = new Promise<string[]>((resolve) => setTimeout(() => resolve([]), ms).unref());
+  return Promise.race([undeclaredImportNotes(change.abs, change.next, change.old).catch(() => []), timeout]);
+}
+
+const IMPORTS_DEADLINE_MS = Number(process.env.SAFECTX_IMPORTS_TIMEOUT_MS ?? 15_000);
+
 function merge(a: HookDecision, b: HookDecision): HookDecision {
   const rank = { allow: 0, ask: 1, deny: 2 } as const;
   return {
@@ -131,6 +143,10 @@ async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number,
   return Promise.race([both(), timeout]);
 }
 
+function notesOnly(warnings: string[]): HookDecision {
+  return { action: 'allow', problems: [], warnings, checked: 0 };
+}
+
 const DEADLINE_MS = Number(process.env.SAFECTX_HOOK_TIMEOUT_MS ?? 45_000);
 
 export async function runClaudeHook(): Promise<number> {
@@ -138,8 +154,15 @@ export async function runClaudeHook(): Promise<number> {
   const cwd = input.cwd ?? process.cwd();
   const intents = intentsFromToolInput(input.tool_name ?? '', input.tool_input ?? {}, cwd);
   const uses = actionUsesFromToolInput(input.tool_input ?? {}, cwd);
-  if (!intents.length && !uses.length) return 0; // not a dependency change: say nothing
+  const notes = importNotesFromToolInput(input.tool_input ?? {}, cwd);
+  if (!intents.length && !uses.length) {
+    // Not a dependency change; a source file may still import something nobody declared.
+    const imports = await notes;
+    if (imports.length) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: agentMessage(notesOnly(imports)) } }));
+    return 0;
+  }
   const d = await decideWithin(intents, uses, DEADLINE_MS, cwd);
+  d.warnings.push(...(await notes));
   const msg = agentMessage(d);
   if (d.action === 'allow') {
     if (msg) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: msg } }));
@@ -157,12 +180,15 @@ export async function runCursorHook(): Promise<number> {
   const toolInput = input.command !== undefined ? { command: input.command } : (input.tool_input ?? {});
   const intents = intentsFromToolInput(input.tool_name ?? '', toolInput, cwd);
   const uses = actionUsesFromToolInput(toolInput, cwd);
+  const notes = importNotesFromToolInput(toolInput, cwd);
   // Cursor treats invalid output as a block, so always answer.
   if (!intents.length && !uses.length) {
-    process.stdout.write(JSON.stringify({ permission: 'allow' }));
+    const imports = await notes;
+    process.stdout.write(JSON.stringify({ permission: 'allow', ...(imports.length ? { agent_message: agentMessage(notesOnly(imports)) } : {}) }));
     return 0;
   }
   const d = await decideWithin(intents, uses, DEADLINE_MS, cwd);
+  d.warnings.push(...(await notes));
   const msg = agentMessage(d);
   process.stdout.write(
     JSON.stringify({

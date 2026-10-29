@@ -129,6 +129,22 @@ package first published less than 14 days ago that runs install scripts, and a r
 scripts and comes from a publisher the previous releases never had. Everything else passes, with notes
 for the agent.
 
+**Undeclared imports.** An agent can pin every dependency it lists and still import one it never
+listed: in the benchmark, the hook-only agent wrote `from langchain_text_splitters import ...` without
+`langchain-text-splitters` in `requirements.txt`, and the import failed. When the agent writes a Python
+or JS/TS source file, the hook compares the imports that are new in that write with the manifests above
+it (`requirements*.txt`, `pyproject.toml`, `setup.py`/`setup.cfg`/`Pipfile`, `package.json`, including
+the ones of an enclosing workspace); when it writes `requirements*.txt`, `pyproject.toml` or
+`package.json`, it compares the project's source files with the new content. Each missing package comes
+back as a note with the newest clean version to pin, checked like any other dependency. It never blocks.
+Python import names go through a curated map to distribution names (`yaml` is PyYAML, `PIL` is pillow,
+`sklearn` is scikit-learn, LangChain's split packages, ...) and PEP 503 normalization otherwise.
+Left alone: the standard library and Node builtins, relative imports, aliases (`@/`, `~/`, `#`, `$lib`,
+`tsconfig` paths), project-local modules and workspace packages, imports guarded by `try`/`if`
+(optional dependencies), and names the registry does not know. A package that is only pulled in by
+another one still gets the note: it works today by accident. `SAFECTX_IMPORTS_TIMEOUT_MS` (15000) bounds
+the check.
+
 The team policy in `.safectx.json` (next section) sets the same knobs for the whole repo. The hook
 reads the nearest one walking up from its working directory to the repository root. These variables
 override the file:
