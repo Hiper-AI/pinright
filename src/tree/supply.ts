@@ -15,7 +15,7 @@ import { checkPackage } from '../verdict.js';
 import { pool } from './audit.js';
 import { type TreePackage } from './lockfiles.js';
 
-export type SupplyKind = 'typosquat' | 'unknown-package' | 'unpublished-version' | 'deprecated' | 'risk';
+export type SupplyKind = 'malware' | 'typosquat' | 'unknown-package' | 'unpublished-version' | 'deprecated' | 'risk';
 
 export interface SupplyFinding {
   kind: SupplyKind;
@@ -67,6 +67,11 @@ export function toFindings(p: TreePackage, v: Checked): SupplyFinding[] {
   const out: SupplyFinding[] = [];
   const base = { name: p.name, version: p.version };
   const r = v.report;
+  // OSV's batch already reports malware; deps.dev can still be the first to know (or the batch missed it).
+  if (r.verdict === 'malicious' || r.requested?.verdict === 'malicious') {
+    out.push({ ...base, kind: 'malware', blocking: true, level: 'error', message: `${p.name}@${p.version} is flagged as MALWARE. Remove it and rotate any secret the machine had access to.` });
+    return out;
+  }
   if (r.verdict === 'possible-typosquat') {
     const like = v.typo?.lookalikeOf;
     out.push({

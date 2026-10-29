@@ -345,6 +345,13 @@ describe('supply-chain findings', () => {
     ]);
   });
 
+  it('blocks malware that only the per-package verdict caught (security review F7)', () => {
+    const f = toFindings(pkg, { report: report({ verdict: 'malicious', requested: { version: '0.0.0', verdict: 'malicious', advisories: [{ id: 'MAL-2026-1', aliases: [], url: '' }] } }) });
+    expect(f).toMatchObject([{ kind: 'malware', blocking: true, level: 'error' }]);
+    const log = buildSarif(input({ trees: [{ audit: { ...treeAudit(), findings: [] }, supply: f }], actions: undefined }));
+    expect(log.runs[0].results.map((r: { ruleId: string }) => r.ruleId)).toContain('safectx/malware');
+  });
+
   it('reports unknown packages, unpublished versions and deprecation without blocking', () => {
     expect(toFindings(pkg, { report: report({ verdict: 'unknown-package' }) })).toMatchObject([{ kind: 'unknown-package', blocking: false }]);
     const gone = toFindings(pkg, { report: report({ verdict: 'unknown-package', latestVersion: '1.0.0', requested: { version: '0.0.0', verdict: 'unknown-package', advisories: [] } }) });
