@@ -19,10 +19,17 @@ export interface ReadOptions {
   maxEntryBytes?: number;
   /** Stop after this many entries. */
   maxEntries?: number;
+  /**
+   * Stop once the entries returned add up to this many bytes. Per-entry caps alone do not bound
+   * memory: a ZIP's central directory can point thousands of entries at one small deflate stream
+   * that inflates to the entry cap (an overlapping-entry zip bomb).
+   */
+  maxTotalOutBytes?: number;
 }
 
 const DEFAULT_ENTRY_BYTES = 2_000_000;
 const DEFAULT_ENTRIES = 5000;
+const DEFAULT_TOTAL_OUT_BYTES = 64_000_000;
 
 // ------------------------------------------------------------ ZIP -----------
 
@@ -33,6 +40,7 @@ const LOC = 0x04034b50;
 export function readZip(buf: Buffer, opts: ReadOptions): ArchiveEntry[] {
   const maxEntryBytes = opts.maxEntryBytes ?? DEFAULT_ENTRY_BYTES;
   const maxEntries = opts.maxEntries ?? DEFAULT_ENTRIES;
+  let budget = opts.maxTotalOutBytes ?? DEFAULT_TOTAL_OUT_BYTES;
   // The end-of-central-directory record sits in the last 22 bytes plus an optional comment (<= 64 KiB).
   let eocd = -1;
   for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 0xffff); i--) {
@@ -62,9 +70,16 @@ export function readZip(buf: Buffer, opts: ReadOptions): ArchiveEntry[] {
     if (buf.readUInt32LE(local) !== LOC) continue;
     const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
     const raw = buf.subarray(start, start + compSize);
+    const cap = Math.min(maxEntryBytes, budget);
+    if (cap <= 0) break;
     try {
-      if (method === 0) out.push({ name, data: Buffer.from(raw.subarray(0, maxEntryBytes)) });
-      else if (method === 8) out.push({ name, data: inflateRawSync(raw, { maxOutputLength: maxEntryBytes }) });
+      let data: Buffer | undefined;
+      if (method === 0) data = raw.length <= cap ? Buffer.from(raw) : undefined;
+      else if (method === 8) data = inflateRawSync(raw, { maxOutputLength: cap });
+      if (data) {
+        out.push({ name, data });
+        budget -= data.length;
+      }
     } catch {
       // corrupt or over the cap: skip the entry
     }
@@ -89,6 +104,7 @@ export function readTarGz(buf: Buffer, opts: ReadOptions & { maxTotalBytes?: num
 export function readTar(tar: Buffer, opts: ReadOptions): ArchiveEntry[] {
   const maxEntryBytes = opts.maxEntryBytes ?? DEFAULT_ENTRY_BYTES;
   const maxEntries = opts.maxEntries ?? DEFAULT_ENTRIES;
+  let budget = opts.maxTotalOutBytes ?? DEFAULT_TOTAL_OUT_BYTES;
   const out: ArchiveEntry[] = [];
   let p = 0;
   let longName: string | undefined;
@@ -117,7 +133,9 @@ export function readTar(tar: Buffer, opts: ReadOptions): ArchiveEntry[] {
     if (type !== '0' && type !== '\0' && type !== '7') continue;
     name = name.replace(/^\.\//, '');
     if (!opts.want(name) || size > maxEntryBytes) continue;
+    if (data.length > budget) break;
     out.push({ name, data: Buffer.from(data) });
+    budget -= data.length;
     if (out.length >= maxEntries) break;
   }
   return out;

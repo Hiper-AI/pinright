@@ -87,6 +87,26 @@ describe('archives', () => {
     expect(() => readZip(Buffer.from('not a zip at all, definitely not'), { want: () => true })).toThrow();
   });
 
+  it('zip: thousands of central entries pointing at one small deflate stream stay under the total cap (security review F8)', () => {
+    // One local entry that inflates to 1 MB; the central directory lists it 3000 times.
+    const one = makeZip({ 'pkg/a.py': '#'.repeat(1_000_000) });
+    const eocdAt = one.length - 22;
+    const cdStart = one.readUInt32LE(eocdAt + 16);
+    const central = one.subarray(cdStart, eocdAt);
+    const copies = 3000;
+    const cd = Buffer.concat(Array.from({ length: copies }, () => central));
+    const eocd = Buffer.from(one.subarray(eocdAt));
+    eocd.writeUInt16LE(copies, 8);
+    eocd.writeUInt16LE(copies, 10);
+    eocd.writeUInt32LE(cd.length, 12);
+    const bomb = Buffer.concat([one.subarray(0, cdStart), cd, eocd]);
+    expect(bomb.length).toBeLessThan(200_000); // ~3 GB if every entry were inflated
+    const entries = readZip(bomb, { want: () => true, maxEntryBytes: 1_000_000, maxTotalOutBytes: 10_000_000 });
+    const total = entries.reduce((n, e) => n + e.data.length, 0);
+    expect(total).toBeLessThanOrEqual(10_000_000);
+    expect(entries.length).toBe(10);
+  });
+
   it('tar.gz: reads files, GNU long names, and filters', () => {
     const deep = `pkg-1.0/src/pkg/${'d'.repeat(90)}/mod.py`;
     const tgz = makeTarGz({ 'pkg-1.0/PKG-INFO': 'Name: pkg', 'pkg-1.0/src/pkg/__init__.py': '"""Pkg."""\n', [deep]: 'def f(): ...\n' });
