@@ -192,7 +192,7 @@ function note(what: string, until: number, authenticated: boolean): void {
 
 /** The line a tool answer ends with when the GitHub limit left something out. */
 export function githubNotice(what: string[], until: number, authenticated: boolean, now = Date.now()): string {
-  const mins = Math.max(1, Math.round((until - now) / 60_000));
+  const mins = Math.max(1, Math.ceil((until - now) / 60_000));
   return (
     `NOTE: GitHub's API rate limit was reached (${authenticated ? 'for the configured token' : 'anonymous: 60 requests an hour per IP'}), ` +
     `so this answer is missing: ${what.join('; ')}. safectx makes no GitHub API calls until ${hhmm(until)} UTC (about ${mins} min); ` +
