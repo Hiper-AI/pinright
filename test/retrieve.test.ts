@@ -60,6 +60,23 @@ describe('ranking', () => {
     const r = rankPaths([{ path: 'docs/cookies.md' }, { path: 'docs/api/middleware.mdx' }, { path: 'docs/a/b/c/middleware.md' }], 'set up middleware');
     expect(r[0].path).toBe('docs/api/middleware.mdx');
   });
+
+  it('rankPaths: in a large tree a rare term outweighs common ones (Next 16: middleware.mdx vs *Redirect/*Routes pages)', () => {
+    const filler = Array.from({ length: 60 }, (_, i) => ({ path: `docs/config/${i % 2 ? 'skip-redirect' : 'typed-routes'}-${i}.mdx` }));
+    const files = [...filler, { path: 'docs/01-app/03-api-reference/03-file-conventions/middleware.mdx' }];
+    const r = rankPaths(files, 'protect routes with middleware and redirect to login');
+    expect(r[0].path).toMatch(/middleware\.mdx$/);
+    // Small lists keep the flat weight: two hits beat one.
+    expect(rankPaths([{ path: 'a/redirect-routes.md' }, { path: 'a/middleware.md' }], 'middleware redirect routes')[0].path).toBe('a/redirect-routes.md');
+  });
+
+  it('select skips near-duplicate sections (the same step in several framework guides)', () => {
+    const step = 'Modify your route file to include the stopWhen condition so the model can call tools for several steps before answering the user question with the final result';
+    const a = { file: file('nextjs.mdx', ''), title: 'Next.js > Multi-step', text: `${step} in app/api/chat/route.ts`, score: 3 };
+    const b = { file: file('nuxt.mdx', ''), title: 'Nuxt > Multi-step', text: `${step} in server/api/chat.ts`, score: 2.9 };
+    const c = { file: file('reference.mdx', ''), title: 'streamText > instructions', text: 'instructions: the system prompt given to the model before the messages', score: 1 };
+    expect(select([a, b, c], 10_000).map((x) => x.file.label)).toEqual(['nextjs.mdx', 'reference.mdx']);
+  });
 });
 
 describe('sources helpers', () => {

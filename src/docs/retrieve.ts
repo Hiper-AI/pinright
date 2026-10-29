@@ -246,9 +246,23 @@ export function rank(chunks: Chunk[], query: string): Chunk[] {
   return [...chunks].sort((a, b2) => b2.score - a.score);
 }
 
-/** Best chunks that fit the budget, at most `perFile` from one file so one long page cannot crowd out the rest. */
+/** Share of distinct tokens two texts have in common (Jaccard). */
+export function overlap(a: Set<string>, b: Set<string>): number {
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter++;
+  return inter / (a.size + b.size - inter || 1);
+}
+
+/** Above this overlap a section repeats one already picked (the same step in the Next.js, Nuxt and SvelteKit guides). */
+const NEAR_DUPLICATE = 0.7;
+
+/**
+ * Best chunks that fit the budget, at most `perFile` from one file so one long page cannot crowd out
+ * the rest, and no near-duplicate of a chunk already picked.
+ */
 export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk[] {
   const out: Chunk[] = [];
+  const picked: Set<string>[] = [];
   const count = new Map<string, number>();
   let used = 0;
   for (const c of ranked) {
@@ -260,7 +274,10 @@ export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk
       if (used > budgetChars * 0.6) break;
       continue;
     }
+    const toks = new Set(tokenize(c.text));
+    if (toks.size >= 20 && picked.some((p) => overlap(toks, p) >= NEAR_DUPLICATE)) continue;
     out.push(c);
+    picked.push(toks);
     count.set(c.file.url, n + 1);
     used += size;
   }
@@ -270,11 +287,20 @@ export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk
 /** Ranks file paths before downloading them: we cannot fetch 500 docs pages per question. */
 export function rankPaths<T extends { path: string }>(files: T[], query: string, extraTerms: string[] = []): (T & { score: number })[] {
   const q = new Set([...tokenize(query), ...extraTerms.flatMap(tokenize)]);
+  const tokens = files.map((f) => tokenize(f.path.replace(/\.(mdx?|rst|txt|d\.ts)$/i, '')));
+  // In a large tree a term found in a handful of paths ("middleware") says more than one found in hundreds
+  // ("routes", "redirect"): weigh hits by rarity, between ~0.3 and 2. Small lists keep a flat weight of 1.
+  const weight = new Map<string, number>();
+  const n = files.length;
+  for (const t of q) {
+    const df = tokens.filter((toks) => toks.includes(t)).length;
+    weight.set(t, n < 20 || !df ? 1 : Math.max(0.3, (2 * Math.log((n + 1) / df)) / Math.log(n + 1)));
+  }
   return files
-    .map((f) => {
-      const toks = tokenize(f.path.replace(/\.(mdx?|rst|txt|d\.ts)$/i, ''));
+    .map((f, i) => {
+      const toks = tokens[i];
       let s = 0;
-      for (const t of toks) if (q.has(t)) s += 1;
+      for (const t of toks) if (q.has(t)) s += weight.get(t) ?? 1;
       // Shallow, docs-like paths beat deep ones with the same hits.
       s -= f.path.split('/').length * 0.02;
       return { ...f, score: s };
