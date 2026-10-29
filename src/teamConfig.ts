@@ -12,6 +12,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import { getPackage, getVersion } from './advisories/depsdev.js';
 import { type Ecosystem } from './ecosystems.js';
+import { readProjectFile } from './projectFile.js';
 import { normalizePypiName, type ParsedTree } from './tree/lockfiles.js';
 import { pickVersion } from './tree/resolveManifest.js';
 
@@ -160,7 +161,7 @@ export function loadTeamConfig(dir: string): LoadedConfig {
   if (hit && hit.mtimeMs === stat.mtimeMs) return hit.result;
   let result: LoadedConfig;
   try {
-    result = parseTeamConfig(fs.readFileSync(file, 'utf8'), file);
+    result = parseTeamConfig(readProjectFile(file, { maxBytes: 1_000_000 }), file);
   } catch (err) {
     result = { file, error: `${file} cannot be read: ${(err as Error).message}` };
   }

@@ -6,9 +6,9 @@
  *   Cursor beforeShellExecution / preToolUse -> { permission, user_message, agent_message }
  * Both run the same extraction and policy.
  */
-import fs from 'node:fs';
 import path from 'node:path';
 import { applyCooldownDays } from '../config.js';
+import { readProjectFile } from '../projectFile.js';
 import { loadTeamConfig, resolvePolicy } from '../teamConfig.js';
 import { agentMessage, decide, type HookDecision } from './policy.js';
 import { type DepIntent, fromCommand, fromFileWrite, isWatchedFile } from './intent.js';
@@ -19,7 +19,8 @@ import { languageOf, undeclaredImportNotes } from './imports.js';
 
 function readIfExists(p: string): string | undefined {
   try {
-    return fs.readFileSync(p, 'utf8');
+    // The agent's own file, links included; but never a FIFO or device, and bounded.
+    return readProjectFile(p, { allowOutside: true });
   } catch {
     return undefined;
   }

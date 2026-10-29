@@ -4,6 +4,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { readProjectFileIfOk } from '../projectFile.js';
 
 const LOCK_PRIORITY = [
   'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-lock.yaml', 'yarn.lock',
@@ -42,10 +43,13 @@ export function readSiblings(file: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const s of ['package.json', 'pyproject.toml', 'Cargo.toml', 'composer.json', 'build.gradle.kts', 'build.gradle', 'gradle.properties']) {
     const p = path.join(dir, s);
-    if (path.basename(file) !== s && fs.existsSync(p)) out[s] = fs.readFileSync(p, 'utf8');
+    if (path.basename(file) === s || !fs.existsSync(p)) continue;
+    const text = readProjectFileIfOk(p);
+    if (text !== undefined) out[s] = text;
   }
   // Gradle's version catalog lives in gradle/ next to the build script.
   const catalog = path.join(dir, 'gradle', 'libs.versions.toml');
-  if (fs.existsSync(catalog)) out['libs.versions.toml'] = fs.readFileSync(catalog, 'utf8');
+  const text = fs.existsSync(catalog) ? readProjectFileIfOk(catalog, { root: dir }) : undefined;
+  if (text !== undefined) out['libs.versions.toml'] = text;
   return out;
 }

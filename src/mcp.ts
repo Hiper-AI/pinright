@@ -18,6 +18,7 @@ import { securityNotice } from './format.js';
 import { trackGitHub } from './github.js';
 import { HttpError } from './http.js';
 import { PKG_VERSION } from './pkg.js';
+import { readProjectFile } from './projectFile.js';
 import { resolvePackage } from './mapping.js';
 import { describeInstalled, manifestsIn, Project, readSiblings, watchRoots } from './project.js';
 import { ecosystemHint, formatLibraryId, parseLibraryRef, searchPackages } from './search.js';
@@ -347,13 +348,13 @@ export function buildMcpServer(): McpServer {
         } else if (p) {
           const abs = path.resolve(p);
           const wf = workflowFiles(abs);
-          for (const f of wf) workflows.push({ file: f, uses: parseUses(fs.readFileSync(f, 'utf8'), f) });
+          for (const f of wf) workflows.push({ file: f, uses: parseUses(readProjectFile(f), f) });
           const files = fs.statSync(abs).isDirectory() ? manifestsIn(abs) : wf.length ? [] : [abs];
           if (!files.length && !wf.length) return text(`No supported lockfile, manifest or workflow in ${abs}.`);
           for (const f of files) {
             // Only dependency files: this tool never reads anything else from disk.
             if (!detectKind(f)) return errorText(new Error(`Unsupported file ${f}.`));
-            targets.push({ file: f, content: fs.readFileSync(f, 'utf8'), siblings: readSiblings(f) });
+            targets.push({ file: f, content: readProjectFile(f), siblings: readSiblings(f) });
           }
         } else {
           return errorText(new Error('Pass path, or content with fileName.'));

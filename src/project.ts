@@ -20,6 +20,7 @@ import { type Ecosystem } from './ecosystems.js';
 import { loadTeamConfig, type Policy, resolvePolicy } from './teamConfig.js';
 import { normalizePypiName, parseFile, type ParsedTree } from './tree/lockfiles.js';
 import { pickVersion } from './tree/resolveManifest.js';
+import { readProjectFile } from './projectFile.js';
 import { manifestsIn, readSiblings } from './tree/discover.js';
 
 export { manifestsIn, readSiblings };
@@ -81,7 +82,7 @@ function entriesOf(tree: ParsedTree, file: string, dir: string): DirEntry[] {
     if (eco === 'npm') {
       // No lockfile, but node_modules may still say what is installed.
       try {
-        const pj = JSON.parse(fs.readFileSync(path.join(dir, 'node_modules', d.name, 'package.json'), 'utf8'));
+        const pj = JSON.parse(readProjectFile(path.join(dir, 'node_modules', d.name, 'package.json'), { root: dir, maxBytes: 1_000_000 }));
         if (typeof pj.version === 'string') {
           version = pj.version;
           source = 'node_modules';
@@ -197,7 +198,7 @@ export class Project {
     for (const f of files) {
       const rel = path.relative(root, f).split(path.sep).join('/') || path.basename(f);
       try {
-        const tree = parseFile(f, fs.readFileSync(f, 'utf8'), readSiblings(f));
+        const tree = parseFile(f, readProjectFile(f), readSiblings(f));
         for (const e of entriesOf(tree, rel, dir)) {
           const k = keyOf(e.ecosystem, e.name);
           if (!entries.has(k)) entries.set(k, e);

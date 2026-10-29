@@ -9,6 +9,7 @@ import path from 'node:path';
 import { actionsAuditFails, auditActions, formatActionsAudit, type ActionsAudit } from './actions/check.js';
 import { parseUses, workflowFiles } from './actions/workflow.js';
 import { applyCooldownDays } from './config.js';
+import { readProjectFile } from './projectFile.js';
 import { buildSarif, type SarifLog } from './sarif/build.js';
 import { loadTeamConfig, parseTeamConfig, type Policy, type PolicyHit, resolvePolicy, treePolicyHits } from './teamConfig.js';
 import { auditTree, formatTreeAudit, type TreeAudit } from './tree/audit.js';
@@ -53,7 +54,7 @@ function loadPolicy(target: string, configFile?: string): { policy: Policy; erro
   if (configFile) {
     const file = path.resolve(configFile);
     try {
-      team = parseTeamConfig(fs.readFileSync(file, 'utf8'), file);
+      team = parseTeamConfig(readProjectFile(file, { allowOutside: true }), file);
     } catch (err) {
       team = { file, error: `${file} cannot be read: ${(err as Error).message}` };
     }
@@ -80,7 +81,7 @@ export async function runAudit(opts: AuditOptions): Promise<AuditRun> {
   const out: FileAudit[] = [];
   const notes: string[] = [];
   for (const f of files) {
-    const tree = parseFile(f, fs.readFileSync(f, 'utf8'), readSiblings(f));
+    const tree = parseFile(f, readProjectFile(f), readSiblings(f));
     const packages: TreePackage[] = [];
     const audit = await auditTree(tree, { packagesOut: packages });
     const policyHits = await treePolicyHits(policy, tree).catch((err) => [{ kind: 'note' as const, text: `Policy not checked: ${(err as Error).message}` }]);
@@ -94,7 +95,7 @@ export async function runAudit(opts: AuditOptions): Promise<AuditRun> {
     }
     out.push({ tree, audit, packages, policy: policyHits, supply });
   }
-  const actions = wf.length ? await auditActions(wf.map((f) => ({ file: f, uses: parseUses(fs.readFileSync(f, 'utf8'), f) }))) : undefined;
+  const actions = wf.length ? await auditActions(wf.map((f) => ({ file: f, uses: parseUses(readProjectFile(f), f) }))) : undefined;
   return { target, files: out, actions, policy, policyError: error, notes };
 }
 
@@ -180,7 +181,7 @@ export function runToSarif(run: AuditRun, opts: { root: string; toolVersion: str
     notes: [...(run.policyError ? [`Policy error: ${run.policyError}`] : []), ...run.files.flatMap((f) => f.audit.notes), ...(run.actions?.notes ?? [])],
     read: (file) => {
       try {
-        return fs.readFileSync(file, 'utf8');
+        return readProjectFile(file);
       } catch {
         return undefined;
       }
