@@ -11,7 +11,7 @@
  *   npx tsx bench/agents/run.ts [--model sonnet] [--reps 2] [--concurrency 4] [--only id1,id2] [--arms a,b]
  */
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, createWriteStream } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { DOCS_HINT, TASKS } from './tasks.js';
 
@@ -52,8 +52,19 @@ const jobs: Job[] = [];
 for (let rep = 1; rep <= reps; rep++) {
   for (const t of TASKS) {
     if (only.length && !only.includes(t.id)) continue;
-    for (const arm of armsOpt) jobs.push({ arm, taskId: t.id, rep, prompt: `${t.prompt}\n\n${DOCS_HINT}` });
+    for (const arm of armsOpt) {
+      // --resume: skip runs whose transcript already ends in a successful result.
+      if (args.includes('--resume')) {
+        const tr = join(runDir, arm, t2(t.id, rep), 'transcript.jsonl');
+        if (existsSync(tr) && /"type":"result","subtype":"success"/.test(readFileSync(tr, 'utf8'))) continue;
+        rmSync(join(runDir, arm, t2(t.id, rep)), { recursive: true, force: true });
+      }
+      jobs.push({ arm, taskId: t.id, rep, prompt: `${t.prompt}\n\n${DOCS_HINT}` });
+    }
   }
+}
+function t2(id: string, rep: number) {
+  return `${id}-r${rep}`;
 }
 
 function runOne(job: Job): Promise<number> {
@@ -100,7 +111,7 @@ function runOne(job: Job): Promise<number> {
 }
 
 mkdirSync(runDir, { recursive: true });
-writeFileSync(join(runDir, 'config.json'), JSON.stringify({ model, reps, arms: armsOpt, tasks: only.length ? only : TASKS.map((t) => t.id), startedAt: new Date().toISOString() }, null, 2));
+if (!args.includes('--resume')) writeFileSync(join(runDir, 'config.json'), JSON.stringify({ model, reps, arms: armsOpt, tasks: only.length ? only : TASKS.map((t) => t.id), startedAt: new Date().toISOString() }, null, 2));
 console.log(`${jobs.length} runs -> ${runDir}`);
 let next = 0;
 await Promise.all(Array.from({ length: concurrency }, async () => {

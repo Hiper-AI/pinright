@@ -112,12 +112,16 @@ It blocks malware, typosquats, packages or versions that do not exist, versions 
 when a clean one exists, deprecated versions with a maintained successor, and dependencies whose
 transitive tree has advisories that a same-line upgrade clears. When a vulnerable pin is itself a
 dependency of another pinned package, it points at the parent upgrade, so the fix still installs.
-It asks a human when no clean version exists. Everything else passes, with notes for the agent.
+It also blocks a manifest whose pinned versions contradict each other (a pin outside the range its
+parent requires), because that install would fail. When no clean version exists at all, it asks a
+human for high and critical advisories and lets the rest through with a note, so the work does not stop
+on a moderate finding nobody can fix yet. Everything else passes, with notes for the agent.
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `SAFECTX_ALLOW` | none | Comma list of names that skip the hook, `*` suffix allowed (`@acme/*`). For private packages. |
 | `SAFECTX_HOOK_ON_ERROR` | `allow` | What to do when deps.dev or OSV cannot be reached: `allow`, `ask` or `deny`. |
+| `SAFECTX_HOOK_NO_FIX` | `severity` | When no clean version exists: `severity` asks for high/critical and allows the rest; or `allow`, `ask`, `deny` for all. |
 | `SAFECTX_HOOK_COOLDOWN` | `warn` | `enforce` blocks an unpinned install whose newest version is inside the cooldown window. |
 | `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check; on timeout it behaves as `SAFECTX_HOOK_ON_ERROR`. |
 
@@ -129,6 +133,11 @@ least 3 days ago. The cooldown exists because compromised releases are usually p
 
 When the project already uses a version, safectx also gives the newest clean version on its release
 line (`3.x`, or `0.28.x` before 1.0, where minors break), and says so when only a new major is clean.
+When the recommended version belongs to a major less than a year old, the notice says so and points
+the agent to that version's docs: its configuration may differ from what the model learned.
+
+A version counts as clean only when both deps.dev and OSV agree; OSV publishes new advisories hours
+before deps.dev mirrors them.
 
 ## Where the docs come from
 
