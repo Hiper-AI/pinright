@@ -28,6 +28,9 @@ const stamp = args[0];
 if (!stamp) throw new Error('usage: score.ts <stamp>');
 const concurrency = Number(args[args.indexOf('--concurrency') + 1] || 4) || 4;
 const doBuild = !args.includes('--no-build');
+// --only task1,task2 --arms a,b: re-score just those runs and merge them into the existing scores.json.
+const onlyTasks = (args[args.indexOf('--only') + 1] ?? '').split(',').filter((s) => args.includes('--only') && s);
+const onlyArms = (args[args.indexOf('--arms') + 1] ?? '').split(',').filter((s) => args.includes('--arms') && s);
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
 export const ARMS = ['no-docs', 'context7', 'safectx', 'hook-only', 'safectx+hook', 'latest'];
@@ -236,7 +239,10 @@ for (const arm of ARMS) {
   for (const name of readdirSync(armDir).sort()) {
     const m = name.match(/^(.*)-r(\d+)$/);
     const task = m && TASKS.find((t) => t.id === m[1]);
-    if (m && task) jobs.push({ arm, name, task, rep: Number(m[2]), dir: join(armDir, name) });
+    if (!m || !task) continue;
+    if (onlyTasks.length && !onlyTasks.includes(task.id)) continue;
+    if (onlyArms.length && !onlyArms.includes(arm)) continue;
+    jobs.push({ arm, name, task, rep: Number(m[2]), dir: join(armDir, name) });
   }
 }
 
@@ -253,7 +259,7 @@ await Promise.all(
       const deps: DepScore[] = [];
       for (const d of manifest ?? []) deps.push(await scoreDep(task.ecosystem, d));
       const tree = manifest ? await (task.ecosystem === 'npm' ? npmTree(work) : pypiTree(work)) : undefined;
-      const build = manifest && doBuild && arm !== 'latest' ? await (task.ecosystem === 'npm' ? npmBuild(work) : pypiBuild(work)).catch((e: Error) => ({ installed: false, step: 'harness', error: e.message })) : undefined;
+      const build = manifest && doBuild && arm !== 'latest' ? await (task.ecosystem === 'npm' ? npmBuild(work) : pypiBuild(work)).catch((e: Error): BuildScore => ({ installed: false, step: 'harness', error: e.message })) : undefined;
       scores[i] = { arm, task: task.id, rep, ecosystem: task.ecosystem, ...t, deps, tree, build };
       const treeTxt = tree?.resolved ? `${tree.alerts} (safectx ${tree.safectx?.alerts ?? '?'})` : `X ${tree?.error ?? 'no manifest'}`;
       const buildTxt = build ? (build.built ? 'ok' : build.installed ? `FAIL ${build.step}${build.inconclusive ? ' (native)' : ''}: ${build.error ?? ''}` : `NOINSTALL ${build.error ?? ''}`) : '-';
@@ -261,5 +267,9 @@ await Promise.all(
     }
   }),
 );
-writeFileSync(join(runDir, 'scores.json'), JSON.stringify(scores.filter(Boolean), null, 2));
+const partial = onlyTasks.length || onlyArms.length;
+const prev: RunScore[] = partial && existsSync(join(runDir, 'scores.json')) ? JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8')) : [];
+const key = (s: RunScore) => `${s.arm}|${s.task}|${s.rep}`;
+const fresh = new Set(scores.filter(Boolean).map(key));
+writeFileSync(join(runDir, 'scores.json'), JSON.stringify([...prev.filter((s) => !fresh.has(key(s))), ...scores.filter(Boolean)], null, 2));
 console.log(`scored ${scores.length} runs -> ${join(runDir, 'scores.json')}`);

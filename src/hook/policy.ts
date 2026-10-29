@@ -170,6 +170,12 @@ function noFix(head: string, severity: string | undefined, malware: boolean): Ou
   return action === 'allow' ? { action, warning: text } : { action, problem: text };
 }
 
+/** Higher is milder: CRITICAL 0, HIGH 1, unrated 1.5, MODERATE 2, LOW 3. */
+function sevRank(s: string | undefined): number {
+  const r: Record<string, number> = { CRITICAL: 0, HIGH: 1, MODERATE: 2, MEDIUM: 2, LOW: 3 };
+  return r[(s ?? '').toUpperCase()] ?? 1.5;
+}
+
 function judge(c: Checked): Outcome {
   const { i, label, version, implicit } = c;
   const v = c.v as Verdict;
@@ -196,7 +202,18 @@ function judge(c: Checked): Outcome {
     const head = `${label}${implicit ? ` resolves to ${version}, which` : ''} has ${req.advisories.length} known advisor${req.advisories.length === 1 ? 'y' : 'ies'} (${ids}${sev ? `, ${sev}` : ''}).`;
     if (r.safeVersionSameLine && r.safeVersionSameLine !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersionSameLine, `Use ${r.line} release`)}` };
     if (r.safeVersion && r.safeVersion !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}` };
-    // No other version is clean: blocking would only stop the work. Ask for serious ones, note the rest.
+    // No version is clean. If another one is clearly less exposed, point there.
+    const le = r.leastExposed;
+    if (le && le.version !== version) {
+      const milder = sevRank(le.maxSeverity) > sevRank(sev) || (sevRank(le.maxSeverity) === sevRank(sev) && le.advisories < req.advisories.length);
+      if (milder) {
+        return {
+          action: 'deny',
+          problem: `${head} No version is free of known advisories; the least exposed is ${le.version} (${le.advisories} advisor${le.advisories === 1 ? 'y' : 'ies'}, worst ${le.maxSeverity ?? 'unrated'}): ${installCommand(i.ecosystem, i.name, le.version)}`,
+        };
+      }
+    }
+    // This is already the least exposed: blocking would only stop the work. Ask for serious ones, note the rest.
     return noFix(head, sev, req.advisories.some((a) => /^MAL-/.test(a.id)));
   }
   if (req && req.verdict === 'deprecated') {

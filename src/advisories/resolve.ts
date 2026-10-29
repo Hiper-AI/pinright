@@ -63,6 +63,8 @@ export interface PackageReport {
   crossLineRequired?: boolean;
   /** The safe version's release line started less than a year ago. */
   recentMajor?: { line: string; since: string };
+  /** When no version is clean: the one with the mildest worst advisory (then fewest), newest on ties. */
+  leastExposed?: { version: string; advisories: number; maxSeverity?: string };
   requested?: RequestedVersionReport;
   checkedAt: string;
   sources: string[];
@@ -250,6 +252,23 @@ export async function assessPackage(
     report.line = line;
     report.safeVersionSameLine = safeSameLine?.versionKey.version;
     report.crossLineRequired = !safeSameLine && Boolean(safe);
+  }
+  if (!safe && !sourceDown && candidates.length) {
+    // Nothing is clean: point at the least exposed version instead of leaving the agent stuck.
+    let best: { version: string; rank: number; count: number; maxSeverity?: string } | undefined;
+    for (const cand of candidates) {
+      const vulns = await queryVersion(eco, name, cand.versionKey.version).catch(() => undefined);
+      if (!vulns) continue;
+      if (vulns.some((v) => isMalware(v.id))) continue;
+      const sevs = vulns.map((v) => (severityOf(v) ?? 'UNKNOWN').toUpperCase());
+      const rank = Math.min(...sevs.map((s) => SEVERITY_RANK[s] ?? 1.5), 4);
+      const maxSeverity = sevs.sort((a, b) => (SEVERITY_RANK[a] ?? 1.5) - (SEVERITY_RANK[b] ?? 1.5))[0];
+      // Lower worst severity wins; then fewer advisories; candidates are newest first, so ties keep the newer.
+      if (!best || rank > best.rank || (rank === best.rank && vulns.length < best.count)) {
+        best = { version: cand.versionKey.version, rank, count: vulns.length, maxSeverity };
+      }
+    }
+    if (best) report.leastExposed = { version: best.version, advisories: best.count, maxSeverity: best.maxSeverity };
   }
   if (safe) {
     // A major younger than a year is likely newer than what the agent learned:

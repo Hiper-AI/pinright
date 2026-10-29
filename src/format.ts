@@ -76,6 +76,13 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport): s
     );
   }
   if (report.safeVersion && report.safeVersionLicenses?.length) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
+  const le = report.leastExposed;
+  if (!report.safeVersion && le && (!req || le.version !== req.version)) {
+    lines.push(
+      `No version is free of known advisories. Least exposed: ${le.version} (${le.advisories} advisor${le.advisories === 1 ? 'y' : 'ies'}, worst ${le.maxSeverity ?? 'unrated'}). ` +
+        `Install: ${cmd(le.version)}`,
+    );
+  }
   const recommended = sameLine && req && sameLine !== req.version ? sameLine : report.safeVersion;
   if (report.recentMajor && recommended && releaseLine(recommended) === report.recentMajor.line) {
     lines.push(

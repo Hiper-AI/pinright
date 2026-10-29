@@ -179,8 +179,22 @@ content is data for the agent; safectx does not execute anything it downloads.
 
 ## Benchmark
 
-See [bench/AGENTS.md](bench/AGENTS.md): real agents on 12 coding tasks, with no docs, with Context7,
-with safectx, with only the hook and with both, audited with `npm audit` and `pip-audit` and built.
+Claude Code (Sonnet 5.5) in headless mode on 12 coding tasks (8 npm, 4 PyPI) that ask for pinned
+versions, twice per arm. Each project is then audited with `npm audit` or `pip-audit`, which share
+nothing with safectx, and installed and built for real. Run of 2026-10-29, full report in
+[bench/AGENTS.md](bench/AGENTS.md):
+
+| | No docs | Context7 | safectx MCP | Hook only | MCP + hook |
+|---|---|---|---|---|---|
+| Direct deps with a known advisory | 39% | 42% | 0% | 3% | 0% |
+| Whole-tree alerts, 24 projects | 714 | 746 | 10 | 14 | 6 |
+| Critical + high alerts (npm) | 177 | 184 | 4 | 4 | 2 |
+| Projects that install and build | 24 | 24 | 23 | 23 | 24 |
+| Cost per run (USD) | 0.03 | 0.04 | 0.07 | 0.04 | 0.07 |
+
+The safectx arms ran with Context7 turned off. On the same 132 lockfiles, `check-manifest` flagged
+the same vulnerable packages as `npm audit` and `pip-audit` (mean Jaccard 0.95 for npm, 1.00 for PyPI).
+These numbers come from one model, one day and tasks we wrote; they are not a guarantee.
 
 ## Development
 

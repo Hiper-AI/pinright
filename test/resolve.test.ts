@@ -188,3 +188,18 @@ describe('same release line', () => {
     expect(r.safeVersion).toBe('1.0.0');
   });
 });
+
+describe('least exposed version', () => {
+  it('when nothing is clean, picks the version whose worst advisory is mildest', async () => {
+    seedLib({ versions: [version('1.0.0'), version('1.1.0'), version('1.2.0', { isDefault: true })], advisories: { '1.0.0': ['GHSA-a'], '1.1.0': ['GHSA-b'], '1.2.0': ['GHSA-a'] } });
+    fixtures.set('/v1/query', {
+      vulns: [
+        { id: 'GHSA-a', database_specific: { severity: 'HIGH' }, affected: [{ ranges: [{ type: 'SEMVER', events: [{ introduced: '0' }] }] }] },
+      ],
+    });
+    // Every version matches GHSA-a in this mock, so the newest wins the tie on severity and count.
+    const r = await assessPackage('npm', 'lib');
+    expect(r.safeVersion).toBeUndefined();
+    expect(r.leastExposed).toEqual({ version: '1.2.0', advisories: 1, maxSeverity: 'HIGH' });
+  });
+});

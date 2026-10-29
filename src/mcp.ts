@@ -188,14 +188,15 @@ export function buildMcpServer(): McpServer {
         const notice = securityNotice(r, v.typo);
         if (r.verdict === 'malicious' || r.verdict === 'possible-typosquat') return text(notice);
 
-        let docsVersion = requested ?? r.safeVersion ?? r.latestVersion;
+        let docsVersion = requested ?? r.safeVersion ?? r.leastExposed?.version ?? r.latestVersion;
         let upgrade = false;
         if (requested && r.requested && r.requested.verdict !== 'ok' && r.requested.verdict !== 'unknown') {
           if (r.safeVersionSameLine) docsVersion = r.safeVersionSameLine;
           else if (r.crossLineRequired && r.safeVersion) {
             docsVersion = r.safeVersion;
             upgrade = true;
-          } else if (r.requested.verdict === 'unknown-package') docsVersion = r.safeVersion ?? r.latestVersion;
+          } else if (r.requested.verdict === 'unknown-package') docsVersion = r.safeVersion ?? r.leastExposed?.version ?? r.latestVersion;
+          else if (!r.safeVersion && r.leastExposed) docsVersion = r.leastExposed.version;
         }
         if (!docsVersion) return text(`${notice}\n\nNo published version of ${ref.name} to document.`);
 

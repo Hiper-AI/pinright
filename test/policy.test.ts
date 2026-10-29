@@ -200,3 +200,16 @@ describe('no clean version anywhere', () => {
     delete process.env.SAFECTX_HOOK_NO_FIX;
   });
 });
+
+describe('no clean version, but a less exposed one', () => {
+  it('points from a HIGH-ridden version to the least exposed one', async () => {
+    versions.set('nuxt', ['4.0.3', '4.6.2']);
+    reports.set('nuxt@4.0.3', {
+      verdict: 'vulnerable', safeVersion: undefined, leastExposed: { version: '4.6.2', advisories: 1, maxSeverity: 'MODERATE' },
+      requested: { version: '4.0.3', verdict: 'vulnerable', advisories: [{ id: 'GHSA-h', aliases: [], url: '', severity: 'HIGH' }] },
+    });
+    const d = await decide([{ ecosystem: 'npm', name: 'nuxt', spec: '4.0.3', source: 'package.json' }]);
+    expect(d.action).toBe('deny');
+    expect(d.problems[0]).toContain('the least exposed is 4.6.2 (1 advisory, worst MODERATE): npm install nuxt@4.6.2');
+  });
+});
