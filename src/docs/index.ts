@@ -32,6 +32,7 @@ const MAX_PROSE_BYTES = 1_200_000;
 const TRANSLATION =
   /(^|\/)(i18n|translations?|locales?)\/|(^|\/)docs\/(?!en\/)(ar|az|bn|cs|de|em|es|fa|fr|he|hi|hu|id|it|ja|ko|nl|pl|pt|pt-br|ru|sv|th|tr|uk|ur|vi|yo|zh|zh-cn|zh-hant|zh-tw)\//i;
 const TYPE_FILES = 3;
+const DEEP_TYPE_FILES = 2;
 const LLMS_PAGES = 4;
 const CURATED_LLMS_PAGES = 8;
 
@@ -94,9 +95,17 @@ function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUp
     .sort((a, b) => b.score - a.score)
     .filter((f) => f.score > 0)
     .slice(0, TYPE_FILES);
+  // Packages without prose docs keep their API in one file per feature, deep in the tree
+  // (NestJS decorators/core/use-guards.decorator.d.ts, Stripe resources/Checkout/Sessions.d.ts):
+  // those whose path names a word of the question, two at most.
+  const deep = files.filter(
+    (f) => f.origin === 'package' && f.path.endsWith('.d.ts') && !types.includes(f) && !/internal|devtools|private|compiled|test|vendor/i.test(f.path) &&
+      (wantUpgrade || !olderMajorPath(f.path, meta.version)),
+  );
+  const deepTypes = rankPaths(deep, query).filter((f) => f.score >= 0.8).slice(0, DEEP_TYPE_FILES);
 
   const upgrade = wantUpgrade ? files.filter((f) => isUpgrade(f.path)).slice(0, 2) : [];
-  return [...new Set([readme, ...rankedProse, ...upgrade, ...rankedTypes].filter((f): f is RemoteFile => Boolean(f)))];
+  return [...new Set([readme, ...rankedProse, ...upgrade, ...rankedTypes, ...deepTypes].filter((f): f is RemoteFile => Boolean(f)))];
 }
 
 /** Packages often ship the same docs their repo has; keep the first copy of each section. */
