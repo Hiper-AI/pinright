@@ -6,7 +6,7 @@
  * safectx check <eco> <name>[@version]
  * safectx audit [path] [--json] [--fail-on low|moderate|high|critical|none] [--sarif <file>] [--config <file>]
  * safectx upgrade <eco> <name> <from> [to] [--query="..."]
- * safectx init [claude|cursor] [--no-hook] [--no-mcp] [--no-config]
+ * safectx init [claude|cursor] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,6 +16,7 @@ import { AuditInputError, auditExitCode, auditJson, formatAuditRun, parseFailOn,
 import { PKG_VERSION } from './pkg.js';
 import { parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
+import { ghCliLoggedIn, githubAuthAdvice, mcpEntryEnv, trackGitHub } from './github.js';
 import { runClaudeHook, runCursorHook } from './hook/run.js';
 import { splitNpmSpec } from './hook/intent.js';
 import { buildMcpServer } from './mcp.js';
@@ -132,11 +133,27 @@ function launcher(local: boolean): { command: string; args: string[] } {
   return { command: 'node', args: [fileURLToPath(import.meta.url)] };
 }
 
+/** safectx's MCP entry: the launcher, and the env the user had (with SAFECTX_GH_CLI per --gh-cli). Never a token. */
+function mcpEntry(previous: any, l: { command: string; args: string[] }, ghCli: boolean) {
+  const { env, warnings } = mcpEntryEnv(previous?.env, ghCli);
+  for (const w of warnings) console.log(`warning: ${w}`);
+  return { command: l.command, args: l.args, ...(env ? { env } : {}) };
+}
+
 function init(args: string[]): number {
+  const code = initFiles(args);
+  if (code === 0) {
+    console.log(githubAuthAdvice({ envToken: Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN), ghLoggedIn: ghCliLoggedIn(), optIn: args.includes('--gh-cli') }));
+  }
+  return code;
+}
+
+function initFiles(args: string[]): number {
   const agent = args.find((a) => !a.startsWith('--')) ?? 'claude';
   const local = args.includes('--local');
   const withHook = !args.includes('--no-hook');
   const withMcp = !args.includes('--no-mcp');
+  const ghCli = args.includes('--gh-cli');
   const l = launcher(local);
   const shell = (extra: string[]) => [l.command, ...l.args, ...extra].map((s) => (/\s/.test(s) ? `"${s}"` : s)).join(' ');
   // The team policy starter, never over an existing one: that file belongs to the team.
@@ -152,7 +169,7 @@ function init(args: string[]): number {
     if (withMcp) {
       const p = path.resolve('.mcp.json');
       const j = readJson(p);
-      j.mcpServers = { ...(j.mcpServers ?? {}), safectx: { command: l.command, args: l.args } };
+      j.mcpServers = { ...(j.mcpServers ?? {}), safectx: mcpEntry(j.mcpServers?.safectx, l, ghCli) };
       writeJson(p, j);
     }
     if (withHook) {
@@ -169,7 +186,7 @@ function init(args: string[]): number {
     if (withMcp) {
       const p = path.resolve('.cursor', 'mcp.json');
       const j = readJson(p);
-      j.mcpServers = { ...(j.mcpServers ?? {}), safectx: { command: l.command, args: l.args } };
+      j.mcpServers = { ...(j.mcpServers ?? {}), safectx: mcpEntry(j.mcpServers?.safectx, l, ghCli) };
       writeJson(p, j);
     }
     if (withHook) {
@@ -187,8 +204,15 @@ function init(args: string[]): number {
     }
     return 0;
   }
-  console.error('usage: safectx init [claude|cursor] [--local] [--no-hook] [--no-mcp] [--no-config]');
+  console.error('usage: safectx init [claude|cursor] [--local] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]');
   return 2;
+}
+
+/** What GitHub's rate limit left out, on stderr so `--json` output stays parseable. */
+async function noticed(run: () => Promise<number>): Promise<number> {
+  const { value, notice } = await trackGitHub(run);
+  if (notice) console.error(`\n${notice}`);
+  return value;
 }
 
 async function main(): Promise<number> {
@@ -201,11 +225,11 @@ async function main(): Promise<number> {
     case 'hook':
       return args[0] === 'cursor' ? runCursorHook() : runClaudeHook();
     case 'check':
-      return check(args);
+      return noticed(() => check(args));
     case 'audit':
-      return audit(args);
+      return noticed(() => audit(args));
     case 'upgrade':
-      return upgrade(args);
+      return noticed(() => upgrade(args));
     case 'init':
       return init(args);
     case '--version':

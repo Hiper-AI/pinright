@@ -40,6 +40,8 @@ export const config = {
     versions: 24 * 3600_000,
     advisories: 24 * 3600_000,
     registry: 24 * 3600_000,
+    /** A repo's file list at a release tag does not change: keep it a year. */
+    tagged: 365 * 24 * 3600_000,
   },
 } as const;
 

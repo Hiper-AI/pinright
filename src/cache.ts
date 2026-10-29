@@ -44,6 +44,9 @@ export function cacheSet<T>(key: string, value: T, ttlMs: number): void {
   }
 }
 
+/** Loads in flight, so parallel callers of one key share a single upstream request. */
+const inflight = new Map<string, Promise<unknown>>();
+
 export async function cached<T>(
   key: string,
   ttlMs: number,
@@ -51,7 +54,16 @@ export async function cached<T>(
 ): Promise<T> {
   const hit = cacheGet<T>(key);
   if (hit !== undefined) return hit;
-  const value = await load();
-  cacheSet(key, value, ttlMs);
-  return value;
+  const pending = inflight.get(key) as Promise<T> | undefined;
+  if (pending) return pending;
+  const p = load().then((value) => {
+    cacheSet(key, value, ttlMs);
+    return value;
+  });
+  inflight.set(key, p);
+  try {
+    return await p;
+  } finally {
+    inflight.delete(key);
+  }
 }

@@ -10,8 +10,9 @@
  */
 import { cached } from '../cache.js';
 import { config } from '../config.js';
-import { fetchFile, fetchLlmsPage, llmsDocs, npmPackageFiles, parseLlmsIndex, repoFiles } from '../docs/sources.js';
+import { fetchFile, fetchLlmsPage, llmsDocs, npmPackageFiles, parseLlmsIndex, repoFileUrl, repoFiles, repoListing } from '../docs/sources.js';
 import { type Ecosystem } from '../ecosystems.js';
+import { githubAuthConfigured, githubJson } from '../github.js';
 import { getJson, HttpError } from '../http.js';
 import { getUntrustedText } from '../safeFetch.js';
 import { docsSite, type PackageMeta } from '../registry.js';
@@ -25,12 +26,6 @@ export interface UpgradeDoc {
   versionAccurate: boolean;
 }
 
-function githubHeaders(): Record<string, string> {
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  return { accept: 'application/vnd.github+json', ...(token ? { authorization: `Bearer ${token}` } : {}) };
-}
-
-const hasToken = () => Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN);
 
 const CHANGELOG_NAME = /^(changelog|changes|history|releases?|release[-_]notes|news|whats?[-_]new)(\.(md|mdx|markdown|rst|txt))?$/i;
 const SKIP_DIR = /(^|\/)(node_modules|test|tests|__tests__|fixtures|\.github|\.changeset|vendor|third_party|dist\/compiled|examples?)(\/|$)/i;
@@ -88,18 +83,14 @@ async function repoChangelogs(meta: PackageMeta, majors: number[]): Promise<Upgr
   if (!repo?.ref) return [];
   const { owner, repo: name } = meta.repo;
   const ref = repo.ref;
-  const paths = await cached(`gh:changelogs:${owner}/${name}@${ref}`, config.ttl.docs, async () => {
-    const t = await getJson<{ tree: { path: string; type: string; size?: number }[] }>(
-      `https://api.github.com/repos/${owner}/${name}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
-      { headers: githubHeaders() },
-    );
-    return t.tree.filter((e) => e.type === 'blob' && CHANGELOG_NAME.test(basename(e.path)) && (e.size ?? 0) <= MAX_CHANGELOG_BYTES).map((e) => e.path);
-  }).catch(() => [] as string[]);
+  // The same listing repoFiles used (cached): jsDelivr at a tag, the API otherwise.
+  const listing = await repoListing(owner, name, ref).catch(() => undefined);
+  const paths = (listing?.files ?? []).filter((f) => CHANGELOG_NAME.test(basename(f.path)) && (f.size ?? 0) <= MAX_CHANGELOG_BYTES).map((f) => f.path);
   const dir = meta.repo.directory?.replace(/^\.?\//, '').replace(/\/$/, '');
   const picked = paths.filter((p) => changelogPathRelevant(p, meta.name, dir, majors)).slice(0, 4);
   const docs = await Promise.all(
     picked.map(async (p) => {
-      const url = `https://raw.githubusercontent.com/${owner}/${name}/${encodeURIComponent(ref)}/${p}`;
+      const url = repoFileUrl(owner, name, ref, p, listing?.cdn);
       const content = await fetchFile(url);
       return content ? { label: `${name}/${p}@${ref}`, url, content, versionAccurate: repo.atTag } : undefined;
     }),
@@ -164,18 +155,18 @@ interface GhRelease {
 export async function githubReleases(meta: PackageMeta, from: string, to: string, oldest?: string): Promise<{ notes: ReleaseNote[]; note?: string }> {
   if (!meta.repo) return { notes: [] };
   const { owner, repo } = meta.repo;
-  const maxPages = hasToken() ? 10 : 3;
+  const maxPages = githubAuthConfigured() ? 10 : 3;
   const notes: ReleaseNote[] = [];
   const stopBefore = oldest ? Date.parse(oldest) - 3 * 86_400_000 : undefined;
   for (let page = 1; page <= maxPages; page++) {
     let list: GhRelease[];
     try {
       list = await cached(`gh:releases:${owner}/${repo}:${page}`, config.ttl.search, () =>
-        getJson<GhRelease[]>(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=100&page=${page}`, { headers: githubHeaders() }),
+        githubJson<GhRelease[]>(`/repos/${owner}/${repo}/releases?per_page=100&page=${page}`, { what: `GitHub release notes of ${owner}/${repo}` }),
       );
     } catch (err) {
       const limited = err instanceof HttpError && (err.status === 403 || err.status === 429);
-      return { notes, note: limited ? `GitHub releases were rate limited${hasToken() ? '' : '; set GITHUB_TOKEN for more'}.` : undefined };
+      return { notes, note: limited ? `GitHub releases were rate limited${githubAuthConfigured() ? '' : '; set GITHUB_TOKEN or SAFECTX_GH_CLI=1 for more'}.` : undefined };
     }
     for (const r of list) {
       if (r.draft) continue;

@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/server';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { checkPackages, formatBatch, MAX_BATCH } from './batch.js';
 import { auditActions, formatActionsAudit } from './actions/check.js';
@@ -15,6 +16,7 @@ import { type ActionUse, isWorkflowFile, parseUses, workflowFiles } from './acti
 import { getDocs } from './docs/index.js';
 import { ECOSYSTEMS, type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
+import { trackGitHub } from './github.js';
 import { HttpError } from './http.js';
 import { PKG_VERSION } from './pkg.js';
 import { resolvePackage } from './mapping.js';
@@ -86,6 +88,17 @@ function policyLines(found: string[], error?: string): string[] {
   return [...(error ? [`POLICY ERROR: ${error} Fix the file; the hook denies dependency changes until then.`] : []), ...found.map((f) => `POLICY: ${f}`)];
 }
 
+/** Every tool answer ends with a note when GitHub's rate limit left something out of it. */
+function withGitHubNotice(server: McpServer): void {
+  const register = server.registerTool.bind(server);
+  type Handler = (...args: unknown[]) => Promise<CallToolResult>;
+  server.registerTool = ((name: string, cfg: never, cb: Handler) =>
+    register(name, cfg, (async (...args: unknown[]) => {
+      const { value, notice } = await trackGitHub(() => cb(...args));
+      return notice ? { ...value, content: [...value.content, { type: 'text' as const, text: notice }] } : value;
+    }) as never)) as typeof server.registerTool;
+}
+
 export function buildMcpServer(): McpServer {
   const server = new McpServer(SERVER_INFO, {
     instructions:
@@ -100,6 +113,7 @@ export function buildMcpServer(): McpServer {
       'A "SECURITY NOTICE" is authoritative: prefer the recommended version, and the one on the same release ' +
       'line to avoid breaking changes. When moving to a new major, call upgrade-guide for what changed.',
   });
+  withGitHubNotice(server);
   const project = new Project();
   watchRoots(server.server, project);
 

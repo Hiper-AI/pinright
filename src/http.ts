@@ -13,6 +13,8 @@ export class HttpError extends Error {
     public readonly status: number,
     public readonly url: string,
     public readonly retryAfterSec?: number,
+    /** GitHub's x-ratelimit-remaining and x-ratelimit-reset (epoch seconds), when the response had them. */
+    public readonly rateLimit?: { remaining?: number; resetSec?: number },
   ) {
     super(`HTTP ${status} from ${url}`);
     this.name = 'HttpError';
@@ -22,10 +24,23 @@ export class HttpError extends Error {
 export interface HttpOptions {
   headers?: Record<string, string>;
   method?: 'GET' | 'POST';
+  /** Sent as JSON. */
   body?: unknown;
+  /** Sent as is, for non-JSON protocols (git); set the content-type in headers. */
+  rawBody?: string;
 }
 
 export const USER_AGENT =`safectx/${PKG_VERSION} (+https://github.com/Hiper-AI/safectx)`;
+
+/** SAFECTX_DEBUG_HTTP=1 logs one line per request to stderr: method, URL and status. Never headers. */
+function debug(method: string, url: string, status: number | string): void {
+  if (process.env.SAFECTX_DEBUG_HTTP === '1') process.stderr.write(`[safectx:http] ${method} ${url} ${status}\n`);
+}
+
+function intHeader(res: { headers: { get(name: string): string | null } }, name: string): number | undefined {
+  const n = Number.parseInt(res.headers.get(name) ?? '', 10);
+  return Number.isFinite(n) ? n : undefined;
+}
 
 async function request(url: string, opts: HttpOptions = {}) {
   const controller = new AbortController();
@@ -38,14 +53,19 @@ async function request(url: string, opts: HttpOptions = {}) {
       ...(opts.body !== undefined ? { 'content-type': 'application/json' } : {}),
       ...opts.headers,
     },
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    body: opts.rawBody ?? (opts.body !== undefined ? JSON.stringify(opts.body) : undefined),
     signal: controller.signal,
   };
   try {
-    const res = await fetch(url, init);
+    const res = await fetch(url, init).catch((err: unknown) => {
+      debug(init.method ?? 'GET', url, 'ERR');
+      throw err;
+    });
+    debug(init.method ?? 'GET', url, res.status);
     if (!res.ok) {
-      const retry = Number.parseInt(res.headers.get('retry-after') ?? '', 10);
-      throw new HttpError(res.status, url, Number.isFinite(retry) ? retry : undefined);
+      const remaining = intHeader(res, 'x-ratelimit-remaining');
+      const resetSec = intHeader(res, 'x-ratelimit-reset');
+      throw new HttpError(res.status, url, intHeader(res, 'retry-after'), remaining !== undefined || resetSec !== undefined ? { remaining, resetSec } : undefined);
     }
     return res;
   } finally {
@@ -75,6 +95,7 @@ export async function getBytes(url: string, opts: { maxBytes: number; timeoutMs?
       headers: { 'user-agent': USER_AGENT, accept: '*/*', ...opts.headers },
       signal: controller.signal,
     });
+    debug('GET', url, res.status);
     if (!res.ok) throw new HttpError(res.status, url);
     const declared = Number.parseInt(res.headers.get('content-length') ?? '', 10);
     const tooLarge = () => new Error(`${url} is larger than ${opts.maxBytes} bytes`);

@@ -20,12 +20,12 @@ often months old and carry known vulnerabilities. safectx gives the agent:
 ```
 agent --MCP--> safectx --> registry + jsDelivr     package files at the exact version (npm)
                        --> PyPI files              wheel/sdist at the exact version (Python API)
-                       --> GitHub (raw, tree API)  repo docs at the release tag
+                       --> jsDelivr (GitHub)       repo docs at the release tag (GitHub API past 50 MB)
                        --> project site            llms.txt / llms-full.txt
                        --> api.deps.dev            versions, advisories, licenses, dependency graphs
                        --> api.osv.dev             CVE details, fixed versions, malware (MAL-*)
                        --> packagist.org           Composer versions and advisories
-                       --> api.github.com          commits and tags behind GitHub Actions refs
+                       --> github.com (git)        commits and tags behind GitHub Actions refs
                        --> context7.com            only when the above came back thin (optional)
 ```
 
@@ -46,7 +46,8 @@ npx -y safectx init cursor
 `init` writes `.mcp.json` and `.claude/settings.json` (or `.cursor/mcp.json` and
 `.cursor/hooks.json`), keeping what is already there. `--no-hook` or `--no-mcp` installs one half.
 It also writes a commented starter [`.safectx.json`](#team-policy-safectxjson) when the project has
-none (`--no-config` skips it); it never overwrites an existing one.
+none (`--no-config` skips it); it never overwrites an existing one. At the end it says how safectx
+will authenticate to GitHub; `--gh-cli` adds `SAFECTX_GH_CLI=1` to the MCP entry.
 
 Any other MCP client:
 
@@ -54,8 +55,8 @@ Any other MCP client:
 { "mcpServers": { "safectx": { "command": "npx", "args": ["-y", "safectx"] } } }
 ```
 
-No key is required. A `GITHUB_TOKEN` raises GitHub's limit for repo docs (60 requests an hour
-without one; each package version costs one request and is cached for a week).
+No key is required. A `GITHUB_TOKEN` helps with large monorepos and upgrade guides; see
+[GitHub rate limit](#github-rate-limit). `init` never writes a token into these files.
 
 ## What the agent sees
 
@@ -335,8 +336,10 @@ ecosystem, so safectx reads the affected ranges itself. A compromised or vulnera
 SHA. A tag or branch ref gets a warning with the same release pinned to its SHA and the version as a
 comment; `SAFECTX_ACTIONS_PIN=enforce` blocks it. A branch, or a SHA that matches no recent tag, has
 no known version: when the action has advisories, the result is "unverified", never clean.
-`GITHUB_TOKEN` or `GH_TOKEN` raises GitHub's limit from 60 requests an hour; each action costs two to
-four requests, cached for an hour, because tags can move.
+safectx reads each action repo's tags and branches with one git request (what `git ls-remote`
+does), cached for an hour because tags can move. That request does not count against GitHub's API
+limit; the API is the fallback for short SHAs and private repos, and answers "latest release" for a
+vulnerable action.
 
 ## How the safe version is chosen
 
@@ -481,7 +484,9 @@ severity), plus `safectx/malware`, `safectx/typosquat`, `safectx/unknown-package
 | `SAFECTX_MAX_CANDIDATES` | `12` | Versions inspected, newest first, before giving up on a safe one. |
 | `SAFECTX_CONTEXT7` | `fallback` | `off` never calls Context7. |
 | `CONTEXT7_API_KEY` | none | Raises Context7's rate limit when it is used. |
-| `GITHUB_TOKEN` / `GH_TOKEN` | none | Raises GitHub's rate limit for repo docs and the Actions check. Read-only use. |
+| `GITHUB_TOKEN` / `GH_TOKEN` | none | Raises GitHub's API limit from 60 to 5,000 requests an hour. Read-only use; sent only to `api.github.com`. |
+| `SAFECTX_GH_CLI` | unset | `1` uses the GitHub CLI login (`gh auth token`) when no `GITHUB_TOKEN` is set. |
+| `SAFECTX_DEBUG_HTTP` | unset | `1` logs each request (method, URL, status; never headers) to stderr. |
 | `SAFECTX_DOCS_BUDGET` | `10000` | Characters of docs per answer. |
 | `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Disk cache (docs 7 days, advisories 24 h). |
 | `SAFECTX_NO_CACHE` | unset | `1` disables the cache. |
@@ -494,6 +499,37 @@ lists each service and what it receives, and how to report a vulnerability. A do
 package metadata goes through a guard that refuses loopback, private and cloud-metadata addresses
 (see SECURITY.md). Behind a proxy, set
 `HTTPS_PROXY` with `NODE_USE_ENV_PROXY=1` (recent Node 22 and 24).
+
+## GitHub rate limit
+
+Without a token, GitHub's API allows 60 requests an hour per IP. safectx spends little of it:
+
+- Repo files at a release tag come from jsDelivr's GitHub mirror (`data.jsdelivr.com` listings,
+  `cdn.jsdelivr.net/gh` files), which has no rate limit and keeps a tag forever. safectx caches the
+  listing for a year. The API lists only the default branch and repos over jsDelivr's 50 MB limit.
+- Actions refs come from one git request per repo, outside the API limit.
+- Upgrade guides read GitHub release notes through the API: 3 pages without a token, 10 with one.
+
+Measured on a cold cache, 2026-10-29: docs for 8 popular npm and PyPI packages took 1 API request
+(next.js, too large for jsDelivr), down from 9. `upgrade npm next 15.5.0 16.0.0` took 4, down from 6.
+Auditing a workflow with 10 actions took 2, down from 23. The hook on a workflow with 3 actions took
+none, down from 6.
+
+When GitHub says the budget is spent (403 or 429 with `x-ratelimit-remaining: 0`, or `retry-after`),
+safectx stops calling the API until the reset and remembers that in its cache, so a hook process
+started a second later does not try again. The answer then ends with a note: what it is missing,
+when GitHub resets, and how to add a token.
+
+To raise the limit to 5,000 an hour, use one of these:
+
+- Export `GITHUB_TOKEN` in the environment that starts your agent. A fine-grained token with
+  read-only access to public repositories is enough.
+- Set `SAFECTX_GH_CLI=1` (or run `safectx init --gh-cli`) to use your GitHub CLI login. safectx runs
+  `gh auth token` once, the first time it needs the API. You have to opt in because that token
+  carries your account's full scopes (`repo`, `workflow`), far more than reading public repos needs.
+
+safectx sends the token only to `api.github.com` over HTTPS. It never logs it, never puts it in a
+cache key or a tool answer, and `init` never writes it into `.mcp.json` or settings files.
 
 ## Benchmark
 

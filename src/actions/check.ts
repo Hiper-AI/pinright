@@ -14,6 +14,7 @@
 import semver from 'semver';
 import { cached } from '../cache.js';
 import { config } from '../config.js';
+import { GitHubRateLimitError, githubAuthConfigured } from '../github.js';
 import { getJson } from '../http.js';
 import { dedupeAdvisories, type AdvisoryInfo } from '../advisories/resolve.js';
 import { fixedVersions, severityOf, type OsvVuln } from '../advisories/osv.js';
@@ -157,7 +158,7 @@ export async function checkAction(use: ActionUse): Promise<ActionReport> {
       report.version = (await specificTag(use.owner, use.repo, use.ref, report.sha)) ?? use.ref;
     }
   } catch (err) {
-    report.unverified ??= `GitHub did not answer (${(err as Error).message}); set GITHUB_TOKEN or GH_TOKEN if this is the rate limit`;
+    report.unverified ??= err instanceof GitHubRateLimitError ? err.message : `GitHub did not answer (${(err as Error).message})`;
   }
 
   if (vulns?.length) {
@@ -212,6 +213,10 @@ const advisoryList = (r: ActionReport) => {
   return `${r.advisories.length} known advisor${r.advisories.length === 1 ? 'y' : 'ies'} (${ids}${sev ? `, ${sev}` : ''})`;
 };
 
+const limited = (unverified: string) => unverified.startsWith('GitHub API rate limit');
+const TOKEN_HINT =
+  'GitHub rate limit: without a token GitHub allows 60 API requests an hour. Set GITHUB_TOKEN (or SAFECTX_GH_CLI=1 to use the GitHub CLI login) and re-run to verify the rest.';
+
 /** The hook's decision for new or changed `uses:` lines. */
 export async function decideActions(uses: ActionUse[]): Promise<HookDecision> {
   const unique = [...new Map(uses.map((u) => [useKey(u), u])).values()].filter((u) => !allowed(actionName(u)));
@@ -242,6 +247,7 @@ export async function decideActions(uses: ActionUse[]): Promise<HookDecision> {
   const problems = outcomes.map((o) => o.problem).filter((p): p is string => Boolean(p));
   const warnings = outcomes.map((o) => o.warning).filter((w): w is string => Boolean(w));
   if (unique.length > MAX_CHECKS) warnings.push(`Only the first ${MAX_CHECKS} of ${unique.length} actions were checked.`);
+  if (reports.some((r) => r.unverified && limited(r.unverified)) && !githubAuthConfigured()) warnings.push(TOKEN_HINT);
   const action: Action = outcomes.some((o) => o.action === 'deny') ? 'deny' : outcomes.some((o) => o.action === 'ask') ? 'ask' : 'allow';
   return { action, problems, warnings, checked: list.length };
 }
@@ -293,7 +299,7 @@ export async function auditActions(files: { file: string; uses: ActionUse[] }[])
   const rank = (f: ActionReport) => (f.advisories.length ? 0 : !f.exists ? 1 : f.unverified ? 2 : !f.pinned ? 3 : 4);
   findings.sort((a, b) => rank(a) - rank(b));
   const notes: string[] = [];
-  if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) notes.push('No GITHUB_TOKEN: GitHub allows 60 requests an hour; large audits may come back unverified.');
+  if (findings.some((f) => f.unverified && limited(f.unverified)) && !githubAuthConfigured()) notes.push(TOKEN_HINT);
   return {
     files: files.map((f) => f.file),
     actions: findings.length,
@@ -339,7 +345,7 @@ export function formatActionsAudit(a: ActionsAudit, maxFindings = 50): string {
   }
   if (a.findings.length > maxFindings) lines.push(`  - ... and ${a.findings.length - maxFindings} more`);
   for (const n of a.notes) lines.push(`Note: ${n}`);
-  lines.push(`Verified against osv.dev (GitHub Actions) + api.github.com on ${a.checkedAt.slice(0, 10)}.`);
+  lines.push(`Verified against osv.dev (GitHub Actions) + GitHub (git refs, REST API) on ${a.checkedAt.slice(0, 10)}.`);
   return lines.join('\n');
 }
 
