@@ -4,7 +4,11 @@
  * different answer on stdout:
  *   Claude Code PreToolUse  -> { hookSpecificOutput: { permissionDecision, ... } }
  *   Cursor beforeShellExecution / preToolUse -> { permission, user_message, agent_message }
- * Both run the same extraction and policy.
+ *   Codex PreToolUse         -> Claude's shape, without "ask"; apply_patch carries a patch
+ *   Gemini CLI BeforeTool    -> { decision: "deny", reason }
+ *   VS Code / Copilot        -> permissionDecision at the top level and in hookSpecificOutput
+ *   Windsurf pre_run_command / pre_write_code -> exit 2 with the reason on stderr
+ * All run the same extraction and policy.
  */
 import path from 'node:path';
 import { applyCooldownDays } from '../config.js';
@@ -18,6 +22,7 @@ import { decideActions } from '../actions/check.js';
 import { stripInvisible } from '../untrusted/index.js';
 import { type ActionUse, changedUses, isWorkflowFile } from '../actions/workflow.js';
 import { languageOf, undeclaredImportNotes } from './imports.js';
+import { parseApplyPatch } from './applyPatch.js';
 
 function readIfExists(p: string): string | undefined {
   try {
@@ -53,7 +58,11 @@ function fileChange(input: Record<string, any>, cwd: string, accept: (file: stri
   let next: string | undefined;
   if (typeof input.content === 'string') next = input.content;
   else if (typeof input.contents === 'string') next = input.contents;
-  else if (Array.isArray(input.edits)) next = old !== undefined ? applyEdits(old, input.edits) : undefined;
+  else if (Array.isArray(input.edits)) {
+    // A new file arrives as edits with nothing to replace (Windsurf, a Codex "Add File").
+    const created = input.edits.every((e: any) => !e?.old_string) ? input.edits.map((e: any) => e?.new_string ?? '').join('') : undefined;
+    next = old !== undefined ? applyEdits(old, input.edits) : created;
+  }
   else if (typeof input.old_string === 'string') next = old !== undefined ? applyEdits(old, [input]) : undefined;
   else if (typeof input.code_edit === 'string' && !/\.\.\. existing code/i.test(input.code_edit)) next = input.code_edit;
   else if (typeof input.code_edit === 'string') return { abs, old, next: '', opaque: true };
@@ -201,52 +210,119 @@ function notesOnly(warnings: string[]): HookDecision {
 
 const DEADLINE_MS = Number(process.env.SAFECTX_HOOK_TIMEOUT_MS ?? 45_000);
 
-export async function runClaudeHook(): Promise<number> {
-  const input = JSON.parse((await readStdin()) || '{}');
-  const cwd = input.cwd ?? process.cwd();
-  const intents = intentsFromToolInput(input.tool_name ?? '', input.tool_input ?? {}, cwd);
-  const uses = actionUsesFromToolInput(input.tool_input ?? {}, cwd);
-  const notes = importNotesFromToolInput(input.tool_input ?? {}, cwd);
-  if (!intents.length && !uses.length) {
-    // Not a dependency change; a source file may still import something nobody declared.
-    const imports = await notes;
-    if (imports.length) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: agentMessage(notesOnly(imports)) } }));
-    return 0;
-  }
-  const d = await decideWithin(intents, uses, DEADLINE_MS, cwd);
-  d.warnings.push(...(await notes));
-  const msg = agentMessage(d);
-  if (d.action === 'allow') {
-    if (msg) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: msg } }));
-    return 0;
-  }
-  process.stdout.write(
-    JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: d.action, permissionDecisionReason: msg } }),
-  );
-  return 0;
+/** The agents with a pre-tool hook that `safectx hook <agent>` answers. */
+export const HOOK_AGENTS = ['claude', 'cursor', 'codex', 'gemini', 'copilot', 'windsurf'] as const;
+export type HookAgent = (typeof HOOK_AGENTS)[number];
+
+export function isHookAgent(s: string | undefined): s is HookAgent {
+  return HOOK_AGENTS.includes(s as HookAgent);
 }
 
-export async function runCursorHook(): Promise<number> {
-  const input = JSON.parse((await readStdin()) || '{}');
-  const cwd = input.cwd ?? input.workspace_roots?.[0] ?? process.cwd();
-  const toolInput = input.command !== undefined ? { command: input.command } : (input.tool_input ?? {});
-  const intents = intentsFromToolInput(input.tool_name ?? '', toolInput, cwd);
-  const uses = actionUsesFromToolInput(toolInput, cwd);
-  const notes = importNotesFromToolInput(toolInput, cwd);
-  // Cursor treats invalid output as a block, so always answer.
-  if (!intents.length && !uses.length) {
-    const imports = await notes;
-    process.stdout.write(JSON.stringify({ permission: 'allow', ...(imports.length ? { agent_message: agentMessage(notesOnly(imports)) } : {}) }));
-    return 0;
+const asObject = (v: unknown): Record<string, any> => {
+  if (typeof v === 'string') {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return {};
+    }
   }
-  const d = await decideWithin(intents, uses, DEADLINE_MS, cwd);
-  d.warnings.push(...(await notes));
-  const msg = agentMessage(d);
-  process.stdout.write(
-    JSON.stringify({
-      permission: d.action,
-      ...(msg ? { agent_message: msg, user_message: d.action === 'allow' ? undefined : `safectx: ${stripInvisible(d.problems[0] ?? 'dependency check').text.replace(/\s+/g, ' ').slice(0, 300)}` } : {}),
-    }),
-  );
-  return 0;
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : {};
+};
+
+/**
+ * Each agent's stdin JSON -> the tool inputs to check (file_path/content/edits or
+ * command, the shape the extraction reads) and the directory they are relative to.
+ */
+export function hookInputs(agent: HookAgent, input: Record<string, any>, fallbackCwd = process.cwd()): { inputs: Record<string, any>[]; cwd: string } {
+  const cwd = typeof input.cwd === 'string' && input.cwd ? input.cwd : fallbackCwd;
+  switch (agent) {
+    case 'cursor': {
+      const root = input.cwd ?? input.workspace_roots?.[0] ?? fallbackCwd;
+      return { inputs: [input.command !== undefined ? { command: input.command } : asObject(input.tool_input)], cwd: root };
+    }
+    case 'codex': {
+      const toolInput = asObject(input.tool_input);
+      // apply_patch carries a patch for one or more files; each becomes a file write.
+      if (input.tool_name === 'apply_patch') return { inputs: parseApplyPatch(toolInput.command ?? toolInput.input ?? toolInput.patch), cwd };
+      return { inputs: [toolInput], cwd };
+    }
+    case 'gemini': {
+      const toolInput = asObject(input.tool_input);
+      // run_shell_command may run in a subdirectory of the project.
+      const dir = typeof toolInput.directory === 'string' ? path.resolve(cwd, toolInput.directory) : cwd;
+      return { inputs: [toolInput], cwd: dir };
+    }
+    case 'copilot':
+      // The PascalCase PreToolUse alias sends tool_name/tool_input; the camelCase event sends toolName/toolArgs (maybe a JSON string).
+      return { inputs: [asObject(input.tool_input ?? input.toolArgs)], cwd };
+    case 'windsurf': {
+      const info = asObject(input.tool_info);
+      const dir = typeof info.cwd === 'string' && info.cwd ? info.cwd : cwd;
+      if (typeof info.command_line === 'string') return { inputs: [{ command: info.command_line }], cwd: dir };
+      return { inputs: [info], cwd: dir };
+    }
+    default:
+      return { inputs: [asObject(input.tool_input)], cwd };
+  }
 }
+
+/** The decision for a set of tool inputs, and the message for the agent. Not a dependency change -> only notes about undeclared imports. */
+export async function evaluateHook(inputs: Record<string, any>[], cwd: string, ms = DEADLINE_MS): Promise<{ d: HookDecision; msg: string }> {
+  const intents = inputs.flatMap((i) => intentsFromToolInput('', i, cwd));
+  const uses = inputs.flatMap((i) => actionUsesFromToolInput(i, cwd));
+  const notes = Promise.all(inputs.map((i) => importNotesFromToolInput(i, cwd))).then((all) => all.flat());
+  if (!intents.length && !uses.length) {
+    // Not a dependency change; a source file may still import something nobody declared.
+    const d = notesOnly(await notes);
+    return { d, msg: agentMessage(d) };
+  }
+  const d = await decideWithin(intents, uses, ms, cwd);
+  d.warnings.push(...(await notes));
+  return { d, msg: agentMessage(d) };
+}
+
+const userLine = (d: HookDecision) => `safectx: ${stripInvisible(d.problems[0] ?? 'dependency check').text.replace(/\s+/g, ' ').slice(0, 300)}`;
+
+/**
+ * The answer in each agent's protocol. Agents without an "ask" (Codex, Gemini CLI,
+ * Windsurf) get a deny for it: the change waits for a human either way.
+ */
+export function hookAnswer(agent: HookAgent, d: HookDecision, msg: string): { stdout?: string; stderr?: string; code: number } {
+  const json = (o: unknown) => ({ stdout: JSON.stringify(o), code: 0 });
+  const blocked = d.action !== 'allow';
+  switch (agent) {
+    case 'cursor':
+      // Cursor treats invalid output as a block, so always answer.
+      return json({ permission: d.action, ...(msg ? { agent_message: msg, user_message: blocked ? userLine(d) : undefined } : {}) });
+    case 'gemini':
+      if (blocked) return json({ decision: 'deny', reason: msg, systemMessage: userLine(d) });
+      return msg ? json({ decision: 'allow', hookSpecificOutput: { hookEventName: 'BeforeTool', additionalContext: msg } }) : { code: 0 };
+    case 'windsurf':
+      // Exit 2 blocks a pre-hook and Cascade reads stderr; stdout goes nowhere the agent sees.
+      return blocked ? { stderr: msg, code: 2 } : { code: 0 };
+    case 'copilot': {
+      // The Copilot harness reads the decision at the top level, VS Code's local harness under hookSpecificOutput.
+      if (!blocked) return msg ? json({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: msg } }) : json({});
+      const reason = { permissionDecision: d.action, permissionDecisionReason: msg };
+      return json({ ...reason, hookSpecificOutput: { hookEventName: 'PreToolUse', ...reason } });
+    }
+    default: {
+      if (!blocked) return msg ? json({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: msg } }) : { code: 0 };
+      const action = agent === 'codex' ? 'deny' : d.action;
+      return json({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: action, permissionDecisionReason: msg } });
+    }
+  }
+}
+
+export async function runHook(agent: HookAgent): Promise<number> {
+  const raw = asObject((await readStdin()) || '{}');
+  const { inputs, cwd } = hookInputs(agent, raw);
+  const { d, msg } = await evaluateHook(inputs, cwd);
+  const out = hookAnswer(agent, d, msg);
+  if (out.stdout) process.stdout.write(out.stdout);
+  if (out.stderr) process.stderr.write(`${out.stderr}\n`);
+  return out.code;
+}
+
+export const runClaudeHook = () => runHook('claude');
+export const runCursorHook = () => runHook('cursor');
