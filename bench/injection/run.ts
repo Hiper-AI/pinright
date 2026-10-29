@@ -5,8 +5,7 @@
  * scanned, not only the few a query returns, plus the upgrade-guide output for
  * a few big upgrades. Also prints the adversarial-corpus numbers.
  *
- * Hits the real registries and GitHub (set GITHUB_TOKEN). Context7 is off so the
- * numbers are about safectx's own sources.
+ * Hits the real registries and GitHub (set GITHUB_TOKEN).
  *
  * Run: npx tsx bench/injection/run.ts   (results go to bench/injection/RESULTS.md)
  */
@@ -20,7 +19,6 @@ import { prepare, scanText } from '../../src/untrusted/index.js';
 import { checkPackage } from '../../src/verdict.js';
 import { corpusNumbers } from './corpus.js';
 
-process.env.SAFECTX_CONTEXT7 = 'off';
 
 const LIBS: [Ecosystem, string, string][] = [
   ['npm', 'next', 'protect routes with middleware'],
@@ -167,7 +165,7 @@ async function main() {
   const md = [
     '# Prompt-injection detector: measured',
     '',
-    `Run on ${new Date().toISOString().slice(0, 10)} with \`npx tsx bench/injection/run.ts\` (live registries and GitHub, Context7 off).`,
+    `Run on ${new Date().toISOString().slice(0, 10)} with \`npx tsx bench/injection/run.ts\` (live registries and GitHub).`,
     '',
     '## False positives on real documentation',
     '',

@@ -398,7 +398,7 @@ invisible characters. safectx defends in three layers.
 
 | Surface | Tool | Third-party text in it |
 |---|---|---|
-| Docs | `query-docs` | READMEs, bundled docs, `.d.ts` comments, Python docstrings and source from the wheel, repo docs at the tag, `llms.txt` / `llms-full.txt` pages (titles included), Context7 snippets |
+| Docs | `query-docs` | READMEs, bundled docs, `.d.ts` comments, Python docstrings and source from the wheel, repo docs at the tag, `llms.txt` / `llms-full.txt` pages (titles included) |
 | Upgrade notes | `upgrade-guide` | Changelog entries, GitHub release bodies, migration guides, announcement posts, `.d.ts` signatures |
 | Verdicts | `check-package`, `check-packages`, `query-docs`, `upgrade-guide`, `check-manifest` | Deprecation messages (npm, Packagist "abandoned"), advisory titles (OSV, GHSA, Packagist), install script commands and publisher names (npm) |
 | Hook | Claude Code `permissionDecisionReason` / `additionalContext`, Cursor `agent_message` / `user_message` | The same deprecation messages, advisory ids, install scripts and publisher names, inside safectx's own sentences |

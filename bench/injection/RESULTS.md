@@ -1,6 +1,6 @@
 # Prompt-injection detector: measured
 
-Run on 2026-10-29 with `npx tsx bench/injection/run.ts` (live registries and GitHub, Context7 off).
+Run on 2026-10-29 with `npx tsx bench/injection/run.ts` (live registries and GitHub).
 
 ## False positives on real documentation
 
