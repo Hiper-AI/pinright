@@ -104,7 +104,7 @@ const PRERELEASE = /[-+.](alpha|beta|rc|canary|dev|preview|nightly|snapshot|pre|
  */
 export async function goModulePath(owner: string, repo: string): Promise<string | undefined> {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/go.mod`;
-  return cached(`gomod:${owner}/${repo}`, config.ttl.versions, async (): Promise<string | ''> => {
+  return cached(`gomod-path:${owner}/${repo}`, config.ttl.versions, async (): Promise<string | ''> => {
     try {
       const text = await getText(url);
       const m = text.match(/^\s*module\s+"?([^\s"]+)"?/m);

@@ -1,19 +1,19 @@
 # Benchmark: Context7 vs safectx
 
-Run on 2026-10-29 against the live APIs, 58 s.
+Run on 2026-10-29 against the live APIs, 71 s.
 
 ## Summary
 
 | Metric | Value |
 |---|---|
 | Libraries in the set | 96 |
-| Mapped to a registry package | 95 (99%) |
+| Mapped to a registry package | 96 (100%) |
 | With versioned docs in Context7 | 50 |
 | Newest Context7-pinned version has >= 1 advisory | 12 of 50 (24%) |
 | Any Context7-pinned version has >= 1 advisory | 24 of 50 (48%) |
-| Registry latest has >= 1 advisory | 0 of 95 (0%) |
-| safectx recommendation has >= 1 advisory | 0 of 95 (0%) |
-| safectx could not recommend a version | 1 |
+| Registry latest has >= 1 advisory | 0 of 96 (0%) |
+| safectx recommendation has >= 1 advisory | 0 of 96 (0%) |
+| safectx could not recommend a version | 0 |
 | safectx recommendation differs from registry latest | 19 |
 
 ### Dependabot alerts the day after install (sum of advisories over the set)
@@ -69,7 +69,7 @@ Run on 2026-10-29 against the live APIs, 58 s.
 | /remix-run/react-router | npm:react-router | 7.6.2 (13) | 8.5.1 (0) | 8.5.0 (0) | ok |
 | /openai/openai-node | npm:openai | - | 7.45.1 (0) | 7.43.0 (0) | ok |
 | /anthropics/anthropic-sdk-typescript | npm:@anthropic-ai/sdk | - | 1.3.0 (0) | 1.3.0 (0) | ok |
-| /langchain-ai/langchainjs | could not map id to a package | - | - | - | unmapped |
+| /langchain-ai/langchainjs | npm:langchain | - | 1.6.0 (0) | 1.5.19 (0) | ok |
 | /vercel/ai | npm:ai | - | 7.0.156 (0) | 7.0.153 (0) | ok |
 | /modelcontextprotocol/typescript-sdk | npm:@modelcontextprotocol/sdk | - | 1.32.2 (0) | 1.32.2 (0) | ok |
 | /supabase/supabase-js | npm:@supabase/supabase-js | 2.118.0 (0) | 2.118.0 (0) | 2.118.0 (0) | ok |
@@ -118,8 +118,8 @@ Run on 2026-10-29 against the live APIs, 58 s.
 | /gin-gonic/gin | go:github.com/gin-gonic/gin | - | v1.12.0 (0) | v1.12.0 (0) | ok |
 | /spf13/cobra | go:github.com/spf13/cobra | - | v1.10.2 (0) | v1.10.2 (0) | ok |
 | /stretchr/testify | go:github.com/stretchr/testify | - | v1.12.1 (0) | v1.12.1 (0) | ok |
-| /go-gorm/gorm | go:github.com/go-gorm/gorm | - | v0.0.0-20190210073940-906799fef2f8 (0) | - | vulnerable |
-| /labstack/echo | go:github.com/LABstack/echo | - | v3.3.10+incompatible (0) | v1.4.4 (0) | ok |
+| /go-gorm/gorm | go:gorm.io/gorm | - | v1.31.2 (0) | v1.31.2 (0) | ok |
+| /labstack/echo | go:github.com/labstack/echo/v5 | - | v5.4.2 (0) | v5.4.2 (0) | ok |
 | /rails/rails | rubygems:rails | - | 8.1.4 (0) | 8.1.4 (0) | ok |
 | /sinatra/sinatra | rubygems:sinatra | - | 4.2.1 (0) | 4.2.1 (0) | ok |
 | /sparklemotion/nokogiri | rubygems:nokogiri | - | 1.19.4 (0) | 1.19.4 (0) | ok |

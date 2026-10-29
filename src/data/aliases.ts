@@ -32,5 +32,7 @@ export const ALIASES: Record<string, { ecosystem: Ecosystem; name: string }> = {
   'anthropics/anthropic-sdk-typescript': { ecosystem: 'npm', name: '@anthropic-ai/sdk' },
   'anthropics/anthropic-sdk-python': { ecosystem: 'pypi', name: 'anthropic' },
   'openai/openai-node': { ecosystem: 'npm', name: 'openai' },
+  'langchain-ai/langchainjs': { ecosystem: 'npm', name: 'langchain' },
+  'langchain-ai/langchain': { ecosystem: 'pypi', name: 'langchain' },
   'openai/openai-python': { ecosystem: 'pypi', name: 'openai' },
 };
