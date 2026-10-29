@@ -17,6 +17,35 @@ often months old and carry known vulnerabilities. safectx gives the agent:
 - **A pre-install hook** for Claude Code, Cursor, VS Code, Codex, Gemini CLI and Windsurf that
   blocks the bad change even when the agent never asked.
 
+## Quick start
+
+In the project you want to protect (Node 20.9 or newer):
+
+```bash
+npx -y safectx init claude     # or: npx -y safectx init cursor
+npx -y safectx doctor          # optional: shows what answers, what is wired, what is missing
+```
+
+Restart the agent so it picks up `.mcp.json` and the hook. From then on, every install command and
+every write to a manifest or workflow goes through the hook first. When the agent runs
+`npm install lodash@4.17.20`, it gets this back and the command does not run:
+
+```
+safectx blocked this dependency change:
+- lodash@4.17.20 (npm) has 5 known advisories (CVE-2021-23337, CVE-2026-4800, CVE-2020-28500, HIGH). Use 4.x release 4.18.1: npm install lodash@4.18.1
+Change the version (or the name) and try again. check-package and get-docs from the safectx MCP server explain each case.
+```
+
+The agent reads the reason and usually retries with the version it names. Commands that install
+nothing pass without a network call; a check of one package takes a few seconds the first time
+and well under a second once cached (see [Latency](#latency)).
+
+To let one package through (a private one, say), add it to `"allow"` in `.safectx.json`. To turn
+the hook off, delete the safectx entry under `hooks.PreToolUse` in `.claude/settings.json` (Cursor:
+`.cursor/hooks.json`); the MCP tools keep working. When deps.dev or OSV cannot be reached, the hook
+allows the change and tells the agent it was not verified; `"onError": "ask"` or `"deny"` changes
+that (see [When a source is down](#when-a-source-is-down)).
+
 ```
 agent --MCP--> safectx --> registry + jsDelivr     package files at the exact version (npm)
                        --> PyPI files              wheel/sdist at the exact version (Python API)
@@ -556,6 +585,35 @@ override the file:
 | `SAFECTX_SEVERITY_THRESHOLD` | `low` | Advisories below this severity (`low`, `moderate`, `high`, `critical`) become notes instead of blocks. |
 | `SAFECTX_ACTIONS_PIN` | `warn` | `enforce` blocks a GitHub Action referenced by a tag or branch instead of a commit SHA. |
 
+### When a source is down
+
+safectx says "ok" only when deps.dev and OSV both answered. If either one fails, the verdict is
+`unknown` and names the host and the cause (`api.osv.dev unreachable (DNS lookup failed)`,
+`HTTP 503`, `no answer within 15 s`). With OSV down, a version that deps.dev already flags stays
+`vulnerable`; one deps.dev calls clean becomes `unknown`, because deps.dev mirrors OSV hours late
+and malware reports reach OSV first.
+
+The hook then applies `onError` and says so. With the default `allow`, the agent gets a note
+ending in `Allowed unverified (onError: allow)`. With `ask` or `deny`, the reason heads the block
+message: `... could not be verified (...). The project's onError policy is "deny" for checks that
+cannot complete.` The same goes for transitive dependencies it could not check, for GitHub Actions
+refs it could not resolve (reported as unverified, never as "does not exist"), and for a check that
+outlives `SAFECTX_HOOK_TIMEOUT_MS`.
+
+| What fails | Verdict / tool answer | Hook (`onError: allow` / `deny`) |
+|---|---|---|
+| No network, DNS failure | `unknown`: "deps.dev did not answer (api.deps.dev unreachable (DNS lookup failed))" | allow with the note / deny with the reason |
+| deps.dev 5xx | `unknown`, with the HTTP status | same |
+| OSV down, deps.dev up | deps.dev's advisories still count; otherwise `unknown` ("osv.dev did not answer ...; unverified") | same for the unverified ones |
+| A host that never answers | timeout after `SAFECTX_TIMEOUT_MS`; later calls to that host fail at once for 30 s | decision by `SAFECTX_HOOK_TIMEOUT_MS` at the latest |
+| GitHub rate limit | the answer ends with what it is missing and when the limit resets | Actions refs: unverified, `onError` decides |
+| jsDelivr 5xx (docs) | fewer docs, and a closing NOTE naming the hosts that failed | not involved |
+
+Every MCP answer and every `check`/`audit`/`upgrade` run ends with a `NOTE: some sources did not
+answer: ...` line when an upstream failed while it ran, including failures the tool worked around.
+`check-packages` answers within `SAFECTX_BATCH_TIMEOUT_MS`: packages still pending get an
+`ERROR, not checked` row. `safectx doctor` shows which upstreams answer from your machine.
+
 ## Supply-chain signals
 
 OSV marks a malicious release (`MAL-*`) days after the attack. The release's behavior shows earlier, so
@@ -880,8 +938,48 @@ npx safectx upgrade npm zod 3.25.76 4.6.7  # what changes between two versions
 npx safectx audit .github/workflows        # GitHub Actions: advisories and SHA pinning
 npx safectx check composer guzzlehttp/guzzle:7.4.0
 npx safectx audit . --fail-on high --sarif safectx.sarif   # SARIF 2.1.0 for code scanning
+npx safectx doctor                        # setup check: Node, upstreams, cache, GitHub auth, wiring
+npx safectx cache prune                   # drop expired entries, cap the size
 npx safectx cache clear                   # delete the disk cache
+npx safectx check --help                  # every command has --help
 ```
+
+`safectx --help` lists the commands, `safectx <command> --help` shows one, `safectx --version`
+prints the version. A mistyped command or flag gets a suggestion (`safectx chek` answers
+`Did you mean "safectx check"?`) and exit code 2, instead of being ignored. Colors appear
+only on a terminal; `NO_COLOR` turns them off and `FORCE_COLOR` turns them on through a pipe.
+Run `safectx` with no arguments in a terminal and you get the help; an agent starting it over a
+pipe gets the MCP server, and `safectx serve` starts the server either way.
+
+Exit codes, for every command:
+
+| Code | Meaning |
+|---|---|
+| 0 | Done. `check`: verdict ok. `audit`: nothing at or above `--fail-on`. `doctor`: no check failed. |
+| 1 | `check`: the verdict is anything but ok, `unknown` included. `audit`: findings at or above `--fail-on`. `upgrade`: no target version. `doctor`: a check failed. |
+| 2 | Usage error: unknown command or flag, missing or bad argument, nothing to audit. |
+
+`safectx hook` always exits 0 and puts its decision on stdout, so a bad argument there can never
+turn into a block. It exits 1 only if it crashes, which Claude Code and Cursor read as "proceed".
+
+**`safectx doctor`** checks, and only reads: the Node version against `engines`; whether deps.dev,
+OSV, the npm registry, PyPI, Packagist and jsDelivr answer, with the time each took (deps.dev and
+OSV are the verdict, so those two failing fails the run); the cache directory, writable or not,
+with its size; how safectx authenticates to GitHub (`GITHUB_TOKEN`, `GH_TOKEN`, the GitHub CLI
+login or anonymous) and how many API requests are left this hour, never the token; which agents
+have safectx configured (Claude Code, Cursor, VS Code, Windsurf, Codex, Gemini CLI, project and
+user files) and whether the pre-install hook is wired; the nearest `.safectx.json` and whether it
+parses; and how long the hook takes on a command that installs nothing. `--json` prints the same
+as JSON, `--offline` skips the network probes.
+
+**Cache.** Answers from the registries and advisory databases are kept on disk:
+`%LOCALAPPDATA%\safectx` on Windows, `$XDG_CACHE_HOME/safectx` or `~/.cache/safectx` elsewhere,
+or `SAFECTX_CACHE_DIR`. `safectx cache path` prints it. Advisories and versions expire after 24
+hours, docs after 7 days, file listings of a release tag after a year. An expired entry is deleted
+when it is next read. The MCP server and `check`/`audit`/`upgrade` prune once a day: expired entries
+first, then the oldest until the cache fits `SAFECTX_CACHE_MAX_MB` (200). The hook never prunes,
+since the agent waits on it. `safectx cache prune` does it now, `safectx cache clear` deletes
+everything.
 
 `audit` flags: `--fail-on low|moderate|high|critical|none` (default `low`; `none` reports
 and exits 0), `--json`, `--sarif <file>`, `--sarif-root <dir>` (SARIF paths are relative to
@@ -975,11 +1073,13 @@ severity), plus `safectx/malware`, `safectx/typosquat`, `safectx/unknown-package
 | `SAFECTX_MAX_CANDIDATES` | `12` | Versions inspected, newest first, before giving up on a safe one. |
 | `GITHUB_TOKEN` / `GH_TOKEN` | none | Raises GitHub's API limit from 60 to 5,000 requests an hour. Read-only use; sent only to `api.github.com`. |
 | `SAFECTX_GH_CLI` | unset | `1` uses the GitHub CLI login (`gh auth token`) when no `GITHUB_TOKEN` is set. |
-| `SAFECTX_DEBUG_HTTP` | unset | `1` logs each request (method, URL, status; never headers) to stderr. |
+| `SAFECTX_DEBUG_HTTP` | unset | `1` logs each request (method, URL, status, start offset and duration; never headers) to stderr. |
 | `SAFECTX_DOCS_BUDGET` | `10000` | Characters of docs per answer. |
 | `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Disk cache (docs 7 days, advisories 24 h, repo listings at a tag 1 year). |
 | `SAFECTX_NO_CACHE` | unset | `1` disables the cache. |
-| `SAFECTX_TIMEOUT_MS` | `15000` | Per-request timeout. |
+| `SAFECTX_CACHE_MAX_MB` | `200` | Size the daily prune brings the cache down to. |
+| `SAFECTX_TIMEOUT_MS` | `15000` | Per-request timeout, body included. A host that times out or refuses is skipped for 30 s. |
+| `SAFECTX_BATCH_TIMEOUT_MS` | `45000` | Deadline for `check-packages`; packages still pending come back as "not checked". |
 | `SAFECTX_PROJECT_DIR` | working directory | Project to read installed versions and `.safectx.json` from, when the client does not announce roots. |
 
 No telemetry. Requests go from your machine to the public APIs above and nowhere else. Docs
