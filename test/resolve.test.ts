@@ -107,6 +107,29 @@ describe('assessPackage', () => {
     expect(r.safeVersion).toBe('4.0.1');
   });
 
+  it('calls out malware when every version is malicious, not just "vulnerable" (security review F3)', async () => {
+    seedLib({ versions: [version('1.0.0'), version('1.0.1', { isDefault: true })], advisories: { '1.0.0': ['MAL-2026-7'], '1.0.1': ['MAL-2026-7'] } });
+    const r = await assessPackage('npm', 'lib', '1.0.1');
+    expect(r.requested?.verdict).toBe('malicious');
+    expect(r.verdict).toBe('malicious');
+  });
+
+  it('calls out malware even when a source failed while scanning for a safe version', async () => {
+    seedLib({ versions: [version('1.0.0'), version('1.0.1', { isDefault: true })], advisories: { '1.0.0': ['MAL-2026-7'] } });
+    // The scan for a safe version starts at 1.0.1 and fails there; the requested 1.0.0 still reads fine.
+    fixtures.set('/v3/systems/npm/packages/lib/versions/1.0.1', new HttpError(503, 'deps.dev'));
+    const r = await assessPackage('npm', 'lib', '1.0.0');
+    expect(r.verdict).toBe('malicious');
+  });
+
+  it('a version that was never published is reported even when no version is clean', async () => {
+    // Before seedLib: the fixture lookup takes the first key the URL contains.
+    fixtures.set('/v3/systems/npm/packages/lib/versions/9.9.9', new HttpError(404, 'deps.dev'));
+    seedLib({ versions: [version('1.0.0', { isDefault: true })], advisories: { '1.0.0': ['GHSA-x'] } });
+    const r = await assessPackage('npm', 'lib', '9.9.9');
+    expect(r.verdict).toBe('unknown-package');
+  });
+
   it('says unknown-package when deps.dev has never seen it', async () => {
     const r = await assessPackage('npm', 'lib');
     expect(r.verdict).toBe('unknown-package');

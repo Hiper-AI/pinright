@@ -352,8 +352,12 @@ export async function assessPackage(
 
   if (requestedVersion) {
     report.requested = await assessRequested(eco, name, requestedVersion);
-    // The headline verdict is about what the agent asked for.
-    if (report.requested.verdict !== 'ok' && report.verdict === 'ok') {
+    // The headline verdict is about what the agent asked for. Malware and a version that does not
+    // exist win over anything the package-wide scan said: "vulnerable" (no clean version, as in a
+    // package whose every release is malicious) or "unknown" (a source failed while scanning) would
+    // let the hook and the MCP answer treat malware as an ordinary advisory or an unverified package.
+    const definite = report.requested.verdict === 'malicious' || report.requested.verdict === 'unknown-package';
+    if (report.requested.verdict !== 'ok' && (report.verdict === 'ok' || definite)) {
       report.verdict = report.requested.verdict;
       report.reason = report.requested.verdict === 'unknown-package'
         ? `version ${requestedVersion} of ${name} does not exist in ${eco}`
