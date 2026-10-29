@@ -377,7 +377,9 @@ npx safectx check composer guzzlehttp/guzzle:7.4.0
 | `SAFECTX_PROJECT_DIR` | working directory | Project to read installed versions and `.safectx.json` from, when the client does not announce roots. |
 
 No telemetry. Requests go from your machine to the public APIs above and nowhere else. Docs
-content is data for the agent; safectx does not execute anything it downloads.
+content is data for the agent; safectx does not execute anything it downloads. [SECURITY.md](SECURITY.md)
+lists each service and what it receives, and how to report a vulnerability. Behind a proxy, set
+`HTTPS_PROXY` with `NODE_USE_ENV_PROXY=1` (recent Node 22 and 24).
 
 ## Benchmark
 
@@ -416,6 +418,7 @@ npx tsx scripts/docs.ts npm next 16.4.3 "middleware"   # what query-docs returns
 npx tsx scripts/audit.ts package-lock.json # whole-tree audit
 npx tsx scripts/upgrade.ts npm next 15.5.28 16.4.3 "middleware"   # what upgrade-guide returns
 npm run bench:agents                       # agent benchmark, see bench/agents/
+npm pack --ignore-scripts --json > pack.json && node scripts/check-pack.mjs pack.json  # what would ship
 ```
 
 ## License

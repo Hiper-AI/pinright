@@ -1,0 +1,5 @@
+# With "Require review from Code Owners" on main, these paths need the owner's approval.
+*                     @juanmandelbaum
+/.github/             @juanmandelbaum
+/package.json         @juanmandelbaum
+/package-lock.json    @juanmandelbaum
