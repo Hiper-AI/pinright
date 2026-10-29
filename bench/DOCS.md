@@ -12,8 +12,9 @@ One library explains most of the gap, AI SDK 7 (released 2026-06-25); two more r
 pins. Sonnet 5.5 already knows Next 16, Tailwind 4, Zod 4, Express 5, ESLint 10, Pydantic 2 and
 LangChain 1, so on those tasks the agent runs cannot tell good docs from bad ones. The
 [retrieval probe](#retrieval-probe-safectxs-docs-without-the-agent) takes the model out of the loop:
-safectx's answers showed the current API for 16 of 25 typical questions before the fixes in this
-branch and for 20 of 25 after.
+safectx's answers showed the current API for 16 of 25 typical questions before the first round of
+fixes, 20 after it and 24 after the second. A [held-out probe](#held-out-probe-and-the-second-round-of-fixes)
+of 109 questions over 41 other libraries went from 75 to 88; its untouched set B, from 22 to 25 of 28.
 
 ## Setup
 
@@ -157,29 +158,103 @@ arguments for ids in its own format and answered with the npm packages `pydantic
 `packageName` now overrides the id; in the rerun the same kind of call returned 9,730 characters of
 LangChain 1 agent docs.
 
-**AI SDK: one step from five framework guides (partly fixed).** The `ai` package ships its docs, and a
+**AI SDK: one step from five framework guides (fixed).** The `ai` package ships its docs, and a
 question about a route handler got the multi-step section of the Next.js App Router, Pages Router, Nuxt
 and TanStack Start guides: four copies of one example. A near-duplicate filter now drops sections that
-share 70% of their words with one already picked. The probe still misses `instructions:` when the
-question says "system prompt". The guides never show one, and the agents reached the reference page
-that does (`stream-text.mdx`) only by asking for "instructions" by name.
+share 70% of their words with one already picked. "System prompt" never reached `instructions:`; the
+rename hints of the [held-out round](#held-out-probe-and-the-second-round-of-fixes) fixed that.
 
-**Pydantic: API reference outranks the concept pages (open).** For a question that names six features
-at once, the answer fills with wheel docstrings (`ValidateJsonHandlerProtocol`,
-`TypeAdapter.validate_python`) and misses `field_validator`, `model_validator` and `pattern=`. On the
-agents' own question the branch does worse than the base: 3 of 6 markers instead of 5 of 6. Asked one
-feature at a time, the probe finds `field_validator`, `model_validator` and `ConfigDict`; `pattern=`
-stays missing. The agents wrote correct Pydantic 2 in every run, from memory.
+**Pydantic: API reference outranks the concept pages (mostly fixed).** For a question that names six
+features at once, the answer filled with wheel docstrings and missed `field_validator`,
+`model_validator` and `pattern=`. With one section per topic, the agents' own question gets 4 of 6
+markers (it had 3 of 6 on the first branch, 5 of 6 on the base); `from_attributes` and `pattern=` still
+miss there. The single-topic probe "regex constraint on a string field" now finds `pattern=`.
 
-**Remaining probe misses (open):**
-- Tailwind install with Vite: the installation pages in the docs repo are TSX, not Markdown, and the
-  `@tailwindcss/vite` README is short. The Vite plugin setup appears in the upgrade guide, which
-  safectx reads only for upgrade questions.
-- Zod "reject unknown keys; enum from a TS enum; record of strings": three topics in one question. The
-  answer covers `z.enum` and `z.record` but not `z.strictObject`.
-- LangChain `@tool`: path ranking picks the `langchain_decorators` integration page for "decorator".
-- Next.js: the Next repo's `evals/*/PROMPT.md` (agent eval prompts) and `errors/*` pages reach the
-  candidate list; they are not API docs.
+The four probe misses listed here before the held-out round (Tailwind with Vite, Zod's three-topic
+question, LangChain `@tool`, Next's `evals/*` and `errors/*`) are covered in the next section; only
+Zod's stays open.
+
+## Held-out probe and the second round of fixes
+
+The 25-question probe covers the eight benchmark tasks, and tuning against it overfits. `bench/docs/probe-heldout.ts`
+adds 109 questions over 41 libraries outside the benchmark, at their latest stable versions on
+2026-10-29. Each question expects strings of the current API, checked against the official docs or
+changelog linked next to it (React 19, React Router 8, TanStack Query 5, Svelte 5, Vue 3.5, Astro 7,
+Angular 22, Vite 8, Vitest 5, Playwright, Prisma 7, Drizzle, Hono, Fastify 5, NestJS 12, tRPC 11,
+Supabase, Stripe, the Anthropic and OpenAI SDKs, FastAPI, SQLAlchemy 2.1, Django 6.1, Polars 2,
+pytest 9, httpx, Celery, Typer; set B: Mongoose 9, Redux Toolkit, Zustand 5, Better Auth, SvelteKit 3,
+Jotai 3, pandas 3, NumPy 2.5, Requests, Flask 3.1, pydantic-settings, SQLModel).
+
+We wrote both sets and scored them before changing any code. We then read the misses of set A (81
+questions) to find what to fix. We scored set B (28 questions) only at the start and at the end and
+never looked at its answers in between, so set B is the honest number.
+
+| | Base (`dd570aa`) | This branch |
+|---|---|---|
+| Original probe (25 questions) | 20 | 24 |
+| Held-out set A (81 questions, looked at) | 53 | 63 |
+| Held-out set B (28 questions, untouched) | 22 | 25 |
+| Replay: new-API markers in the agents' own questions (16 runs) | 51 / 66 | 58 / 66 |
+| Mean answer, set A (chars) | 9,795 | 9,800 |
+| Replay answers, total chars | 340,333 | 349,281 |
+| Set A, cold cache: total / median per question | 256 s / 1.37 s | 231 s / 1.35 s |
+| Set A, warm cache: total / median per question | 14.3 s / 147 ms | 27.7 s / 231 ms |
+
+Answers stay the same size. On a cold cache the network dominates and nothing changed. On a warm
+cache an answer takes about 100 ms more, spent scanning every section for prompt injection before
+merging and reading the deprecations of the package's type definitions (460 KB for `ai`).
+
+What changed, in the order we measured it (original / set A / replay):
+
+| Change | Original | Set A | Replay |
+|---|---|---|---|
+| Base | 20 | 53 | 51 |
+| Contributor and agent notes, evals, example apps rank below user docs (`AGENTS.md`, `.agents/skills`, `docs/plans`, React's compiler passes, Next's `evals/` and `errors/`) | 20 | 53 | 51 |
+| `llms.txt` parser bug: a `\s` crossed line breaks and each entry swallowed the next, so react.dev lost `useActionState`, `useOptimistic` and `use`, and LangChain its tools page | 21 | 56 | 51 |
+| Plural and singular count as one term ("error" finds `handling-errors.md`) | 22 | 59 | 48 |
+| Multi-topic questions: split on `;`, `,`, `:`; each topic gets its best section, llms.txt page and Python module first | 23 | 59 | 59 |
+| Rename hints from the package's own files (see below) | 24 | 59 | 59 |
+| Older-major copies (`v3/`, `docs-v3/`, `legacy/`) and `blog/` count as upgrade notes; small sibling sections merge; exact API names (`z.record`, `pattern=`) weigh in; a topic's best section is cut to its share | 23 | 60 | 58 |
+| Code that a page includes from another file (`{* docs_src/x.py *}`, `--8<--`, `literalinclude`, `<<<`) | 23 | 61 | 58 |
+| Django's `docs/**/*.txt` read as reStructuredText; `releases/` folders count as upgrade notes | 23 | 61 | 58 |
+| Deep `.d.ts` files whose path names the question (NestJS `use-guards.decorator.d.ts`) | 23 | 63 | 58 |
+| The current major's migration guide is a candidate for every question, ranked below the reference | 24 | 63 | 58 |
+
+A phrase bonus (adjacent query words in a section) cost 3 replay markers and fixed nothing; we dropped
+it.
+
+**Rename hints.** An agent asks with the names it learned; the docs answer with the new ones. safectx
+now reads the renames a version announces from the package itself: `@deprecated Use \`instructions\`
+instead.` on the `system` option of `ai`'s entry `.d.ts`, `@deprecated("on_event is deprecated, use
+lifespan ...")` on FastAPI's `on_event`, "`cacheTime` → `gcTime`" in TanStack Query's v5 migration
+guide. The replacement has to be declared in the API ("use literal values instead" names nothing).
+When a question uses an old name as written, the new one joins the question next to it, and the answer
+opens with a fenced line: "Renamed or deprecated in ai@7.0.157, per the package's own files: `system`
+-> `instructions` (dist/index.d.ts)". Over the 106 probe questions, it fired three times, all right:
+AI SDK `system`, TanStack `cacheTime`, FastAPI `on_event`. No library has a hand-written entry.
+
+**Remaining misses in set A (18), by cause:**
+- Docs that live only on a site safectx cannot read (7): Supabase (3), Astro's content collections, actions and server islands (docs in
+  `withastro/docs`, no llms.txt found from `astro.build`), Stripe's checkout sessions. A mapping in
+  `docsRepos.ts` would fix each, but adding one per held-out library would be tuning to the probe.
+- Examples in a format safectx does not expand (2): Polars' `{{code_block(...)}}` macros pull its code from
+  `docs/source/src/python/`, so `.agg(` and `.collect()` never appear.
+- SDKs whose generated API types outnumber the prose (4): OpenAI's `responses.parse`, Anthropic's
+  `system=` (Python) and `system:` (TypeScript), Anthropic's `input_schema`. The README shows them, but
+  dozens of generated `types/*` modules match the question's words better.
+- The question names the old API (1): React Router "useNavigate in onSubmit" gets the `useNavigate`
+  page; React Router 8 never deprecated it, so no rename hint applies.
+- Ranking (4): Prisma's `defineConfig` (the config page loses to the connection-URL pages), NestJS
+  `ValidationPipe` ("validate" against "validation") and constructor injection, Django's
+  `UniqueConstraint` (the field-options page outranks `constraints.txt`).
+
+The one miss left in the original probe is Zod's three-topic question: "reject unknown keys" matches a
+CSP section that "rejects new Function" better than the `z.strictObject` section, which says "throws
+on unknown keys".
+
+**Set B misses after (3):** pandas 3's default `str` dtype, Flask's `SECRET_KEY_FALLBACKS`, and
+SQLModel's partial update (`sqlmodel_update`), which passed on the base. Set B gained Jotai 3 (2),
+pydantic-settings' `env_nested_delimiter` and SQLModel's `select().where()`.
 
 ## Before and after on the agents
 
@@ -205,6 +280,7 @@ GITHUB_TOKEN=... npx tsx bench/docs/run.ts --reps 2 --concurrency 2 --stamp <sta
 npx tsx bench/docs/score.ts <stamp> --concurrency 2
 npx tsx bench/docs/report.ts <stamp>                # fills the Results section above
 GITHUB_TOKEN=... npx tsx bench/docs/retrieval.ts
+GITHUB_TOKEN=... npx tsx bench/docs/probe-heldout.ts --set a   # or b, all; --show for the sections of each miss
 GITHUB_TOKEN=... npx tsx bench/docs/replay.ts <stamp>
 npx tsx bench/docs/calls.ts <stamp> <task> safectx  # what each docs call returned
 ```

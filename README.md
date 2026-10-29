@@ -826,7 +826,11 @@ before deps.dev mirrors them.
    signatures when the distribution ships no types. The answer also names the import name when it
    differs from the package name (`yaml` for `pyyaml`).
 2. The source repository at the release tag (`v1.2.3`, `1.2.3`, `name@1.2.3`, `name==1.2.3`...):
-   `docs/` folders, guides, migration notes. Translations are skipped.
+   `docs/` folders (including Django's reStructuredText `.txt` pages), guides, migration notes.
+   safectx skips translations, notes for contributors and coding agents (`AGENTS.md`,
+   `.agents/skills`, `docs/plans`), eval prompts, example apps and copies of an older major the
+   package still ships (Zod 4's `v3/`). When a page pulls its example from another file
+   (`{* docs_src/x.py *}`, `--8<--`, `literalinclude`, `<<<`), the answer shows that file.
 3. The project's `llms-full.txt` or `llms.txt`, which describe the current site and may be newer
    than the version you use; sections from it are labeled as such. Packages whose docs live in
    another repo or site (LangChain, LangGraph, PyYAML, Streamlit, Selenium) are mapped to it in
@@ -837,7 +841,14 @@ safectx does not call any docs index: everything comes from the sources above, w
 or key. A GitHub repo id (`/vercel/next.js`) also works and is mapped to the package.
 
 Sections are ranked locally with BM25 against the question, and the answer is capped at about
-2,500 tokens (`tokens` argument, or `SAFECTX_DOCS_BUDGET` in characters).
+2,500 tokens (`tokens` argument, or `SAFECTX_DOCS_BUDGET` in characters). A question that asks
+several things at once ("z.email, z.strictObject, z.record") gets the best section for each topic.
+API names written as code (`z.record`, `field_validator`, `pattern=`) must match exactly.
+
+If the question uses a name that the version renamed, safectx searches for the new name too and the
+answer says so (`system` -> `instructions` in AI SDK 7, `on_event` -> `lifespan` in FastAPI). It reads
+the renames from the package itself: `@deprecated` tags in its type definitions, deprecation
+decorators and docstrings in its Python API, and the migration guide of its current major.
 
 ## Prompt injection
 
