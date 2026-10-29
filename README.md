@@ -1120,6 +1120,32 @@ To raise the limit to 5,000 an hour, use one of these:
 safectx sends the token only to `api.github.com` over HTTPS. It never logs it, never puts it in a
 cache key or a tool answer, and `init` never writes it into `.mcp.json` or settings files.
 
+## Latency
+
+The hook runs before every shell command and every manifest or workflow write, so the agent waits
+on it. The budget:
+
+| Case | Budget | Measured p50 / p95 |
+|---|---|---|
+| A command that installs nothing (`npm test`) | under 150 ms above Node's own start | 121 / 177 ms, with `node -e 0` at 88 ms |
+| One install, warm cache (`npm i express`) | under 1 s | 358 / 372 ms |
+| One install, cold cache | under 5 s | 2.4 / 3.7 s |
+| A 15-line `requirements.txt`, warm / cold | under 1 s / under 5 s | 1.0 / 1.5 s and 4.6 / 5.6 s |
+| A `package.json` with 30 new dependencies, warm / cold | under 1.5 s / bounded by `SAFECTX_HOOK_TIMEOUT_MS` | 1.2 / 1.5 s and 10.9 / 15.2 s |
+| A workflow with 3 `uses:` lines, warm / cold | under 1 s / under 5 s | 392 / 436 ms and 1.5 / 2.0 s |
+
+Measured with `scripts/latency.ts` (5 runs per cell, Windows, Node 24, no `GITHUB_TOKEN`; with a
+token the numbers stay in the same range) against the live services, so the cold column moves with
+their load. A new 30-dependency manifest makes about 600 requests the first time: the verdict, the
+dependency graph and the supply-chain signals of each package. The hook checks only the lines a
+write adds or changes, so editing an existing manifest costs what the changed lines cost.
+
+How it stays there: the hook loads only the command parser until it finds a dependency change; it
+fetches the verdict, the dependency graph and the risk signals of a package side by side; it probes
+candidate versions a few at a time, newest first; and it skips a host that failed to connect or timed
+out for 30 seconds instead of paying one timeout per lookup. `scripts/mcp-latency.ts` measures the
+MCP tools the same way.
+
 ## Benchmark
 
 Claude Code (Sonnet 5.5) in headless mode on 12 coding tasks (8 npm, 4 PyPI) that ask for pinned
