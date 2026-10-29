@@ -27,7 +27,10 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
       lines.push(`NOTICE: ${pkg}@${req?.version} is deprecated by its maintainers${req?.deprecatedReason ? `: ${req.deprecatedReason}` : '.'}`);
       break;
     case 'possible-typosquat':
-      lines.push(`SECURITY NOTICE: "${report.package}" looks like a typo of the popular package "${typo?.lookalikeOf}"${typo?.existsInRegistry === false ? ' and does not exist in the registry' : ''}. Confirm the name before installing.`);
+      lines.push(
+        `SECURITY NOTICE: "${report.package}" looks like a typo of the popular package "${typo?.lookalikeOf}"` +
+          `${typo?.existsInRegistry === false ? ' and does not exist in the registry' : ''}${report.reason ? ` (${report.reason})` : ''}. Confirm the name before installing.`,
+      );
       break;
     case 'unknown-package':
       if (req && report.latestVersion) {
@@ -41,6 +44,12 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
       break;
     case 'ok':
       lines.push(`Security check: ${pkg}${req ? `@${req.version}` : ''} has no known advisories.`);
+      if (report.cooldownOnly) {
+        lines.push(
+          `NOTICE: every release of ${report.package} is younger than the cooldown window (latest ${report.latestVersion}, ` +
+            `published ${report.latestPublishedAt?.slice(0, 10) ?? 'recently'}). No version is recommended yet: new packages and fresh releases are where most malicious publishes hide.`,
+        );
+      }
       break;
   }
 

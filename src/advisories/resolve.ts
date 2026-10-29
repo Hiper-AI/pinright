@@ -66,6 +66,8 @@ export interface PackageReport {
   recentMajor?: { line: string; since: string };
   /** When no version is clean: the one with the mildest worst advisory (then fewest), newest on ties. */
   leastExposed?: { version: string; advisories: number; maxSeverity?: string };
+  /** No advisories, but every stable release is inside the cooldown window, so none is recommended. */
+  cooldownOnly?: boolean;
   requested?: RequestedVersionReport;
   checkedAt: string;
   sources: string[];
@@ -291,11 +293,14 @@ export async function assessPackage(
   if (sourceDown) {
     report.verdict = 'unknown';
     report.reason = `${registry} did not answer while scanning versions (${sourceDown})`;
+  } else if (!safe && candidates.length === 0 && versions.some((v) => !v.isDeprecated && !isPrerelease(v.versionKey.version))) {
+    // Every stable release is inside the cooldown (a brand-new package, or only fresh releases):
+    // nothing to recommend yet, but no advisory either. Saying "vulnerable" here would be false.
+    report.cooldownOnly = true;
+    report.reason = `every stable release is younger than the ${config.cooldownDays}-day cooldown; none can be recommended yet`;
   } else if (!safe) {
     report.verdict = 'vulnerable';
-    report.reason =
-      `none of the newest ${candidates.length} stable versions is free of known advisories ` +
-      `(or all are younger than the ${config.cooldownDays}-day cooldown)`;
+    report.reason = `none of the newest ${candidates.length} stable versions past the ${config.cooldownDays}-day cooldown is free of known advisories`;
   }
 
   if (requestedVersion) {

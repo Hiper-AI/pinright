@@ -1,12 +1,14 @@
 /**
  * Glue between the advisory scan and the typosquat check, producing the final
- * verdict for a package. Lookalike names are only flagged when the package is
- * unknown or very new: "preact" is one edit from "react" and perfectly fine.
+ * verdict for a package. Lookalike names are flagged when the package is unknown,
+ * very new, or used by a tiny fraction of the original's audience: "preact" is one
+ * edit from "react" and perfectly fine, "expresss" is not.
  */
 import { assessPackage, type PackageReport } from './advisories/resolve.js';
 import { getPackage } from './advisories/depsdev.js';
 import { type Ecosystem } from './ecosystems.js';
 import { assessRisk, type RiskReport } from './risk/index.js';
+import { weeklyDownloads } from './risk/sources.js';
 import { checkTyposquat, findLookalike, type TyposquatReport } from './typosquat.js';
 
 const YOUNG_PACKAGE_DAYS = 60;
@@ -69,6 +71,18 @@ async function checkVerdict(
       report.reason = `published ${Math.round((Date.now() - first) / 86_400_000)} days ago and one edit away from "${look.of}"`;
       return { report, typo };
     }
+    // An old lookalike can still be a squat or a placeholder ("expresss"): compare how much each is used.
+    // A real package with a similar name ("preact" next to "react") has its own large audience.
+    const [mine, theirs] = await Promise.all([weeklyDownloads(eco, name).catch(() => undefined), weeklyDownloads(eco, look.of).catch(() => undefined)]);
+    if (mine !== undefined && theirs !== undefined && theirs > 0 && mine < theirs * LOOKALIKE_SHARE) {
+      const typo: TyposquatReport = { existsInRegistry: true, lookalikeOf: look.of, distance: look.distance };
+      report.verdict = 'possible-typosquat';
+      report.reason = `${look.distance} edit${look.distance === 1 ? '' : 's'} away from "${look.of}", with ${mine.toLocaleString('en-US')} weekly downloads against ${theirs.toLocaleString('en-US')}`;
+      return { report, typo };
+    }
   }
   return { report };
 }
+
+/** A lookalike with less than this share of the original's weekly downloads is flagged even when old. */
+const LOOKALIKE_SHARE = 0.01;

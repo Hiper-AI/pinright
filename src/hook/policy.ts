@@ -227,6 +227,10 @@ function judge(c: Checked, p: Policy): Outcome {
     const msg = `${label}: the newest version ${version} is younger than the ${config.cooldownDays}-day cooldown or a pre-release; pin ${r.safeVersion} instead.`;
     return p.cooldown === 'enforce' ? { action: 'deny', problem: msg } : { action: 'allow', warning: msg };
   }
+  if (r.cooldownOnly) {
+    const msg = `${label}: every release is younger than the ${config.cooldownDays}-day cooldown (latest ${r.latestVersion}); no version can be vouched for yet.`;
+    return p.cooldown === 'enforce' ? { action: 'deny', problem: msg } : { action: 'allow', warning: msg };
+  }
   return { action: 'allow' };
 }
 

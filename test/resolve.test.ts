@@ -203,3 +203,14 @@ describe('least exposed version', () => {
     expect(r.leastExposed).toEqual({ version: '1.2.0', advisories: 1, maxSeverity: 'HIGH' });
   });
 });
+
+describe('brand-new packages', () => {
+  it('every release inside the cooldown: no advisory means not vulnerable, just nothing recommended yet', async () => {
+    seedLib({ versions: [version('0.1.0', { publishedAt: daysAgo(1) }), version('0.1.1', { publishedAt: daysAgo(0), isDefault: true })], advisories: {} });
+    const r = await assessPackage('npm', 'lib');
+    expect(r.verdict).toBe('ok');
+    expect(r.cooldownOnly).toBe(true);
+    expect(r.safeVersion).toBeUndefined();
+    expect(r.reason).toMatch(/younger than the 3-day cooldown/);
+  });
+});

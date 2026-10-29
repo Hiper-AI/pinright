@@ -75,6 +75,7 @@ function plainlyOk(r: BatchResult): boolean {
   if (!v || v.report.verdict !== 'ok') return false;
   // A supply-chain signal worth a warning (new install scripts, publisher change...) needs its details shown.
   if (v.risk?.signals.some((s) => s.level !== 'info')) return false;
+  if (v.report.cooldownOnly) return false;
   const use = versionToUse(v);
   return !r.version || use === r.version;
 }
@@ -116,6 +117,10 @@ function row(r: BatchResult): string {
       notes.push(short(rep.reason ?? 'a data source did not answer', 60));
       break;
     case 'ok':
+      if (rep.cooldownOnly) {
+        verdict = 'TOO NEW';
+        notes.push('every release is inside the cooldown; none recommended yet');
+      }
       if (rep.safeVersionLicenses?.length && use === rep.safeVersion) notes.push(rep.safeVersionLicenses.join('/'));
       break;
   }
