@@ -15,6 +15,7 @@ vi.mock('../src/verdict.js', () => ({
   }),
 }));
 const graphs = new Map<string, Record<string, string>>(); // "name@version" -> { dep: version }
+const requirements = new Map<string, Record<string, string>>(); // "name@version" -> { dep: requirement }
 const vulnerable = new Set<string>(); // "name@version" with OSV advisories
 
 vi.mock('../src/advisories/osv.js', () => ({
@@ -24,7 +25,12 @@ vi.mock('../src/advisories/depsdev.js', () => ({
   getDependencies: vi.fn(async (_eco: string, name: string, version: string) => {
     const g = graphs.get(`${name}@${version}`);
     if (!g) return undefined;
-    return { nodes: [{ versionKey: { name, version } }, ...Object.entries(g).map(([n, v]) => ({ versionKey: { name: n, version: v } }))], edges: [] };
+    const req = requirements.get(`${name}@${version}`) ?? {};
+    const deps = Object.entries(g);
+    return {
+      nodes: [{ versionKey: { name, version } }, ...deps.map(([n, v]) => ({ versionKey: { name: n, version: v } }))],
+      edges: deps.map(([n], k) => ({ fromNode: 0, toNode: k + 1, requirement: req[n] })),
+    };
   }),
   getPackage: vi.fn(async (_eco: string, name: string) => {
     const vs = versions.get(name);
@@ -32,13 +38,14 @@ vi.mock('../src/advisories/depsdev.js', () => ({
   }),
 }));
 
-const { decide, agentMessage } = await import('../src/hook/policy.js');
+const { decide, agentMessage, satisfiesRequirement } = await import('../src/hook/policy.js');
 const adv = (id: string) => ({ id, aliases: [`CVE-${id}`], url: '', severity: 'HIGH' });
 
 beforeEach(() => {
   reports.clear();
   versions.clear();
   graphs.clear();
+  requirements.clear();
   vulnerable.clear();
   delete process.env.SAFECTX_ALLOW;
   delete process.env.SAFECTX_HOOK_COOLDOWN;
@@ -149,5 +156,31 @@ describe('decide', () => {
     d = await decide([{ ecosystem: 'npm', name: 'express', spec: '4.21.2', source: 'package.json' }]);
     expect(d.action).toBe('allow');
     expect(d.warnings[0]).toMatch(/no release of express fixes them yet/);
+  });
+});
+
+describe('version compatibility inside one file', () => {
+  it('satisfiesRequirement reads PEP 440, npm and cargo ranges', () => {
+    expect(satisfiesRequirement('pypi', '0.4.0', '>=0.4.2')).toBe(false);
+    expect(satisfiesRequirement('pypi', '0.4.2', '>=0.4.2; python_version >= "3.9"')).toBe(true);
+    expect(satisfiesRequirement('npm', '1.2.3', '^1.0.0')).toBe(true);
+    expect(satisfiesRequirement('npm', '2.0.0', '^1.0.0')).toBe(false);
+    expect(satisfiesRequirement('cargo', '1.0.200', '1.0')).toBe(true);
+    expect(satisfiesRequirement('npm', '1.0.0', 'workspace:*')).toBeUndefined();
+  });
+
+  it('blocks a pin the parent in the same file does not accept, even when that line did not change', async () => {
+    versions.set('fastapi', ['0.162.0']);
+    versions.set('typing-inspection', ['0.4.0', '0.4.2']);
+    reports.set('fastapi@0.162.0', { verdict: 'ok', requested: { version: '0.162.0', verdict: 'ok', advisories: [] } });
+    graphs.set('fastapi@0.162.0', { 'typing-inspection': '0.4.2' });
+    requirements.set('fastapi@0.162.0', { 'typing-inspection': '>=0.4.2' });
+    const d = await decide([
+      { ecosystem: 'pypi', name: 'fastapi', spec: '==0.162.0', source: 'requirements.txt' },
+      { ecosystem: 'pypi', name: 'typing-inspection', spec: '==0.4.0', source: 'requirements.txt', contextOnly: true },
+    ]);
+    expect(d.action).toBe('deny');
+    expect(d.problems[0]).toContain('typing-inspection 0.4.0 does not satisfy fastapi 0.162.0\'s requirement ">=0.4.2"');
+    expect(d.problems[0]).toContain('resolves it to 0.4.2');
   });
 });

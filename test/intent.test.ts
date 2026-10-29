@@ -53,7 +53,10 @@ describe('fromFileWrite', () => {
   it('reports only added or re-versioned dependencies', () => {
     const before = '{"dependencies":{"express":"4.21.2","zod":"3.23.0"}}';
     const after = '{"dependencies":{"express":"4.21.2","zod":"3.25.0","axios":"1.7.9"},"devDependencies":{"tsx":"^4"}}';
-    expect(fromFileWrite('/p/package.json', after, before).map((i) => `${i.name} ${i.spec}`)).toEqual(['zod 3.25.0', 'axios 1.7.9', 'tsx ^4']);
+    const intents = fromFileWrite('/p/package.json', after, before);
+    expect(intents.filter((i) => !i.contextOnly).map((i) => `${i.name} ${i.spec}`)).toEqual(['zod 3.25.0', 'axios 1.7.9', 'tsx ^4']);
+    // Unchanged lines ride along for the compatibility check only.
+    expect(intents.filter((i) => i.contextOnly).map((i) => i.name)).toEqual(['express']);
     expect(fromFileWrite('/p/package.json', before, before)).toEqual([]);
   });
 

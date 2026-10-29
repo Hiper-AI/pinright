@@ -17,6 +17,8 @@ export interface DepIntent {
   source: string;
   /** npx / uvx / pipx run: the package is executed, not just installed. */
   executes?: boolean;
+  /** An unchanged line of the manifest: not judged, only used to check version compatibility. */
+  contextOnly?: boolean;
 }
 
 /** Split a command line into simple commands and tokens, honoring quotes. */
@@ -225,12 +227,15 @@ export function fromFileWrite(file: string, newContent: string, oldContent: stri
   const after = declared(newContent);
   const eco = parseFileEcosystem(file);
   const out: DepIntent[] = [];
+  const context: DepIntent[] = [];
   for (const [name, spec] of after) {
-    if (before.has(name) && before.get(name) === spec) continue;
     if (eco === 'npm' && SKIP_SPEC.test(spec)) continue;
-    out.push({ ecosystem: eco, name, spec: spec || undefined, source: path.basename(file) });
+    const intent = { ecosystem: eco, name, spec: spec || undefined, source: path.basename(file) };
+    if (before.has(name) && before.get(name) === spec) context.push({ ...intent, contextOnly: true });
+    else out.push(intent);
   }
-  return out;
+  // Nothing changed: nothing to check. Otherwise the unchanged lines come along as context.
+  return out.length ? [...out, ...context] : [];
 }
 
 function parseFileEcosystem(file: string): Ecosystem {

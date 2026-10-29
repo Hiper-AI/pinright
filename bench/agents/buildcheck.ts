@@ -168,8 +168,9 @@ export async function pypiBuild(work: string): Promise<BuildScore> {
       'sys.exit(1 if bad else 0)',
     ].join('\n');
     writeFileSync(join(tmp, '__check.py'), script);
-    r = await run(`"${py}" -m compileall -q -x "[\\/]\\.venv[\\/]" .`, tmp, 120_000);
-    if (r.code !== 0) return { installed: true, built: false, step: 'compileall', error: firstError(`${r.out}\n${r.err}`) };
+    // Only the project's own files: compileall over "." would also walk .venv.
+    r = await run(`"${py}" -m py_compile ${files.map((f) => `"${f}"`).join(' ')}`, tmp, 120_000);
+    if (r.code !== 0) return { installed: true, built: false, step: 'py_compile', error: firstError(`${r.out}\n${r.err}`) };
     r = await run(`"${py}" __check.py`, tmp, 300_000);
     if (r.code === 0) return { installed: true, built: true, step: 'import check' };
     return { installed: true, built: false, step: 'import check', error: (r.out.split(/\r?\n/).find(Boolean) ?? firstError(r.err)).slice(0, 240) };

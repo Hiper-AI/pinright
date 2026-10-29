@@ -14,7 +14,8 @@ import { queryBatch } from '../advisories/osv.js';
 import { config } from '../config.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { normalizePypiName } from '../tree/lockfiles.js';
-import { GRAPH_ECOSYSTEMS, pickVersion } from '../tree/resolveManifest.js';
+import semver from 'semver';
+import { GRAPH_ECOSYSTEMS, pickVersion, satisfiesPep440 } from '../tree/resolveManifest.js';
 import { checkPackage, type Verdict } from '../verdict.js';
 import { type DepIntent } from './intent.js';
 
@@ -29,6 +30,8 @@ export interface HookDecision {
 }
 
 const MAX_CHECKS = 25;
+/** Unchanged lines of a manifest read for the compatibility check only. */
+const MAX_CONTEXT = 60;
 
 function allowed(name: string): boolean {
   const list = (process.env.SAFECTX_ALLOW ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -65,6 +68,8 @@ interface Checked {
   exists: boolean;
   v?: Verdict;
   graph?: Map<string, string>;
+  /** What this version requires of its direct dependencies, per deps.dev ("typing-inspection" -> ">=0.4.2"). */
+  requires?: Map<string, string>;
 }
 
 type Outcome = { action: Action; problem?: string; warning?: string };
@@ -75,19 +80,67 @@ async function inspect(i: DepIntent): Promise<Checked> {
   const spec = i.spec ? (/^[=<>~!]/.test(i.spec) ? i.spec : `@${i.spec}`) : '';
   const label = `${i.name}${spec} (${i.ecosystem}${i.executes ? ', executed' : ''})`;
   const { version, implicit, exists } = await versionFor(i.ecosystem, i.name, i.spec);
-  const v = await checkPackage(i.ecosystem, i.name, exists ? version : undefined);
+  // Unchanged lines of the file only take part in the compatibility check.
+  const v = i.contextOnly ? undefined : await checkPackage(i.ecosystem, i.name, exists ? version : undefined);
   let graph: Map<string, string> | undefined;
-  if (exists && version && !i.executes && GRAPH_ECOSYSTEMS.includes(i.ecosystem) && v.report.verdict !== 'malicious') {
+  let requires: Map<string, string> | undefined;
+  if (exists && version && !i.executes && GRAPH_ECOSYSTEMS.includes(i.ecosystem) && v?.report.verdict !== 'malicious') {
     const g = await getDependencies(i.ecosystem, i.name, version).catch(() => undefined);
-    if (g?.nodes?.length) graph = new Map(g.nodes.slice(1).map((n) => [norm(i.ecosystem, n.versionKey.name), n.versionKey.version]));
+    if (g?.nodes?.length) {
+      graph = new Map(g.nodes.slice(1).map((n) => [norm(i.ecosystem, n.versionKey.name), n.versionKey.version]));
+      requires = new Map(
+        g.edges.filter((e) => e.fromNode === 0 && e.requirement).map((e) => [norm(i.ecosystem, g.nodes[e.toNode].versionKey.name), e.requirement as string]),
+      );
+    }
   }
-  return { i, label, version, implicit, exists, v, graph };
+  return { i, label, version, implicit, exists, v, graph, requires };
+}
+
+/** Does an exact version satisfy a requirement string as deps.dev reports it for this ecosystem? */
+export function satisfiesRequirement(eco: Ecosystem, version: string, requirement: string): boolean | undefined {
+  const req = requirement.split(';')[0].trim();
+  if (!req || req === '*') return true;
+  try {
+    if (eco === 'pypi') return satisfiesPep440(version, req);
+    if (eco === 'npm' || eco === 'cargo') {
+      const range = eco === 'cargo' ? req.split(',').map((p) => (/^\d/.test(p.trim()) ? `^${p.trim()}` : p.trim())).join(' ') : req;
+      if (!semver.validRange(range, { loose: true })) return undefined;
+      return semver.satisfies(version, range, { loose: true, includePrerelease: true });
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+/** Pinned versions in the same file that their parents do not accept: the install would fail. */
+function conflicts(checked: Checked[]): Outcome[] {
+  const out: Outcome[] = [];
+  const byName = new Map(checked.map((c) => [`${c.i.ecosystem}:${norm(c.i.ecosystem, c.i.name)}`, c]));
+  for (const p of checked) {
+    if (!p.requires || !p.version) continue;
+    for (const [child, req] of p.requires) {
+      const c = byName.get(`${p.i.ecosystem}:${child}`);
+      if (!c || !c.version || c.implicit || c === p) continue;
+      if (p.i.contextOnly && c.i.contextOnly) continue; // nothing in this change touched either
+      if (satisfiesRequirement(p.i.ecosystem, c.version, req) !== false) continue;
+      const pulled = p.graph?.get(child);
+      out.push({
+        action: 'deny',
+        problem:
+          `${c.i.name} ${c.version} does not satisfy ${p.i.name} ${p.version}'s requirement "${req}", so this install would fail.` +
+          (pulled ? ` ${p.i.name} ${p.version} resolves it to ${pulled}; pin that or drop the ${c.i.name} pin.` : ` Pin a version that satisfies it or drop the ${c.i.name} pin.`),
+      });
+    }
+  }
+  return out;
 }
 
 /** The upgrade of `parent` whose resolved graph carries clean versions of every name in `names`. */
 async function parentUpgrade(c: Checked, names: string[]): Promise<{ to: string; sameLine: boolean; pulled: Map<string, string> } | undefined> {
-  const r = c.v?.report;
-  if (!r || !c.version) return undefined;
+  if (!c.version) return undefined;
+  const r = c.v?.report ?? (await checkPackage(c.i.ecosystem, c.i.name, c.version).catch(() => undefined))?.report;
+  if (!r) return undefined;
   const candidates = [...new Set([r.safeVersionSameLine, r.safeVersion].filter((x): x is string => Boolean(x) && x !== c.version))];
   for (const to of candidates) {
     const g = await getDependencies(c.i.ecosystem, c.i.name, to).catch(() => undefined);
@@ -151,7 +204,8 @@ export async function decide(intents: DepIntent[]): Promise<HookDecision> {
     seen.add(k);
     return !allowed(i.name);
   });
-  const list = unique.slice(0, MAX_CHECKS);
+  const changed = unique.filter((i) => !i.contextOnly);
+  const list = [...changed.slice(0, MAX_CHECKS), ...unique.filter((i) => i.contextOnly).slice(0, MAX_CONTEXT)];
   const outcomes: Outcome[] = [];
   const checked: Checked[] = [];
   await Promise.all(
@@ -175,6 +229,7 @@ export async function decide(intents: DepIntent[]): Promise<HookDecision> {
   }
 
   for (const c of checked) {
+    if (c.i.contextOnly) continue;
     let o = judge(c);
     const parent = parentOf.get(c);
     if (parent && c.v?.report.requested?.verdict === 'vulnerable') {
@@ -194,8 +249,10 @@ export async function decide(intents: DepIntent[]): Promise<HookDecision> {
     outcomes.push(o);
   }
 
+  outcomes.push(...conflicts(checked));
+
   // Transitive dependencies nobody declared: block only when a same-line upgrade clears them.
-  const withGraph = checked.filter((c) => c.graph?.size);
+  const withGraph = checked.filter((c) => c.graph?.size && !c.i.contextOnly);
   const nodes = withGraph.flatMap((c) => [...(c.graph as Map<string, string>).entries()].filter(([n]) => !declared.has(`${c.i.ecosystem}:${n}`)).map(([name, version]) => ({ c, name, version })));
   const ids = nodes.length ? await queryBatch(nodes.map((n) => ({ ecosystem: n.c.i.ecosystem, name: n.name, version: n.version }))).catch(() => undefined) : [];
   const vulnerableBy = new Map<Checked, string[]>();
@@ -217,9 +274,9 @@ export async function decide(intents: DepIntent[]): Promise<HookDecision> {
 
   const problems = outcomes.map((r) => r.problem).filter((p): p is string => Boolean(p));
   const warnings = outcomes.map((r) => r.warning).filter((w): w is string => Boolean(w));
-  if (unique.length > MAX_CHECKS) warnings.push(`Only the first ${MAX_CHECKS} of ${unique.length} dependencies were checked.`);
+  if (changed.length > MAX_CHECKS) warnings.push(`Only the first ${MAX_CHECKS} of ${changed.length} dependencies were checked.`);
   const action: Action = outcomes.some((r) => r.action === 'deny') ? 'deny' : outcomes.some((r) => r.action === 'ask') ? 'ask' : 'allow';
-  return { action, problems, warnings, checked: list.length };
+  return { action, problems, warnings, checked: Math.min(changed.length, MAX_CHECKS) };
 }
 
 export function agentMessage(d: HookDecision): string {

@@ -61,6 +61,8 @@ export interface PackageReport {
   safeVersionSameLine?: string;
   /** True when no release on the line is clean and the fix needs a new major. */
   crossLineRequired?: boolean;
+  /** The safe version's release line started less than a year ago. */
+  recentMajor?: { line: string; since: string };
   requested?: RequestedVersionReport;
   checkedAt: string;
   sources: string[];
@@ -95,6 +97,8 @@ export function releaseLine(version: string): string | undefined {
   if (!v) return undefined;
   return v.major === 0 ? `0.${v.minor}.x` : `${v.major}.x`;
 }
+
+const RECENT_MAJOR_DAYS = 365;
 
 function olderThanCooldown(publishedAt: string | undefined, now: number): boolean {
   if (!publishedAt) return true;
@@ -242,6 +246,18 @@ export async function assessPackage(
     report.line = line;
     report.safeVersionSameLine = safeSameLine?.versionKey.version;
     report.crossLineRequired = !safeSameLine && Boolean(safe);
+  }
+  if (safe) {
+    // A major younger than a year is likely newer than what the agent learned:
+    // configuration and APIs it writes from memory may not apply.
+    const safeLine = releaseLine(safe.versionKey.version);
+    const firstOnLine = versions
+      .filter((v) => !isPrerelease(v.versionKey.version) && releaseLine(v.versionKey.version) === safeLine && v.publishedAt)
+      .map((v) => v.publishedAt as string)
+      .sort()[0];
+    if (firstOnLine && now - Date.parse(firstOnLine) < RECENT_MAJOR_DAYS * 24 * 3600_000) {
+      report.recentMajor = { line: safeLine as string, since: firstOnLine.slice(0, 10) };
+    }
   }
 
   if (sourceDown) {

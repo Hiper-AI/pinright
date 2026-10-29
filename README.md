@@ -1,149 +1,189 @@
 # safectx
 
-Up-to-date library docs for your coding agent, with the version that has no known
-vulnerabilities.
+Library docs for your coding agent that match the version it installs, plus the checks that
+keep a vulnerable, deprecated, malicious or misspelled package out of your project.
 
-Context7 tells the agent how to use a library. safectx adds what Context7 does not know:
-whether the version the agent is about to install has a CVE, is deprecated, is malware, or
-is a typo of a real package. Same two tool names as Context7, so `use context7` prompts keep
-working. One extra tool, `check-package`, for the moment before `npm install`.
+Coding agents pin versions from memory, or from whatever version a docs service indexed. Both are
+often months old and carry known vulnerabilities. safectx gives the agent:
+
+- **Docs for a specific version**, taken from the package itself: the README, docs and type
+  definitions published at that version, the source repository at its release tag, and the
+  project's `llms.txt`. No index service in between. Context7 is an optional fallback.
+- **A verdict before every dependency**: known advisories (CVE/GHSA), malware records, deprecation,
+  typosquat lookalikes, and the newest clean version, preferring one on the release line the
+  project already uses so the upgrade does not break the API.
+- **A whole-tree audit**: every package in a lockfile, direct and transitive, the way Dependabot
+  sees it, with the fix for each finding.
+- **A pre-install hook** for Claude Code and Cursor that blocks the bad change even when the agent
+  never asked.
 
 ```
-agent --MCP--> safectx --> context7.com      docs (your own key, optional)
-                      --> api.deps.dev       versions, advisories, licenses
-                      --> api.osv.dev        CVE details, fixed versions, malware records
-                      --> npm / PyPI / ...   does the package exist at all
+agent --MCP--> safectx --> registry + jsDelivr     package files at the exact version
+                       --> GitHub (raw, tree API)  repo docs at the release tag
+                       --> project site            llms.txt / llms-full.txt
+                       --> api.deps.dev            versions, advisories, licenses, dependency graphs
+                       --> api.osv.dev             CVE details, fixed versions, malware (MAL-*)
+                       --> context7.com            only when the above came back thin (optional)
 ```
 
 ## Install
 
-Claude Code:
+Claude Code, MCP server and hook in the current project:
 
 ```bash
-claude mcp add safectx -- npx -y safectx
+npx -y safectx init claude
 ```
 
-Cursor, VS Code, Windsurf and any other MCP client (`mcp.json`):
+Cursor:
+
+```bash
+npx -y safectx init cursor
+```
+
+`init` writes `.mcp.json` and `.claude/settings.json` (or `.cursor/mcp.json` and
+`.cursor/hooks.json`), keeping what is already there. `--no-hook` or `--no-mcp` installs one half.
+
+Any other MCP client:
 
 ```json
-{
-  "mcpServers": {
-    "safectx": {
-      "command": "npx",
-      "args": ["-y", "safectx"],
-      "env": { "CONTEXT7_API_KEY": "optional, raises the Context7 rate limit" }
-    }
-  }
-}
+{ "mcpServers": { "safectx": { "command": "npx", "args": ["-y", "safectx"] } } }
 ```
 
-A free Context7 key (1,000 calls a month) comes from <https://context7.com/dashboard>. Without
-one the docs still work, at Context7's anonymous rate limit. deps.dev and OSV need no key.
+No key is required. A `GITHUB_TOKEN` raises GitHub's limit for repo docs (60 requests an hour
+without one; each package version costs one request and is cached for a week).
 
 ## What the agent sees
 
-Ask for docs on a pinned version with a known hole:
+Docs for a version with known holes come back with the notice first, and for the version to move to:
 
 ```
-query-docs { libraryId: "/vercel/next.js/v15.1.8", query: "middleware redirect" }
-```
+query-docs { libraryId: "npm:next@15.1.0", query: "protect routes with middleware" }
 
-```
-SECURITY NOTICE: next (npm)@15.1.8 has 36 known advisories.
-  - GHSA-f82v-jwr5-mffw (CVE-2025-29927) [CRITICAL]: Authorization Bypass in Next.js Middleware fixed in 15.2.3, ...
+SECURITY NOTICE: next (npm)@15.1.0 has 36 known advisories.
+  - GHSA-f82v-jwr5-mffw (CVE-2025-29927) [CRITICAL]: Authorization Bypass in Next.js Middleware fixed in 13.5.9, 14.2.25, 15.2.3
   - ...
-Recommended version: 16.4.3 (latest). Upgrade: npm install next@16.4.3
-License: MIT
-Verified against deps.dev + osv.dev on 2026-10-29.
-Docs source: /vercel/next.js/v15.1.8
+Recommended within 15.x: 15.5.28 (same release line, no API break expected). Upgrade: npm install next@15.5.28
+Newest safe overall: 16.4.3 (a different major: read its migration guide before switching).
+These docs are for 15.5.28, the version to move to, not 15.1.0.
 
-### Next.js Middleware Basic Redirect Example
-...
+Docs for next@15.5.28 (npm): The React Framework.
+### How to implement authentication in Next.js > Authorization > Optimistic checks with Middleware (Optional)
+Source: next.js/docs/01-app/02-guides/authentication.mdx@v15.5.28 (next@15.5.28) https://raw.githubusercontent.com/vercel/next.js/v15.5.28/docs/01-app/02-guides/authentication.mdx
 ```
 
-The docs you asked for still come back. The agent decides; the notice is there so it decides
-with the facts.
-
-Ask about a name that does not exist:
+The hook, when the agent writes a manifest or runs an install:
 
 ```
-check-package { name: "reqeusts", ecosystem: "python" }
-```
-
-```
-SECURITY NOTICE: "reqeusts" looks like a typo of the popular package "requests" and does not
-exist in the registry. Confirm the name before installing.
+safectx blocked this dependency change:
+- jsonwebtoken@8.5.1 (npm) has 3 known advisories (CVE-2022-23539, ...). No clean release on this line;
+  the fix needs a new major, 9.0.3: npm install jsonwebtoken@9.0.3
+- starlette==0.38.6 (pypi) has 7 known advisories (...). It comes in through fastapi: upgrade fastapi to
+  0.162.0 (new major), which pulls starlette 1.10.0 with no known advisories, and pin starlette to that
+  version or drop the pin.
+- express@4.21.2 (npm) pulls dependencies with known advisories (path-to-regexp@0.1.12, qs@6.13.0).
+  npm install express@4.22.3 pulls fixed versions on the same release line.
 ```
 
 ## Tools
 
 | Tool | What it does |
 |---|---|
-| `resolve-library-id` | Same as Context7, plus for the top matches: the registry package, the newest version with no known advisory (`safeVersion`), the latest version and a `verdict`. |
-| `query-docs` | Context7 docs. With no version in the id, serves the docs of the safe version when Context7 has it indexed. With a vulnerable or deprecated version pinned, prepends a `SECURITY NOTICE`. Accepts `packageName` and `ecosystem` when the repo name is not the package name. |
-| `check-package` | The verdict alone: advisories with CVE ids, severity and fixed versions, deprecation, license, safe version, typosquat lookalikes. For npm, PyPI, crates.io, Go, Maven, NuGet and RubyGems. |
+| `resolve-library-id` | Library name to registry package (`next.js` to `npm:next`, `pytorch` to `pypi:torch`), ranked by repo stars, with the safe version and a verdict. Suggests the real name for a misspelled one. |
+| `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the safe one; with a vulnerable one it documents the same-line fix. Context7 ids (`/vercel/next.js`) work too. |
+| `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes. |
+| `check-manifest` | Whole-tree audit of `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `Cargo.lock`, `go.mod`, `Gemfile.lock`, `packages.lock.json`, or a bare `package.json` / `pyproject.toml` / `Cargo.toml` resolved through deps.dev. Each finding comes with its chain and fix. |
 
 Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `unknown-package`,
-`unknown`. The last one means a data source did not answer. safectx never says `ok` when it
-could not check.
+`unknown`. `unknown` means a data source did not answer; safectx never says `ok` when it could not check.
 
-## How "safe version" is chosen
+## The hook
 
-The newest version that is stable (no `rc`, `beta`, `canary`), not deprecated by its maintainers,
-has no advisory in deps.dev (which mirrors OSV and the GitHub Advisory Database), and was published
-at least 3 days ago. The cooldown is there because compromised releases are usually pulled within
-days; set `SAFECTX_COOLDOWN_DAYS=0` to disable it. Only advisories against the package itself count,
-not those of its dependencies: that is what the agent is about to install.
+`safectx hook claude` (a `PreToolUse` hook on `Bash|Write|Edit|MultiEdit`) and `safectx hook cursor`
+(`beforeShellExecution` and `preToolUse`) read what the agent is about to do:
 
-## Mapping a Context7 id to a package
+- installs: `npm`/`pnpm`/`yarn`/`bun add|install`, `npx`/`pnpm dlx`/`bunx`, `pip install` (also `-r file`),
+  `uv add`/`uv pip install`, `uvx`, `pipx`, `poetry add`, `pdm add`, `cargo add|install`, `go get|install`,
+  `gem install`, `bundle add`, `dotnet add package`;
+- writes to `package.json`, `requirements*.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`: only
+  dependencies that are new or changed version count, so editing an old project does not re-open
+  every old dependency.
 
-A Context7 id is a GitHub repo, not a package. safectx tries the repo name in each registry and
-keeps a match only when deps.dev confirms that package's source repository is that repo. When
-nothing verifies, the docs come back with a notice and no verdict; pass `packageName` and
-`ecosystem` to `query-docs`, or call `check-package`. `npm run coverage:ecosystem` measures the
-hit rate over the benchmark set.
+It blocks malware, typosquats, packages or versions that do not exist, versions with known advisories
+when a clean one exists, deprecated versions with a maintained successor, and dependencies whose
+transitive tree has advisories that a same-line upgrade clears. When a vulnerable pin is itself a
+dependency of another pinned package, it points at the parent upgrade, so the fix still installs.
+It asks a human when no clean version exists. Everything else passes, with notes for the agent.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SAFECTX_ALLOW` | none | Comma list of names that skip the hook, `*` suffix allowed (`@acme/*`). For private packages. |
+| `SAFECTX_HOOK_ON_ERROR` | `allow` | What to do when deps.dev or OSV cannot be reached: `allow`, `ask` or `deny`. |
+| `SAFECTX_HOOK_COOLDOWN` | `warn` | `enforce` blocks an unpinned install whose newest version is inside the cooldown window. |
+| `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check; on timeout it behaves as `SAFECTX_HOOK_ON_ERROR`. |
+
+## How the safe version is chosen
+
+The newest version that is stable (no `rc`, `beta`, `canary`, Go pseudo-versions), not deprecated,
+has no advisory in deps.dev (which mirrors OSV and the GitHub Advisory Database), and was published at
+least 3 days ago. The cooldown exists because compromised releases are usually pulled within days.
+
+When the project already uses a version, safectx also gives the newest clean version on its release
+line (`3.x`, or `0.28.x` before 1.0, where minors break), and says so when only a new major is clean.
+
+## Where the docs come from
+
+1. The published package at the exact version, through jsDelivr: README, bundled docs, and the
+   `.d.ts` type definitions, which are the ground truth of an npm package's API.
+2. The source repository at the release tag (`v1.2.3`, `1.2.3`, `name@1.2.3`, `name==1.2.3`...):
+   `docs/` folders, guides, migration notes. Translations are skipped.
+3. The project's `llms-full.txt` or `llms.txt`, which describe the current site and may be newer
+   than the version you use; sections from it are labeled as such.
+4. Context7, only when the three above return nothing relevant. `SAFECTX_CONTEXT7=off` disables it.
+
+Sections are ranked locally with BM25 against the question, and the answer is capped at about
+5,000 tokens (`tokens` argument, or `SAFECTX_DOCS_BUDGET` in characters).
+
+## CLI
+
+```bash
+npx safectx check npm axios@1.7.9          # exit 1 if not ok
+npx safectx audit . --fail-on=high         # whole-tree audit for CI, exit 1 on findings
+npx safectx audit package-lock.json --json
+```
 
 ## Configuration
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `CONTEXT7_API_KEY` | none | Raises Context7 rate limits. |
 | `SAFECTX_COOLDOWN_DAYS` | `3` | Minimum age of a version to be recommended. |
 | `SAFECTX_MAX_CANDIDATES` | `12` | Versions inspected, newest first, before giving up on a safe one. |
-| `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Where responses are cached (docs 7 days, advisories 24 h). |
+| `SAFECTX_CONTEXT7` | `fallback` | `off` never calls Context7. |
+| `CONTEXT7_API_KEY` | none | Raises Context7's rate limit when it is used. |
+| `GITHUB_TOKEN` / `GH_TOKEN` | none | Raises GitHub's rate limit for repo docs. Read-only use. |
+| `SAFECTX_DOCS_BUDGET` | `20000` | Characters of docs per answer. |
+| `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Disk cache (docs 7 days, advisories 24 h). |
 | `SAFECTX_NO_CACHE` | unset | `1` disables the cache. |
 | `SAFECTX_TIMEOUT_MS` | `15000` | Per-request timeout. |
 
-No telemetry. Every request goes from your machine to the upstream APIs and nowhere else.
+No telemetry. Requests go from your machine to the public APIs above and nowhere else. Docs
+content is data for the agent; safectx does not execute anything it downloads.
+
+## Benchmark
+
+See [bench/AGENTS.md](bench/AGENTS.md): real agents on 12 coding tasks, with no docs, with Context7,
+with safectx, with only the hook and with both, audited with `npm audit` and `pip-audit` and built.
 
 ## Development
 
 ```bash
 npm install
-npm test                  # offline unit tests with fixtures
-npm run build && npx tsx scripts/e2e.ts   # drive the server over stdio with a real MCP client
-npx tsx scripts/smoke.ts  # live calls against the real APIs
-npm run bench             # Context7 vs safectx over ~95 libraries, writes bench/RESULTS.md
-npm run bench:agents      # real agents: no docs vs Context7 vs safectx, see bench/AGENTS.md
+npm test                                   # offline unit tests with fixtures
+npm run build && npx tsx scripts/e2e.ts .  # drive the server over stdio with a real MCP client
+npx tsx scripts/docs.ts npm next 16.4.3 "middleware"   # what query-docs returns
+npx tsx scripts/audit.ts package-lock.json # whole-tree audit
+npm run bench:agents                       # agent benchmark, see bench/agents/
 ```
-
-## Benchmark with real agents
-
-[bench/AGENTS.md](bench/AGENTS.md) runs Claude Code headless on 12 coding tasks (8 npm, 4 PyPI)
-that ask for pinned versions, twice per arm, with no MCP server, with Context7 and with safectx.
-The manifests are then audited with `npm audit` and `pip-audit`, which share nothing with safectx.
-On the 2026-10-29 run, Sonnet 5.5:
-
-| | No docs | Context7 | safectx |
-|---|---|---|---|
-| Direct deps with a known advisory | 42% | 41% | 0% |
-| Whole-tree alerts (Dependabot-style), 24 projects | 763 | 632 | 2 |
-| Projects with zero alerts | 0 | 2 | 22 |
-| Cost per run (USD) | 0.03 | 0.06 | 0.05 |
-
-Installing the same packages with no version at all also lands near zero (1 alert over 12
-projects). safectx gets there while still pinning, and adds a 3-day cooldown and typosquat checks.
 
 ## License
 
-MIT. Built by [Hiper AI](https://hiperai.com).
+MIT

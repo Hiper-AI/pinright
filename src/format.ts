@@ -3,7 +3,7 @@
  * so the model cannot mistake a cached verdict for a fresh one.
  */
 import { installCommand } from './ecosystems.js';
-import { type PackageReport } from './advisories/resolve.js';
+import { releaseLine, type PackageReport } from './advisories/resolve.js';
 import { type TyposquatReport } from './typosquat.js';
 
 export function securityNotice(report: PackageReport, typo?: TyposquatReport): string {
@@ -76,6 +76,13 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport): s
     );
   }
   if (report.safeVersion && report.safeVersionLicenses?.length) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
+  const recommended = sameLine && req && sameLine !== req.version ? sameLine : report.safeVersion;
+  if (report.recentMajor && recommended && releaseLine(recommended) === report.recentMajor.line) {
+    lines.push(
+      `Heads-up: ${report.package} ${report.recentMajor.line} is a recent major (first release ${report.recentMajor.since}). ` +
+        `Its APIs and configuration may differ from what you know; read query-docs for ${recommended} before writing code or config for it.`,
+    );
+  }
 
   lines.push(`Verified against ${report.sources.join(' + ')} on ${report.checkedAt.slice(0, 10)}.`);
   return lines.join('\n');
