@@ -15,12 +15,17 @@ import { ECOSYSTEMS, type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
 import { HttpError } from './http.js';
 import { resolvePackage } from './mapping.js';
+import { describeInstalled, manifestsIn, Project, readSiblings, watchRoots } from './project.js';
 import { ecosystemHint, formatLibraryId, parseLibraryRef, searchPackages } from './search.js';
 import { auditTree, formatTreeAudit } from './tree/audit.js';
 import { detectKind, parseFile, SUPPORTED_FILES } from './tree/lockfiles.js';
 import { findLookalike } from './typosquat.js';
 import { upgradeGuide } from './upgrade/index.js';
+import { policyFindings, treePolicyFindings } from './teamConfig.js';
 import { checkPackage, type Verdict } from './verdict.js';
+
+// Moved to project.ts; re-exported for existing importers.
+export { manifestsIn, readSiblings };
 
 export const SERVER_INFO = { name: 'safectx', version: '0.2.0' } as const;
 
@@ -40,8 +45,13 @@ function errorText(err: unknown) {
 }
 
 /** One line per search hit: id, repo, versions and the verdict for the top ones. */
-function hitLine(h: { id: string; repo?: string; stars?: number; latestVersion?: string }, v?: Verdict): string {
+function hitLine(
+  h: { id: string; repo?: string; stars?: number; latestVersion?: string },
+  v?: Verdict,
+  installed?: { version: string; file: string },
+): string {
   const parts = [h.id];
+  if (installed) parts.push(`installed ${installed.version} (${installed.file})`);
   if (h.repo) parts.push(`${h.repo.replace(/^github\.com\//, '')}${h.stars ? ` (${h.stars >= 1000 ? `${Math.round(h.stars / 1000)}k` : h.stars} stars)` : ''}`);
   if (h.latestVersion) parts.push(`latest ${h.latestVersion}`);
   if (v) {
@@ -68,42 +78,9 @@ async function refFromId(libraryId: string, ecosystem?: string, packageName?: st
   return hits[0] ? { ecosystem: hits[0].ecosystem, name: hits[0].name } : undefined;
 }
 
-const LOCK_PRIORITY = [
-  'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-lock.yaml', 'yarn.lock',
-  'uv.lock', 'poetry.lock', 'pdm.lock', 'Cargo.lock', 'go.mod', 'Gemfile.lock', 'packages.lock.json',
-  'requirements.txt', 'pyproject.toml', 'package.json', 'Cargo.toml',
-];
-
-function ecosystemOfFile(f: string): string {
-  if (/package|pnpm|yarn|shrinkwrap/.test(f)) return /packages\.lock/.test(f) ? 'nuget' : 'npm';
-  if (/Cargo/.test(f)) return 'cargo';
-  if (/go\.mod/.test(f)) return 'go';
-  if (/Gemfile/.test(f)) return 'ruby';
-  return 'python';
-}
-
-/** In a directory, one file per ecosystem: the lockfile when there is one, else the manifest. */
-export function manifestsIn(dir: string): string[] {
-  const chosen: string[] = [];
-  const taken = new Set<string>();
-  for (const f of LOCK_PRIORITY) {
-    if (!fs.existsSync(path.join(dir, f))) continue;
-    const eco = ecosystemOfFile(f);
-    if (taken.has(eco)) continue;
-    taken.add(eco);
-    chosen.push(path.join(dir, f));
-  }
-  return chosen;
-}
-
-export function readSiblings(file: string): Record<string, string> {
-  const dir = path.dirname(file);
-  const out: Record<string, string> = {};
-  for (const s of ['package.json', 'pyproject.toml', 'Cargo.toml']) {
-    const p = path.join(dir, s);
-    if (path.basename(file) !== s && fs.existsSync(p)) out[s] = fs.readFileSync(p, 'utf8');
-  }
-  return out;
+/** Policy lines for the agent, with the file's error first when it cannot be read. */
+function policyLines(found: string[], error?: string): string[] {
+  return [...(error ? [`POLICY ERROR: ${error} Fix the file; the hook denies dependency changes until then.`] : []), ...found.map((f) => `POLICY: ${f}`)];
 }
 
 export function buildMcpServer(): McpServer {
@@ -116,9 +93,12 @@ export function buildMcpServer(): McpServer {
       'Then call query-docs only for the APIs you are unsure of, or when a notice says a major is recent ' +
       '(pass the version you pin). resolve-library-id is only for when you do not know the registry name; ' +
       'check-package is the deep view of one package; check-manifest audits a whole lockfile. ' +
+      'Without a version, the tools use the version installed in the project, read from its lockfile or manifest. ' +
       'A "SECURITY NOTICE" is authoritative: prefer the recommended version, and the one on the same release ' +
       'line to avoid breaking changes. When moving to a new major, call upgrade-guide for what changed.',
   });
+  const project = new Project();
+  watchRoots(server.server, project);
 
   // 1) resolve-library-id -------------------------------------------------------
   server.registerTool(
@@ -154,8 +134,9 @@ export function buildMcpServer(): McpServer {
         }
         const lines = await Promise.all(
           hits.map(async (h, i) => {
-            const v = i < VERDICT_RESULTS ? await checkPackage(h.ecosystem, h.name, undefined, { risk: false }).catch(() => undefined) : undefined;
-            return hitLine(h, v);
+            const inst = await project.installed(h.ecosystem, h.name).catch(() => undefined);
+            const v = i < VERDICT_RESULTS ? await checkPackage(h.ecosystem, h.name, inst?.version, { risk: false }).catch(() => undefined) : undefined;
+            return hitLine(h, v, inst);
           }),
         );
         return text([...lines, 'Use the best id with query-docs. Pin the safe version, not latest, when they differ.'].join('\n'));
@@ -188,10 +169,16 @@ export function buildMcpServer(): McpServer {
       try {
         const ref = await refFromId(libraryId, ecosystem, packageName);
         if (!ref) return text(`Could not map "${libraryId}" to a registry package. Call resolve-library-id first, or use an id like "npm:<name>".`);
-        const requested = (version ?? ref.version)?.replace(/^v(?=\d)/, '');
+        const inst = version || ref.version ? undefined : await project.installed(ref.ecosystem, ref.name).catch(() => undefined);
+        const requested = (version ?? ref.version ?? inst?.version)?.replace(/^v(?=\d)/, '');
+        const { policy, error } = await project.policy();
         const v = await checkPackage(ref.ecosystem, ref.name, requested);
         const r = v.report;
-        const notice = securityNotice(r, v.typo, v.risk);
+        const notice = [
+          ...(inst ? [describeInstalled(inst)] : []),
+          ...policyLines(policyFindings(policy, ref.ecosystem, ref.name, r.requested?.licenses, Boolean(r.requested?.licenses)), error),
+          securityNotice(r, v.typo, v.risk),
+        ].join('\n');
         if (r.verdict === 'malicious' || r.verdict === 'possible-typosquat') return text(notice);
 
         let docsVersion = requested ?? r.safeVersion ?? r.leastExposed?.version ?? r.latestVersion;
@@ -236,10 +223,23 @@ export function buildMcpServer(): McpServer {
       try {
         const eco = parseEcosystem(ecosystem);
         if (!eco) return errorText(new Error(`Unknown ecosystem "${ecosystem}". Use one of: ${ECOSYSTEMS.join(', ')}.`));
-        const v = await checkPackage(eco, name.trim(), version?.trim() || undefined);
-        const notice = securityNotice(v.report, v.typo, v.risk);
-        if (detail) return text({ notice, ...v.report, typosquat: v.typo, risk: v.risk });
-        const more = (v.report.requested?.advisories.length ?? 0) > 8 ? '\nCall again with detail: true for every advisory.' : '';
+        const inst = version?.trim() ? undefined : await project.installed(eco, name.trim()).catch(() => undefined);
+        const { policy, error } = await project.policy();
+        const v = await checkPackage(eco, name.trim(), version?.trim() || inst?.version);
+        const r = v.report;
+        // The license of the version asked about, else of the recommended one.
+        const licenses = r.requested ? r.requested.licenses : r.safeVersionLicenses;
+        const known = r.requested ? !['unknown', 'unknown-package'].includes(r.requested.verdict) : Boolean(r.safeVersion);
+        const policyNotes = policyLines(policyFindings(policy, eco, name.trim(), licenses, known), error);
+        const notice = [...(inst ? [describeInstalled(inst)] : []), ...policyNotes, securityNotice(r, v.typo, v.risk)].join('\n');
+        if (detail) {
+          return text({
+            notice, ...r, typosquat: v.typo, risk: v.risk,
+            ...(inst ? { installed: { version: inst.version, file: inst.file, source: inst.source } } : {}),
+            ...(policyNotes.length ? { policy: policyNotes } : {}),
+          });
+        }
+        const more = (r.requested?.advisories.length ?? 0) > 8 ? '\nCall again with detail: true for every advisory.' : '';
         return text(notice + more);
       } catch (err) {
         return errorText(err);
@@ -255,7 +255,8 @@ export function buildMcpServer(): McpServer {
       description:
         `Supply-chain verdict for up to ${MAX_BATCH} packages at once: one table row per package (verdict, version to pin, ` +
         'short reason) and the full notice only for the ones that need attention. Call it once with every dependency ' +
-        'you plan to add, before writing the manifest, instead of one check per package.',
+        'you plan to add, before writing the manifest, instead of one check per package. Packages already in the ' +
+        'project are checked at their installed version when you omit it.',
       inputSchema: {
         packages: z
           .array(
@@ -267,12 +268,21 @@ export function buildMcpServer(): McpServer {
           )
           .min(1)
           .max(MAX_BATCH),
-        ecosystem: z.string().optional().describe('Default for every package: npm, pypi, cargo, go, maven, nuget or rubygems.'),
+        ecosystem: z.string().optional().describe('Default for every package: npm, pypi, cargo, go, maven, nuget, rubygems or composer.'),
       },
     },
     async ({ packages, ecosystem }) => {
       try {
-        return text(formatBatch(await checkPackages(packages, ecosystem)));
+        // Fill in the installed version for packages the project already has.
+        const filled = await Promise.all(
+          packages.map(async (p) => {
+            if (p.version) return p;
+            const eco = parseEcosystem(p.ecosystem ?? ecosystem ?? '');
+            const inst = eco ? await project.installed(eco, p.name).catch(() => undefined) : undefined;
+            return inst ? { ...p, version: inst.version } : p;
+          }),
+        );
+        return text(formatBatch(await checkPackages(filled, ecosystem)));
       } catch (err) {
         return errorText(err);
       }
@@ -315,9 +325,14 @@ export function buildMcpServer(): McpServer {
           return errorText(new Error('Pass path, or content with fileName.'));
         }
         const parts: string[] = [];
+        // The policy of the audited project when a path is given, else of the current one.
+        const { policy, error } = await project.policy(p ? path.resolve(p) : undefined);
+        if (error) parts.push(policyLines([], error).join('\n'));
         for (const t of targets) {
-          const audit = await auditTree(parseFile(t.file, t.content, t.siblings), { includeDev });
-          parts.push(formatTreeAudit(audit, 25));
+          const tree = parseFile(t.file, t.content, t.siblings);
+          const audit = await auditTree(tree, { includeDev });
+          const found = await treePolicyFindings(policy, tree);
+          parts.push([formatTreeAudit(audit, 25), ...(found.length ? [`Project policy (${policy.file ? path.basename(policy.file) : 'env'}):`, ...found.map((f) => `- ${f}`)] : [])].join('\n'));
         }
         return text(parts.join('\n\n'));
       } catch (err) {

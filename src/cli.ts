@@ -6,7 +6,7 @@
  * safectx check <eco> <name>[@version]
  * safectx audit [path] [--json] [--fail-on=low|moderate|high|critical]
  * safectx upgrade <eco> <name> <from> [to] [--query="..."]
- * safectx init [claude|cursor] [--no-hook] [--no-mcp]
+ * safectx init [claude|cursor] [--no-hook] [--no-mcp] [--no-config]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +18,7 @@ import { runClaudeHook, runCursorHook } from './hook/run.js';
 import { splitNpmSpec } from './hook/intent.js';
 import { buildMcpServer, manifestsIn, readSiblings } from './mcp.js';
 import { auditTree, formatTreeAudit, type TreeAudit } from './tree/audit.js';
+import { CONFIG_FILE, STARTER_CONFIG } from './teamConfig.js';
 import { parseFile } from './tree/lockfiles.js';
 import { upgradeGuide } from './upgrade/index.js';
 import { checkPackage } from './verdict.js';
@@ -104,6 +105,15 @@ function init(args: string[]): number {
   const withMcp = !args.includes('--no-mcp');
   const l = launcher(local);
   const shell = (extra: string[]) => [l.command, ...l.args, ...extra].map((s) => (/\s/.test(s) ? `"${s}"` : s)).join(' ');
+  // The team policy starter, never over an existing one: that file belongs to the team.
+  if ((agent === 'claude' || agent === 'cursor') && !args.includes('--no-config')) {
+    const team = path.resolve(CONFIG_FILE);
+    if (fs.existsSync(team)) console.log(`kept ${CONFIG_FILE} (already present)`);
+    else {
+      fs.writeFileSync(team, STARTER_CONFIG);
+      console.log(`wrote ${CONFIG_FILE}`);
+    }
+  }
   if (agent === 'claude') {
     if (withMcp) {
       const p = path.resolve('.mcp.json');
@@ -143,7 +153,7 @@ function init(args: string[]): number {
     }
     return 0;
   }
-  console.error('usage: safectx init [claude|cursor] [--local] [--no-hook] [--no-mcp]');
+  console.error('usage: safectx init [claude|cursor] [--local] [--no-hook] [--no-mcp] [--no-config]');
   return 2;
 }
 

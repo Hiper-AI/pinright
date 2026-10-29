@@ -9,15 +9,19 @@
  *   ask  : the newest version itself has advisories and nothing clean exists;
  *   allow: everything else. Warnings (cooldown, unknown source) go to the agent
  *          as context without blocking, unless configured otherwise.
+ *
+ * The team policy (.safectx.json, then env) adds deny and allow lists, license
+ * rules and a severity threshold on top; see teamConfig.ts.
  */
 import { getDependencies, getPackage } from '../advisories/depsdev.js';
-import { queryBatch } from '../advisories/osv.js';
+import { getVuln, queryBatch, severityOf } from '../advisories/osv.js';
 import { config } from '../config.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { riskOutcome } from '../risk/index.js';
 import { normalizePypiName } from '../tree/lockfiles.js';
 import semver from 'semver';
 import { GRAPH_ECOSYSTEMS, pickVersion, satisfiesPep440 } from '../tree/resolveManifest.js';
+import { belowThreshold, checkLicenses, denyEntry, denyMessage, isAllowed, type Policy, resolvePolicy, severityLevel } from '../teamConfig.js';
 import { checkPackage, type Verdict } from '../verdict.js';
 import { type DepIntent } from './intent.js';
 
@@ -34,16 +38,6 @@ export interface HookDecision {
 const MAX_CHECKS = 25;
 /** Unchanged lines of a manifest read for the compatibility check only. */
 const MAX_CONTEXT = 60;
-
-function allowed(name: string): boolean {
-  const list = (process.env.SAFECTX_ALLOW ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  return list.some((p) => (p.endsWith('*') ? name.startsWith(p.slice(0, -1)) : p === name));
-}
-
-function onError(): Action {
-  const v = process.env.SAFECTX_HOOK_ON_ERROR;
-  return v === 'deny' || v === 'ask' ? v : 'allow';
-}
 
 async function versionFor(eco: Ecosystem, name: string, spec: string | undefined): Promise<{ version?: string; implicit: boolean; exists: boolean }> {
   const pkg = await getPackage(eco, name);
@@ -160,12 +154,12 @@ async function parentUpgrade(c: Checked, names: string[]): Promise<{ to: string;
 }
 
 /**
- * When no version without advisories exists, SAFECTX_HOOK_NO_FIX decides:
+ * When no version without advisories exists, noFix (SAFECTX_HOOK_NO_FIX) decides:
  * "severity" (default) asks for HIGH/CRITICAL and lets the rest through with a note;
  * "allow", "ask" or "deny" apply to every case.
  */
-function noFix(head: string, severity: string | undefined, malware: boolean): Outcome {
-  const mode = process.env.SAFECTX_HOOK_NO_FIX ?? 'severity';
+function noFix(p: Policy, head: string, severity: string | undefined, malware: boolean): Outcome {
+  const mode = p.noFix;
   const serious = malware || /^(HIGH|CRITICAL)$/i.test(severity ?? '');
   const action: Action = mode === 'allow' || mode === 'ask' || mode === 'deny' ? mode : serious ? 'ask' : 'allow';
   const text = `${head} No version without known advisories exists yet${action === 'allow' ? '; allowed, keep an eye on it' : '; a human should decide'}.`;
@@ -178,7 +172,7 @@ function sevRank(s: string | undefined): number {
   return r[(s ?? '').toUpperCase()] ?? 1.5;
 }
 
-function judge(c: Checked): Outcome {
+function judge(c: Checked, p: Policy): Outcome {
   const { i, label, version, implicit } = c;
   const v = c.v as Verdict;
   const r = v.report;
@@ -191,9 +185,9 @@ function judge(c: Checked): Outcome {
     case 'unknown-package':
       return r.latestVersion
         ? { action: 'deny', problem: `${label}: version ${version} was never published (or was removed).${fix(r.safeVersion, 'Use')}` }
-        : { action: 'deny', problem: `${label}: no such package in the ${i.ecosystem} registry. Check the name; if it is a private package, add it to SAFECTX_ALLOW.` };
+        : { action: 'deny', problem: `${label}: no such package in the ${i.ecosystem} registry. Check the name; if it is a private package, add it to "allow" in .safectx.json (or SAFECTX_ALLOW).` };
     case 'unknown':
-      return { action: onError(), warning: `${label}: could not be verified (${r.reason}).` };
+      return { action: p.onError, warning: `${label}: could not be verified (${r.reason}).` };
     default:
       break;
   }
@@ -202,6 +196,9 @@ function judge(c: Checked): Outcome {
     const ids = req.advisories.slice(0, 3).map((a) => a.aliases.find((x) => x.startsWith('CVE-')) ?? a.id).join(', ');
     const sev = req.advisories.find((a) => a.severity)?.severity;
     const head = `${label}${implicit ? ` resolves to ${version}, which` : ''} has ${req.advisories.length} known advisor${req.advisories.length === 1 ? 'y' : 'ies'} (${ids}${sev ? `, ${sev}` : ''}).`;
+    if (belowThreshold(p, req.advisories)) {
+      return { action: 'allow', warning: `${head} All are below the project's severity threshold (${p.severityThreshold}); allowed.${fix(r.safeVersionSameLine ?? r.safeVersion, 'Clean version')}` };
+    }
     if (r.safeVersionSameLine && r.safeVersionSameLine !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersionSameLine, `Use ${r.line} release`)}` };
     if (r.safeVersion && r.safeVersion !== version) {
       const guide = ` Call upgrade-guide (safectx MCP, or \`safectx upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersion}\`) for the breaking changes before writing code for it.`;
@@ -219,7 +216,7 @@ function judge(c: Checked): Outcome {
       }
     }
     // This is already the least exposed: blocking would only stop the work. Ask for serious ones, note the rest.
-    return noFix(head, sev, req.advisories.some((a) => /^MAL-/.test(a.id)));
+    return noFix(p, head, sev, req.advisories.some((a) => /^MAL-/.test(a.id)));
   }
   if (req && req.verdict === 'deprecated') {
     if (r.safeVersion && r.safeVersion !== version) return { action: 'deny', problem: `${label}: deprecated (${req.deprecatedReason ?? 'by its maintainers'}).${fix(r.safeVersion, 'Use')}` };
@@ -227,29 +224,61 @@ function judge(c: Checked): Outcome {
   }
   if (implicit && r.safeVersion && version && r.safeVersion !== version) {
     const msg = `${label}: the newest version ${version} is younger than the ${config.cooldownDays}-day cooldown or a pre-release; pin ${r.safeVersion} instead.`;
-    return process.env.SAFECTX_HOOK_COOLDOWN === 'enforce' ? { action: 'deny', problem: msg } : { action: 'allow', warning: msg };
+    return p.cooldown === 'enforce' ? { action: 'deny', problem: msg } : { action: 'allow', warning: msg };
   }
   return { action: 'allow' };
 }
 
-export async function decide(intents: DepIntent[]): Promise<HookDecision> {
+/** The license of the version being installed, against the team's license rules. */
+function licenseOutcome(c: Checked, p: Policy): Outcome | undefined {
+  const req = c.v?.report.requested;
+  if (!req || req.verdict === 'unknown' || req.verdict === 'unknown-package') return undefined;
+  const l = checkLicenses(p, req.licenses);
+  if (l.action === 'deny') return { action: 'deny', problem: `${c.label}: ${l.message}` };
+  if (l.action === 'note') return { action: 'allow', warning: `${c.label}: ${l.message}` };
+  return undefined;
+}
+
+/** OSV ids whose advisories are all rated below the threshold, so transitive findings only note them. */
+async function mildIds(ids: string[], p: Policy): Promise<Set<string>> {
+  const mild = new Set<string>();
+  if (p.severityThreshold === 'low') return mild;
+  await Promise.all(
+    [...new Set(ids)].map(async (id) => {
+      const v = await getVuln(id).catch(() => undefined);
+      const sev = v ? severityOf(v) : undefined;
+      if (v && !/^MAL-/.test(id) && severityLevel(sev) !== undefined && belowThreshold(p, [{ severity: sev }])) mild.add(id);
+    }),
+  );
+  return mild;
+}
+
+export async function decide(intents: DepIntent[], policy: Policy = resolvePolicy()): Promise<HookDecision> {
+  const p = policy;
+  const outcomes: Outcome[] = [];
   const seen = new Set<string>();
   const unique = intents.filter((i) => {
     const k = `${i.ecosystem}:${i.name}:${i.spec ?? ''}`;
     if (seen.has(k)) return false;
     seen.add(k);
-    return !allowed(i.name);
+    if (isAllowed(p, i.ecosystem, i.name)) return false;
+    const d = i.contextOnly ? undefined : denyEntry(p, i.ecosystem, i.name);
+    if (d) {
+      // No lookup needed: the team said no.
+      outcomes.push({ action: 'deny', problem: `${i.name} (${i.ecosystem}): ${denyMessage(p, d)}` });
+      return false;
+    }
+    return true;
   });
   const changed = unique.filter((i) => !i.contextOnly);
   const list = [...changed.slice(0, MAX_CHECKS), ...unique.filter((i) => i.contextOnly).slice(0, MAX_CONTEXT)];
-  const outcomes: Outcome[] = [];
   const checked: Checked[] = [];
   await Promise.all(
     list.map(async (i) => {
       try {
         checked.push(await inspect(i));
       } catch (err) {
-        outcomes.push({ action: onError(), warning: `${i.name}: could not be verified (${(err as Error).message}).` });
+        outcomes.push({ action: p.onError, warning: `${i.name}: could not be verified (${(err as Error).message}).` });
       }
     }),
   );
@@ -266,9 +295,12 @@ export async function decide(intents: DepIntent[]): Promise<HookDecision> {
 
   for (const c of checked) {
     if (c.i.contextOnly) continue;
-    let o = judge(c);
+    let o = judge(c, p);
+    const lic = licenseOutcome(c, p);
+    if (lic) outcomes.push(lic);
     const parent = parentOf.get(c);
-    if (parent && c.v?.report.requested?.verdict === 'vulnerable') {
+    const req = c.v?.report.requested;
+    if (parent && req?.verdict === 'vulnerable' && !belowThreshold(p, req.advisories)) {
       // Pinning a dependency of another pinned package outside that package's range does not install.
       const name = norm(c.i.ecosystem, c.i.name);
       const up = await parentUpgrade(parent, [name]);
@@ -294,9 +326,14 @@ export async function decide(intents: DepIntent[]): Promise<HookDecision> {
   const withGraph = checked.filter((c) => c.graph?.size && !c.i.contextOnly);
   const nodes = withGraph.flatMap((c) => [...(c.graph as Map<string, string>).entries()].filter(([n]) => !declared.has(`${c.i.ecosystem}:${n}`)).map(([name, version]) => ({ c, name, version })));
   const ids = nodes.length ? await queryBatch(nodes.map((n) => ({ ecosystem: n.c.i.ecosystem, name: n.name, version: n.version }))).catch(() => undefined) : [];
+  const mild = await mildIds((ids ?? []).flat(), p);
   const vulnerableBy = new Map<Checked, string[]>();
   nodes.forEach((n, k) => {
-    if (ids?.[k]?.length) vulnerableBy.set(n.c, [...(vulnerableBy.get(n.c) ?? []), `${n.name}@${n.version}`]);
+    const found = ids?.[k] ?? [];
+    if (!found.length) return;
+    if (found.every((id) => mild.has(id))) {
+      outcomes.push({ action: 'allow', warning: `${n.c.label} pulls ${n.name}@${n.version}, whose advisories (${found.slice(0, 3).join(', ')}) are below the project's severity threshold (${p.severityThreshold}).` });
+    } else vulnerableBy.set(n.c, [...(vulnerableBy.get(n.c) ?? []), `${n.name}@${n.version}`]);
   });
   for (const [c, vulns] of vulnerableBy) {
     const names = [...new Set(vulns.map((x) => x.slice(0, x.lastIndexOf('@'))))];

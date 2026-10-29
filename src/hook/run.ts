@@ -8,6 +8,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { applyCooldownDays } from '../config.js';
+import { loadTeamConfig, resolvePolicy } from '../teamConfig.js';
 import { agentMessage, decide, type HookDecision } from './policy.js';
 import { type DepIntent, fromCommand, fromFileWrite, isWatchedFile } from './intent.js';
 
@@ -55,24 +57,39 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-/** The whole check under a deadline: a hook that hangs blocks the agent. */
-async function decideWithin(intents: DepIntent[], ms: number): Promise<HookDecision> {
+/**
+ * The whole check under a deadline: a hook that hangs blocks the agent.
+ * The team policy is the .safectx.json nearest to cwd; a broken one denies
+ * (fail closed) until it is fixed, since ignoring it would drop its deny list.
+ */
+async function decideWithin(intents: DepIntent[], ms: number, cwd: string): Promise<HookDecision> {
+  const team = loadTeamConfig(cwd);
+  if (team.error) {
+    return {
+      action: 'deny',
+      problems: [`the project policy cannot be read, so no dependency change is allowed until it is fixed. ${team.error}`],
+      warnings: [],
+      checked: 0,
+    };
+  }
+  const policy = resolvePolicy(team.config, process.env, team.file);
+  applyCooldownDays(policy.cooldownDays);
   const timeout = new Promise<HookDecision>((resolve) =>
     setTimeout(() => {
-      const v = process.env.SAFECTX_HOOK_ON_ERROR;
-      resolve({ action: v === 'deny' || v === 'ask' ? v : 'allow', problems: [], warnings: ['safectx: verification timed out; dependencies not checked.'], checked: 0 });
+      resolve({ action: policy.onError, problems: [], warnings: ['safectx: verification timed out; dependencies not checked.'], checked: 0 });
     }, ms).unref(),
   );
-  return Promise.race([decide(intents), timeout]);
+  return Promise.race([decide(intents, policy), timeout]);
 }
 
 const DEADLINE_MS = Number(process.env.SAFECTX_HOOK_TIMEOUT_MS ?? 45_000);
 
 export async function runClaudeHook(): Promise<number> {
   const input = JSON.parse((await readStdin()) || '{}');
-  const intents = intentsFromToolInput(input.tool_name ?? '', input.tool_input ?? {}, input.cwd ?? process.cwd());
+  const cwd = input.cwd ?? process.cwd();
+  const intents = intentsFromToolInput(input.tool_name ?? '', input.tool_input ?? {}, cwd);
   if (!intents.length) return 0; // not a dependency change: say nothing
-  const d = await decideWithin(intents, DEADLINE_MS);
+  const d = await decideWithin(intents, DEADLINE_MS, cwd);
   const msg = agentMessage(d);
   if (d.action === 'allow') {
     if (msg) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: msg } }));
@@ -94,7 +111,7 @@ export async function runCursorHook(): Promise<number> {
     process.stdout.write(JSON.stringify({ permission: 'allow' }));
     return 0;
   }
-  const d = await decideWithin(intents, DEADLINE_MS);
+  const d = await decideWithin(intents, DEADLINE_MS, cwd);
   const msg = agentMessage(d);
   process.stdout.write(
     JSON.stringify({

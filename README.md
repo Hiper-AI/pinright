@@ -43,6 +43,8 @@ npx -y safectx init cursor
 
 `init` writes `.mcp.json` and `.claude/settings.json` (or `.cursor/mcp.json` and
 `.cursor/hooks.json`), keeping what is already there. `--no-hook` or `--no-mcp` installs one half.
+It also writes a commented starter [`.safectx.json`](#team-policy-safectxjson) when the project has
+none (`--no-config` skips it); it never overwrites an existing one.
 
 Any other MCP client:
 
@@ -89,12 +91,12 @@ safectx blocked this dependency change:
 
 | Tool | What it does |
 |---|---|
-| `resolve-library-id` | Library name to registry package (`next.js` to `npm:next`, `pytorch` to `pypi:torch`), ranked by repo stars, with the safe version and a verdict. Suggests the real name for a misspelled one. |
-| `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the safe one; with a vulnerable one it documents the same-line fix. Context7 ids (`/vercel/next.js`) work too. |
+| `resolve-library-id` | Library name to registry package (`next.js` to `npm:next`, `pytorch` to `pypi:torch`), ranked by repo stars, with the safe version and a verdict. Hits the project already depends on carry `installedVersion` and `installedIn`. Suggests the real name for a misspelled one. |
+| `query-docs` | Sections that answer the question, from the package at a given version. Without a version it documents the one installed in the project, or the safe one when the project does not use the package; with a vulnerable one it documents the same-line fix. Context7 ids (`/vercel/next.js`) work too. |
 | `upgrade-guide` | What changes between two versions: breaking changes, removed or renamed APIs, config and default changes, packages that split off, deprecations, and the advisories the move fixes. Without `to` it targets the recommended version. |
 | `check-packages` | The verdict for up to 50 packages in one call: one table row each (verdict, version to pin, short reason), and the full notice only for the ones that need attention. The cheap way to vet a dependency list. |
-| `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes, supply-chain signals (`risk`). |
-| `check-manifest` | Whole-tree audit of `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `Cargo.lock`, `go.mod`, `Gemfile.lock`, `packages.lock.json`, or a bare `package.json` / `pyproject.toml` / `Cargo.toml` resolved through deps.dev. Each finding comes with its chain and fix. |
+| `check-package` | The verdict for one package: advisories with CVE, severity and fixed versions, deprecation, license, safe version on the same line and overall, typosquat lookalikes, and team policy violations. Without a version it checks the installed one. |
+| `check-manifest` | Whole-tree audit of `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements*.txt`, `poetry.lock`, `uv.lock`, `pdm.lock`, `Cargo.lock`, `go.mod`, `Gemfile.lock`, `packages.lock.json`, or a bare `package.json` / `pyproject.toml` / `Cargo.toml` resolved through deps.dev. Each finding comes with its chain and fix, followed by team policy violations (denied packages anywhere in the tree, licenses of direct dependencies). |
 
 Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `unknown-package`,
 `unknown`. `unknown` means a data source did not answer; safectx never says `ok` when it could not check.
@@ -123,14 +125,19 @@ package first published less than 14 days ago that runs install scripts, and a r
 scripts and comes from a publisher the previous releases never had. Everything else passes, with notes
 for the agent.
 
+The team policy in `.safectx.json` (next section) sets the same knobs for the whole repo. The hook
+reads the nearest one walking up from its working directory to the repository root. These variables
+override the file:
+
 | Variable | Default | Meaning |
 |---|---|---|
-| `SAFECTX_ALLOW` | none | Comma list of names that skip the hook, `*` suffix allowed (`@acme/*`). For private packages. |
+| `SAFECTX_ALLOW` | none | Comma list of names that skip the hook, `*` wildcard (`@acme/*`). Added to the file's `allow`. For private packages. |
 | `SAFECTX_HOOK_ON_ERROR` | `allow` | What to do when deps.dev or OSV cannot be reached: `allow`, `ask` or `deny`. |
 | `SAFECTX_HOOK_NO_FIX` | `severity` | When no clean version exists: `severity` asks for high/critical and allows the rest; or `allow`, `ask`, `deny` for all. |
 | `SAFECTX_HOOK_COOLDOWN` | `warn` | `enforce` blocks an unpinned install whose newest version is inside the cooldown window. |
 | `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check; on timeout it behaves as `SAFECTX_HOOK_ON_ERROR`. |
 | `SAFECTX_HOOK_RISK` | `enforce` | Supply-chain signals: `enforce` blocks the two patterns above, `warn` only notes them, `off` ignores them. |
+| `SAFECTX_SEVERITY_THRESHOLD` | `low` | Advisories below this severity (`low`, `moderate`, `high`, `critical`) become notes instead of blocks. |
 
 ## Supply-chain signals
 
@@ -193,6 +200,77 @@ version and source. The answer opens with the advisories the move fixes and any 
 It fits the same budget as `query-docs` (`tokens` argument). Without a `GITHUB_TOKEN` it reads fewer
 release pages.
 
+## Project detection
+
+Agents rarely say which version the project uses, and docs for a newer version produce code against
+APIs the project does not have. safectx reads the project's dependency files by itself:
+
+- **Where.** The roots the MCP client announces (and re-reads them on `roots/list_changed`). Without
+  them, `SAFECTX_PROJECT_DIR` (several directories separated by the OS path delimiter), else the working
+  directory: Claude Code and Cursor launch stdio servers inside the project. When that directory has
+  no dependency files, the nearest parent that has them, up to the repository root. Subprojects up to
+  three levels down count too (monorepos), skipping `node_modules`, build output and hidden folders.
+- **What.** One file per ecosystem and directory, lockfile first: the exact version from the lockfile;
+  for npm without a lockfile, the version in `node_modules`; an exact pin in a manifest; else the
+  version the manifest's range resolves to today, and the answer says so.
+- **How it is used.** `query-docs` and `check-package` without a version use the installed one and say
+  so in one line, then apply the same checks as for an explicit version: a vulnerable installed
+  version gets the same-line fix and docs for it. An explicit version always wins.
+
+```
+query-docs { libraryId: "npm:next", query: "middleware" }
+
+Using next 15.1.0, installed in this project (package-lock.json).
+SECURITY NOTICE: next (npm)@15.1.0 has 36 known advisories.
+...
+These docs are for 15.5.28, the version to move to, not 15.1.0.
+```
+
+When a monorepo has several versions of the package, the line lists the others. safectx reads only
+dependency files, keeps them parsed in memory and re-reads one when its modification time changes.
+
+## Team policy (`.safectx.json`)
+
+A `.safectx.json` at the project root, committed with the code, gives every developer and every agent
+the same rules. It is JSON with `//` comments allowed. Every key is optional:
+
+```jsonc
+{
+  "allow": ["@acme/*"],                       // skip every check (private packages); "*" is a wildcard
+  "deny": [
+    "left-pad",                               // any ecosystem
+    { "name": "request", "ecosystem": "npm", "reason": "unmaintained; use undici" }
+  ],
+  "licenses": {
+    "deny": ["AGPL-*", "SSPL-*"],             // SPDX ids, "*" wildcard
+    "allow": ["MIT", "Apache-2.0", "BSD-*", "ISC"]  // when set, anything else is denied
+  },
+  "severityThreshold": "high",                // low | moderate | high | critical
+  "cooldownDays": 7,                          // minimum age of a recommended version
+  "cooldown": "enforce",                      // warn | enforce
+  "noFix": "severity",                        // severity | allow | ask | deny
+  "onError": "ask",                           // allow | ask | deny
+  "actionsPin": "warn"                        // off | warn | enforce (GitHub Actions pinned to a SHA)
+}
+```
+
+| Key | Hook | MCP tools |
+|---|---|---|
+| `allow` | Listed names pass without a check. `allow` wins over `deny`. | No policy findings for them. |
+| `deny` | Denied with the reason, before any lookup. Only new or changed lines of a manifest count. | `POLICY:` line in `check-package` and `query-docs`; every match in the tree in `check-manifest`. |
+| `licenses` | A version whose license expression has no acceptable alternative is denied (`MIT OR AGPL-3.0` passes a deny on `AGPL-*`). A missing or non-SPDX license is a note. | Same, for the version checked; direct dependencies in `check-manifest`. |
+| `severityThreshold` | When every advisory of a version is rated below it, the hook allows with a note. Unrated advisories and malware always count. Applies to transitive findings too. | Not applied: the tools report every advisory. |
+| `cooldownDays`, `cooldown` | As `SAFECTX_COOLDOWN_DAYS` and `SAFECTX_HOOK_COOLDOWN`. | `cooldownDays` changes the recommended version. |
+| `noFix`, `onError` | As `SAFECTX_HOOK_NO_FIX` and `SAFECTX_HOOK_ON_ERROR`. | |
+
+Precedence is built-in defaults, then the file, then environment variables. Lists merge
+(`SAFECTX_ALLOW` adds to `allow`); single values from the environment replace the file's.
+
+A file that is not valid JSON, or has an unknown key or a wrong value, does not count as "no policy":
+the hook denies every dependency change with the error until someone fixes the file, and the MCP tools
+start their answer with `POLICY ERROR`. Editing `.safectx.json` itself is not a dependency change, so
+the agent can fix it.
+
 ## How the safe version is chosen
 
 The newest version that is stable (no `rc`, `beta`, `canary`, Go pseudo-versions), not deprecated,
@@ -250,6 +328,7 @@ npx safectx upgrade npm zod 3.25.76 4.6.7  # what changes between two versions
 | `SAFECTX_CACHE_DIR` | OS cache dir `/safectx` | Disk cache (docs 7 days, advisories 24 h). |
 | `SAFECTX_NO_CACHE` | unset | `1` disables the cache. |
 | `SAFECTX_TIMEOUT_MS` | `15000` | Per-request timeout. |
+| `SAFECTX_PROJECT_DIR` | working directory | Project to read installed versions and `.safectx.json` from, when the client does not announce roots. |
 
 No telemetry. Requests go from your machine to the public APIs above and nowhere else. Docs
 content is data for the agent; safectx does not execute anything it downloads.

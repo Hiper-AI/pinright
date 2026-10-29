@@ -42,3 +42,9 @@ export const config = {
     registry: 24 * 3600_000,
   },
 } as const;
+
+/** The team file (.safectx.json) may set the cooldown; SAFECTX_COOLDOWN_DAYS still wins. */
+export function applyCooldownDays(days: number | undefined): void {
+  if (days === undefined || process.env.SAFECTX_COOLDOWN_DAYS) return;
+  (config as { cooldownDays: number }).cooldownDays = days;
+}
