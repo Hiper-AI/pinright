@@ -157,6 +157,19 @@ async function parentUpgrade(c: Checked, names: string[]): Promise<{ to: string;
   return undefined;
 }
 
+/**
+ * When no version without advisories exists, SAFECTX_HOOK_NO_FIX decides:
+ * "severity" (default) asks for HIGH/CRITICAL and lets the rest through with a note;
+ * "allow", "ask" or "deny" apply to every case.
+ */
+function noFix(head: string, severity: string | undefined, malware: boolean): Outcome {
+  const mode = process.env.SAFECTX_HOOK_NO_FIX ?? 'severity';
+  const serious = malware || /^(HIGH|CRITICAL)$/i.test(severity ?? '');
+  const action: Action = mode === 'allow' || mode === 'ask' || mode === 'deny' ? mode : serious ? 'ask' : 'allow';
+  const text = `${head} No version without known advisories exists yet${action === 'allow' ? '; allowed, keep an eye on it' : '; a human should decide'}.`;
+  return action === 'allow' ? { action, warning: text } : { action, problem: text };
+}
+
 function judge(c: Checked): Outcome {
   const { i, label, version, implicit } = c;
   const v = c.v as Verdict;
@@ -182,8 +195,9 @@ function judge(c: Checked): Outcome {
     const sev = req.advisories.find((a) => a.severity)?.severity;
     const head = `${label}${implicit ? ` resolves to ${version}, which` : ''} has ${req.advisories.length} known advisor${req.advisories.length === 1 ? 'y' : 'ies'} (${ids}${sev ? `, ${sev}` : ''}).`;
     if (r.safeVersionSameLine && r.safeVersionSameLine !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersionSameLine, `Use ${r.line} release`)}` };
-    if (r.safeVersion) return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}` };
-    return { action: 'ask', problem: `${head} No version without advisories exists; a human should decide.` };
+    if (r.safeVersion && r.safeVersion !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}` };
+    // No other version is clean: blocking would only stop the work. Ask for serious ones, note the rest.
+    return noFix(head, sev, req.advisories.some((a) => /^MAL-/.test(a.id)));
   }
   if (req && req.verdict === 'deprecated') {
     if (r.safeVersion && r.safeVersion !== version) return { action: 'deny', problem: `${label}: deprecated (${req.deprecatedReason ?? 'by its maintainers'}).${fix(r.safeVersion, 'Use')}` };

@@ -13,12 +13,22 @@ vi.mock('../src/http.js', async () => {
   const actual = await vi.importActual<typeof import('../src/http.js')>('../src/http.js');
   return {
     ...actual,
-    getJson: vi.fn(async (url: string) => {
+    getJson: vi.fn(async (url: string, opts?: { body?: { version?: string } }) => {
       calls.push(url);
       const key = [...fixtures.keys()].find((k) => url.includes(k));
       if (!key) throw new actual.HttpError(404, url);
       const v = fixtures.get(key);
       if (v instanceof Error) throw v;
+      // Like OSV: a version query only returns the vulns whose ranges contain that version.
+      const version = opts?.body?.version;
+      if (version && v && typeof v === 'object' && 'vulns' in v) {
+        const semver = (await import('semver')).default;
+        const vulns = (v as { vulns: { affected?: { ranges?: { events: { fixed?: string }[] }[] }[] }[] }).vulns.filter((x) => {
+          const fixed = x.affected?.flatMap((a) => a.ranges ?? []).flatMap((r) => r.events).find((e) => e.fixed)?.fixed;
+          return !fixed || semver.lt(version, fixed);
+        });
+        return { vulns };
+      }
       return v;
     }),
   };

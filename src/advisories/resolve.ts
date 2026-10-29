@@ -210,7 +210,11 @@ export async function assessPackage(
       try {
         const detail = await getVersion(eco, name, cand.versionKey.version);
         if (!detail) continue;
-        if ((detail.advisoryKeys ?? []).length === 0) return { cand, licenses: detail.licenses };
+        if ((detail.advisoryKeys ?? []).length > 0) continue;
+        // deps.dev mirrors OSV with a lag of hours; a fresh advisory may only be in OSV yet.
+        // If OSV is unreachable, deps.dev's answer stands.
+        const osv = await queryVersion(eco, name, cand.versionKey.version).catch(() => []);
+        if (osv.length === 0) return { cand, licenses: detail.licenses };
       } catch (err) {
         sourceDown = (err as Error).message;
         return undefined;

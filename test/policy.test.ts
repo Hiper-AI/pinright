@@ -184,3 +184,19 @@ describe('version compatibility inside one file', () => {
     expect(d.problems[0]).toContain('resolves it to 0.4.2');
   });
 });
+
+describe('no clean version anywhere', () => {
+  it('lets a moderate advisory through with a note instead of stopping the work', async () => {
+    versions.set('nuxt', ['4.6.2']);
+    reports.set('nuxt@4.6.2', {
+      verdict: 'vulnerable', safeVersion: undefined,
+      requested: { version: '4.6.2', verdict: 'vulnerable', advisories: [{ id: 'GHSA-n', aliases: [], url: '', severity: 'MODERATE' }] },
+    });
+    const d = await decide([{ ecosystem: 'npm', name: 'nuxt', spec: '4.6.2', source: 'package.json' }]);
+    expect(d.action).toBe('allow');
+    expect(d.warnings[0]).toMatch(/No version without known advisories exists yet; allowed/);
+    process.env.SAFECTX_HOOK_NO_FIX = 'deny';
+    expect((await decide([{ ecosystem: 'npm', name: 'nuxt', spec: '4.6.2', source: 'package.json' }])).action).toBe('deny');
+    delete process.env.SAFECTX_HOOK_NO_FIX;
+  });
+});
