@@ -43,14 +43,15 @@ async function versionFor(eco: Ecosystem, name: string, spec: string | undefined
   const pkg = await getPackage(eco, name);
   if (!pkg?.versions.length) return { exists: false, implicit: !spec };
   const exact = spec?.replace(/^(==|=|v)/, '');
-  if (exact && pkg.versions.some((v) => v.versionKey.version.replace(/^v/, '') === exact.replace(/^v/, ''))) {
-    const hit = pkg.versions.find((v) => v.versionKey.version.replace(/^v/, '') === exact.replace(/^v/, ''));
-    return { version: hit?.versionKey.version, implicit: false, exists: true };
-  }
+  // PEP 440: "3.10" and "3.10.0" are the same release, and deps.dev lists the padded form.
+  const key = (s: string) => (eco === 'pypi' ? s.replace(/^v/, '').replace(/(\.0)+$/, '') : s.replace(/^v/, ''));
+  const hit = exact ? pkg.versions.find((v) => key(v.versionKey.version) === key(exact)) : undefined;
+  if (hit) return { version: hit.versionKey.version, implicit: false, exists: true };
   // A pin to a version that was never published: checkPackage reports it. Cargo's bare "1.2" is a range, not a pin.
+  // A bare PyPI version comes from a "==" line the file parser already stripped.
   const pinned =
     spec &&
-    ((eco === 'npm' && /^\d+\.\d+\.\d+/.test(spec)) || (eco === 'pypi' && /^==/.test(spec)) || (eco === 'cargo' && /^=/.test(spec)) ||
+    ((eco === 'npm' && /^\d+\.\d+\.\d+/.test(spec)) || (eco === 'pypi' && /^(==|\d)/.test(spec)) || (eco === 'cargo' && /^=/.test(spec)) ||
       eco === 'go' || ((eco === 'rubygems' || eco === 'nuget') && /^\d/.test(spec)) ||
       (eco === 'maven' && /^\d[^[\](),+]*$/.test(spec)) || (eco === 'composer' && /^v?\d+\.\d+\.\d+(\.\d+)?$/.test(spec)));
   if (pinned) return { version: eco === 'go' ? `v${exact?.replace(/^v/, '')}` : exact, implicit: false, exists: true };
@@ -305,9 +306,13 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
     if (lic) outcomes.push(lic);
     const parent = parentOf.get(c);
     const req = c.v?.report.requested;
-    if (parent && req?.verdict === 'vulnerable' && !belowThreshold(p, req.advisories)) {
+    const name = norm(c.i.ecosystem, c.i.name);
+    const ownFix = c.v?.report.safeVersionSameLine ?? c.v?.report.safeVersion;
+    const range = parent?.requires?.get(name);
+    // The package's own fix already fits the parent's range ("idna<4,>=2.5"): repinning it is enough.
+    const fitsParent = Boolean(ownFix && range && satisfiesRequirement(c.i.ecosystem, ownFix, range));
+    if (parent && !fitsParent && req?.verdict === 'vulnerable' && !belowThreshold(p, req.advisories)) {
       // Pinning a dependency of another pinned package outside that package's range does not install.
-      const name = norm(c.i.ecosystem, c.i.name);
       const up = await parentUpgrade(parent, [name]);
       const head = (o.problem ?? '').replace(/ (Use|No clean).*$/, '');
       if (up) {

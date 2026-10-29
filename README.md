@@ -388,11 +388,19 @@ nothing with safectx, and installed and built for real. Run of 2026-10-29, full 
 
 | | No docs | Context7 | safectx MCP | Hook only | MCP + hook |
 |---|---|---|---|---|---|
-| Direct deps with a known advisory | 39% | 42% | 0% | 3% | 0% |
-| Whole-tree alerts, 24 projects | 714 | 746 | 10 | 14 | 6 |
-| Critical + high alerts (npm) | 177 | 184 | 4 | 4 | 2 |
-| Projects that install and build | 24 | 24 | 23 | 23 | 24 |
-| Cost per run (USD) | 0.03 | 0.04 | 0.07 | 0.04 | 0.07 |
+| Direct deps with a known advisory | 41% | 40% | 0% | 0% | 0% |
+| Whole-tree alerts, 24 projects | 749 | 761 | 2 | 10 | 2 |
+| Critical + high alerts (npm) | 181 | 192 | 0 | 4 | 0 |
+| Projects that install and build | 24 | 24 | 23 | 22 | 23 |
+| Turns per run | 3.9 | 6.4 | 6.3 | 5.7 | 6.6 |
+| Cost per run (USD) | 0.03 | 0.04 | 0.05 | 0.04 | 0.05 |
+
+Against the previous run (v0.2), MCP + hook went from 6 to 2 alerts, from 11.1 to 6.6 turns and
+from USD 0.07 to 0.05 per run, mostly thanks to `check-packages`. The two remaining alerts are a
+Nuxt advisory with no fixed release yet. The builds that fail are `next-auth` 4 on Next 16
+(`middleware` became `proxy`) and, in the hook-only arm, a LangChain import the agent never
+declared. The hook-only arm of two Python tasks was rerun after fixing a pin-matching bug the run
+exposed (`idna==3.10` against the `3.10.0` deps.dev lists).
 
 The safectx arms ran with Context7 turned off. On the same 132 lockfiles, `check-manifest` flagged
 the same vulnerable packages as `npm audit` and `pip-audit` (mean Jaccard 0.95 for npm, 1.00 for PyPI).

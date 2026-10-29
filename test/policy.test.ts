@@ -81,6 +81,20 @@ describe('decide', () => {
     expect(d.problems[0]).toContain('safectx upgrade npm jsonwebtoken 8.5.1 9.0.3');
   });
 
+  it('matches a short PyPI pin to the padded version deps.dev lists ("3.10" is 3.10.0)', async () => {
+    versions.set('idna', ['3.10.0', '3.20.0']);
+    reports.set('idna@3.10.0', {
+      verdict: 'vulnerable', line: '3.x', safeVersionSameLine: '3.20.0',
+      requested: { version: '3.10.0', verdict: 'vulnerable', advisories: [adv('4')] },
+    });
+    // Pinned requirements files reach the hook without "==" (the parser strips it).
+    for (const spec of ['==3.10', '3.10']) {
+      const d = await decide([{ ecosystem: 'pypi', name: 'idna', spec, source: 'requirements.txt' }]);
+      expect(d.action).toBe('deny');
+      expect(d.problems[0]).toContain('idna==3.20.0');
+    }
+  });
+
   it('asks a human when no clean version exists', async () => {
     versions.set('python-jose', ['3.3.0']);
     reports.set('python-jose@3.3.0', { verdict: 'vulnerable', requested: { version: '3.3.0', verdict: 'vulnerable', advisories: [adv('3')] } });
@@ -188,6 +202,26 @@ describe('version compatibility inside one file', () => {
     expect(d.action).toBe('deny');
     expect(d.problems[0]).toContain('typing-inspection 0.4.0 does not satisfy fastapi 0.162.0\'s requirement ">=0.4.2"');
     expect(d.problems[0]).toContain('resolves it to 0.4.2');
+  });
+
+  it('a vulnerable dependency of a pinned parent is repinned when its fix fits the parent\'s range', async () => {
+    versions.set('requests', ['2.34.2']);
+    versions.set('idna', ['3.10.0', '3.20.0']);
+    reports.set('requests@2.34.2', { verdict: 'ok', requested: { version: '2.34.2', verdict: 'ok', advisories: [] } });
+    // deps.dev resolved the graph when 3.10 was newest; the range still takes the fix.
+    graphs.set('requests@2.34.2', { idna: '3.10.0' });
+    requirements.set('requests@2.34.2', { idna: '<4,>=2.5' });
+    reports.set('idna@3.10.0', {
+      verdict: 'vulnerable', line: '3.x', safeVersionSameLine: '3.20.0',
+      requested: { version: '3.10.0', verdict: 'vulnerable', advisories: [adv('5')] },
+    });
+    const d = await decide([
+      { ecosystem: 'pypi', name: 'requests', spec: '2.34.2', source: 'requirements.txt' },
+      { ecosystem: 'pypi', name: 'idna', spec: '3.10', source: 'requirements.txt' },
+    ]);
+    expect(d.action).toBe('deny');
+    expect(d.problems.join('\n')).toContain('idna==3.20.0');
+    expect(d.problems.join('\n')).not.toMatch(/no release of requests/);
   });
 });
 

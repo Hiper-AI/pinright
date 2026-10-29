@@ -35,13 +35,15 @@ async function serve(): Promise<number> {
 async function check(args: string[]): Promise<number> {
   const eco = parseEcosystem(args[0]);
   if (!eco || !args[1]) {
-    console.error('usage: safectx check <npm|pypi|cargo|go|maven|nuget|rubygems|composer> <name>[@version]');
+    console.error('usage: safectx check <npm|pypi|cargo|go|maven|nuget|rubygems|composer> <name>[@version | version]');
     return 2;
   }
-  const [name, version] =
+  const [name, inline] =
     eco === 'pypi' && args[1].includes('==') ? args[1].split('==')
     : eco === 'composer' && /^[^@:]+\/[^@:]+:/.test(args[1]) ? args[1].split(':')
     : splitNpmSpec(args[1]);
+  // "check pypi idna 3.10" is as common as "idna@3.10"; ignoring the version would report on the latest.
+  const version = inline ?? args[2];
   const v = await checkPackage(eco, name, version);
   console.log(securityNotice(v.report, v.typo, v.risk));
   return v.report.verdict === 'ok' ? 0 : 1;
@@ -186,7 +188,7 @@ async function main(): Promise<number> {
       console.log(readJson(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')).version);
       return 0;
     default:
-      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor]]');
+      console.error('usage: safectx [serve | hook claude|cursor | check <eco> <name>[@ver | ver] | audit [path] | upgrade <eco> <name> <from> [to] | init [claude|cursor]]');
       return 2;
   }
 }
