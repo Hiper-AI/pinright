@@ -2173,6 +2173,7 @@ var pkg = readPackage();
 var str = (v, fallback) => typeof v === "string" && v ? v : fallback;
 var PKG_VERSION = str(pkg.version, "0.0.0");
 var PKG_NAME = str(pkg.name, "safectx");
+var SERVER_KEY = PKG_NAME.replace(/^@[^/]+\//, "");
 var MCP_NAME = str(pkg.mcpName, `io.github.Hiper-AI/${PKG_NAME}`);
 
 // src/http.ts
@@ -25089,6 +25090,8 @@ var teamConfigSchema = external_exports.strictObject({
   noFix: external_exports.enum(["severity", "allow", "ask", "deny"]).optional(),
   /** When deps.dev or OSV cannot be reached. */
   onError: external_exports.enum(["allow", "ask", "deny"]).optional(),
+  /** What safectx cannot check: git and URL sources, registry switches, commands or files it cannot read. */
+  unverifiable: external_exports.enum(["allow", "ask", "deny"]).optional(),
   /** Pinning of GitHub Actions to commit SHAs; read by the workflow checks. */
   actionsPin: external_exports.enum(["off", "warn", "enforce"]).optional()
 });
@@ -25182,6 +25185,7 @@ function resolvePolicy(cfg, env2 = process.env, file2) {
     severityThreshold: envEnum("SAFECTX_SEVERITY_THRESHOLD", SEVERITIES, env2) ?? cfg?.severityThreshold ?? "low",
     noFix: envEnum("SAFECTX_HOOK_NO_FIX", ["severity", "allow", "ask", "deny"], env2) ?? cfg?.noFix ?? "severity",
     onError: envEnum("SAFECTX_HOOK_ON_ERROR", ["allow", "ask", "deny"], env2) ?? cfg?.onError ?? "allow",
+    unverifiable: envEnum("SAFECTX_HOOK_UNVERIFIABLE", ["allow", "ask", "deny"], env2) ?? cfg?.unverifiable ?? "ask",
     cooldown: envEnum("SAFECTX_HOOK_COOLDOWN", ["warn", "enforce"], env2) ?? cfg?.cooldown ?? "warn",
     cooldownDays: days !== void 0 && Number.isFinite(days) && days >= 0 ? days : cfg?.cooldownDays,
     actionsPin: envEnum("SAFECTX_ACTIONS_PIN", ["off", "warn", "enforce"], env2) ?? cfg?.actionsPin,

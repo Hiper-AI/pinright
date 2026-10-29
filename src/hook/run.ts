@@ -315,7 +315,15 @@ export function hookAnswer(agent: HookAgent, d: HookDecision, msg: string): { st
 }
 
 export async function runHook(agent: HookAgent): Promise<number> {
-  const raw = asObject((await readStdin()) || '{}');
+  const text = (await readStdin()) || '{}';
+  try {
+    JSON.parse(text);
+  } catch {
+    // Not silent: exit 1 is a non-blocking error the agent app shows to the user (docs/HOOK-THREAT-MODEL.md).
+    process.stderr.write('safectx: the hook input is not JSON; nothing was checked.\n');
+    return 1;
+  }
+  const raw = asObject(text);
   const { inputs, cwd } = hookInputs(agent, raw);
   const { d, msg } = await evaluateHook(inputs, cwd);
   const out = hookAnswer(agent, d, msg);

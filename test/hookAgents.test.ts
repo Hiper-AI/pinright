@@ -35,10 +35,10 @@ describe('each agent stdin -> the same tool inputs', () => {
     expect(shell.cwd).toBe(path.join(dir, 'web'));
     expect(deps(shell.inputs, shell.cwd)).toEqual(['npm:zod 3.25.76']);
     const written = hookInputs('gemini', { cwd: dir, tool_name: 'write_file', tool_input: { file_path: 'requirements.txt', content: 'flask==3.0.0\n' } });
-    expect(deps(written.inputs, written.cwd)).toEqual(['pypi:flask 3.0.0']);
+    expect(deps(written.inputs, written.cwd)).toEqual(['pypi:flask ==3.0.0']);
     fs.writeFileSync(path.join(dir, 'requirements.txt'), 'flask==3.0.0\n');
     const replaced = hookInputs('gemini', { cwd: dir, tool_name: 'replace', tool_input: { file_path: 'requirements.txt', old_string: 'flask==3.0.0', new_string: 'flask==3.0.0\nhttpx==0.27.0' } });
-    expect(deps(replaced.inputs, replaced.cwd)).toContain('pypi:httpx 0.27.0');
+    expect(deps(replaced.inputs, replaced.cwd)).toContain('pypi:httpx ==0.27.0');
   });
 
   it('VS Code / Copilot: snake_case (PreToolUse) or camelCase with toolArgs as a JSON string', () => {
@@ -54,10 +54,10 @@ describe('each agent stdin -> the same tool inputs', () => {
     expect(deps(run.inputs, run.cwd)).toEqual(['npm:lodash 4.17.20']);
     const file = path.join(dir, 'requirements.txt');
     const created = hookInputs('windsurf', { agent_action_name: 'pre_write_code', tool_info: { file_path: file, edits: [{ old_string: '', new_string: 'django==4.2.0\n' }] } });
-    expect(deps(created.inputs, dir)).toEqual(['pypi:django 4.2.0']);
+    expect(deps(created.inputs, dir)).toEqual(['pypi:django ==4.2.0']);
     fs.writeFileSync(file, 'django==4.2.0\n');
     const edited = hookInputs('windsurf', { agent_action_name: 'pre_write_code', tool_info: { file_path: file, edits: [{ old_string: 'django==4.2.0', new_string: 'django==5.0.0' }] } });
-    expect(deps(edited.inputs, dir)).toEqual(['pypi:django 5.0.0']);
+    expect(deps(edited.inputs, dir)).toEqual(['pypi:django ==5.0.0']);
   });
 
   it('Codex apply_patch: every added or updated file is a write', () => {
@@ -78,7 +78,7 @@ describe('each agent stdin -> the same tool inputs', () => {
     ].join('\n');
     const { inputs, cwd } = hookInputs('codex', { cwd: dir, tool_name: 'apply_patch', tool_input: { command: patch } });
     expect(inputs.map((i) => i.file_path)).toEqual(['requirements.txt', 'package.json']);
-    expect(deps(inputs, cwd)).toEqual(['pypi:requests 2.31.0', 'npm:zod 3.25.76']);
+    expect(deps(inputs, cwd)).toEqual(['pypi:requests ==2.31.0', 'npm:zod 3.25.76']);
   });
 });
 
