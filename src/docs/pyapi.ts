@@ -9,6 +9,7 @@
  * python chunker in retrieve.ts splits into one section per class or function.
  */
 import { type ArchiveEntry } from './archive.js';
+import { isGenerated } from './retrieve.js';
 
 // ------------------------------------------------------------ scanning ------
 
@@ -474,8 +475,8 @@ export function stubSignatures(stubs: { path: string; source: string }[]): Map<s
  * Stub-package modules fill in typed signatures, and stand in for modules the
  * distribution has no Python source for (C extensions).
  */
-export function renderDistribution(layout: DistLayout, stubs: { path: string; source: string }[] = []): { path: string; content: string }[] {
-  const parsed = layout.modules.slice(0, MAX_MODULES * 2).map((m) => ({ path: m.path, mod: parseModule(m.source), stub: m.path.endsWith('.pyi') }));
+export function renderDistribution(layout: DistLayout, stubs: { path: string; source: string }[] = []): { path: string; content: string; generated?: boolean }[] {
+  const parsed = layout.modules.slice(0, MAX_MODULES * 2).map((m) => ({ path: m.path, mod: parseModule(m.source), stub: m.path.endsWith('.pyi'), generated: isGenerated(m.source) }));
   // A .pyi next to a .py: the .py has the docstrings, the .pyi the types.
   const sigs = stubSignatures([
     ...layout.modules.filter((m) => m.path.endsWith('.pyi')),
@@ -501,7 +502,7 @@ export function renderDistribution(layout: DistLayout, stubs: { path: string; so
     }
   }
 
-  const out: { path: string; content: string }[] = [];
+  const out: { path: string; content: string; generated?: boolean }[] = [];
   let total = 0;
   // Shallow public modules first, so the caps cut the deep internals.
   const ordered = [...all].sort((a, b) => Number(isPrivatePath(a.path)) - Number(isPrivatePath(b.path)) || a.path.split('/').length - b.path.split('/').length);
@@ -513,7 +514,7 @@ export function renderDistribution(layout: DistLayout, stubs: { path: string; so
     const stubSigs = new Map([...(sigs.get(name) ?? [])].filter(([, v]) => v));
     const content = renderModule(p.path, p.mod, { only, stubSigs, isStub: p.stub });
     if (!content) continue;
-    out.push({ path: p.path, content });
+    out.push({ path: p.path, content, ...('generated' in p && p.generated ? { generated: true } : {}) });
     total += content.length;
   }
   return out;

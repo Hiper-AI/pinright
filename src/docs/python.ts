@@ -17,7 +17,7 @@ import { IMPORT_TO_PYPI, normalizePypiName, siblingsFor, type SiblingPackage } f
 import { getBytes, getJson, isNotFound } from '../http.js';
 import { readTarGz, readZip } from './archive.js';
 import { distLayout, renderDistribution, wantEntry, type DistLayout } from './pyapi.js';
-import { rank, topics, topicsFirst, type DocFile } from './retrieve.js';
+import { asksSignature, GENERATED_BOOST, rank, topics, topicsFirst, type DocFile } from './retrieve.js';
 
 const MAX_ARCHIVE_BYTES = 30_000_000;
 const MAX_ENTRY_BYTES = 1_000_000;
@@ -44,7 +44,8 @@ export interface PythonApi {
   requiresDist: string[];
   /** "types-requests 2.32.4.20250913" when typeshed stubs filled in signatures. */
   stubs?: string;
-  modules: { path: string; content: string }[];
+  /** `generated`: the module says it was generated (Stainless SDK types), see isGenerated. */
+  modules: { path: string; content: string; generated?: boolean }[];
 }
 
 function toFiles(urls: any[]): PypiFile[] {
@@ -107,7 +108,7 @@ async function stubPackage(name: string, version: string): Promise<{ label: stri
 
 /** The rendered API of name@version, cached; undefined when there is no readable distribution. */
 export async function pythonApi(name: string, version: string): Promise<PythonApi | undefined> {
-  const key = `pyapi:v3:${normalizePypiName(name)}@${version}`;
+  const key = `pyapi:v4:${normalizePypiName(name)}@${version}`;
   const res = await cached<PythonApi | null>(key, config.ttl.docs, async () => {
     const rel = await release(name, version);
     const file = pickDistribution(rel.files);
@@ -135,8 +136,9 @@ export function apiDocFiles(api: PythonApi, query: string, max = API_MODULES): D
     kind: 'types',
     lang: 'python',
     versionAccurate: true,
-    // Compatibility layers (pydantic.v1, deprecated/) match every query about the old API.
-    boost: LEGACY_MODULE.test(m.path) ? 0.5 : 1,
+    // Compatibility layers (pydantic.v1, deprecated/) match every query about the old API; generated API types
+    // (hundreds of modules in an SDK) every query that names a field, but show no usage.
+    boost: (LEGACY_MODULE.test(m.path) ? 0.5 : 1) * (m.generated && !asksSignature(query) ? GENERATED_BOOST : 1),
   }));
   // A question with several topics gets the best module of each topic first.
   const tl = topics(query);

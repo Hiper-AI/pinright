@@ -12,7 +12,9 @@ import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.j
 import { discoverSiteRepo, packageSite, readmeDocsLink } from './discover.js';
 import { expandIncludes } from './includes.js';
 import { applicableRenames, currentGuides, expandQuery, packageRenames, renamesNote, type Rename } from './renames.js';
-import { chunkFile, coverPaths, notUserDocs, olderMajorPath, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile } from './retrieve.js';
+import {
+  asksSignature, chunkFile, coverPaths, GENERATED_BOOST, isGenerated, notUserDocs, olderMajorPath, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile,
+} from './retrieve.js';
 import {
   docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, siteRepoFiles, type RemoteFile,
 } from './sources.js';
@@ -251,7 +253,9 @@ export async function collectDocs(opts: DocsOptions): Promise<{
         boost:
           (f.inPackageDir ? 1.2 : 1) *
           (notUserDocs(f.path, opts.query) || (!wantUpgrade && olderMajorPath(f.path, meta.version)) ? 0.5 : 1) *
-          (!wantUpgrade && f.path === guide ? 0.8 : 1),
+          (!wantUpgrade && f.path === guide ? 0.8 : 1) *
+          // Generated API types (Stainless SDKs) rank below the README and guides unless the question is about a signature.
+          (f.path.endsWith('.d.ts') && isGenerated(content) && !asksSignature(opts.query) ? GENERATED_BOOST : 1),
       };
     })
   ).filter((d): d is DocFile => Boolean(d));
