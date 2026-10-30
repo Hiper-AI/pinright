@@ -637,7 +637,9 @@ section with signals at three levels: `info`, `warn` and `high`.
 | The package's own text gives AI agents instructions: deprecation message, npm description, or docs and changelogs that safectx served earlier for the same version (see [Prompt injection](#prompt-injection)) | deps.dev, npm version document, safectx's cache | `warn` (the hook passes it on and never blocks on it) |
 
 Install scripts, provenance and publisher come from npm only; Scorecard and age cover every ecosystem
-deps.dev knows, and downloads cover npm and PyPI. safectx reads the version documents of the requested
+deps.dev knows, and downloads cover npm and PyPI. npm download counts for unscoped packages go out in bulk requests of up to 128 names, so a
+large manifest stays under api.npmjs.org's rate limit; scoped packages, which the bulk endpoint
+rejects, go three at a time. safectx reads the version documents of the requested
 release and up to 5 earlier ones (a few KB each), never the full packument. Missing data produces no
 signal, and the notice lists sources that did not answer under "Not verified". Signals never change
 the verdict.

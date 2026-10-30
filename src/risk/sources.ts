@@ -91,28 +91,98 @@ export async function npmVersionFacts(name: string, version: string): Promise<Ve
   return facts ?? undefined;
 }
 
+const NPM_DOWNLOADS = 'https://api.npmjs.org/downloads/point/last-week';
+/**
+ * api.npmjs.org answers HTTP 429 to one request per package once a manifest has a few
+ * dozen: unscoped names asked within this window go out together in one bulk request
+ * (`/point/last-week/a,b,c`, up to 128 names). Scoped names are not supported in bulk
+ * and go one by one, a few at a time.
+ */
+const BULK_WINDOW_MS = 25;
+const BULK_MAX = 128;
+const SCOPED_CONCURRENCY = 3;
+
+const finite = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+interface Waiter {
+  name: string;
+  resolve: (n: number | null) => void;
+  reject: (err: Error) => void;
+}
+let bulkQueue: Waiter[] = [];
+let bulkTimer: NodeJS.Timeout | undefined;
+
+async function sendBulk(batch: Waiter[]): Promise<void> {
+  const names = [...new Set(batch.map((w) => w.name))];
+  let counts: Record<string, { downloads?: unknown } | null>;
+  try {
+    const body = await getJson<Record<string, unknown>>(`${NPM_DOWNLOADS}/${names.map(npmPath).join(',')}`);
+    // One name gets the single-package shape; several get an object keyed by name, null for unknown ones.
+    counts = names.length === 1 ? { [names[0]]: body as { downloads?: unknown } } : (body as typeof counts);
+  } catch (err) {
+    if (isNotFound(err)) counts = {};
+    else {
+      for (const w of batch) w.reject(err as Error);
+      return;
+    }
+  }
+  for (const w of batch) w.resolve(finite(counts?.[w.name]?.downloads));
+}
+
+function flushBulk(): void {
+  if (bulkTimer) clearTimeout(bulkTimer);
+  bulkTimer = undefined;
+  const all = bulkQueue;
+  bulkQueue = [];
+  for (let i = 0; i < all.length; i += BULK_MAX) void sendBulk(all.slice(i, i + BULK_MAX));
+}
+
+function npmBulkDownloads(name: string): Promise<number | null> {
+  return new Promise((resolve, reject) => {
+    bulkQueue.push({ name, resolve, reject });
+    if (new Set(bulkQueue.map((w) => w.name)).size >= BULK_MAX) flushBulk();
+    else bulkTimer ??= setTimeout(flushBulk, BULK_WINDOW_MS);
+  });
+}
+
+let scopedActive = 0;
+const scopedWaiting: (() => void)[] = [];
+
+async function oneAtATime<T>(fn: () => Promise<T>): Promise<T> {
+  while (scopedActive >= SCOPED_CONCURRENCY) await new Promise<void>((r) => scopedWaiting.push(r));
+  scopedActive++;
+  try {
+    return await fn();
+  } finally {
+    scopedActive--;
+    scopedWaiting.shift()?.();
+  }
+}
+
+async function singleDownloads(url: string, pick: (body: unknown) => unknown): Promise<number | null> {
+  try {
+    return finite(pick(await getJson<unknown>(url)));
+  } catch (err) {
+    if (isNotFound(err)) return null;
+    throw err;
+  }
+}
+
 /** Downloads in the last 7 days. Undefined when the service has no number for it. */
 export async function weeklyDownloads(eco: Ecosystem, name: string): Promise<number | undefined> {
-  let url: string;
-  let pick: (body: unknown) => number | undefined;
+  let load: () => Promise<number | null>;
   if (eco === 'npm') {
-    url = `https://api.npmjs.org/downloads/point/last-week/${npmPath(name)}`;
-    pick = (b) => (b as { downloads?: number }).downloads;
+    load = name.startsWith('@')
+      ? () => oneAtATime(() => singleDownloads(`${NPM_DOWNLOADS}/${npmPath(name)}`, (b) => (b as { downloads?: number }).downloads))
+      : () => npmBulkDownloads(name);
   } else if (eco === 'pypi') {
-    url = `https://pypistats.org/api/packages/${encodeURIComponent(name.toLowerCase().replace(/[-_.]+/g, '-'))}/recent`;
-    pick = (b) => (b as { data?: { last_week?: number } }).data?.last_week;
+    const url = `https://pypistats.org/api/packages/${encodeURIComponent(name.toLowerCase().replace(/[-_.]+/g, '-'))}/recent`;
+    load = () => singleDownloads(url, (b) => (b as { data?: { last_week?: number } }).data?.last_week);
   } else {
     return undefined;
   }
-  const n = await cached<number | null>(`risk:dl:${eco}:${name}`, TTL_DOWNLOADS, async () => {
-    try {
-      const v = pick(await getJson<unknown>(url));
-      return typeof v === 'number' && Number.isFinite(v) ? v : null;
-    } catch (err) {
-      if (isNotFound(err)) return null;
-      throw err;
-    }
-  });
+  // Per name, cached for a day: a manifest re-checked by the hook asks for none of them again.
+  const n = await cached<number | null>(`risk:dl:${eco}:${name}`, TTL_DOWNLOADS, load);
   return n ?? undefined;
 }
 
