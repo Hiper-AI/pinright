@@ -32,8 +32,17 @@ export interface RemoteFile {
   fill?: boolean;
 }
 
-/** Docs formats; .txt only as a README or under docs/, where Sphinx projects (Django) keep their reStructuredText. */
-const DOC_EXT = /\.(md|mdx|markdown|rst)$|(^|\/)readme\.txt$|(^|\/)docs?\/(?!.*(requirements|wordlist|constraints|robots)[^/]*\.txt$).*\.txt$/i;
+/**
+ * Docs formats; .txt only as a README or under docs/, where Sphinx projects (Django) keep their reStructuredText.
+ * The pip requirements and constraints files, spelling word lists and robots.txt that sit in docs/ (or one folder
+ * down) are not pages; Django's ref/models/constraints.txt, deeper, is.
+ */
+const DOC_EXT = /\.(md|mdx|markdown|rst)$|(^|\/)readme\.txt$|(^|\/)docs?\/(?!(?:[^/]+\/)?[^/]*(requirements|wordlist|constraints|robots)[^/]*\.txt$).*\.txt$/i;
+/** Whether a path can be a docs page (exported for tests). */
+export function isDocPath(path: string): boolean {
+  return DOC_EXT.test(path);
+}
+
 const SKIP = /(^|\/)(node_modules|test|tests|__tests__|fixtures|\.github|\.changeset|vendor|third_party|dist\/compiled)(\/|$)|LICEN[SC]E|CODE_OF_CONDUCT|SECURITY\.md|CONTRIBUTING|\.d\.ts\.map$/i;
 const MAX_FILE_BYTES = 400_000;
 
@@ -175,7 +184,7 @@ export interface RepoFiles {
 export async function repoFiles(meta: PackageMeta): Promise<RepoFiles> {
   if (!meta.repo) return { files: [], atTag: false };
   const { owner, repo } = meta.repo;
-  const key = `gh:tree4:${owner}/${repo}@${meta.name}@${meta.version}`;
+  const key = `gh:tree5:${owner}/${repo}@${meta.name}@${meta.version}`;
   const res = await cached<TreeResult | null>(key, config.ttl.docs, async () => {
     // Every tag spelling at once on jsDelivr (no API budget); the API only for what jsDelivr cannot list.
     const tags = tagCandidates(meta.name, meta.version);

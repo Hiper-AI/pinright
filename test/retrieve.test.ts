@@ -263,3 +263,15 @@ describe('generated SDK types', () => {
     expect(asksSignature('fields of the Message type')).toBe(true);
   });
 });
+
+describe('docs paths', () => {
+  it('Sphinx .txt pages under docs/, but not the pip and spelling files next to them', async () => {
+    const { isDocPath } = await import('../src/docs/sources.js');
+    expect(isDocPath('docs/ref/models/constraints.txt')).toBe(true);
+    expect(isDocPath('docs/topics/db/models.txt')).toBe(true);
+    expect(isDocPath('docs/requirements.txt')).toBe(false);
+    expect(isDocPath('docs/source/constraints.txt')).toBe(false);
+    expect(isDocPath('docs/spelling_wordlist.txt')).toBe(false);
+    expect(isDocPath('src/notes.txt')).toBe(false);
+  });
+});
