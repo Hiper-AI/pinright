@@ -181,7 +181,7 @@ exports[`buildSarif > matches the snapshot 1`] = `
             "text": "expresss looks like a typosquat of "express".",
           },
           "partialFingerprints": {
-            "primaryLocationLineHash": "a89e8600944c636cf3f4787da039b7d3",
+            "primaryLocationLineHash": "75be6f2908007f4a89f358c9024b41f2",
           },
           "relatedLocations": [
             {
@@ -202,7 +202,7 @@ exports[`buildSarif > matches the snapshot 1`] = `
               },
             },
           ],
-          "ruleId": "safectx/typosquat",
+          "ruleId": "pinright/typosquat",
           "ruleIndex": 8,
         },
         {
@@ -226,7 +226,7 @@ exports[`buildSarif > matches the snapshot 1`] = `
             "text": "mkdirp@0.5.1 is deprecated.",
           },
           "partialFingerprints": {
-            "primaryLocationLineHash": "d20d52a74920eea1d321b33e1a797135",
+            "primaryLocationLineHash": "625483b374ea5b8d1eba7a4e48129609",
           },
           "relatedLocations": [
             {
@@ -247,7 +247,7 @@ exports[`buildSarif > matches the snapshot 1`] = `
               },
             },
           ],
-          "ruleId": "safectx/deprecated",
+          "ruleId": "pinright/deprecated",
           "ruleIndex": 5,
         },
         {
@@ -271,7 +271,7 @@ exports[`buildSarif > matches the snapshot 1`] = `
             "text": "lodash@4.17.20: new package with install scripts",
           },
           "partialFingerprints": {
-            "primaryLocationLineHash": "dd4dee1147dc9792726adbd07991b03a",
+            "primaryLocationLineHash": "f773de6b5747050516f285dcf5a23503",
           },
           "relatedLocations": [
             {
@@ -292,7 +292,7 @@ exports[`buildSarif > matches the snapshot 1`] = `
               },
             },
           ],
-          "ruleId": "safectx/risk/install-script-new-package",
+          "ruleId": "pinright/risk/install-script-new-package",
           "ruleIndex": 7,
         },
         {
@@ -313,10 +313,10 @@ exports[`buildSarif > matches the snapshot 1`] = `
             },
           ],
           "message": {
-            "text": "minimist: denied by the project policy (.safectx.json): use yargs.",
+            "text": "minimist: denied by the project policy (.pinright.json): use yargs.",
           },
           "partialFingerprints": {
-            "primaryLocationLineHash": "0cfc291c646453c4253a4f80575b0a01",
+            "primaryLocationLineHash": "52252b5e691c11e5c47feac1aab55257",
           },
           "relatedLocations": [
             {
@@ -337,7 +337,7 @@ exports[`buildSarif > matches the snapshot 1`] = `
               },
             },
           ],
-          "ruleId": "safectx/policy-deny",
+          "ruleId": "pinright/policy-deny",
           "ruleIndex": 6,
         },
         {
@@ -387,16 +387,16 @@ exports[`buildSarif > matches the snapshot 1`] = `
             "text": "uses: actions/checkout@v4 is a mutable ref; a tag can be re-pointed to other code. Pin the commit: uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0",
           },
           "partialFingerprints": {
-            "primaryLocationLineHash": "c47c23e737f3b3f162cf77b0869442fe",
+            "primaryLocationLineHash": "fdf598565a59933f2ade01ede416effe",
           },
-          "ruleId": "safectx/action-unpinned",
+          "ruleId": "pinright/action-unpinned",
           "ruleIndex": 4,
         },
       ],
       "tool": {
         "driver": {
-          "informationUri": "https://github.com/Hiper-AI/safectx",
-          "name": "safectx",
+          "informationUri": "https://github.com/Hiper-AI/pinright",
+          "name": "pinright",
           "rules": [
             {
               "defaultConfiguration": {
@@ -548,11 +548,11 @@ The result message has the upgrade that clears it.",
               "help": {
                 "markdown": "A tag or branch can be re-pointed to other code, as in the tj-actions/changed-files compromise. Pin third-party actions to a full commit SHA, with the version as a comment.
 
-Reported by [safectx](https://github.com/Hiper-AI/safectx).",
+Reported by [pinright](https://github.com/Hiper-AI/pinright).",
                 "text": "A tag or branch can be re-pointed to other code, as in the tj-actions/changed-files compromise. Pin third-party actions to a full commit SHA, with the version as a comment.",
               },
-              "helpUri": "https://github.com/Hiper-AI/safectx#github-action--ci",
-              "id": "safectx/action-unpinned",
+              "helpUri": "https://github.com/Hiper-AI/pinright#github-action--ci",
+              "id": "pinright/action-unpinned",
               "name": "UnpinnedAction",
               "properties": {
                 "precision": "high",
@@ -577,11 +577,11 @@ Reported by [safectx](https://github.com/Hiper-AI/safectx).",
               "help": {
                 "markdown": "The registry marks this version as deprecated. Deprecated packages stop receiving security fixes.
 
-Reported by [safectx](https://github.com/Hiper-AI/safectx).",
+Reported by [pinright](https://github.com/Hiper-AI/pinright).",
                 "text": "The registry marks this version as deprecated. Deprecated packages stop receiving security fixes.",
               },
-              "helpUri": "https://github.com/Hiper-AI/safectx#github-action--ci",
-              "id": "safectx/deprecated",
+              "helpUri": "https://github.com/Hiper-AI/pinright#github-action--ci",
+              "id": "pinright/deprecated",
               "name": "DeprecatedVersion",
               "properties": {
                 "precision": "high",
@@ -599,16 +599,16 @@ Reported by [safectx](https://github.com/Hiper-AI/safectx).",
                 "level": "error",
               },
               "fullDescription": {
-                "text": "The team policy (.safectx.json) denies this package. Replace it as the policy says, or change the policy.",
+                "text": "The team policy (.pinright.json) denies this package. Replace it as the policy says, or change the policy.",
               },
               "help": {
-                "markdown": "The team policy (.safectx.json) denies this package. Replace it as the policy says, or change the policy.
+                "markdown": "The team policy (.pinright.json) denies this package. Replace it as the policy says, or change the policy.
 
-Reported by [safectx](https://github.com/Hiper-AI/safectx).",
-                "text": "The team policy (.safectx.json) denies this package. Replace it as the policy says, or change the policy.",
+Reported by [pinright](https://github.com/Hiper-AI/pinright).",
+                "text": "The team policy (.pinright.json) denies this package. Replace it as the policy says, or change the policy.",
               },
-              "helpUri": "https://github.com/Hiper-AI/safectx#github-action--ci",
-              "id": "safectx/policy-deny",
+              "helpUri": "https://github.com/Hiper-AI/pinright#github-action--ci",
+              "id": "pinright/policy-deny",
               "name": "PolicyDeniedPackage",
               "properties": {
                 "precision": "high",
@@ -632,8 +632,8 @@ Reported by [safectx](https://github.com/Hiper-AI/safectx).",
                 "markdown": "Supply-chain risk signal "install-script-new-package" (behavior, not a known advisory): install scripts, provenance, publisher changes, package age and downloads. Review the package before trusting it.",
                 "text": "Supply-chain risk signal "install-script-new-package" (behavior, not a known advisory): install scripts, provenance, publisher changes, package age and downloads. Review the package before trusting it.",
               },
-              "helpUri": "https://github.com/Hiper-AI/safectx#supply-chain-signals",
-              "id": "safectx/risk/install-script-new-package",
+              "helpUri": "https://github.com/Hiper-AI/pinright#supply-chain-signals",
+              "id": "pinright/risk/install-script-new-package",
               "name": "RiskInstallScriptNewPackage",
               "properties": {
                 "precision": "medium",
@@ -658,11 +658,11 @@ Reported by [safectx](https://github.com/Hiper-AI/safectx).",
               "help": {
                 "markdown": "A direct dependency is one or two edits away from a popular package and is either very new or used by a tiny fraction of its audience. Misspelled names are a common way to get malware installed.
 
-Reported by [safectx](https://github.com/Hiper-AI/safectx).",
+Reported by [pinright](https://github.com/Hiper-AI/pinright).",
                 "text": "A direct dependency is one or two edits away from a popular package and is either very new or used by a tiny fraction of its audience. Misspelled names are a common way to get malware installed.",
               },
-              "helpUri": "https://github.com/Hiper-AI/safectx#github-action--ci",
-              "id": "safectx/typosquat",
+              "helpUri": "https://github.com/Hiper-AI/pinright#github-action--ci",
+              "id": "pinright/typosquat",
               "name": "Typosquat",
               "properties": {
                 "precision": "high",

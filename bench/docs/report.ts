@@ -6,6 +6,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { canonicalScores } from '../legacy.js';
 import { ARMS, type DocsRunScore } from './score.js';
 import { TASKS } from './tasks.js';
 
@@ -13,10 +14,10 @@ const stamp = process.argv[2];
 if (!stamp) throw new Error('usage: report.ts <stamp>');
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'docs', 'runs', stamp);
-const scores: DocsRunScore[] = JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8'));
+const scores: DocsRunScore[] = canonicalScores(JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8')));
 const config = JSON.parse(readFileSync(join(runDir, 'config.json'), 'utf8'));
 
-const LABEL: Record<string, string> = { 'no-docs': 'No docs', safectx: 'safectx' };
+const LABEL: Record<string, string> = { 'no-docs': 'No docs', pinright: 'pinright' };
 const label = (a: string) => LABEL[a] ?? a;
 const arms = [...ARMS.filter((a) => scores.some((s) => s.arm === a)), ...[...new Set(scores.map((s) => s.arm))].filter((a) => !ARMS.includes(a)).sort()];
 const pct = (n: number, d: number) => (d ? `${Math.round((100 * n) / d)}%` : 'n/a');
@@ -110,7 +111,7 @@ for (const a of arms.filter((x) => x !== 'no-docs')) {
   row([
     label(a),
     [...tools.entries()].map(([k, n]) => `${k} ${n}`).join(', '),
-    a.startsWith('safectx') ? String(q.filter((c) => /^No documentation found/m.test(c.result ?? '')).length) : 'n/a',
+    a.startsWith('pinright') ? String(q.filter((c) => /^No documentation found/m.test(c.result ?? '')).length) : 'n/a',
   ]);
 }
 L.push('');

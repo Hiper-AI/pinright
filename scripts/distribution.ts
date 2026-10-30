@@ -56,7 +56,7 @@ const ENV_VARS = [
     isSecret: true,
   },
   {
-    name: 'SAFECTX_GH_CLI',
+    name: 'PINRIGHT_GH_CLI',
     description: 'Optional. 1 uses the GitHub CLI login (gh auth token) when GITHUB_TOKEN is not set.',
     isRequired: false,
     isSecret: false,

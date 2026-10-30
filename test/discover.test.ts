@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.SAFECTX_NO_CACHE = '1';
+process.env.PINRIGHT_NO_CACHE = '1';
 
 const repos = new Map<string, { homepage?: string | null; default_branch: string; archived?: boolean } | 'limit'>();
 const asked: string[] = [];

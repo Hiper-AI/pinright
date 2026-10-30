@@ -141,8 +141,8 @@ describe('riskSignals', () => {
   });
 
   it('reads thresholds from the environment', () => {
-    vi.stubEnv('SAFECTX_RISK_NEW_PACKAGE_DAYS', '2');
-    vi.stubEnv('SAFECTX_RISK_LOW_DOWNLOADS', '1');
+    vi.stubEnv('PINRIGHT_RISK_NEW_PACKAGE_DAYS', '2');
+    vi.stubEnv('PINRIGHT_RISK_LOW_DOWNLOADS', '1');
     const t = riskThresholds();
     expect(t.newPackageDays).toBe(2);
     const s = riskSignals({ firstPublishedAt: daysAgo(3), current: { version: '1.0.0', installScripts: ['postinstall: x'] }, previous: [], weeklyDownloads: 5 }, NOW, t);
@@ -269,10 +269,10 @@ describe('riskOutcome', () => {
     expect(riskOutcome('x', undefined)).toBeUndefined();
   });
 
-  it('obeys SAFECTX_HOOK_RISK', () => {
-    vi.stubEnv('SAFECTX_HOOK_RISK', 'warn');
+  it('obeys PINRIGHT_HOOK_RISK', () => {
+    vi.stubEnv('PINRIGHT_HOOK_RISK', 'warn');
     expect(riskOutcome('x', report('install-script-new-package', 'high'))?.action).toBe('allow');
-    vi.stubEnv('SAFECTX_HOOK_RISK', 'off');
+    vi.stubEnv('PINRIGHT_HOOK_RISK', 'off');
     expect(riskOutcome('x', report('install-script-new-package', 'high'))).toBeUndefined();
   });
 });

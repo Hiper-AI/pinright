@@ -99,7 +99,7 @@ function runOne(job: Job, o: HarnessOptions): Promise<number> {
   const err = createWriteStream(join(dir, 'stderr.log'));
   const started = Date.now();
   return new Promise((res) => {
-    const env = { ...process.env, SAFECTX_NO_CACHE: '', ...(o.env?.(job.arm) ?? {}) };
+    const env = { ...process.env, PINRIGHT_NO_CACHE: '', ...(o.env?.(job.arm) ?? {}) };
     const child = spawn('claude', cliArgs, { cwd: work, env, windowsHide: true });
     child.stdout.pipe(out);
     child.stderr.pipe(err);

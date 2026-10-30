@@ -1,19 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.Hiper-AI/safectx",
-  "title": "safectx",
+  "name": "io.github.Hiper-AI/pinright",
+  "title": "pinright",
   "description": "Version-accurate library docs for coding agents, with a supply-chain check of each dependency.",
   "repository": {
-    "url": "https://github.com/Hiper-AI/safectx",
+    "url": "https://github.com/Hiper-AI/pinright",
     "source": "github"
   },
-  "websiteUrl": "https://github.com/Hiper-AI/safectx#readme",
+  "websiteUrl": "https://github.com/Hiper-AI/pinright#readme",
   "version": "0.2.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "safectx",
+      "identifier": "pinright",
       "version": "0.2.0",
       "runtimeHint": "npx",
       "transport": {
@@ -27,7 +27,7 @@
           "isSecret": true
         },
         {
-          "name": "SAFECTX_GH_CLI",
+          "name": "PINRIGHT_GH_CLI",
           "description": "Optional. 1 uses the GitHub CLI login (gh auth token) when GITHUB_TOKEN is not set.",
           "isRequired": false,
           "isSecret": false,

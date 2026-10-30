@@ -63,7 +63,7 @@ function binName(word: string): string {
 
 function walk(src: string, ctx: Ctx, depth: number): void {
   if (depth > MAX_DEPTH || ctx.budget.n <= 0) {
-    if (INSTALL_TEXT.test(src)) ctx.out.push(unverifiable('npm', 'command', 'the command nests too deep for safectx to read; run the install directly.', src.slice(0, 200)));
+    if (INSTALL_TEXT.test(src)) ctx.out.push(unverifiable('npm', 'command', 'the command nests too deep for pinright to read; run the install directly.', src.slice(0, 200)));
     return;
   }
   const parsed = parseShell(src);
@@ -248,7 +248,7 @@ function peel(bin: string, rest: string[], c: SimpleCommand, stdin: string | und
       // Arguments come from stdin: known when the pipe starts with echo/printf, opaque otherwise.
       const fed = stdin !== undefined && !stdinUnknown ? stdin.split(/\s+/).filter(Boolean) : undefined;
       if (fed) return [...inner, ...fed];
-      if (looksLikeInstall(inner)) ctx.out.push(unverifiable('npm', binName(inner[0]), `xargs passes ${binName(inner[0])} arguments safectx cannot see; name the packages in the command.`, src));
+      if (looksLikeInstall(inner)) ctx.out.push(unverifiable('npm', binName(inner[0]), `xargs passes ${binName(inner[0])} arguments pinright cannot see; name the packages in the command.`, src));
       return inner;
     }
     case 'eval':
@@ -332,7 +332,7 @@ function peel(bin: string, rest: string[], c: SimpleCommand, stdin: string | und
     }
     // No script and no -c: the shell reads its commands from stdin.
     if (stdin !== undefined) walk(stdin, ctx, depth + 1);
-    else if (stdinUnknown && c.words.length) ctx.out.push(unverifiable('npm', bin, `pipes commands from another program into ${bin}; safectx cannot see what they install.`, src, 'note'));
+    else if (stdinUnknown && c.words.length) ctx.out.push(unverifiable('npm', bin, `pipes commands from another program into ${bin}; pinright cannot see what they install.`, src, 'note'));
     return 'done';
   }
   return undefined;
@@ -357,7 +357,7 @@ function patchFile(file: string, ctx: Ctx, src: string): void {
   const content = ctx.readFile(path.resolve(ctx.cwd, file));
   if (!content) return;
   for (const m of content.matchAll(/^\+\+\+ (?:b\/)?(\S+)/gm)) {
-    if (isGuardedFile(m[1])) ctx.out.push(unverifiable('npm', m[1], `applies a patch to ${m[1]}; safectx cannot check the result before it is applied. Edit the file directly instead.`, src));
+    if (isGuardedFile(m[1])) ctx.out.push(unverifiable('npm', m[1], `applies a patch to ${m[1]}; pinright cannot check the result before it is applied. Edit the file directly instead.`, src));
   }
 }
 
@@ -368,7 +368,7 @@ function sourceEnv(key: string, value: string, src: string, ctx: Ctx): void {
   const insecure = /^(GONOSUMDB|GONOSUMCHECK|GOINSECURE|GONOSUMVERIFY|GOSUMDB|PIP_TRUSTED_HOST|NPM_CONFIG_STRICT_SSL|UV_INSECURE_HOST)$/.test(k) || (k === 'GOFLAGS' && /insecure/.test(value));
   if ((registry && isCustomRegistry(value)) || (insecure && value && !(k === 'GOSUMDB' && /^sum\.golang\.org/.test(value)))) {
     const eco: Ecosystem = /^(PIP|UV|PDM|POETRY)_/.test(k) ? 'pypi' : /^GO/.test(k) ? 'go' : /^CARGO/.test(k) ? 'cargo' : /^BUNDLE/.test(k) ? 'rubygems' : /^COMPOSER/.test(k) ? 'composer' : 'npm';
-    ctx.out.push(unverifiable(eco, k, `${key}=${value.slice(0, 80)} changes where packages come from or turns off their checks; safectx cannot vouch for that source.`, src));
+    ctx.out.push(unverifiable(eco, k, `${key}=${value.slice(0, 80)} changes where packages come from or turns off their checks; pinright cannot vouch for that source.`, src));
   }
 }
 
@@ -488,7 +488,7 @@ function fileWriters(bin: string, args: string[], c: SimpleCommand, ctx: Ctx, sr
     case 'unlink':
     case 'remove-item':
     case 'ri':
-      for (const f of pos) if (/(^|[\\/])\.safectx\.json$/i.test(f)) shellWrite(f, '', false, ctx, src);
+      for (const f of pos) if (/(^|[\\/])\.pinright\.json$/i.test(f)) shellWrite(f, '', false, ctx, src);
       return true;
     case 'truncate':
     case 'dd':
@@ -573,13 +573,13 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
   if (fileWriters(bin, rest, c, ctx, src, stdin)) return;
   const out = ctx.out;
   const flag = (eco: Ecosystem, what: string) => {
-    out.push(unverifiable(eco, what, `${what} comes from outside the registry; safectx cannot check it.`, src));
+    out.push(unverifiable(eco, what, `${what} comes from outside the registry; pinright cannot check it.`, src));
   };
   const dynamic = (eco: Ecosystem) => {
-    out.push(unverifiable(eco, 'dynamic', 'a package name comes from a variable or a substitution safectx cannot resolve; name the package in the command.', src));
+    out.push(unverifiable(eco, 'dynamic', 'a package name comes from a variable or a substitution pinright cannot resolve; name the package in the command.', src));
   };
   const registry = (eco: Ecosystem, url: string | undefined) => {
-    if (isCustomRegistry(url)) out.push(unverifiable(eco, url as string, `installs from ${url}, not the public registry; safectx cannot vouch for that source.`, src));
+    if (isCustomRegistry(url)) out.push(unverifiable(eco, url as string, `installs from ${url}, not the public registry; pinright cannot vouch for that source.`, src));
   };
   const npm = (specs: string[], executes = false) => {
     for (const s of specs) push('npm', npmSpecKind(s), executes, s);
@@ -591,7 +591,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
     if (k.kind === 'package') out.push({ ecosystem: eco, name: k.name, spec: k.spec, source: src, ...(executes ? { executes } : {}) });
     else if (k.kind === 'remote') flag(eco, k.what);
     else if (k.kind === 'dynamic') dynamic(eco);
-    else if (k.kind === 'jsr') out.push(unverifiable(eco, k.name, `jsr:${k.name} is a JSR package; safectx does not check JSR.`, src, 'note'));
+    else if (k.kind === 'jsr') out.push(unverifiable(eco, k.name, `jsr:${k.name} is a JSR package; pinright does not check JSR.`, src, 'note'));
     void raw;
   }
   /** After npx/uvx/dlx: the executed bin gets the rest of the line, which may itself install (npx pnpm add x). */
@@ -666,7 +666,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
         const kv = verb === 'set' ? pos.slice(1) : pos.slice(2);
         const [key, value] = kv[0]?.includes('=') ? [kv[0].split('=')[0], kv[0].split('=').slice(1).join('=')] : [kv[0], kv[1]];
         if (key && /registry|npmScopes|npmRegistryServer|strict-ssl|enableStrictSsl|unsafeHttpWhitelist/i.test(key) && (isCustomRegistry(value) || !/^https?:/.test(value ?? ''))) {
-          out.push(unverifiable('npm', key, `sets ${key} to ${value ?? '?'}; packages would come from a source safectx cannot vouch for.`, src));
+          out.push(unverifiable('npm', key, `sets ${key} to ${value ?? '?'}; packages would come from a source pinright cannot vouch for.`, src));
         }
         return;
       }
@@ -695,7 +695,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
     case 'pipenv': {
       const { pos, flags } = parseArgs(rest, 'pip');
       if (pos[0] === 'config' && pos[1] === 'set' && /index-url|extra-index-url|find-links|trusted-host/.test(pos[2] ?? '')) {
-        out.push(unverifiable('pypi', pos[2], `sets ${pos[2]} to ${pos[3] ?? '?'}; packages would come from a source safectx cannot vouch for.`, src));
+        out.push(unverifiable('pypi', pos[2], `sets ${pos[2]} to ${pos[3] ?? '?'}; packages would come from a source pinright cannot vouch for.`, src));
         return;
       }
       if (!/^(install|download|wheel)$/.test(pos[0] ?? '') && !(bin === 'pipenv' && pos[0] === 'install')) return;
@@ -750,7 +750,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
       for (const ch of all(flags, '-c', '--channel')) if (/^https?:/.test(ch) && isCustomRegistry(ch)) registry('pypi', ch);
       for (const s of pos.slice(1)) {
         if (isDynamic(s)) dynamic('pypi');
-        else out.push(unverifiable('pypi', s.split(/[=<>]/)[0], `${s} is a conda package; safectx checks PyPI, npm and the other registries, not conda channels.`, src, 'note'));
+        else out.push(unverifiable('pypi', s.split(/[=<>]/)[0], `${s} is a conda package; pinright checks PyPI, npm and the other registries, not conda channels.`, src, 'note'));
       }
       return;
     }
@@ -764,7 +764,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
       if (git) return flag('cargo', `--git ${git}`);
       if (flags.has('--path')) return;
       registry('cargo', first(flags, '--index'));
-      if (flags.has('--registry')) out.push(unverifiable('cargo', first(flags, '--registry') ?? '', `installs from the "${first(flags, '--registry')}" registry, not crates.io; safectx cannot vouch for it.`, src));
+      if (flags.has('--registry')) out.push(unverifiable('cargo', first(flags, '--registry') ?? '', `installs from the "${first(flags, '--registry')}" registry, not crates.io; pinright cannot vouch for it.`, src));
       for (const s of pkgs) {
         if (isDynamic(s)) {
           dynamic('cargo');
@@ -812,7 +812,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
     case 'bundle': {
       const { pos, flags } = parseArgs(rest, 'bundle');
       if (pos[0] === 'config' && /mirror/i.test(pos.slice(1).join(' '))) {
-        out.push(unverifiable('rubygems', 'mirror', 'sets a gem mirror; safectx cannot vouch for that source.', src));
+        out.push(unverifiable('rubygems', 'mirror', 'sets a gem mirror; pinright cannot vouch for that source.', src));
         return;
       }
       if (pos[0] !== 'add' || !pos[1]) return;
@@ -847,7 +847,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
       const { pos } = parseArgs(rest, 'composer');
       const p = pos[0] === 'global' ? pos.slice(1) : pos;
       if (p[0] === 'config' && /^repositories\./.test(p[1] ?? '')) {
-        out.push(unverifiable('composer', p[1], `adds the Composer repository ${p.slice(2).join(' ')}; safectx cannot vouch for it.`, src));
+        out.push(unverifiable('composer', p[1], `adds the Composer repository ${p.slice(2).join(' ')}; pinright cannot vouch for it.`, src));
         return;
       }
       out.push(...composerIntents(p, src));
@@ -885,7 +885,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
     }
     default:
       if (isDynamic(words[0]) && looksLikeInstall(words)) {
-        out.push(unverifiable('npm', 'dynamic', 'the program to run comes from a variable or a substitution; safectx cannot see what it installs.', src));
+        out.push(unverifiable('npm', 'dynamic', 'the program to run comes from a variable or a substitution; pinright cannot see what it installs.', src));
       }
       return;
   }
@@ -916,7 +916,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
   }
   function pipSources(flags: Map<string, string[]>, _tool: string) {
     for (const u of all(flags, '-i', '--index-url', '--extra-index-url', '--index', '--default-index', '-f', '--find-links')) registry('pypi', u);
-    for (const h of all(flags, '--trusted-host')) out.push(unverifiable('pypi', h, `--trusted-host ${h} turns off TLS checks for that host; safectx cannot vouch for it.`, src));
+    for (const h of all(flags, '--trusted-host')) out.push(unverifiable('pypi', h, `--trusted-host ${h} turns off TLS checks for that host; pinright cannot vouch for it.`, src));
     const pipArgs = first(flags, '--pip-args');
     if (pipArgs) {
       const inner = parseArgs(pipArgs.split(/\s+/), 'pip').flags;
@@ -1016,7 +1016,7 @@ export function composerIntents(pos: string[], src: string): DepIntent[] {
   for (let k = 0; k < args.length; k++) {
     const a = args[k];
     if (isDynamic(a)) {
-      out.push(unverifiable('composer', 'dynamic', 'a package name comes from a variable or a substitution safectx cannot resolve; name the package in the command.', src));
+      out.push(unverifiable('composer', 'dynamic', 'a package name comes from a variable or a substitution pinright cannot resolve; name the package in the command.', src));
       continue;
     }
     if (!a.includes('/')) continue;

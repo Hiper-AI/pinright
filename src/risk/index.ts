@@ -141,10 +141,10 @@ export interface RiskOutcome {
  * The hook's rule, conservative on purpose. Deny only a package that is brand
  * new and runs install scripts, or a release that adds install scripts from a
  * publisher the previous releases never had; every other warn/high signal is a
- * note. SAFECTX_HOOK_RISK: "enforce" (default), "warn" (never deny), "off".
+ * note. PINRIGHT_HOOK_RISK: "enforce" (default), "warn" (never deny), "off".
  */
 export function riskOutcome(label: string, risk: RiskReport | undefined): RiskOutcome | undefined {
-  const mode = process.env.SAFECTX_HOOK_RISK ?? 'enforce';
+  const mode = process.env.PINRIGHT_HOOK_RISK ?? 'enforce';
   if (!risk || mode === 'off') return undefined;
   const serious = risk.signals.filter((s) => s.level !== 'info');
   if (!serious.length) return undefined;
@@ -152,7 +152,7 @@ export function riskOutcome(label: string, risk: RiskReport | undefined): RiskOu
   if (mode !== 'warn' && serious.some((s) => DENY_SIGNALS.has(s.id))) {
     return {
       action: 'deny',
-      problem: `${text} Install scripts run with your user's rights; use an established package or version, review this one by hand, or add it to SAFECTX_ALLOW.`,
+      problem: `${text} Install scripts run with your user's rights; use an established package or version, review this one by hand, or add it to PINRIGHT_ALLOW.`,
     };
   }
   return { action: 'allow', warning: text };

@@ -62,7 +62,7 @@ export function summaryMarkdown(log: SarifLog, opts: { exitCode: number; failOn:
   for (const r of rows) counts[bucket(r)]++;
   const verdict = opts.exitCode === 0 ? 'passed' : opts.exitCode === 1 ? 'failed' : 'could not run';
   const out = [
-    `### safectx audit ${verdict}`,
+    `### pinright audit ${verdict}`,
     '',
     `${rows.length} finding${rows.length === 1 ? '' : 's'}; fails on \`${opts.failOn}\` and above, malware, typosquats and policy denials.`,
     '',
@@ -95,7 +95,7 @@ export function annotations(log: SarifLog, max = 10): string[] {
     const cmd = r.level === 'error' ? 'error' : r.level === 'warning' ? 'warning' : 'notice';
     if (used[cmd] >= max) continue;
     used[cmd]++;
-    const props = [`file=${escProp(r.file)}`, `line=${r.line}`, ...(r.column ? [`col=${r.column}`] : []), ...(r.endColumn ? [`endColumn=${r.endColumn}`] : []), `title=${escProp(`safectx ${r.ruleId}`)}`];
+    const props = [`file=${escProp(r.file)}`, `line=${r.line}`, ...(r.column ? [`col=${r.column}`] : []), ...(r.endColumn ? [`endColumn=${r.endColumn}`] : []), `title=${escProp(`pinright ${r.ruleId}`)}`];
     out.push(`::${cmd} ${props.join(',')}::${escData(r.message)}`);
   }
   return out;

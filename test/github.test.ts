@@ -5,7 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.SAFECTX_NO_CACHE = '1';
+process.env.PINRIGHT_NO_CACHE = '1';
 
 type Opts = { headers?: Record<string, string>; method?: string; rawBody?: string };
 let route: (url: string, opts?: Opts) => unknown;
@@ -60,7 +60,7 @@ beforeEach(() => {
   gh.resetGitHubState();
   delete process.env.GITHUB_TOKEN;
   delete process.env.GH_TOKEN;
-  delete process.env.SAFECTX_GH_CLI;
+  delete process.env.PINRIGHT_GH_CLI;
   route = () => undefined;
 });
 
@@ -100,7 +100,7 @@ describe('after GitHub says stop', () => {
     expect(notice).toContain('GitHub release notes of a/b; GitHub release notes of c/d');
     expect(notice).toMatch(/until \d\d:\d\d UTC \(about 10 min\)/);
     expect(notice).toContain('GITHUB_TOKEN');
-    expect(notice).toContain('SAFECTX_GH_CLI=1');
+    expect(notice).toContain('PINRIGHT_GH_CLI=1');
   });
 
   it('handles a 429 with retry-after the same way', async () => {
@@ -145,7 +145,7 @@ describe('after GitHub says stop', () => {
     const meta = { ecosystem: 'npm' as const, name: 'lib', version: '2.0.0', repo: { owner: 'o', repo: 'lib' } };
     const r = await githubReleases(meta, '1.0.0', '2.0.0');
     expect(r.notes).toEqual([]);
-    expect(r.note).toContain('rate limited; set GITHUB_TOKEN or SAFECTX_GH_CLI=1');
+    expect(r.note).toContain('rate limited; set GITHUB_TOKEN or PINRIGHT_GH_CLI=1');
   });
 });
 
@@ -178,18 +178,18 @@ describe('the token', () => {
     const { value, notice } = await gh.trackGitHub(() => gh.githubJson('/x', { what: 'X' }).catch((e: unknown) => e as Error));
     expect(`${(value as Error).message} ${notice}`).not.toContain(ENV_TOKEN);
     expect(notice).toContain('for the configured token');
-    expect(notice).not.toContain('SAFECTX_GH_CLI'); // nothing to add when a token is already there
+    expect(notice).not.toContain('PINRIGHT_GH_CLI'); // nothing to add when a token is already there
   });
 
-  it('does not ask the GitHub CLI unless SAFECTX_GH_CLI=1', async () => {
+  it('does not ask the GitHub CLI unless PINRIGHT_GH_CLI=1', async () => {
     route = () => ({});
     await gh.githubJson('/x', { what: 'X' });
     expect(execFile).not.toHaveBeenCalled();
     expect(calls[0].headers?.authorization).toBeUndefined();
   });
 
-  it('with SAFECTX_GH_CLI=1, reads `gh auth token` once, on first need', async () => {
-    process.env.SAFECTX_GH_CLI = '1';
+  it('with PINRIGHT_GH_CLI=1, reads `gh auth token` once, on first need', async () => {
+    process.env.PINRIGHT_GH_CLI = '1';
     route = () => ({});
     expect(execFile).not.toHaveBeenCalled();
     await gh.githubJson('/x', { what: 'X' });
@@ -201,7 +201,7 @@ describe('the token', () => {
   });
 
   it('an env token wins over the CLI, and a CLI failure means anonymous', async () => {
-    process.env.SAFECTX_GH_CLI = '1';
+    process.env.PINRIGHT_GH_CLI = '1';
     process.env.GH_TOKEN = ENV_TOKEN;
     route = () => ({});
     await gh.githubJson('/x', { what: 'X' });
@@ -214,18 +214,18 @@ describe('the token', () => {
 });
 
 describe('init', () => {
-  it('adds or removes SAFECTX_GH_CLI in the MCP entry, keeps the rest, and never adds a token', () => {
+  it('adds or removes PINRIGHT_GH_CLI in the MCP entry, keeps the rest, and never adds a token', () => {
     expect(gh.mcpEntryEnv(undefined, false)).toEqual({ env: undefined, warnings: [] });
-    expect(gh.mcpEntryEnv(undefined, true)).toEqual({ env: { SAFECTX_GH_CLI: '1' }, warnings: [] });
-    expect(gh.mcpEntryEnv({ SAFECTX_GH_CLI: '1', SAFECTX_COOLDOWN_DAYS: '5' }, false).env).toEqual({ SAFECTX_COOLDOWN_DAYS: '5' });
+    expect(gh.mcpEntryEnv(undefined, true)).toEqual({ env: { PINRIGHT_GH_CLI: '1' }, warnings: [] });
+    expect(gh.mcpEntryEnv({ PINRIGHT_GH_CLI: '1', PINRIGHT_COOLDOWN_DAYS: '5' }, false).env).toEqual({ PINRIGHT_COOLDOWN_DAYS: '5' });
     const kept = gh.mcpEntryEnv({ GITHUB_TOKEN: 'x' }, true);
-    expect(kept.env).toEqual({ GITHUB_TOKEN: 'x', SAFECTX_GH_CLI: '1' });
+    expect(kept.env).toEqual({ GITHUB_TOKEN: 'x', PINRIGHT_GH_CLI: '1' });
     expect(kept.warnings[0]).toContain('GITHUB_TOKEN is set in this MCP entry');
   });
 
   it('explains how auth will work without writing a token', () => {
-    expect(gh.githubAuthAdvice({ envToken: false, ghLoggedIn: true, optIn: false })).toContain('safectx init --gh-cli');
-    expect(gh.githubAuthAdvice({ envToken: false, ghLoggedIn: true, optIn: true })).toContain('added SAFECTX_GH_CLI=1');
+    expect(gh.githubAuthAdvice({ envToken: false, ghLoggedIn: true, optIn: false })).toContain('pinright init --gh-cli');
+    expect(gh.githubAuthAdvice({ envToken: false, ghLoggedIn: true, optIn: true })).toContain('added PINRIGHT_GH_CLI=1');
     expect(gh.githubAuthAdvice({ envToken: false, ghLoggedIn: false, optIn: true })).toContain('not installed or not logged in');
     expect(gh.githubAuthAdvice({ envToken: true, ghLoggedIn: false, optIn: false })).toContain('not written to any file');
     expect(gh.githubAuthAdvice({ envToken: false, ghLoggedIn: false, optIn: false })).toContain('do not put it in .mcp.json');

@@ -7,29 +7,28 @@ repository does it for you.
 
 ## Before the first publish
 
-### 1. Decide the name
+### 1. The name
 
-The npm name is not final. If it changes, edit these places and nothing else:
+The project is `pinright`. Before the first release it went by the working name safectx; the code,
+docs, `.pinright.json`, the `PINRIGHT_*` variables, the cache directory and the generated
+artifacts already use the new name. Two steps remain, both outside this repository:
 
-- `package.json`: `name`, `mcpName` (`io.github.Hiper-AI/<name>`, spelled like the GitHub org
-  login: the MCP Registry compares it byte for byte), and `bin` if the command changes too.
-- Run `npm run dist:artifacts`. It rewrites `server.json` and the generated blocks of the README
-  (per-client configs, install links) from `package.json`; a test fails while they are stale.
-- `README.md` and `SECURITY.md`: the install commands and prose outside those blocks.
-- Hook entries `init` wrote under the old name: `init` finds its own entries by the package name,
-  so after a rename it adds a new entry next to the old one. Say so in the release notes.
+- [ ] Rename the GitHub repository to `Hiper-AI/pinright` (GitHub redirects the old URL). `package.json` and `server.json` already point at the new one.
+- [ ] Rename the local checkout folder, then run `pinright init` again on each machine that ran the
+      old `init`: it replaces the entries it wrote under the old name, and `pinright doctor` lists
+      any it left behind.
 
-`src/pkg.ts` reads the name from `package.json` at runtime: the server name agents see
-(`SERVER_INFO`), the `User-Agent`, the launcher `init` writes (`npx -y <name>`), the server key in
-every client config and the `.mcpb` manifest all follow it. The workflows and
-`scripts/check-pack.mjs` read the name and version from `package.json` too.
-`.safectx.json`, the `SAFECTX_*` variables and the cache directory also carry the name; they can
-keep it even if the npm name changes.
+If the name changes again, `src/pkg.ts` reads it from `package.json` at runtime: the server name
+agents see (`SERVER_INFO`), the `User-Agent`, the launcher `init` writes (`npx -y <name>`), the
+server key in every client config and the `.mcpb` manifest all follow it. The workflows and
+`scripts/check-pack.mjs` read the name and version from `package.json` too. Run
+`npm run dist:artifacts` afterwards: it rewrites `server.json` and the generated blocks of the
+README, and a test fails while they are stale.
 
-Check that the name is free (`npm view <name>` returns 404) and that it does not sit one typo
-away from a popular package: safectx's own typosquat check would flag it, and so would others.
-A scoped name (`@hiperai/<name>`) avoids both problems and needs `--access public`, which the
-workflow already passes.
+Before publishing, check that the name is free (`npm view pinright` returns 404) and that it does
+not sit one typo away from a popular package: pinright's own typosquat check would flag it, and so
+would others. A scoped name (`@hiperai/<name>`) avoids both problems and needs `--access public`,
+which the workflow already passes.
 
 ### 2. GitHub repository
 
@@ -65,7 +64,7 @@ workflow already passes.
 
 - [ ] The npm account that owns the package has 2FA with a security key or authenticator app.
 - [ ] Add the trusted publisher (package Settings > Trusted publishing > GitHub Actions):
-      organization `Hiper-AI`, repository `safectx`, workflow filename `release.yml`, environment
+      organization `Hiper-AI`, repository `pinright`, workflow filename `release.yml`, environment
       `npm-publish`. Fields are case-sensitive. A new configuration must see a successful publish
       within 2 days or it expires.
 - [ ] If npm does not let you add a trusted publisher before the package exists, bootstrap the

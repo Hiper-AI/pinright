@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tool inputs come from transcripts */
 /**
- * Replays every get-docs call (query-docs in runs before the rename) the safectx arm made in a run against the
+ * Replays every get-docs call (query-docs in runs before the rename) the pinright arm made in a run against the
  * current code (src/, in-process MCP server), and counts which of the task's
  * new-API markers the answers contain, before (as recorded) and now. Measures
  * a docs fix without re-running the agents, on exactly the questions they asked.
  *
- *   GITHUB_TOKEN=... npx tsx bench/docs/replay.ts <stamp> [--arm safectx] [--only t1,t2]
+ *   GITHUB_TOKEN=... npx tsx bench/docs/replay.ts <stamp> [--arm pinright] [--only t1,t2]
  */
 import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -13,15 +13,16 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { readFileSync } from 'node:fs';
 import { buildMcpServer } from '../../src/mcp.js';
 import { MARKERS } from './retrieval.js';
+import { canonicalArm, canonicalScores } from '../legacy.js';
 import type { DocsRunScore } from './score.js';
 
 const args = process.argv.slice(2);
 const stamp = args[0];
-if (!stamp) throw new Error('usage: replay.ts <stamp> [--arm safectx] [--only t1,t2]');
-const arm = args.includes('--arm') ? args[args.indexOf('--arm') + 1] : 'safectx';
+if (!stamp) throw new Error('usage: replay.ts <stamp> [--arm pinright] [--only t1,t2]');
+const arm = canonicalArm(args.includes('--arm') ? args[args.indexOf('--arm') + 1] : 'pinright');
 const only = args.includes('--only') ? (args[args.indexOf('--only') + 1] ?? '').split(',') : [];
 const runDir = join(resolve(import.meta.dirname, '..', '..'), 'bench', 'docs', 'runs', stamp);
-const scores: DocsRunScore[] = JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8'));
+const scores: DocsRunScore[] = canonicalScores(JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8')));
 
 const server = buildMcpServer();
 const [a, b] = InMemoryTransport.createLinkedPair();

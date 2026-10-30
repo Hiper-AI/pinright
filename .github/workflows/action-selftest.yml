@@ -85,7 +85,7 @@ jobs:
           test "$STRICT_CODE" = 1
           test "$REPORT_CODE" = 0
           test "$RESULTS" -gt 0
-          for rule in GHSA-35jh-r3h4-6jhm GHSA-xvch-5gv4-984h safectx/typosquat safectx/action-unpinned GHSA-mrrh-fwg8-r2c3; do
+          for rule in GHSA-35jh-r3h4-6jhm GHSA-xvch-5gv4-984h pinright/typosquat pinright/action-unpinned GHSA-mrrh-fwg8-r2c3; do
             grep -q "\"ruleId\":\"$rule\"" "$SARIF" || { echo "::error::missing $rule in the SARIF"; exit 1; }
           done
           grep -q '"uri":".selftest/fx/package.json"' "$SARIF"

@@ -59,13 +59,13 @@ export interface HttpOptions {
 export const USER_AGENT = `${PKG_NAME}/${PKG_VERSION} (+https://github.com/Hiper-AI/${PKG_NAME})`;
 
 /**
- * SAFECTX_DEBUG_HTTP=1 logs one line per request to stderr: method, URL, status,
+ * PINRIGHT_DEBUG_HTTP=1 logs one line per request to stderr: method, URL, status,
  * when it started (ms since the process did) and how long it took. Never headers.
  */
 function debug(method: string, url: string, status: number | string, startedAt?: number): void {
-  if (process.env.SAFECTX_DEBUG_HTTP !== '1') return;
+  if (process.env.PINRIGHT_DEBUG_HTTP !== '1') return;
   const timing = startedAt === undefined ? '' : ` +${Math.round(startedAt)}ms ${Math.round(performance.now() - startedAt)}ms`;
-  process.stderr.write(`[safectx:http] ${method} ${url} ${status}${timing}\n`);
+  process.stderr.write(`[pinright:http] ${method} ${url} ${status}${timing}\n`);
 }
 
 /**

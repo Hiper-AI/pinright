@@ -15,10 +15,11 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { type BuildScore, npmBuild, pypiBuild } from '../agents/buildcheck.js';
 import { type CheckResult, loadProject, npmMajor, pypiMajor, runChecks } from './checks.js';
 import { runSmoke, type SmokeResult } from './smoke.js';
+import { canonicalArm, canonicalScores, canonicalTool } from '../legacy.js';
 import { type DocsTask, TASKS } from './tasks.js';
 
 /** Report order for the built-in arms; extra arms (--mcp-arm) follow in name order. */
-export const ARMS = ['no-docs', 'safectx'];
+export const ARMS = ['no-docs', 'pinright'];
 
 export interface DocsCall { tool: string; input: any; resultChars: number; result?: string }
 export interface DocsRunScore {
@@ -44,7 +45,7 @@ export function readTranscript(dir: string) {
   for (const l of lines) {
     for (const c of l.message?.content ?? []) {
       if (l.type === 'assistant' && c.type === 'tool_use' && String(c.name).startsWith('mcp__')) {
-        const call: DocsCall = { tool: String(c.name).replace(/^mcp__/, ''), input: c.input, resultChars: 0 };
+        const call: DocsCall = { tool: canonicalTool(String(c.name).replace(/^mcp__/, '')), input: c.input, resultChars: 0 };
         calls.push(call);
         byId.set(c.id, call);
       }
@@ -96,8 +97,9 @@ if (isMain) {
 
   const jobs: { arm: string; task: DocsTask; rep: number; dir: string }[] = [];
   const present = readdirSync(runDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
-  for (const arm of present) {
-    const armDir = join(runDir, arm);
+  for (const dirName of present) {
+    const arm = canonicalArm(dirName);
+    const armDir = join(runDir, dirName);
     if (onlyArms.length && !onlyArms.includes(arm)) continue;
     for (const name of readdirSync(armDir).sort()) {
       const m = name.match(/^(.*)-r(\d+)$/);
@@ -124,7 +126,7 @@ if (isMain) {
   }));
   const file = join(runDir, 'scores.json');
   const partial = onlyTasks.length || onlyArms.length;
-  const prev: DocsRunScore[] = partial && existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+  const prev: DocsRunScore[] = partial && existsSync(file) ? canonicalScores(JSON.parse(readFileSync(file, 'utf8'))) : [];
   const key = (s: DocsRunScore) => `${s.arm}|${s.task}|${s.rep}`;
   const fresh = new Set(scores.filter(Boolean).map(key));
   writeFileSync(file, JSON.stringify([...prev.filter((s) => !fresh.has(key(s))), ...scores.filter(Boolean)], null, 2));

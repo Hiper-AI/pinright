@@ -239,21 +239,21 @@ describe('writes that change dependencies', () => {
   });
 
   it("the hook's own configuration always goes to a human", () => {
-    expect(write('/p/.safectx.json', '{"allow":["*"]}', '{}')).toEqual(['!guard']);
-    expect(cmd('rm .safectx.json', { '/p/.safectx.json': '{}' })).toEqual(['!guard']);
-    const settings = JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash|Write', hooks: [{ type: 'command', command: 'npx -y safectx hook claude' }] }] } });
+    expect(write('/p/.pinright.json', '{"allow":["*"]}', '{}')).toEqual(['!guard']);
+    expect(cmd('rm .pinright.json', { '/p/.pinright.json': '{}' })).toEqual(['!guard']);
+    const settings = JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash|Write', hooks: [{ type: 'command', command: 'npx -y pinright hook claude' }] }] } });
     expect(write('/p/.claude/settings.json', JSON.stringify({ hooks: {} }), settings)).toEqual(['!guard']);
-    expect(write('/p/.claude/settings.json', JSON.stringify({ ...JSON.parse(settings), env: { SAFECTX_ALLOW: '*' } }), settings)).toEqual(['!guard']);
+    expect(write('/p/.claude/settings.json', JSON.stringify({ ...JSON.parse(settings), env: { PINRIGHT_ALLOW: '*' } }), settings)).toEqual(['!guard']);
     expect(write('/p/.claude/settings.json', JSON.stringify({ ...JSON.parse(settings), disableAllHooks: true }), settings)).toEqual(['!guard']);
     // Unrelated settings changes pass.
     expect(write('/p/.claude/settings.json', JSON.stringify({ ...JSON.parse(settings), model: 'opus' }), settings)).toEqual([]);
-    expect(write('/p/.cursor/hooks.json', '{"version":1,"hooks":{}}', '{"version":1,"hooks":{"beforeShellExecution":[{"command":"npx -y safectx hook cursor"}]}}')).toEqual(['!guard']);
+    expect(write('/p/.cursor/hooks.json', '{"version":1,"hooks":{}}', '{"version":1,"hooks":{"beforeShellExecution":[{"command":"npx -y pinright hook cursor"}]}}')).toEqual(['!guard']);
   });
 });
 
 describe('tool plumbing', () => {
   it("Edit's new_string is applied literally ($& and $' do not expand)", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-edit-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-edit-'));
     try {
       const file = path.join(dir, 'package.json');
       const original = '{"dependencies":{"react":"19.0.0"},"description":"x"}';
@@ -288,7 +288,7 @@ describe('the hook process', () => {
     spawnSync(process.execPath, ['--import', 'tsx', path.resolve('src/cli.ts'), 'hook', 'claude'], {
       input: typeof input === 'string' ? input : JSON.stringify(input),
       encoding: 'utf8',
-      env: { ...process.env, SAFECTX_NO_CACHE: '1', SAFECTX_HOOK_TIMEOUT_MS: '1', DEPSDEV_BASE_URL: 'http://127.0.0.1:9', OSV_BASE_URL: 'http://127.0.0.1:9', ...env },
+      env: { ...process.env, PINRIGHT_NO_CACHE: '1', PINRIGHT_HOOK_TIMEOUT_MS: '1', DEPSDEV_BASE_URL: 'http://127.0.0.1:9', OSV_BASE_URL: 'http://127.0.0.1:9', ...env },
     });
   const decision = (r: ReturnType<typeof run>) => (r.stdout ? JSON.parse(r.stdout).hookSpecificOutput?.permissionDecision : undefined);
 
@@ -298,8 +298,8 @@ describe('the hook process', () => {
     expect(decision(run({ tool_name: 'PowerShell', tool_input: { command: 'npm i expresss' }, cwd }))).toBe('ask');
     expect(decision(run({ tool_name: 'Bash', tool_input: { command: 'bash -c "pip install reqeusts"' }, cwd }))).toBe('ask');
     expect(decision(run({ tool_name: 'Bash', tool_input: { command: 'npm i github:evil/x' }, cwd }))).toBe('ask');
-    expect(decision(run({ tool_name: 'Bash', tool_input: { command: 'npm i github:evil/x' }, cwd }, { SAFECTX_HOOK_UNVERIFIABLE: 'deny' }))).toBe('deny');
-    expect(decision(run({ tool_name: 'Bash', tool_input: { command: 'npm i github:evil/x' }, cwd }, { SAFECTX_HOOK_UNVERIFIABLE: 'allow' }))).toBeUndefined();
+    expect(decision(run({ tool_name: 'Bash', tool_input: { command: 'npm i github:evil/x' }, cwd }, { PINRIGHT_HOOK_UNVERIFIABLE: 'deny' }))).toBe('deny');
+    expect(decision(run({ tool_name: 'Bash', tool_input: { command: 'npm i github:evil/x' }, cwd }, { PINRIGHT_HOOK_UNVERIFIABLE: 'allow' }))).toBeUndefined();
     expect(run({ tool_name: 'Bash', tool_input: { command: 'npm test' }, cwd }).stdout).toBe('');
   }, 60_000);
 

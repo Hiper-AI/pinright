@@ -1,5 +1,5 @@
 /**
- * `safectx audit` end to end, shared by the CLI and the GitHub Action: the
+ * `pinright audit` end to end, shared by the CLI and the GitHub Action: the
  * dependency files and workflows under a path, the team policy, the advisory
  * audit of each tree, the supply-chain checks of the direct dependencies, and
  * the exit code. No MCP imports here: the Action bundle is built from this.
@@ -23,7 +23,7 @@ export type FailOn = (typeof SEVERITIES)[number] | 'none';
 
 export interface AuditOptions {
   target: string;
-  /** A .safectx.json to use instead of the nearest one. */
+  /** A .pinright.json to use instead of the nearest one. */
   config?: string;
   /**
    * The policy text itself, read from somewhere other than the tree (the Action reads the base
@@ -47,7 +47,7 @@ export interface AuditRun {
   files: FileAudit[];
   actions?: ActionsAudit;
   policy: Policy;
-  /** The .safectx.json exists and cannot be used: the run fails closed. */
+  /** The .pinright.json exists and cannot be used: the run fails closed. */
   policyError?: string;
   notes: string[];
 }
@@ -72,8 +72,8 @@ export function loadPolicy(target: string, configFile?: string, given?: AuditOpt
   if (team.error) return { policy: resolvePolicy(undefined, process.env, team.file), error: team.error };
   const policy = resolvePolicy(team.config, process.env, team.file);
   applyCooldownDays(policy.cooldownDays);
-  // The Actions check reads SAFECTX_ACTIONS_PIN; the environment still wins over the file.
-  if (policy.actionsPin && !process.env.SAFECTX_ACTIONS_PIN) process.env.SAFECTX_ACTIONS_PIN = policy.actionsPin;
+  // The Actions check reads PINRIGHT_ACTIONS_PIN; the environment still wins over the file.
+  if (policy.actionsPin && !process.env.PINRIGHT_ACTIONS_PIN) process.env.PINRIGHT_ACTIONS_PIN = policy.actionsPin;
   return { policy };
 }
 

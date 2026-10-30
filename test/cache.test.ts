@@ -16,7 +16,7 @@ let saved: { cacheDir: string; cacheDisabled: boolean };
 
 beforeEach(() => {
   saved = { cacheDir: mutable.cacheDir, cacheDisabled: mutable.cacheDisabled };
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-cache-'));
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-cache-'));
   mutable.cacheDir = path.join(dir, 'c');
   mutable.cacheDisabled = false;
 });
@@ -39,7 +39,7 @@ describe('disk cache', () => {
     expect(entryFiles().filter((f) => f.endsWith('.tmp'))).toEqual([]);
   });
 
-  it('ignores an entry that claims to outlive any TTL safectx sets', () => {
+  it('ignores an entry that claims to outlive any TTL pinright sets', () => {
     cacheSet('k', 'clean', 60_000);
     const [file] = entryFiles();
     fs.writeFileSync(file, JSON.stringify({ expiresAt: Date.now() + 50 * 365 * 24 * 3600_000, value: 'poisoned' }));

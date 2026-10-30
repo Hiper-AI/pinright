@@ -1,7 +1,7 @@
 {
-  "name": "safectx",
+  "name": "pinright",
   "version": "0.2.0",
-  "mcpName": "io.github.Hiper-AI/safectx",
+  "mcpName": "io.github.Hiper-AI/pinright",
   "description": "Version-accurate library docs for coding agents, with a supply-chain verdict: safe versions, whole-tree audit and a pre-install hook (deps.dev + OSV).",
   "keywords": [
     "mcp",
@@ -22,19 +22,19 @@
     "cursor",
     "documentation"
   ],
-  "homepage": "https://github.com/Hiper-AI/safectx#readme",
+  "homepage": "https://github.com/Hiper-AI/pinright#readme",
   "bugs": {
-    "url": "https://github.com/Hiper-AI/safectx/issues"
+    "url": "https://github.com/Hiper-AI/pinright/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Hiper-AI/safectx.git"
+    "url": "git+https://github.com/Hiper-AI/pinright.git"
   },
   "license": "MIT",
   "author": "Hiper AI",
   "type": "module",
   "bin": {
-    "safectx": "dist/cli.js"
+    "pinright": "dist/cli.js"
   },
   "files": [
     "dist/**/*.js",

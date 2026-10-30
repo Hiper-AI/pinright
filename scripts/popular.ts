@@ -91,7 +91,7 @@ const CURATED: Record<string, string[]> = {
 };
 
 async function fetchOk(url: string): Promise<Response> {
-  const res = await fetch(url, { headers: { 'user-agent': 'safectx-popular-script' } });
+  const res = await fetch(url, { headers: { 'user-agent': 'pinright-popular-script' } });
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
   return res;
 }

@@ -13,7 +13,7 @@ import {
 
 const tmp: string[] = [];
 function tempDir(): string {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-cfg-'));
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-cfg-'));
   tmp.push(d);
   return d;
 }
@@ -38,12 +38,12 @@ describe('parsing', () => {
     expect(resolvePolicy(parseTeamConfig(STARTER_CONFIG).config, {}).onError).toBe('ask');
     expect(resolvePolicy(undefined, {}).onError).toBe('allow');
     // The env still overrides the starter for one developer who works offline.
-    expect(resolvePolicy(parseTeamConfig(STARTER_CONFIG).config, { SAFECTX_HOOK_ON_ERROR: 'allow' }).onError).toBe('allow');
+    expect(resolvePolicy(parseTeamConfig(STARTER_CONFIG).config, { PINRIGHT_HOOK_ON_ERROR: 'allow' }).onError).toBe('allow');
   });
 
   it('rejects unknown keys and bad values with the path of each problem', () => {
     const typo = parseTeamConfig('{ "alow": ["x"] }');
-    expect(typo.error).toMatch(/does not match the safectx schema/);
+    expect(typo.error).toMatch(/does not match the pinright schema/);
     expect(typo.error).toMatch(/alow/);
     const bad = parseTeamConfig('{ "severityThreshold": "severe", "cooldownDays": -1 }');
     expect(bad.error).toMatch(/severityThreshold/);
@@ -58,13 +58,13 @@ describe('finding the file', () => {
     fs.mkdirSync(path.join(repo, '.git'));
     fs.mkdirSync(path.join(repo, 'packages', 'web'), { recursive: true });
     expect(findConfigFile(path.join(repo, 'packages', 'web'))).toBeUndefined();
-    fs.writeFileSync(path.join(repo, '.safectx.json'), '{}');
-    expect(findConfigFile(path.join(repo, 'packages', 'web'))).toBe(path.join(repo, '.safectx.json'));
+    fs.writeFileSync(path.join(repo, '.pinright.json'), '{}');
+    expect(findConfigFile(path.join(repo, 'packages', 'web'))).toBe(path.join(repo, '.pinright.json'));
   });
 
   it('does not cross the repo root into a parent folder', () => {
     const outer = tempDir();
-    fs.writeFileSync(path.join(outer, '.safectx.json'), '{ "deny": ["x"] }');
+    fs.writeFileSync(path.join(outer, '.pinright.json'), '{ "deny": ["x"] }');
     const repo = path.join(outer, 'repo');
     fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
     expect(findConfigFile(repo)).toBeUndefined();
@@ -73,7 +73,7 @@ describe('finding the file', () => {
   it('reloads the file when it changes', () => {
     const repo = tempDir();
     fs.mkdirSync(path.join(repo, '.git'));
-    const f = path.join(repo, '.safectx.json');
+    const f = path.join(repo, '.pinright.json');
     fs.writeFileSync(f, '{ "deny": ["a"] }');
     expect(loadTeamConfig(repo).config?.deny).toEqual(['a']);
     fs.writeFileSync(f, '{ "deny": ["a", "b"] }');
@@ -92,17 +92,17 @@ describe('precedence: defaults < file < env', () => {
     expect(p.cooldownDays).toBeUndefined();
   });
 
-  it('file over defaults, env over file; SAFECTX_ALLOW adds to the file list', () => {
+  it('file over defaults, env over file; PINRIGHT_ALLOW adds to the file list', () => {
     const cfg = { allow: ['@acme/*'], onError: 'deny' as const, noFix: 'ask' as const, cooldown: 'enforce' as const, cooldownDays: 7, severityThreshold: 'high' as const };
     expect(resolvePolicy(cfg, {})).toMatchObject({ onError: 'deny', noFix: 'ask', cooldown: 'enforce', cooldownDays: 7, severityThreshold: 'high' });
-    const env = { SAFECTX_ALLOW: 'internal-*', SAFECTX_HOOK_ON_ERROR: 'ask', SAFECTX_HOOK_NO_FIX: 'deny', SAFECTX_HOOK_COOLDOWN: 'warn', SAFECTX_COOLDOWN_DAYS: '1', SAFECTX_SEVERITY_THRESHOLD: 'moderate' };
+    const env = { PINRIGHT_ALLOW: 'internal-*', PINRIGHT_HOOK_ON_ERROR: 'ask', PINRIGHT_HOOK_NO_FIX: 'deny', PINRIGHT_HOOK_COOLDOWN: 'warn', PINRIGHT_COOLDOWN_DAYS: '1', PINRIGHT_SEVERITY_THRESHOLD: 'moderate' };
     const p = resolvePolicy(cfg, env);
     expect(p).toMatchObject({ onError: 'ask', noFix: 'deny', cooldown: 'warn', cooldownDays: 1, severityThreshold: 'moderate' });
     expect(p.allow).toEqual(['@acme/*', 'internal-*']);
   });
 
   it('ignores invalid env values instead of guessing', () => {
-    expect(resolvePolicy({ onError: 'deny' }, { SAFECTX_HOOK_ON_ERROR: 'maybe' }).onError).toBe('deny');
+    expect(resolvePolicy({ onError: 'deny' }, { PINRIGHT_HOOK_ON_ERROR: 'maybe' }).onError).toBe('deny');
   });
 });
 
@@ -114,7 +114,7 @@ describe('rules', () => {
       licenses: { deny: ['AGPL-*', 'GPL-3.0*'] },
     },
     {},
-    '/repo/.safectx.json',
+    '/repo/.pinright.json',
   );
 
   it('matches names with globs, per ecosystem, with PyPI normalization', () => {
@@ -154,7 +154,7 @@ describe('rules', () => {
   });
 
   it('policyFindings lists deny and license problems for the tools, nothing for allowed names', () => {
-    expect(policyFindings(p, 'npm', 'request', ['Apache-2.0'])).toEqual(['request: denied by the project policy (.safectx.json): unmaintained; use undici']);
+    expect(policyFindings(p, 'npm', 'request', ['Apache-2.0'])).toEqual(['request: denied by the project policy (.pinright.json): unmaintained; use undici']);
     expect(policyFindings(p, 'npm', 'x', ['AGPL-3.0'])[0]).toMatch(/license AGPL-3.0 is not allowed/);
     expect(policyFindings(p, 'npm', 'x', undefined, false)).toEqual([]);
     expect(policyFindings(p, 'npm', '@acme/ui', ['AGPL-3.0'])).toEqual([]);

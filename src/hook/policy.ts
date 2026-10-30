@@ -10,7 +10,7 @@
  *   allow: everything else. Warnings (cooldown, unknown source) go to the agent
  *          as context without blocking, unless configured otherwise.
  *
- * The team policy (.safectx.json, then env) adds deny and allow lists, license
+ * The team policy (.pinright.json, then env) adds deny and allow lists, license
  * rules and a severity threshold on top; see teamConfig.ts.
  */
 import { getDependencies, getPackage } from '../advisories/depsdev.js';
@@ -180,7 +180,7 @@ async function parentUpgrade(c: Checked, names: string[]): Promise<{ to: string;
 }
 
 /**
- * When no version without advisories exists, noFix (SAFECTX_HOOK_NO_FIX) decides:
+ * When no version without advisories exists, noFix (PINRIGHT_HOOK_NO_FIX) decides:
  * "severity" (default) asks for HIGH/CRITICAL and lets the rest through with a note;
  * "allow", "ask" or "deny" apply to every case.
  */
@@ -212,7 +212,7 @@ function judge(c: Checked, p: Policy): Outcome {
     case 'unknown-package':
       return r.latestVersion
         ? { action: 'deny', problem: `${label}: version ${version} was never published (or was removed).${fix(r.safeVersion, 'Use')}` }
-        : { action: 'deny', problem: `${label}: no such package in the ${i.ecosystem} registry. Check the name; if it is a private package, add it to "allow" in .safectx.json (or SAFECTX_ALLOW).` };
+        : { action: 'deny', problem: `${label}: no such package in the ${i.ecosystem} registry. Check the name; if it is a private package, add it to "allow" in .pinright.json (or PINRIGHT_ALLOW).` };
     case 'unknown':
       return unreachable(p, i, `${label}: could not be verified (${r.reason}).`);
     default:
@@ -228,11 +228,11 @@ function judge(c: Checked, p: Policy): Outcome {
     }
     if (r.safeVersionSameLine && r.safeVersionSameLine !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersionSameLine, `Use ${r.line} release`)}` };
     if (r.safeVersionNearestLine && r.safeVersionNearestLine !== version) {
-      const guide = ` Call upgrade-guide (safectx MCP, or \`safectx upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersionNearestLine}\`) for the breaking changes before writing code for it.`;
+      const guide = ` Call upgrade-guide (pinright MCP, or \`pinright upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersionNearestLine}\`) for the breaking changes before writing code for it.`;
       return { action: 'deny', problem: `${head}${fix(r.safeVersionNearestLine, `No clean release on this line; the nearest fix is on ${r.nearestLine} (newest safe: ${r.safeVersion}),`)}${guide}` };
     }
     if (r.safeVersion && r.safeVersion !== version) {
-      const guide = ` Call upgrade-guide (safectx MCP, or \`safectx upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersion}\`) for the breaking changes before writing code for it.`;
+      const guide = ` Call upgrade-guide (pinright MCP, or \`pinright upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersion}\`) for the breaking changes before writing code for it.`;
       return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}${guide}` };
     }
     // No version is clean. If another one is clearly less exposed, point there.
@@ -298,7 +298,7 @@ function unreachable(p: Policy, i: DepIntent, text: string): Outcome {
   return unverified(p, text);
 }
 
-/** What safectx can say without deps.dev or OSV: unverifiable sources and the team's deny list. */
+/** What pinright can say without deps.dev or OSV: unverifiable sources and the team's deny list. */
 function offlineOutcomes(intents: DepIntent[], p: Policy): Outcome[] {
   const out: Outcome[] = [];
   const seen = new Set<string>();
@@ -490,7 +490,7 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
     // Padding a change with harmless packages must not push a bad one past the check.
     const skipped = changed.slice(MAX_CHECKS).map((i) => i.name);
     problems.push(
-      `This change adds ${changed.length} dependencies and safectx checks ${MAX_CHECKS} per change, so ${skipped.slice(0, 8).join(', ')}${skipped.length > 8 ? `, +${skipped.length - 8} more` : ''} were not checked. Add them in smaller batches, or a human should approve.`,
+      `This change adds ${changed.length} dependencies and pinright checks ${MAX_CHECKS} per change, so ${skipped.slice(0, 8).join(', ')}${skipped.length > 8 ? `, +${skipped.length - 8} more` : ''} were not checked. Add them in smaller batches, or a human should approve.`,
     );
     outcomes.push({ action: 'ask' });
   }
@@ -514,12 +514,12 @@ function hookLine(s: string): string {
 export function agentMessage(d: HookDecision): string {
   const lines: string[] = [];
   if (d.action !== 'allow') {
-    lines.push(`safectx ${d.action === 'deny' ? 'blocked' : 'needs approval for'} this dependency change:`);
+    lines.push(`pinright ${d.action === 'deny' ? 'blocked' : 'needs approval for'} this dependency change:`);
     for (const p of d.problems) lines.push(hookLine(p));
-    if (d.action === 'deny') lines.push('Change the version (or the name) and try again. check-package and get-docs from the safectx MCP server explain each case.');
+    if (d.action === 'deny') lines.push('Change the version (or the name) and try again. check-package and get-docs from the pinright MCP server explain each case.');
   }
   if (d.warnings.length) {
-    lines.push(d.action === 'allow' ? 'safectx notes about the dependencies in this change:' : 'Also:');
+    lines.push(d.action === 'allow' ? 'pinright notes about the dependencies in this change:' : 'Also:');
     for (const w of d.warnings) lines.push(hookLine(w));
   }
   return lines.join('\n');

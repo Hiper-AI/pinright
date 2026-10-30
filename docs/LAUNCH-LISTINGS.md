@@ -4,8 +4,8 @@ Drafts and requirements for the directories where MCP servers get found. Nothing
 submitted. Checked against each directory's docs on 2026-10-29; they change often, so re-read the
 linked page before submitting.
 
-Everything below assumes the final npm name. Today that name is `safectx` and the registry name is
-`io.github.Hiper-AI/safectx`. After a rename, run `npm run dist:artifacts` and replace the name in
+Everything below assumes the final npm name. Today that name is `pinright` and the registry name is
+`io.github.Hiper-AI/pinright`. After a rename, run `npm run dist:artifacts` and replace the name in
 the drafts below.
 
 ## Before any listing
@@ -25,10 +25,10 @@ One line, 100 characters at most (the MCP Registry limit). It is `SHORT_DESCRIPT
 
 Paragraph, for directories with a longer field:
 
-> safectx is a local MCP server and pre-install hook for coding agents. When the agent asks for
+> pinright is a local MCP server and pre-install hook for coding agents. When the agent asks for
 > library docs, it reads them from the package at the version the project uses (published files,
 > the repository at the release tag, llms.txt), so the agent writes code for that version. Before
-> the agent adds a dependency, safectx checks it against OSV and deps.dev: known advisories,
+> the agent adds a dependency, pinright checks it against OSV and deps.dev: known advisories,
 > malware records, deprecation, lookalike names and versions that do not exist, and it suggests
 > the newest version without known advisories, on the release line the project already uses when
 > there is one. The hook works in Claude Code, Cursor, VS Code (Copilot), Codex, Gemini CLI and
@@ -92,7 +92,7 @@ proven safe. Avoid "secure", "100%", "guarantees", "zero-day".
 - Draft line (📇 TypeScript, 🏠 local service, 🍎 🪟 🐧 macOS, Windows, Linux):
 
   ```
-  - [Hiper-AI/safectx](https://github.com/Hiper-AI/safectx) [![Hiper-AI/safectx MCP server](https://glama.ai/mcp/servers/Hiper-AI/safectx/badges/score.svg)](https://glama.ai/mcp/servers/Hiper-AI/safectx) 📇 🏠 🍎 🪟 🐧 - Library docs for the exact version a project uses, plus a supply-chain check of each dependency (OSV and deps.dev advisories, malware records, typosquats, deprecation) and a pre-install hook for coding agents.
+  - [Hiper-AI/pinright](https://github.com/Hiper-AI/pinright) [![Hiper-AI/pinright MCP server](https://glama.ai/mcp/servers/Hiper-AI/pinright/badges/score.svg)](https://glama.ai/mcp/servers/Hiper-AI/pinright) 📇 🏠 🍎 🪟 🐧 - Library docs for the exact version a project uses, plus a supply-chain check of each dependency (OSV and deps.dev advisories, malware records, typosquats, deprecation) and a pre-install hook for coding agents.
   ```
 
 ## Cline Marketplace

@@ -8,7 +8,7 @@ import type { HookDecision } from '../src/hook/policy.js';
 
 let dir: string;
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-hook-'));
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-hook-'));
 });
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
@@ -111,7 +111,7 @@ describe('each agent gets the answer in its own protocol', () => {
 
   it('Cursor: always answers, with a short user_message when blocked', () => {
     expect(parse(hookAnswer('cursor', clean, '').stdout)).toEqual({ permission: 'allow' });
-    expect(parse(hookAnswer('cursor', deny, 'm').stdout)).toEqual({ permission: 'deny', agent_message: 'm', user_message: 'safectx: axios@0.21.0 has GHSA-x' });
+    expect(parse(hookAnswer('cursor', deny, 'm').stdout)).toEqual({ permission: 'deny', agent_message: 'm', user_message: 'pinright: axios@0.21.0 has GHSA-x' });
   });
 
   it('Gemini CLI: decision deny with the reason; notes as additionalContext', () => {

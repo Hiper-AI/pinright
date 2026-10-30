@@ -4,8 +4,8 @@
  *
  *   1. npm pack (dist/ must be built), install the tarball into a temp project
  *      with --ignore-scripts, and a temp HOME so no real client config is read or touched;
- *   2. `safectx init <client>` from the installed package, for each client below;
- *   3. read back the server entry and spawn it (`npx -y safectx` resolves the local
+ *   2. `pinright init <client>` from the installed package, for each client below;
+ *   3. read back the server entry and spawn it (`npx -y pinright` resolves the local
  *      install), initialize, list the tools; run the hook command it wrote with a
  *      harmless tool call and check the agent would be let through.
  *

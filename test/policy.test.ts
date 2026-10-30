@@ -49,13 +49,13 @@ beforeEach(() => {
   reports.clear();
   versions.clear();
   risks.clear();
-  delete process.env.SAFECTX_HOOK_RISK;
+  delete process.env.PINRIGHT_HOOK_RISK;
   graphs.clear();
   requirements.clear();
   vulnerable.clear();
-  delete process.env.SAFECTX_ALLOW;
-  delete process.env.SAFECTX_HOOK_COOLDOWN;
-  delete process.env.SAFECTX_HOOK_ON_ERROR;
+  delete process.env.PINRIGHT_ALLOW;
+  delete process.env.PINRIGHT_HOOK_COOLDOWN;
+  delete process.env.PINRIGHT_HOOK_ON_ERROR;
 });
 
 describe('decide', () => {
@@ -78,7 +78,7 @@ describe('decide', () => {
     const d = await decide([{ ecosystem: 'npm', name: 'axios', spec: '1.7.9', source: 'npm i' }]);
     expect(d.action).toBe('deny');
     expect(d.problems[0]).toContain('npm install axios@1.20.0');
-    expect(agentMessage(d)).toMatch(/^safectx blocked this dependency change/);
+    expect(agentMessage(d)).toMatch(/^pinright blocked this dependency change/);
   });
 
   it('says when only a new major fixes it', async () => {
@@ -89,7 +89,7 @@ describe('decide', () => {
     });
     const d = await decide([{ ecosystem: 'npm', name: 'jsonwebtoken', spec: '8.5.1', source: 'x' }]);
     expect(d.problems[0]).toMatch(/new major, 9\.0\.3/);
-    expect(d.problems[0]).toContain('safectx upgrade npm jsonwebtoken 8.5.1 9.0.3');
+    expect(d.problems[0]).toContain('pinright upgrade npm jsonwebtoken 8.5.1 9.0.3');
   });
 
   it('points to the nearest newer line with a fix before the newest major', async () => {
@@ -125,7 +125,7 @@ describe('decide', () => {
     expect(d.action).toBe('ask');
   });
 
-  it('denies typosquats, malware and packages that do not exist; SAFECTX_ALLOW lets private ones through', async () => {
+  it('denies typosquats, malware and packages that do not exist; PINRIGHT_ALLOW lets private ones through', async () => {
     reports.set('reqeusts', { verdict: 'possible-typosquat', typo: { lookalikeOf: 'requests', existsInRegistry: false } });
     expect((await decide([{ ecosystem: 'pypi', name: 'reqeusts', source: 'pip' }])).action).toBe('deny');
 
@@ -135,7 +135,7 @@ describe('decide', () => {
 
     reports.set('@acme/internal', { verdict: 'unknown-package' });
     expect((await decide([{ ecosystem: 'npm', name: '@acme/internal', source: 'x' }])).action).toBe('deny');
-    process.env.SAFECTX_ALLOW = '@acme/*';
+    process.env.PINRIGHT_ALLOW = '@acme/*';
     expect((await decide([{ ecosystem: 'npm', name: '@acme/internal', source: 'x' }])).action).toBe('allow');
   });
 
@@ -145,14 +145,14 @@ describe('decide', () => {
     let d = await decide([{ ecosystem: 'npm', name: 'zod', source: 'npm i zod' }]);
     expect(d.action).toBe('allow');
     expect(d.warnings[0]).toMatch(/cooldown/);
-    process.env.SAFECTX_HOOK_COOLDOWN = 'enforce';
+    process.env.PINRIGHT_HOOK_COOLDOWN = 'enforce';
     d = await decide([{ ecosystem: 'npm', name: 'zod', source: 'npm i zod' }]);
     expect(d.action).toBe('deny');
 
     versions.set('x', ['1.0.0']);
     reports.set('x@1.0.0', { verdict: 'unknown', reason: 'deps.dev down' });
     expect((await decide([{ ecosystem: 'npm', name: 'x', spec: '1.0.0', source: 'x' }])).action).toBe('allow');
-    process.env.SAFECTX_HOOK_ON_ERROR = 'deny';
+    process.env.PINRIGHT_HOOK_ON_ERROR = 'deny';
     expect((await decide([{ ecosystem: 'npm', name: 'x', spec: '1.0.0', source: 'x' }])).action).toBe('deny');
   });
 
@@ -272,9 +272,9 @@ describe('no clean version anywhere', () => {
     const d = await decide([{ ecosystem: 'npm', name: 'nuxt', spec: '4.6.2', source: 'package.json' }]);
     expect(d.action).toBe('allow');
     expect(d.warnings[0]).toMatch(/No version without known advisories exists yet; allowed/);
-    process.env.SAFECTX_HOOK_NO_FIX = 'deny';
+    process.env.PINRIGHT_HOOK_NO_FIX = 'deny';
     expect((await decide([{ ecosystem: 'npm', name: 'nuxt', spec: '4.6.2', source: 'package.json' }])).action).toBe('deny');
-    delete process.env.SAFECTX_HOOK_NO_FIX;
+    delete process.env.PINRIGHT_HOOK_NO_FIX;
   });
 });
 
@@ -322,8 +322,8 @@ describe('supply-chain risk signals', () => {
     expect(d.warnings).toEqual(['a (npm), version 1.0.0: 1.0.0 has no provenance attestation.']);
   });
 
-  it('SAFECTX_HOOK_RISK=warn turns the deny into a note', async () => {
-    process.env.SAFECTX_HOOK_RISK = 'warn';
+  it('PINRIGHT_HOOK_RISK=warn turns the deny into a note', async () => {
+    process.env.PINRIGHT_HOOK_RISK = 'warn';
     versions.set('fresh-cli', ['1.0.0']);
     risks.set('fresh-cli', [sig('install-script-new-package', 'high', 'new and runs install scripts')]);
     const d = await decide([{ ecosystem: 'npm', name: 'fresh-cli', source: 'npx fresh-cli', executes: true }]);
@@ -338,7 +338,7 @@ describe('what the hook cannot check', () => {
   it('asks by default; the policy can allow or deny; allow-listed names pass', async () => {
     expect((await decide([remote], resolvePolicy(undefined, {}))).action).toBe('ask');
     expect((await decide([remote], resolvePolicy({ unverifiable: 'deny' }, {}))).action).toBe('deny');
-    const allowed = await decide([remote], resolvePolicy(undefined, { SAFECTX_HOOK_UNVERIFIABLE: 'allow' }));
+    const allowed = await decide([remote], resolvePolicy(undefined, { PINRIGHT_HOOK_UNVERIFIABLE: 'allow' }));
     expect(allowed.action).toBe('allow');
     expect(allowed.warnings[0]).toContain('outside the registry');
     expect((await decide([remote], resolvePolicy({ allow: ['x'] }, {}))).action).toBe('allow');
@@ -347,7 +347,7 @@ describe('what the hook cannot check', () => {
   it('notes only inform, and changes to the hook configuration always ask', async () => {
     const note = { ...remote, unverifiable: { reason: 'jsr:@x/y is a JSR package.', level: 'note' as const } };
     expect((await decide([note], resolvePolicy(undefined, {}))).action).toBe('allow');
-    const guard = { ...remote, name: '.safectx.json', unverifiable: { reason: 'changes the policy.', level: 'guard' as const } };
+    const guard = { ...remote, name: '.pinright.json', unverifiable: { reason: 'changes the policy.', level: 'guard' as const } };
     expect((await decide([guard], resolvePolicy({ unverifiable: 'allow', allow: ['*'] }, {}))).action).toBe('ask');
   });
 
@@ -373,7 +373,7 @@ describe('what the hook cannot check', () => {
     expect(p.onError).toBe('allow');
     const late = timeoutDecision([{ ecosystem: 'npm', name: 'left-pad', source: 'x' }], p, 45_000);
     expect(late.action).toBe('ask');
-    expect(late.problems).toEqual(['safectx could not finish checking left-pad in time (45 s, SAFECTX_HOOK_TIMEOUT_MS); a human should approve it, or retry once deps.dev and OSV answer.']);
+    expect(late.problems).toEqual(['pinright could not finish checking left-pad in time (45 s, PINRIGHT_HOOK_TIMEOUT_MS); a human should approve it, or retry once deps.dev and OSV answer.']);
     const look = timeoutDecision([{ ecosystem: 'npm', name: 'expresss', source: 'x' }], p);
     expect(look.action).toBe('ask');
     expect(look.problems[0]).toMatch(/one edit away from "express"/);

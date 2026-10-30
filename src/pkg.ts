@@ -22,7 +22,7 @@ const str = (v: unknown, fallback: string) => (typeof v === 'string' && v ? v : 
 
 export const PKG_VERSION = str(pkg.version, '0.0.0');
 /** The npm package: also the command, the server key in client configs, and the marker of our hook entries. */
-export const PKG_NAME = str(pkg.name, 'safectx');
+export const PKG_NAME = str(pkg.name, 'pinright');
 /** The key of our server in client configs and the name of files we own (`@scope/x` -> `x`). */
 export const SERVER_KEY = PKG_NAME.replace(/^@[^/]+\//, '');
 /** The MCP Registry name (`io.github.<org login>/<name>`, case-sensitive); npm verification compares it with `mcpName`. */

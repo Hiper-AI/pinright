@@ -256,7 +256,7 @@ export const CLIENTS: Client[] = [
     mcpScopes: [],
     installed: () => false,
     inProject: () => false,
-    manual: (launch) => ['AI Assistant keeps its MCP servers in the IDE settings, not in a file safectx can edit.', 'Settings | Tools | AI Assistant | Model Context Protocol (MCP) > Add > STDIO, and paste:', json(launch)],
+    manual: (launch) => ['AI Assistant keeps its MCP servers in the IDE settings, not in a file pinright can edit.', 'Settings | Tools | AI Assistant | Model Context Protocol (MCP) > Add > STDIO, and paste:', json(launch)],
   },
   {
     id: 'codex',

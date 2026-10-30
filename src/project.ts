@@ -1,7 +1,7 @@
 /**
  * The project the agent is working on. Agents rarely pass the version their
  * project uses, so the server finds it: the roots the MCP client announces,
- * else SAFECTX_PROJECT_DIR, else the working directory (Claude Code and Cursor
+ * else PINRIGHT_PROJECT_DIR, else the working directory (Claude Code and Cursor
  * launch stdio servers in the project). From each root it reads the dependency
  * files nearby (the root, the nearest parent with one, and subprojects a few
  * levels down for monorepos) and answers "which version of X is installed".
@@ -125,7 +125,7 @@ export class Project {
 
   roots(): string[] {
     if (this.announced) return this.announced;
-    const env = process.env.SAFECTX_PROJECT_DIR;
+    const env = process.env.PINRIGHT_PROJECT_DIR;
     if (env) return env.split(path.delimiter).filter(Boolean).map((d) => path.resolve(d));
     return [process.cwd()];
   }
@@ -214,7 +214,7 @@ export class Project {
 
   /**
    * The team policy of `dir` (a path given to a tool), else of the first root
-   * that has a .safectx.json, merged with env. An unreadable file comes back as
+   * that has a .pinright.json, merged with env. An unreadable file comes back as
    * `error` with the env-only policy, so the tools can say so instead of acting
    * as if there were no policy.
    */

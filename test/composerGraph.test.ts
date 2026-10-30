@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.SAFECTX_NO_CACHE = '1';
+process.env.PINRIGHT_NO_CACHE = '1';
 
 const recorded = JSON.parse(fs.readFileSync(new URL('./fixtures/packagist-guzzle.json', import.meta.url), 'utf8')) as Record<string, unknown>;
 const extra = new Map<string, unknown>();

@@ -1,8 +1,8 @@
 {
-  "name": "safectx-action-fixture",
+  "name": "pinright-action-fixture",
   "version": "1.0.0",
   "private": true,
-  "description": "Deliberately unsafe project for the safectx Action self-test. Stored as .fixture so Dependabot does not scan it.",
+  "description": "Deliberately unsafe project for the pinright Action self-test. Stored as .fixture so Dependabot does not scan it.",
   "dependencies": {
     "expresss": "0.0.0",
     "lodash": "4.17.20",

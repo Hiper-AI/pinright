@@ -1,6 +1,6 @@
 /**
  * Prompt-injection detector against real documentation: what share of the
- * docs safectx serves for popular npm and PyPI packages would it drop (high)
+ * docs pinright serves for popular npm and PyPI packages would it drop (high)
  * or flag (medium)? Every chunk of every document get-docs gathers is
  * scanned, not only the few a query returns, plus the upgrade-guide output for
  * a few big upgrades. Also prints the adversarial-corpus numbers.
@@ -96,8 +96,8 @@ async function docsFor(eco: Ecosystem, name: string, query: string) {
   }
   // The answer itself, end to end: did get-docs remove or warn about anything?
   const served = await getDocs({ ecosystem: eco, name, version, query });
-  const removed = (served.text.match(/^safectx: removed/gm) ?? []).length;
-  const warned = (served.text.match(/^safectx: the next block/gm) ?? []).length;
+  const removed = (served.text.match(/^pinright: removed/gm) ?? []).length;
+  const warned = (served.text.match(/^pinright: the next block/gm) ?? []).length;
   return { version, files: docFiles.length, chunks, bytes, flags, removed, warned };
 }
 
@@ -147,8 +147,8 @@ async function main() {
   for (const [eco, name, from] of UPGRADES) {
     try {
       const r = await upgradeGuide({ ecosystem: eco, name, from });
-      const removed = (r.text.match(/^safectx: removed/gm) ?? []).length;
-      const warned = (r.text.match(/^safectx: the next block/gm) ?? []).length;
+      const removed = (r.text.match(/^pinright: removed/gm) ?? []).length;
+      const warned = (r.text.match(/^pinright: the next block/gm) ?? []).length;
       upRemoved += removed;
       upWarned += warned;
       upRows.push(`| ${eco}:${name} ${r.from} -> ${r.to} | ${r.text.length} | ${removed} | ${warned} |`);

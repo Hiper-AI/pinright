@@ -1,6 +1,6 @@
 /**
  * Where the Action reads the team policy from. On a pull request the PR controls
- * its own tree, `.safectx.json` included: an "allow": ["*"] there would skip the
+ * its own tree, `.pinright.json` included: an "allow": ["*"] there would skip the
  * checks for the very change under review. So on pull_request and
  * pull_request_target events the policy comes from the base commit, and a PR that
  * changes it gets a notice for the reviewers. An explicit `config:` input wins.
@@ -25,7 +25,7 @@ export interface PolicySource {
   kind: 'input' | 'base' | 'tree';
   /** For `input`, the path to read. */
   file?: string;
-  /** For `base`: the policy text, and the name shown in messages ("ci/.safectx.json at base 1a2b3c4"). Undefined text: the base has no policy. */
+  /** For `base`: the policy text, and the name shown in messages ("ci/.pinright.json at base 1a2b3c4"). Undefined text: the base has no policy. */
   text?: string;
   label?: string;
   /** Lines for the reviewers (`::notice`). */
@@ -71,14 +71,14 @@ function baseCommit(git: Git, sha: string | undefined, branch: string | undefine
   const what = sha ? `the base commit ${sha.slice(0, 12)}` : `the base branch ${branch ?? '(unknown)'}`;
   return {
     error:
-      `safectx reads the team policy from the pull request's base, and ${what} is not in this checkout and could not be fetched. ` +
-      'Check out with actions/checkout and "fetch-depth: 0", or keep its default "persist-credentials: true" so safectx can fetch that one commit, or pass "config:" with a policy file the PR cannot change.',
+      `pinright reads the team policy from the pull request's base, and ${what} is not in this checkout and could not be fetched. ` +
+      'Check out with actions/checkout and "fetch-depth: 0", or keep its default "persist-credentials: true" so pinright can fetch that one commit, or pass "config:" with a policy file the PR cannot change.',
   };
 }
 
 /**
  * The policy source for this run. `target` and `workspace` are absolute; the nearest
- * .safectx.json walking up from `target` to the repository root counts, as in the hook.
+ * .pinright.json walking up from `target` to the repository root counts, as in the hook.
  */
 export function selectPolicySource(opts: { configInput?: string; workspace: string; target: string; env: NodeJS.ProcessEnv; git?: Git; event?: Record<string, unknown> }): PolicySource {
   const { env, workspace } = opts;
@@ -92,10 +92,10 @@ export function selectPolicySource(opts: { configInput?: string; workspace: stri
   const sha = rawSha && SHA.test(rawSha) ? rawSha : undefined;
   const branch = rawBranch && BRANCH.test(rawBranch) ? rawBranch : undefined;
   const fail = (error: string): PolicySource => ({ kind: 'base', notices: [], error });
-  if (!sha && !branch) return fail('safectx reads the team policy from the pull request\'s base, but the event names no base commit or branch. Pass "config:" with a policy file the PR cannot change.');
+  if (!sha && !branch) return fail('pinright reads the team policy from the pull request\'s base, but the event names no base commit or branch. Pass "config:" with a policy file the PR cannot change.');
 
   const top = git(['rev-parse', '--show-toplevel']);
-  if (top.code !== 0) return fail(`safectx reads the team policy from the pull request's base, but ${workspace} is not a git checkout (${top.stderr.trim().slice(0, 200)}). Check out the repository with actions/checkout, or pass "config:".`);
+  if (top.code !== 0) return fail(`pinright reads the team policy from the pull request's base, but ${workspace} is not a git checkout (${top.stderr.trim().slice(0, 200)}). Check out the repository with actions/checkout, or pass "config:".`);
   // Real paths on both sides: git prints long names where the runner's temp path may be a short (8.3) one or a link.
   const real = (p: string) => {
     try {
@@ -133,16 +133,16 @@ export function selectPolicySource(opts: { configInput?: string; workspace: stri
     const shown = git(['show', `${base.rev}:${rel}`]);
     if (shown.code !== 0) continue;
     const head = inTree(rel);
-    if (head === undefined) notices.push(`This pull request deletes ${rel}. safectx used the base branch's version; the change applies once it is merged.`);
-    else if (!same(head, shown.stdout)) notices.push(`This pull request changes ${rel}. safectx used the base branch's version; review the policy change before merging.`);
+    if (head === undefined) notices.push(`This pull request deletes ${rel}. pinright used the base branch's version; the change applies once it is merged.`);
+    else if (!same(head, shown.stdout)) notices.push(`This pull request changes ${rel}. pinright used the base branch's version; review the policy change before merging.`);
     // A nearer file the PR adds would take over after the merge.
     for (const nearer of candidates.slice(0, candidates.indexOf(rel))) {
-      if (inTree(nearer) !== undefined) notices.push(`This pull request adds ${nearer}, which would replace ${rel} for this path. safectx used ${rel} from the base branch; review the new policy before merging.`);
+      if (inTree(nearer) !== undefined) notices.push(`This pull request adds ${nearer}, which would replace ${rel} for this path. pinright used ${rel} from the base branch; review the new policy before merging.`);
     }
     return { kind: 'base', text: shown.stdout, label: `${rel} at base ${short}`, notices };
   }
   for (const rel of candidates) {
-    if (inTree(rel) !== undefined) notices.push(`This pull request adds ${rel}. safectx ran without a team policy, as on the base branch; review the policy before merging.`);
+    if (inTree(rel) !== undefined) notices.push(`This pull request adds ${rel}. pinright ran without a team policy, as on the base branch; review the policy before merging.`);
   }
   return { kind: 'base', notices };
 }

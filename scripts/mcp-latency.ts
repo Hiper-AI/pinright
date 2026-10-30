@@ -31,11 +31,11 @@ const CALLS: { label: string; tool: string; args: Record<string, unknown> }[] = 
   { label: `check-manifest, package-lock.json`, tool: 'check-manifest', args: { path: path.join(root, 'package-lock.json') } },
 ];
 
-const env = { ...process.env, SAFECTX_CACHE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-mcp-cache-')) } as Record<string, string>;
+const env = { ...process.env, PINRIGHT_CACHE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-mcp-cache-')) } as Record<string, string>;
 if (!args.includes('--token')) {
   delete env.GITHUB_TOKEN;
   delete env.GH_TOKEN;
-  delete env.SAFECTX_GH_CLI;
+  delete env.PINRIGHT_GH_CLI;
 }
 const client = new Client({ name: 'latency', version: '0.0.0' });
 await client.connect(new StdioClientTransport({ command: process.execPath, args: [cli], env, stderr: 'ignore' }));

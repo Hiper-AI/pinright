@@ -392,7 +392,7 @@ export function buildMcpServer(): McpServer {
         'and the advisories fixed, between the version a project uses and the one to move to. Sources: changelogs and ' +
         'GitHub release notes for the versions in between, migration guides when a major is crossed, and (npm) a diff of ' +
         'the exported .d.ts API. Call it before upgrading across a major, when a SECURITY NOTICE recommends a new major, ' +
-        'or to fix a Dependabot PR. Without "to" it uses the version safectx recommends.',
+        'or to fix a Dependabot PR. Without "to" it uses the version pinright recommends.',
       inputSchema: {
         libraryId: z.string().optional().describe('Id like "npm:next" or "pypi:langchain" (a version in it is used as "from").'),
         package: z.string().optional().describe('Package name, with ecosystem, instead of libraryId.'),

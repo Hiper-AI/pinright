@@ -28,7 +28,7 @@ describe('fromCommand', () => {
   });
 
   it('pip, python -m pip, uv, poetry, requirements files', () => {
-    // Unquoted, flask>=3 is a redirection in every shell; the custom index is something safectx cannot vouch for.
+    // Unquoted, flask>=3 is a redirection in every shell; the custom index is something pinright cannot vouch for.
     expect(pick('pip install "requests[socks]==2.31.0" "flask>=3" -i https://x/simple')).toEqual(['?pypi', 'pypi:requests ==2.31.0', 'pypi:flask >=3']);
     expect(pick('python -m pip install -U PyYAML')).toEqual(['pypi:pyyaml']);
     expect(pick('uv pip install httpx && uv add fastapi==0.110.0 && poetry add pydantic')).toEqual(['pypi:httpx', 'pypi:fastapi ==0.110.0', 'pypi:pydantic']);

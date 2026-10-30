@@ -4,8 +4,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.SAFECTX_NO_CACHE = '1';
-process.env.SAFECTX_COOLDOWN_DAYS = '3';
+process.env.PINRIGHT_NO_CACHE = '1';
+process.env.PINRIGHT_COOLDOWN_DAYS = '3';
 
 const fixtures = new Map<string, unknown>();
 const calls: string[] = [];

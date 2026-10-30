@@ -6,7 +6,7 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     # A version gets a few days on the registry before we take it, the same idea as
-    # safectx's own cooldown: most malicious releases are pulled within that window.
+    # pinright's own cooldown: most malicious releases are pulled within that window.
     # Security updates skip the cooldown.
     cooldown:
       default-days: 5

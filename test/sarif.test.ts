@@ -118,7 +118,7 @@ function input(over: Partial<SarifInput> = {}, read = (f: string) => files[f]): 
           { kind: 'risk', signal: 'install-script-new-package', name: 'lodash', version: '4.17.20', blocking: true, level: 'error', message: 'lodash@4.17.20: new package with install scripts' },
         ],
         policy: [
-          { kind: 'deny', name: 'minimist', version: '0.0.8', text: 'minimist: denied by the project policy (.safectx.json): use yargs.' },
+          { kind: 'deny', name: 'minimist', version: '0.0.8', text: 'minimist: denied by the project policy (.pinright.json): use yargs.' },
           { kind: 'note', text: 'Licenses checked for the first 60 direct dependencies only.' },
         ],
       },
@@ -164,7 +164,7 @@ describe('buildSarif', () => {
   it('meets GitHub code scanning requirements', () => {
     const run = log.runs[0];
     expect(log.version).toBe('2.1.0');
-    expect(run.tool.driver.name).toBe('safectx');
+    expect(run.tool.driver.name).toBe('pinright');
     for (const r of run.tool.driver.rules) {
       expect(r.shortDescription.text.length).toBeGreaterThan(0);
       expect(r.fullDescription.text.length).toBeLessThanOrEqual(1024);
@@ -191,7 +191,7 @@ describe('buildSarif', () => {
     const ids = log.runs[0].tool.driver.rules.map((r: { id: string }) => r.id);
     expect(ids).toEqual([
       'GHSA-29mw-wpgm-hmr9', 'GHSA-35jh-r3h4-6jhm', 'GHSA-mrrh-fwg8-r2c3', 'GHSA-xvch-5gv4-984h',
-      'safectx/action-unpinned', 'safectx/deprecated', 'safectx/policy-deny', 'safectx/risk/install-script-new-package', 'safectx/typosquat',
+      'pinright/action-unpinned', 'pinright/deprecated', 'pinright/policy-deny', 'pinright/risk/install-script-new-package', 'pinright/typosquat',
     ]);
     const crit = log.runs[0].tool.driver.rules.find((r: { id: string }) => r.id === 'GHSA-xvch-5gv4-984h');
     expect(crit.properties['security-severity']).toBe('9.8');
@@ -223,10 +223,10 @@ describe('buildSarif', () => {
   });
 
   it('reports typosquats, policy denials, risk signals and Actions', () => {
-    expect(byRule(log, 'safectx/typosquat')[0].locations[0].physicalLocation.region.startLine).toBe(7);
-    expect(byRule(log, 'safectx/policy-deny')[0].level).toBe('error');
-    expect(byRule(log, 'safectx/risk/install-script-new-package')[0].level).toBe('error');
-    const pin = byRule(log, 'safectx/action-unpinned');
+    expect(byRule(log, 'pinright/typosquat')[0].locations[0].physicalLocation.region.startLine).toBe(7);
+    expect(byRule(log, 'pinright/policy-deny')[0].level).toBe('error');
+    expect(byRule(log, 'pinright/risk/install-script-new-package')[0].level).toBe('error');
+    const pin = byRule(log, 'pinright/action-unpinned');
     expect(pin).toHaveLength(1); // the SHA-pinned setup-node is not reported
     expect(pin[0].locations[0].physicalLocation).toEqual({
       artifactLocation: { uri: '.github/workflows/ci.yml', uriBaseId: '%SRCROOT%' },
@@ -252,7 +252,7 @@ describe('buildSarif', () => {
     for (const r of results(blind)) {
       const loc = r.locations[0].physicalLocation;
       // Actions findings know their line from the workflow parser; the rest falls back to line 1.
-      expect(loc.region.startLine).toBe(loc.artifactLocation.uri.endsWith('ci.yml') ? r.ruleId === 'safectx/action-unpinned' ? 7 : 9 : 1);
+      expect(loc.region.startLine).toBe(loc.artifactLocation.uri.endsWith('ci.yml') ? r.ruleId === 'pinright/action-unpinned' ? 7 : 9 : 1);
     }
   });
 
@@ -272,7 +272,7 @@ describe('buildSarif', () => {
     const mal = treeAudit();
     mal.findings = [{ name: 'evil', version: '1.0.0', malicious: true, advisories: [adv('MAL-2026-1', 'CVE-x', 'Malicious code in evil', 'CRITICAL')] }];
     const r = results(buildSarif(input({ trees: [{ audit: mal }], actions: undefined })));
-    expect(r.map((x) => x.ruleId)).toEqual(['safectx/malware']);
+    expect(r.map((x) => x.ruleId)).toEqual(['pinright/malware']);
     expect(r[0].message.text).toContain('MAL-2026-1');
   });
 });
@@ -310,14 +310,14 @@ describe('summary and annotations', () => {
 
   it('writes a Markdown table', () => {
     const md = summaryMarkdown(log, { exitCode: 1, failOn: 'high', sarifFile: 'results.sarif', uploaded: true });
-    expect(md).toContain('### safectx audit failed');
+    expect(md).toContain('### pinright audit failed');
     expect(md).toContain('| 1 | 5 | 2 | 0 | 0 | 1 |');
     expect(md).toContain('| critical | `GHSA-xvch-5gv4-984h` | `app/package-lock.json:26` |');
   });
 
   it('escapes workflow commands', () => {
     const lines = annotations(log);
-    expect(lines[0]).toMatch(/^::error file=app\/package-lock.json,line=26,col=\d+,endColumn=\d+,title=safectx GHSA-xvch-5gv4-984h::/);
+    expect(lines[0]).toMatch(/^::error file=app\/package-lock.json,line=26,col=\d+,endColumn=\d+,title=pinright GHSA-xvch-5gv4-984h::/);
     expect(lines.every((l) => !/[\r\n]/.test(l))).toBe(true);
     const tricky = buildSarif(input({ trees: [{ audit: { ...treeAudit(), findings: [] }, supply: [{ kind: 'deprecated', name: 'lodash', version: '1', blocking: false, level: 'note', message: 'a\nb: 100%' }] }], actions: undefined }));
     expect(annotations(tricky)[0]).toMatch(/::a%0Ab: 100%25$/);
@@ -349,7 +349,7 @@ describe('supply-chain findings', () => {
     const f = toFindings(pkg, { report: report({ verdict: 'malicious', requested: { version: '0.0.0', verdict: 'malicious', advisories: [{ id: 'MAL-2026-1', aliases: [], url: '' }] } }) });
     expect(f).toMatchObject([{ kind: 'malware', blocking: true, level: 'error' }]);
     const log = buildSarif(input({ trees: [{ audit: { ...treeAudit(), findings: [] }, supply: f }], actions: undefined }));
-    expect(log.runs[0].results.map((r: { ruleId: string }) => r.ruleId)).toContain('safectx/malware');
+    expect(log.runs[0].results.map((r: { ruleId: string }) => r.ruleId)).toContain('pinright/malware');
   });
 
   it('reports unknown packages, unpublished versions and deprecation without blocking', () => {
@@ -387,7 +387,7 @@ describe('exit code', () => {
   });
 
   it('resolves the SARIF root: workspace, then git repository, then the audited directory', () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-root-'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-root-'));
     const repo = path.join(tmp, 'repo');
     fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
     fs.mkdirSync(path.join(repo, 'app'));

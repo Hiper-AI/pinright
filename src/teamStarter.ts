@@ -1,14 +1,14 @@
 /**
- * The team policy file's name and the starter `safectx init` writes. Apart from
+ * The team policy file's name and the starter `pinright init` writes. Apart from
  * teamConfig.ts (schema, registry lookups) so the CLI can name the file without
  * loading the validator: the hook starts on every agent command.
  */
-export const CONFIG_FILE = '.safectx.json';
+export const CONFIG_FILE = '.pinright.json';
 
-/** The starter file `safectx init` writes. Comments are allowed; safectx strips them. */
+/** The starter file `pinright init` writes. Comments are allowed; pinright strips them. */
 export const STARTER_CONFIG = `{
-  // safectx team policy. Versioned with the repo; environment variables override it.
-  // Every key is optional; see "Team policy" in the safectx README.
+  // pinright team policy. Versioned with the repo; environment variables override it.
+  // Every key is optional; see "Team policy" in the pinright README.
 
   // Private or vetted packages that skip every check. "*" is a wildcard.
   "allow": [],
@@ -38,7 +38,7 @@ export const STARTER_CONFIG = `{
   // turn the check off, at the cost of one approval per install while it is down.
   "onError": "ask",
 
-  // What safectx cannot check (git or URL sources, another registry, a command it cannot read): allow, ask or deny.
+  // What pinright cannot check (git or URL sources, another registry, a command it cannot read): allow, ask or deny.
   "unverifiable": "ask"
 }
 `;

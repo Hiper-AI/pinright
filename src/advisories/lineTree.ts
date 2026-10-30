@@ -1,5 +1,5 @@
 /**
- * The same-line fix whose own dependency tree is still vulnerable. safectx
+ * The same-line fix whose own dependency tree is still vulnerable. pinright
  * recommends the clean release on the project's line first (next 15.5.28 for a
  * 15.x project), and that stays the rule. But next 15 pins a postcss with
  * advisories that only next 16 clears: the agent pins the "safe" version and the
@@ -23,7 +23,7 @@ export interface PulledVulnerable {
 }
 
 export interface LineTreeNote {
-  /** The same-line version safectx recommends (or the one requested, when it is that version). */
+  /** The same-line version pinright recommends (or the one requested, when it is that version). */
   version: string;
   line: string;
   /** Dependencies of `version` with advisories, worst-known first as OSV lists them. */

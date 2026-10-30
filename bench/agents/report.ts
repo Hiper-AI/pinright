@@ -5,6 +5,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { canonicalScores } from '../legacy.js';
 import type { RunScore } from './score.js';
 import { TASKS } from './tasks.js';
 
@@ -12,15 +13,15 @@ const stamp = process.argv[2];
 if (!stamp) throw new Error('usage: report.ts <stamp>');
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
-const scores: RunScore[] = JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8'));
+const scores: RunScore[] = canonicalScores(JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8')));
 const config = JSON.parse(readFileSync(join(runDir, 'config.json'), 'utf8'));
 
-const ARMS = ['no-docs', 'safectx', 'hook-only', 'safectx+hook', 'latest'];
+const ARMS = ['no-docs', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
 const LABEL: Record<string, string> = {
   'no-docs': 'No docs',
-  safectx: 'safectx MCP',
-  'hook-only': 'safectx hook only',
-  'safectx+hook': 'safectx MCP + hook',
+  pinright: 'pinright MCP',
+  'hook-only': 'pinright hook only',
+  'pinright+hook': 'pinright MCP + hook',
   latest: 'No pin (reference)',
 };
 
@@ -77,17 +78,17 @@ for (const arm of ARMS) {
 const arms = ARMS.filter((a) => stats[a]);
 const rows = Object.keys(stats[arms[0]]);
 const lines: string[] = [];
-lines.push('# Agent benchmark: no docs vs safectx', '');
+lines.push('# Agent benchmark: no docs vs pinright', '');
 lines.push(
   `Run \`${stamp}\`, model \`${scores.find((s) => s.model)?.model ?? config.model}\`, ${config.reps} repetition(s) of ${TASKS.length} tasks per arm ` +
     `(${TASKS.filter((t) => t.ecosystem === 'npm').length} npm, ${TASKS.filter((t) => t.ecosystem === 'pypi').length} PyPI). ` +
     'Each run is Claude Code in headless mode with only Write and Read as built-in tools (no shell, no web). The prompt is identical in every arm and asks for exact pinned versions. ' +
-    'Arms differ only in what is attached: nothing, the safectx MCP server (its docs come from the packages themselves), the safectx pre-install hook alone, or both.',
+    'Arms differ only in what is attached: nothing, the pinright MCP server (its docs come from the packages themselves), the pinright pre-install hook alone, or both.',
   '',
 );
 lines.push(
   '"No pin" has no agent: the packages the no-docs agent chose, installed without a version. ' +
-    'Whole-tree alerts come from `npm audit` (lockfile resolved with `--package-lock-only`) and `pip-audit` (over `uv pip compile` output); neither shares code or data path with safectx, and both read the advisory data Dependabot alerts on. ' +
+    'Whole-tree alerts come from `npm audit` (lockfile resolved with `--package-lock-only`) and `pip-audit` (over `uv pip compile` output); neither shares code or data path with pinright, and both read the advisory data Dependabot alerts on. ' +
     '"Build" means a real `npm install` plus `npm run build`, `tsc --noEmit` or an import check for JavaScript, and for Python `uv pip install` plus executing every top-level import of the generated files. ' +
     'Builds that fail only because a native binary needs an install script (never run here) are left out as inconclusive.',
   '',
@@ -125,31 +126,31 @@ for (const a of arms.filter((x) => x !== 'latest')) {
   lines.push('');
 }
 
-// safectx check-manifest against npm audit / pip-audit on the very same files.
-const pairs = scores.filter((s) => ARMS.includes(s.arm) && s.tree?.resolved && s.tree.safectx && s.tree.auditNames);
+// pinright check-manifest against npm audit / pip-audit on the very same files.
+const pairs = scores.filter((s) => ARMS.includes(s.arm) && s.tree?.resolved && s.tree.pinright && s.tree.auditNames);
 if (pairs.length) {
   const agree = pairs.map((s) => {
     const A = new Set(s.tree!.auditNames);
-    const B = new Set(s.tree!.safectx!.vulnerableNames);
+    const B = new Set(s.tree!.pinright!.vulnerableNames);
     const union = new Set([...A, ...B]);
     const inter = [...A].filter((x) => B.has(x)).length;
     return { s, jaccard: union.size ? inter / union.size : 1, onlyAudit: [...A].filter((x) => !B.has(x)), onlyOurs: [...B].filter((x) => !A.has(x)) };
   });
   const byEco = (eco: string) => agree.filter((x) => x.s.ecosystem === eco);
-  lines.push('## safectx check-manifest vs npm audit / pip-audit (same lockfiles)', '');
-  lines.push('| | Lockfiles | Alerts (audit tool) | Alerts (safectx) | Vulnerable packages, mean Jaccard | Identical sets |');
+  lines.push('## pinright check-manifest vs npm audit / pip-audit (same lockfiles)', '');
+  lines.push('| | Lockfiles | Alerts (audit tool) | Alerts (pinright) | Vulnerable packages, mean Jaccard | Identical sets |');
   lines.push('|---|---|---|---|---|---|');
   for (const eco of ['npm', 'pypi']) {
     const xs = byEco(eco);
     if (!xs.length) continue;
     lines.push(
-      `| ${eco === 'npm' ? 'npm (npm audit)' : 'PyPI (pip-audit)'} | ${xs.length} | ${xs.reduce((a, x) => a + (x.s.tree!.alerts ?? 0), 0)} | ${xs.reduce((a, x) => a + x.s.tree!.safectx!.alerts, 0)} | ${f2(mean(xs.map((x) => x.jaccard)))} | ${xs.filter((x) => x.jaccard === 1).length} |`,
+      `| ${eco === 'npm' ? 'npm (npm audit)' : 'PyPI (pip-audit)'} | ${xs.length} | ${xs.reduce((a, x) => a + (x.s.tree!.alerts ?? 0), 0)} | ${xs.reduce((a, x) => a + x.s.tree!.pinright!.alerts, 0)} | ${f2(mean(xs.map((x) => x.jaccard)))} | ${xs.filter((x) => x.jaccard === 1).length} |`,
     );
   }
   const diffs = new Map<string, number>();
   for (const x of agree) {
     for (const n of x.onlyAudit) diffs.set(`only the audit tool: ${n}`, (diffs.get(`only the audit tool: ${n}`) ?? 0) + 1);
-    for (const n of x.onlyOurs) diffs.set(`only safectx: ${n}`, (diffs.get(`only safectx: ${n}`) ?? 0) + 1);
+    for (const n of x.onlyOurs) diffs.set(`only pinright: ${n}`, (diffs.get(`only pinright: ${n}`) ?? 0) + 1);
   }
   if (diffs.size) {
     lines.push('', 'Packages flagged by one side only (times seen):', '');

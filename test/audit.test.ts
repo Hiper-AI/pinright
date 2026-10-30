@@ -3,7 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.SAFECTX_NO_CACHE = '1';
+process.env.PINRIGHT_NO_CACHE = '1';
 
 const vulnsByPkg = new Map<string, string[]>(); // "name@version" -> ids
 const vulnDetails = new Map<string, unknown>();

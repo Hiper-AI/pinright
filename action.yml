@@ -1,4 +1,4 @@
-name: safectx audit
+name: pinright audit
 description: Audit dependency trees and GitHub Actions for known advisories, malware, typosquats and policy violations; report to code scanning as SARIF.
 author: Hiper AI
 branding:
@@ -23,11 +23,11 @@ inputs:
     required: false
     default: 'true'
   category:
-    description: Code scanning category, to tell several safectx runs apart (one per path in a monorepo).
+    description: Code scanning category, to tell several pinright runs apart (one per path in a monorepo).
     required: false
-    default: safectx
+    default: pinright
   config:
-    description: Path to a .safectx.json team policy. Default is the nearest one above the path; on pull requests, the one in the base commit (the PR cannot loosen its own checks).
+    description: Path to a .pinright.json team policy. Default is the nearest one above the path; on pull requests, the one in the base commit (the PR cannot loosen its own checks).
     required: false
     default: ''
   supply-chain:
@@ -78,16 +78,16 @@ runs:
       id: audit
       shell: bash
       env:
-        SAFECTX_INPUT_PATH: ${{ inputs.path }}
-        SAFECTX_INPUT_FAIL_ON: ${{ inputs.fail-on }}
-        SAFECTX_INPUT_SARIF: ${{ inputs.sarif }}
-        SAFECTX_INPUT_UPLOAD: ${{ inputs.upload-sarif }}
-        SAFECTX_INPUT_CONFIG: ${{ inputs.config }}
-        SAFECTX_INPUT_SUPPLY_CHAIN: ${{ inputs.supply-chain }}
-        SAFECTX_INPUT_ANNOTATIONS: ${{ inputs.annotations }}
+        PINRIGHT_INPUT_PATH: ${{ inputs.path }}
+        PINRIGHT_INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        PINRIGHT_INPUT_SARIF: ${{ inputs.sarif }}
+        PINRIGHT_INPUT_UPLOAD: ${{ inputs.upload-sarif }}
+        PINRIGHT_INPUT_CONFIG: ${{ inputs.config }}
+        PINRIGHT_INPUT_SUPPLY_CHAIN: ${{ inputs.supply-chain }}
+        PINRIGHT_INPUT_ANNOTATIONS: ${{ inputs.annotations }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         # Per job: on a shared self-hosted runner another job could otherwise leave advisory data in ~/.cache.
-        SAFECTX_CACHE_DIR: ${{ runner.temp }}/safectx-cache
+        PINRIGHT_CACHE_DIR: ${{ runner.temp }}/pinright-cache
       run: node "$GITHUB_ACTION_PATH/action-dist/index.mjs"
 
     - name: Upload SARIF to code scanning
@@ -106,7 +106,7 @@ runs:
         FAIL_ON: ${{ inputs.fail-on }}
       run: |
         case "$CODE" in
-          0) echo "safectx: no findings at or above $FAIL_ON." ;;
-          1) echo "::error title=safectx::Findings at or above $FAIL_ON, or blocked by malware, typosquat or policy checks. See the job summary."; exit 1 ;;
-          *) echo "::error title=safectx::The audit did not complete (exit ${CODE:-unknown})."; exit "${CODE:-3}" ;;
+          0) echo "pinright: no findings at or above $FAIL_ON." ;;
+          1) echo "::error title=pinright::Findings at or above $FAIL_ON, or blocked by malware, typosquat or policy checks. See the job summary."; exit 1 ;;
+          *) echo "::error title=pinright::The audit did not complete (exit ${CODE:-unknown})."; exit "${CODE:-3}" ;;
         esac

@@ -17,7 +17,7 @@ const CONCURRENCY = 8;
  * The whole batch answers within this, slow upstreams or not: packages still
  * pending are reported as "not checked", never dropped and never called ok.
  */
-const BATCH_DEADLINE_MS = Number(process.env.SAFECTX_BATCH_TIMEOUT_MS ?? 45_000);
+const BATCH_DEADLINE_MS = Number(process.env.PINRIGHT_BATCH_TIMEOUT_MS ?? 45_000);
 const SEV_ORDER = ['CRITICAL', 'HIGH', 'MODERATE', 'MEDIUM', 'LOW'];
 
 export interface BatchItem {

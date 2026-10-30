@@ -42,7 +42,7 @@ function log(message: string, uri = 'package-lock.json', ruleId = 'GHSA-xxxx-yyy
     version: '2.1.0',
     runs: [
       {
-        tool: { driver: { name: 'safectx', rules: [{ id: ruleId, properties: { 'security-severity': '9.8' } }] } },
+        tool: { driver: { name: 'pinright', rules: [{ id: ruleId, properties: { 'security-severity': '9.8' } }] } },
         results: [{ ruleId, level: 'error', message: { text: message }, locations: [{ physicalLocation: { artifactLocation: { uri }, region: { startLine: 3 } } }] }],
       },
     ],

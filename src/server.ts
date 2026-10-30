@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * safectx over stdio. Configure it in your agent as an MCP server:
- *   { "mcpServers": { "safectx": { "command": "npx", "args": ["-y", "safectx"] } } }
+ * pinright over stdio. Configure it in your agent as an MCP server:
+ *   { "mcpServers": { "pinright": { "command": "npx", "args": ["-y", "pinright"] } } }
  */
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { buildMcpServer } from './mcp.js';
@@ -11,10 +11,10 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // stdout is the MCP channel; everything human goes to stderr.
-  console.error('[safectx] ready on stdio');
+  console.error('[pinright] ready on stdio');
 }
 
 main().catch((err) => {
-  console.error('[safectx] fatal:', (err as Error).message);
+  console.error('[pinright] fatal:', (err as Error).message);
   process.exit(1);
 });

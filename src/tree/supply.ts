@@ -90,7 +90,7 @@ export function toFindings(p: TreePackage, v: Checked): SupplyFinding[] {
       kind: 'unknown-package',
       blocking: false,
       level: 'warning',
-      message: `${p.name} is not in the public ${r.ecosystem} registry (${r.sources[0]}): a hallucinated name someone could register, or a private package. If it is yours, add it to "allow" in .safectx.json.`,
+      message: `${p.name} is not in the public ${r.ecosystem} registry (${r.sources[0]}): a hallucinated name someone could register, or a private package. If it is yours, add it to "allow" in .pinright.json.`,
     });
     return out;
   }

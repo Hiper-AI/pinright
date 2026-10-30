@@ -28,7 +28,7 @@ const write = (rel: string, content: string) => {
 };
 
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-imports-'));
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-imports-'));
   registry.clear();
   for (const [n, v] of [['langchain-text-splitters', '1.1.3'], ['pyyaml', '6.0.3'], ['numpy', '2.5.4'], ['requests', '2.34.2']]) registry.set(`pypi:${n}`, { verdict: 'ok', safeVersion: v });
   for (const [n, v] of [['zod', '4.6.7'], ['@tanstack/react-query', '5.90.0'], ['react', '19.2.0']]) registry.set(`npm:${n}`, { verdict: 'ok', safeVersion: v });
@@ -131,7 +131,7 @@ describe('undeclaredImportNotes', () => {
     write('requirements.txt', 'flask==3.1.3\n');
     const f = path.join(dir, 'app.py');
     expect(await undeclaredImportNotes(f, 'import numpy\nimport requests\n', 'import numpy\n')).toEqual([expect.stringContaining('`requests`')]);
-    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-bare-'));
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-bare-'));
     fs.mkdirSync(path.join(bare, '.git'));
     expect(await undeclaredImportNotes(path.join(bare, 'x.py'), 'import numpy\n', undefined)).toEqual([]);
     fs.rmSync(bare, { recursive: true, force: true });

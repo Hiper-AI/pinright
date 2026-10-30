@@ -55,7 +55,7 @@ export interface RiskFacts {
   scorecard?: ScorecardFacts;
   /**
    * The package's own text (docs, changelog, registry fields) that tried to give an AI agent
-   * instructions, as "where (rule ids)". From registry fields and from docs safectx served earlier.
+   * instructions, as "where (rule ids)". From registry fields and from docs pinright served earlier.
    */
   agentText?: string[];
 }
@@ -84,15 +84,15 @@ function intEnv(name: string, fallback: number): number {
 export function riskThresholds() {
   return {
     /** A package first published fewer days ago than this, with install scripts, is denied by the hook. */
-    newPackageDays: intEnv('SAFECTX_RISK_NEW_PACKAGE_DAYS', 14),
+    newPackageDays: intEnv('PINRIGHT_RISK_NEW_PACKAGE_DAYS', 14),
     /** Window in which a publisher change or a young package is worth mentioning. */
-    recentDays: intEnv('SAFECTX_RISK_RECENT_DAYS', 30),
+    recentDays: intEnv('PINRIGHT_RISK_RECENT_DAYS', 30),
     /** Weekly downloads under this, on a young package, is a warning. */
-    lowDownloads: intEnv('SAFECTX_RISK_LOW_DOWNLOADS', 100),
+    lowDownloads: intEnv('PINRIGHT_RISK_LOW_DOWNLOADS', 100),
     /** OpenSSF Scorecard under this is a note (never a block). */
-    scorecardLow: intEnv('SAFECTX_RISK_SCORECARD_LOW', 4),
+    scorecardLow: intEnv('PINRIGHT_RISK_SCORECARD_LOW', 4),
     /** Earlier versions compared against for install scripts, provenance and publisher. */
-    history: Math.max(1, Math.round(intEnv('SAFECTX_RISK_HISTORY', 5))),
+    history: Math.max(1, Math.round(intEnv('PINRIGHT_RISK_HISTORY', 5))),
   };
 }
 

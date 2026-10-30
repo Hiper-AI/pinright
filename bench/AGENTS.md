@@ -1,10 +1,10 @@
-# Agent benchmark: no docs vs safectx
+# Agent benchmark: no docs vs pinright
 
-Run `v5-2026-10-29`, model `claude-sonnet-5-5`, 2 repetition(s) of 12 tasks per arm (8 npm, 4 PyPI). Each run is Claude Code in headless mode with only Write and Read as built-in tools (no shell, no web). The prompt is identical in every arm and asks for exact pinned versions. Arms differ only in what is attached: nothing, the safectx MCP server (its docs come from the packages themselves), the safectx pre-install hook alone, or both.
+Run `v5-2026-10-29`, model `claude-sonnet-5-5`, 2 repetition(s) of 12 tasks per arm (8 npm, 4 PyPI). Each run is Claude Code in headless mode with only Write and Read as built-in tools (no shell, no web). The prompt is identical in every arm and asks for exact pinned versions. Arms differ only in what is attached: nothing, the pinright MCP server (its docs come from the packages themselves), the pinright pre-install hook alone, or both.
 
-"No pin" has no agent: the packages the no-docs agent chose, installed without a version. Whole-tree alerts come from `npm audit` (lockfile resolved with `--package-lock-only`) and `pip-audit` (over `uv pip compile` output); neither shares code or data path with safectx, and both read the advisory data Dependabot alerts on. "Build" means a real `npm install` plus `npm run build`, `tsc --noEmit` or an import check for JavaScript, and for Python `uv pip install` plus executing every top-level import of the generated files. Builds that fail only because a native binary needs an install script (never run here) are left out as inconclusive.
+"No pin" has no agent: the packages the no-docs agent chose, installed without a version. Whole-tree alerts come from `npm audit` (lockfile resolved with `--package-lock-only`) and `pip-audit` (over `uv pip compile` output); neither shares code or data path with pinright, and both read the advisory data Dependabot alerts on. "Build" means a real `npm install` plus `npm run build`, `tsc --noEmit` or an import check for JavaScript, and for Python `uv pip install` plus executing every top-level import of the generated files. Builds that fail only because a native binary needs an install script (never run here) are left out as inconclusive.
 
-| Metric | No docs | safectx MCP | safectx hook only | safectx MCP + hook | No pin (reference) |
+| Metric | No docs | pinright MCP | pinright hook only | pinright MCP + hook | No pin (reference) |
 |---|---|---|---|---|---|
 | Runs with a manifest | 22 / 24 | 24 / 24 | 22 / 24 | 24 / 24 | 12 / 12 |
 | Direct dependencies pinned | 136 | 129 | 132 | 131 | 76 |
@@ -28,7 +28,7 @@ Run `v5-2026-10-29`, model `claude-sonnet-5-5`, 2 repetition(s) of 12 tasks per 
 
 ## Whole-tree alerts per task (mean over repetitions; x = did not build)
 
-| Task | Ecosystem | No docs | safectx MCP | safectx hook only | safectx MCP + hook | No pin (reference) |
+| Task | Ecosystem | No docs | pinright MCP | pinright hook only | pinright MCP + hook | No pin (reference) |
 |---|---|---|---|---|---|---|
 | next-auth-middleware | npm | 52.5 | 2.0 | 4.0 | 0.0 xx | 0.0 |
 | express-jwt-api | npm | 8.0 | 0.0 | 0.0 | 0.0 | 0.0 |
@@ -48,28 +48,28 @@ Run `v5-2026-10-29`, model `claude-sonnet-5-5`, 2 repetition(s) of 12 tasks per 
 **No docs**: none
 
 
-**safectx MCP**: none
+**pinright MCP**: none
 
 
-**safectx hook only**: none
+**pinright hook only**: none
 
 
-**safectx MCP + hook**: 
+**pinright MCP + hook**: 
 
 - next-auth-middleware r1: npm run build failed: `Failed to compile.`
 - next-auth-middleware r2: npm run build failed: `> Build error occurred`
 
-## safectx check-manifest vs npm audit / pip-audit (same lockfiles)
+## pinright check-manifest vs npm audit / pip-audit (same lockfiles)
 
-| | Lockfiles | Alerts (audit tool) | Alerts (safectx) | Vulnerable packages, mean Jaccard | Identical sets |
+| | Lockfiles | Alerts (audit tool) | Alerts (pinright) | Vulnerable packages, mean Jaccard | Identical sets |
 |---|---|---|---|---|---|
 | npm (npm audit) | 70 | 354 | 368 | 0.93 | 63 |
 | PyPI (pip-audit) | 34 | 343 | 350 | 1.00 | 34 |
 
 Packages flagged by one side only (times seen):
 
-- only safectx: @nuxt/nitro-server x7
-- only safectx: nuxt x7
+- only pinright: @nuxt/nitro-server x7
+- only pinright: nuxt x7
 
 ## Vulnerable or non-existent direct pins, by arm
 
@@ -96,13 +96,13 @@ Packages flagged by one side only (times seen):
 - pyjwt@2.10.1 (32 advisories, CVSS 9.1; default 2.15.1)
 - python-multipart@0.0.20 (14 advisories, CVSS 8.6; default 0.0.32)
 
-**safectx MCP**: none
+**pinright MCP**: none
 
 
-**safectx hook only**: none
+**pinright hook only**: none
 
 
-**safectx MCP + hook**: none
+**pinright MCP + hook**: none
 
 
 ## Reproduce

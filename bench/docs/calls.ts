@@ -6,12 +6,13 @@
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { armDir as findArmDir, canonicalArm } from '../legacy.js';
 import { readTranscript } from './score.js';
 
 const [stamp, task, arm] = process.argv.slice(2);
 if (!stamp || !task || !arm) throw new Error('usage: calls.ts <stamp> <task> <arm> [--full]');
 const full = process.argv.includes('--full');
-const armDir = join(resolve(import.meta.dirname, '..', '..'), 'bench', 'docs', 'runs', stamp, arm);
+const armDir = findArmDir(join(resolve(import.meta.dirname, '..', '..'), 'bench', 'docs', 'runs', stamp), canonicalArm(arm));
 for (const name of existsSync(armDir) ? readdirSync(armDir).filter((n) => n.startsWith(`${task}-r`)).sort() : []) {
   const t = readTranscript(join(armDir, name));
   console.log(`\n=== ${arm} ${name}: ${t.calls.length} calls, ${t.turns} turns, $${t.costUsd?.toFixed(3)}`);

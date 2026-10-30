@@ -1,5 +1,5 @@
 /**
- * The team policy: a `.safectx.json` at the project root, versioned with the
+ * The team policy: a `.pinright.json` at the project root, versioned with the
  * repo, so every developer and every agent on the project enforces the same
  * rules. Precedence: built-in defaults < the file < environment variables.
  *
@@ -50,7 +50,7 @@ export const teamConfigSchema = z.strictObject({
   noFix: z.enum(['severity', 'allow', 'ask', 'deny']).optional(),
   /** When deps.dev or OSV cannot be reached. */
   onError: z.enum(['allow', 'ask', 'deny']).optional(),
-  /** What safectx cannot check: git and URL sources, registry switches, commands or files it cannot read. */
+  /** What pinright cannot check: git and URL sources, registry switches, commands or files it cannot read. */
   unverifiable: z.enum(['allow', 'ask', 'deny']).optional(),
   /** Pinning of GitHub Actions to commit SHAs; read by the workflow checks. */
   actionsPin: z.enum(['off', 'warn', 'enforce']).optional(),
@@ -87,7 +87,7 @@ export interface LoadedConfig {
   error?: string;
 }
 
-/** JSON with // and /* comments and trailing commas, as written by `safectx init`. */
+/** JSON with // and /* comments and trailing commas, as written by `pinright init`. */
 export function stripJsonComments(src: string): string {
   let out = '';
   let inString = false;
@@ -127,13 +127,13 @@ export function parseTeamConfig(content: string, file = CONFIG_FILE): LoadedConf
   const parsed = teamConfigSchema.safeParse(raw);
   if (!parsed.success) {
     const issues = parsed.error.issues.slice(0, 5).map((i) => `${i.path.length ? i.path.join('.') : '(top level)'}: ${i.message}`);
-    return { file, error: `${file} does not match the safectx schema: ${issues.join('; ')}` };
+    return { file, error: `${file} does not match the pinright schema: ${issues.join('; ')}` };
   }
   return { file, config: parsed.data };
 }
 
 /**
- * The nearest .safectx.json from `dir` upwards, stopping at the repository root
+ * The nearest .pinright.json from `dir` upwards, stopping at the repository root
  * (the directory holding .git) or the home directory, whichever comes first.
  */
 export function findConfigFile(dir: string): string | undefined {
@@ -182,20 +182,20 @@ function envEnum<T extends string>(name: string, values: readonly T[], env: Node
   return v && (values as readonly string[]).includes(v) ? (v as T) : undefined;
 }
 
-/** Defaults < file < env. SAFECTX_ALLOW adds to the file's allow list instead of replacing it. */
+/** Defaults < file < env. PINRIGHT_ALLOW adds to the file's allow list instead of replacing it. */
 export function resolvePolicy(cfg?: TeamConfig, env: NodeJS.ProcessEnv = process.env, file?: string): Policy {
-  const days = env.SAFECTX_COOLDOWN_DAYS ? Number.parseInt(env.SAFECTX_COOLDOWN_DAYS, 10) : undefined;
+  const days = env.PINRIGHT_COOLDOWN_DAYS ? Number.parseInt(env.PINRIGHT_COOLDOWN_DAYS, 10) : undefined;
   return {
-    allow: [...(cfg?.allow ?? []), ...envList('SAFECTX_ALLOW', env)],
+    allow: [...(cfg?.allow ?? []), ...envList('PINRIGHT_ALLOW', env)],
     deny: (cfg?.deny ?? []).map((d) => (typeof d === 'string' ? { name: d } : d)),
     licenses: { allow: cfg?.licenses?.allow, deny: cfg?.licenses?.deny },
-    severityThreshold: envEnum('SAFECTX_SEVERITY_THRESHOLD', SEVERITIES, env) ?? cfg?.severityThreshold ?? 'low',
-    noFix: envEnum('SAFECTX_HOOK_NO_FIX', ['severity', 'allow', 'ask', 'deny'] as const, env) ?? cfg?.noFix ?? 'severity',
-    onError: envEnum('SAFECTX_HOOK_ON_ERROR', ['allow', 'ask', 'deny'] as const, env) ?? cfg?.onError ?? 'allow',
-    unverifiable: envEnum('SAFECTX_HOOK_UNVERIFIABLE', ['allow', 'ask', 'deny'] as const, env) ?? cfg?.unverifiable ?? 'ask',
-    cooldown: envEnum('SAFECTX_HOOK_COOLDOWN', ['warn', 'enforce'] as const, env) ?? cfg?.cooldown ?? 'warn',
+    severityThreshold: envEnum('PINRIGHT_SEVERITY_THRESHOLD', SEVERITIES, env) ?? cfg?.severityThreshold ?? 'low',
+    noFix: envEnum('PINRIGHT_HOOK_NO_FIX', ['severity', 'allow', 'ask', 'deny'] as const, env) ?? cfg?.noFix ?? 'severity',
+    onError: envEnum('PINRIGHT_HOOK_ON_ERROR', ['allow', 'ask', 'deny'] as const, env) ?? cfg?.onError ?? 'allow',
+    unverifiable: envEnum('PINRIGHT_HOOK_UNVERIFIABLE', ['allow', 'ask', 'deny'] as const, env) ?? cfg?.unverifiable ?? 'ask',
+    cooldown: envEnum('PINRIGHT_HOOK_COOLDOWN', ['warn', 'enforce'] as const, env) ?? cfg?.cooldown ?? 'warn',
     cooldownDays: days !== undefined && Number.isFinite(days) && days >= 0 ? days : cfg?.cooldownDays,
-    actionsPin: envEnum('SAFECTX_ACTIONS_PIN', ['off', 'warn', 'enforce'] as const, env) ?? cfg?.actionsPin,
+    actionsPin: envEnum('PINRIGHT_ACTIONS_PIN', ['off', 'warn', 'enforce'] as const, env) ?? cfg?.actionsPin,
     file,
   };
 }
@@ -271,7 +271,7 @@ export interface LicenseCheck {
 /**
  * A license expression is denied when every alternative it offers carries a
  * denied id (or, with an allow list, an id outside it). Missing or non-SPDX
- * license data is a note: safectx cannot tell, so a human should look.
+ * license data is a note: pinright cannot tell, so a human should look.
  */
 export function checkLicenses(p: Policy, licenses: string[] | undefined): LicenseCheck {
   const { allow, deny } = p.licenses;

@@ -4,7 +4,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.SAFECTX_NO_CACHE = '1';
+process.env.PINRIGHT_NO_CACHE = '1';
 
 const SHA = (c: string) => c.repeat(40);
 const refs = new Map<string, string>(); // "owner/repo@ref" -> commit sha
@@ -57,9 +57,9 @@ beforeEach(() => {
   latest.clear();
   osv.clear();
   osvDown = false;
-  delete process.env.SAFECTX_ACTIONS_PIN;
-  delete process.env.SAFECTX_ALLOW;
-  delete process.env.SAFECTX_HOOK_ON_ERROR;
+  delete process.env.PINRIGHT_ACTIONS_PIN;
+  delete process.env.PINRIGHT_ALLOW;
+  delete process.env.PINRIGHT_HOOK_ON_ERROR;
   // actions/checkout: v4 and v4.2.2 on the same commit.
   refs.set('actions/checkout@v4', SHA('a'));
   refs.set('actions/checkout@v4.2.2', SHA('a'));
@@ -167,7 +167,7 @@ describe('checkAction and the hook', () => {
     let d = await decideActions([use('actions/checkout@v4')]);
     expect(d.action).toBe('allow');
     expect(d.warnings[0]).toContain(`uses: actions/checkout@${SHA('a')} # v4.2.2`);
-    process.env.SAFECTX_ACTIONS_PIN = 'enforce';
+    process.env.PINRIGHT_ACTIONS_PIN = 'enforce';
     d = await decideActions([use('actions/checkout@v4')]);
     expect(d.action).toBe('deny');
     d = await decideActions([use(`actions/checkout@${SHA('a')} # v4.2.2`)]);
@@ -191,15 +191,15 @@ describe('checkAction and the hook', () => {
     expect(d.action).toBe('allow');
     expect(d.warnings.join(' ')).toMatch(/could not be verified/);
     osvDown = true;
-    process.env.SAFECTX_HOOK_ON_ERROR = 'deny';
+    process.env.PINRIGHT_HOOK_ON_ERROR = 'deny';
     r = await checkAction(use('actions/checkout@v4'));
     expect(r.unverified).toMatch(/osv\.dev did not answer/);
     d = await decideActions([use('actions/checkout@v4')]);
     expect(d.action).toBe('deny');
   });
 
-  it('SAFECTX_ALLOW skips an org', async () => {
-    process.env.SAFECTX_ALLOW = 'tj-actions/*';
+  it('PINRIGHT_ALLOW skips an org', async () => {
+    process.env.PINRIGHT_ALLOW = 'tj-actions/*';
     expect((await decideActions([use('tj-actions/changed-files@v35')])).action).toBe('allow');
   });
 });

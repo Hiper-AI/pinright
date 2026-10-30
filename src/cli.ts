@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * safectx                      MCP server over stdio (what agents launch)
- * safectx hook <agent>         pre-install hook: reads the agent's hook JSON on stdin
+ * pinright                      MCP server over stdio (what agents launch)
+ * pinright hook <agent>         pre-install hook: reads the agent's hook JSON on stdin
  *                              (claude, cursor, codex, gemini, copilot, windsurf)
- * safectx check <eco> <name>[@version]
- * safectx audit [path] [--json] [--fail-on low|moderate|high|critical|none] [--sarif <file>] [--config <file>]
- * safectx upgrade <eco> <name> <from> [to] [--query="..."]
- * safectx init [client] [--project|--user] [--print] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]
- * safectx doctor [--json] [--offline]
- * safectx cache clear|prune|path
+ * pinright check <eco> <name>[@version]
+ * pinright audit [path] [--json] [--fail-on low|moderate|high|critical|none] [--sarif <file>] [--config <file>]
+ * pinright upgrade <eco> <name> <from> [to] [--query="..."]
+ * pinright init [client] [--project|--user] [--print] [--no-hook] [--no-mcp] [--no-config] [--gh-cli]
+ * pinright doctor [--json] [--offline]
+ * pinright cache clear|prune|path
  *
  * Only what every command needs is imported up front. The hook runs before
  * each agent command, so the checks, the MCP server, the audit and the client
@@ -33,7 +33,7 @@ async function serve(): Promise<number> {
   ]);
   const server = buildMcpServer();
   await server.connect(new StdioServerTransport());
-  console.error('[safectx] ready on stdio');
+  console.error('[pinright] ready on stdio');
   // Housekeeping off the request path: the server lives for the whole session.
   setTimeout(() => pruneCacheIfDue(), 10_000).unref();
   return new Promise(() => {}); // stdio keeps the process alive
@@ -43,7 +43,7 @@ async function serve(): Promise<number> {
 async function usage(cmd: string, problem?: string | { name: string; known: string[] }): Promise<number> {
   const { COMMANDS, unknownFlag } = await import('./cliHelp.js');
   const what = typeof problem === 'object' ? unknownFlag(problem.name, problem.known) : problem;
-  console.error(`${what ? `safectx ${cmd}: ${what}\n` : ''}usage: ${COMMANDS[cmd].usage}\nRun "safectx ${cmd} --help" for details.`);
+  console.error(`${what ? `pinright ${cmd}: ${what}\n` : ''}usage: ${COMMANDS[cmd].usage}\nRun "pinright ${cmd} --help" for details.`);
   return 2;
 }
 
@@ -131,7 +131,7 @@ async function audit(args: string[]): Promise<number> {
     const log = runToSarif(run, { root: sarifRoot(target, flags['sarif-root'] as string | undefined), toolVersion: PKG_VERSION });
     fs.mkdirSync(path.dirname(path.resolve(flags.sarif)), { recursive: true });
     fs.writeFileSync(flags.sarif, `${JSON.stringify(log, null, 2)}\n`);
-    console.error(`[safectx] SARIF written to ${flags.sarif} (${log.runs[0].results.length} results)`);
+    console.error(`[pinright] SARIF written to ${flags.sarif} (${log.runs[0].results.length} results)`);
   }
   return auditExitCode(run, failOn);
 }
@@ -232,7 +232,7 @@ async function main(): Promise<number> {
     // No agent named: Claude Code, as before the other agents existed.
     if (args[0] !== undefined && !isHookAgent(args[0])) {
       // Exit 2 blocks every tool call in most agents; 1 lets the agent go on, as a crash does.
-      console.error(`usage: safectx hook <${HOOK_AGENTS.join('|')}>`);
+      console.error(`usage: pinright hook <${HOOK_AGENTS.join('|')}>`);
       return 1;
     }
     return runHook(args[0] ?? 'claude');
@@ -241,11 +241,11 @@ async function main(): Promise<number> {
     console.log(PKG_VERSION);
     return 0;
   }
-  // A person at a terminal typing "safectx" wants help, not a server waiting on stdin; agents pipe stdin.
+  // A person at a terminal typing "pinright" wants help, not a server waiting on stdin; agents pipe stdin.
   if (cmd === undefined && process.stdin.isTTY) {
     const { mainHelp, colorEnabled } = await import('./cliHelp.js');
     console.log(mainHelp(PKG_VERSION, colorEnabled()));
-    console.log('(Agents start the MCP server with "safectx" over a pipe, or "safectx serve".)');
+    console.log('(Agents start the MCP server with "pinright" over a pipe, or "pinright serve".)');
     return 0;
   }
   if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
@@ -298,7 +298,7 @@ async function main(): Promise<number> {
 main().then(
   (code) => process.exit(code),
   (err) => {
-    console.error('[safectx] fatal:', (err as Error).message);
+    console.error('[pinright] fatal:', (err as Error).message);
     // A crashing hook must not wedge the agent; Claude Code and Cursor treat exit 1 as "proceed".
     process.exit(1);
   },

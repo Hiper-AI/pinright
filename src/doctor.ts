@@ -1,6 +1,6 @@
 /**
- * `safectx doctor`: is this machine set up to give honest answers? Node, each
- * upstream (with its latency), the cache, GitHub auth, which agents have safectx
+ * `pinright doctor`: is this machine set up to give honest answers? Node, each
+ * upstream (with its latency), the cache, GitHub auth, which agents have pinright
  * wired, and the team policy file. It only reads: client configs are never
  * written, and a token is never printed (only where it comes from).
  */
@@ -33,7 +33,7 @@ export interface ClientWiring {
   file: string;
   scope: 'project' | 'user';
   mcp: boolean;
-  /** Undefined where the client has no hook safectx can use. */
+  /** Undefined where the client has no hook pinright can use. */
   hook?: boolean;
 }
 
@@ -49,12 +49,12 @@ const PROBE_TIMEOUT_MS = 5_000;
 
 export function nodeCheck(version = process.version): Check {
   const ok = semver.satisfies(version, ENGINES);
-  return { name: 'node', status: ok ? 'ok' : 'fail', detail: `Node ${version}${ok ? '' : `; safectx needs ${ENGINES}`}` };
+  return { name: 'node', status: ok ? 'ok' : 'fail', detail: `Node ${version}${ok ? '' : `; pinright needs ${ENGINES}`}` };
 }
 
 interface Probe {
   name: string;
-  /** What safectx loses without it. */
+  /** What pinright loses without it. */
   role: string;
   url: string;
   method?: 'GET' | 'HEAD' | 'POST';
@@ -105,14 +105,14 @@ export async function probe(p: Probe, fetchImpl: typeof fetch = fetch): Promise<
 }
 
 export function cacheCheck(dir = config.cacheDir): Check {
-  if (config.cacheDisabled) return { name: 'cache', status: 'warn', detail: `disabled (SAFECTX_NO_CACHE=1): every check goes to the network` };
+  if (config.cacheDisabled) return { name: 'cache', status: 'warn', detail: `disabled (PINRIGHT_NO_CACHE=1): every check goes to the network` };
   try {
     fs.mkdirSync(dir, { recursive: true });
     const probeFile = path.join(dir, `.doctor-${process.pid}`);
     fs.writeFileSync(probeFile, 'ok');
     fs.rmSync(probeFile, { force: true });
   } catch (err) {
-    return { name: 'cache', status: 'fail', detail: `${dir} is not writable (${(err as Error).message}); set SAFECTX_CACHE_DIR` };
+    return { name: 'cache', status: 'fail', detail: `${dir} is not writable (${(err as Error).message}); set PINRIGHT_CACHE_DIR` };
   }
   const s = cacheStats(dir);
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
@@ -120,7 +120,7 @@ export function cacheCheck(dir = config.cacheDir): Check {
   return {
     name: 'cache',
     status: over ? 'warn' : 'ok',
-    detail: `${dir}: ${s.files} entries, ${mb(s.bytes)} (cap ${mb(config.cacheMaxBytes)}${over ? '; run "safectx cache prune"' : ''})`,
+    detail: `${dir}: ${s.files} entries, ${mb(s.bytes)} (cap ${mb(config.cacheMaxBytes)}${over ? '; run "pinright cache prune"' : ''})`,
   };
 }
 
@@ -129,8 +129,8 @@ export async function githubCheck(offline: boolean): Promise<Check> {
   const env = process.env.GITHUB_TOKEN ? 'GITHUB_TOKEN' : process.env.GH_TOKEN ? 'GH_TOKEN' : undefined;
   let mode: string;
   if (env) mode = `token from ${env}`;
-  else if (ghCliOptIn()) mode = ghCliLoggedIn() ? 'token from the GitHub CLI login (SAFECTX_GH_CLI=1)' : 'SAFECTX_GH_CLI=1, but the GitHub CLI is not logged in: anonymous';
-  else mode = `anonymous (60 requests an hour per IP)${ghCliLoggedIn() ? '; the GitHub CLI is logged in, opt in with SAFECTX_GH_CLI=1 or "safectx init --gh-cli"' : ''}`;
+  else if (ghCliOptIn()) mode = ghCliLoggedIn() ? 'token from the GitHub CLI login (PINRIGHT_GH_CLI=1)' : 'PINRIGHT_GH_CLI=1, but the GitHub CLI is not logged in: anonymous';
+  else mode = `anonymous (60 requests an hour per IP)${ghCliLoggedIn() ? '; the GitHub CLI is logged in, opt in with PINRIGHT_GH_CLI=1 or "pinright init --gh-cli"' : ''}`;
   if (offline) return { name: 'github', status: 'skip', detail: mode };
   const t0 = performance.now();
   try {
@@ -149,9 +149,9 @@ export async function githubCheck(offline: boolean): Promise<Check> {
 
 export function policyCheck(cwd = process.cwd()): Check {
   const team = loadTeamConfig(cwd);
-  if (!team.file) return { name: '.safectx.json', status: 'ok', detail: 'none found from here up; built-in defaults apply ("safectx init" writes a starter)' };
-  if (team.error) return { name: '.safectx.json', status: 'fail', detail: `${team.error} The hook denies dependency changes until it is fixed.` };
-  return { name: '.safectx.json', status: 'ok', detail: `${team.file} is valid` };
+  if (!team.file) return { name: '.pinright.json', status: 'ok', detail: 'none found from here up; built-in defaults apply ("pinright init" writes a starter)' };
+  if (team.error) return { name: '.pinright.json', status: 'fail', detail: `${team.error} The hook denies dependency changes until it is fixed.` };
+  return { name: '.pinright.json', status: 'ok', detail: `${team.file} is valid` };
 }
 
 function readText(file: string): string | undefined {
@@ -162,7 +162,7 @@ function readText(file: string): string | undefined {
   }
 }
 
-/** Whether a config file names safectx: the server key, the package, or a local checkout's cli.js. */
+/** Whether a config file names pinright: the server key, the package, or a local checkout's cli.js. */
 const namesUs = (text: string) => text.includes(SERVER_KEY) || text.includes(PKG_NAME) || /dist[\\/]+cli\.js/.test(text);
 
 function shown(file: string, cwd: string, home: string): string {
@@ -173,7 +173,7 @@ function shown(file: string, cwd: string, home: string): string {
 }
 
 /**
- * Which agents have safectx configured, per client and scope, from the same
+ * Which agents have pinright configured, per client and scope, from the same
  * registry `init` writes with (src/clients/registry.ts): the MCP config files
  * and the hook file of each client that is installed or present in the project.
  * Only reads, and only the client's own config paths.
@@ -204,7 +204,7 @@ export function clientWiring(cwd = process.cwd(), home = os.homedir(), platform 
   return out;
 }
 
-/** How long `safectx hook claude` takes for a command that installs nothing: the cost of every agent command. */
+/** How long `pinright hook claude` takes for a command that installs nothing: the cost of every agent command. */
 export function hookStartup(cli = path.join(path.dirname(fileURLToPath(import.meta.url)), 'cli.js')): Promise<Check> {
   return new Promise((resolve) => {
     if (!fs.existsSync(cli)) {
@@ -244,13 +244,13 @@ export function formatDoctor(r: DoctorReport, color = false): string {
   const p = paint(color);
   const tag: Record<Status, string> = { ok: p.green('ok  '), warn: p.yellow('warn'), fail: p.red('FAIL'), skip: p.dim('skip') };
   const width = Math.max(...r.checks.map((c) => c.name.length));
-  const lines = [`safectx ${r.version} doctor`, ''];
+  const lines = [`pinright ${r.version} doctor`, ''];
   for (const c of r.checks) {
     const ms = c.ms !== undefined ? `${String(c.ms).padStart(5)} ms  ` : '          ';
     lines.push(`  ${tag[c.status]}  ${c.name.padEnd(width)}  ${ms}${c.detail}`);
   }
   lines.push('', 'Agents (read-only; nothing was changed):');
-  if (!r.clients.length) lines.push('  no agent config found here or in your home directory. Run "safectx init claude" or "safectx init cursor".');
+  if (!r.clients.length) lines.push('  no agent config found here or in your home directory. Run "pinright init claude" or "pinright init cursor".');
   for (const w of r.clients) {
     const mcp = w.mcp ? p.green('MCP server') : p.dim('no MCP server');
     const hook = w.hook === undefined ? '' : w.hook ? `, ${p.green('hook wired')}` : `, ${p.yellow('no hook')}`;

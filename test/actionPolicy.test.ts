@@ -1,5 +1,5 @@
 /**
- * The Action's policy source on pull requests: the base commit's .safectx.json,
+ * The Action's policy source on pull requests: the base commit's .pinright.json,
  * never the one the PR brings (security review, residual risk 1). A temp git repo
  * plays the checkout; the event payload is a fake one.
  */
@@ -22,12 +22,12 @@ function git(cwd: string, ...args: string[]): string {
   return r.stdout.trim();
 }
 
-/** A repo whose base commit has `base` as .safectx.json (none if undefined), checked out at a PR commit with `head`. */
+/** A repo whose base commit has `base` as .pinright.json (none if undefined), checked out at a PR commit with `head`. */
 function repo(base: string | undefined, head: string | undefined, sub = ''): { dir: string; sha: string } {
-  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-pr-')));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-pr-')));
   tmp.push(dir);
   git(dir, 'init', '-q', '-b', 'main');
-  const file = path.join(dir, sub, '.safectx.json');
+  const file = path.join(dir, sub, '.pinright.json');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(path.join(dir, 'package.json'), '{}');
   if (base !== undefined) fs.writeFileSync(file, base);
@@ -52,8 +52,8 @@ describe('the Action reads the policy from the base commit on pull requests', { 
     expect(s.error).toBeUndefined();
     expect(s.kind).toBe('base');
     expect(s.text).toBe('{ "deny": ["left-pad"] }');
-    expect(s.label).toBe(`.safectx.json at base ${sha.slice(0, 7)}`);
-    expect(s.notices).toEqual(["This pull request changes .safectx.json. safectx used the base branch's version; review the policy change before merging."]);
+    expect(s.label).toBe(`.pinright.json at base ${sha.slice(0, 7)}`);
+    expect(s.notices).toEqual(["This pull request changes .pinright.json. pinright used the base branch's version; review the policy change before merging."]);
     // The policy the audit then uses is the base one, whatever the tree holds.
     const { policy } = loadPolicy(dir, undefined, { text: s.text, label: s.label as string });
     expect(policy.deny.map((d) => d.name)).toEqual(['left-pad']);
@@ -72,7 +72,7 @@ describe('the Action reads the policy from the base commit on pull requests', { 
     const s = selectPolicySource({ workspace: dir, target: dir, env: prEnv, event: event(sha) });
     expect(s.kind).toBe('base');
     expect(s.text).toBeUndefined();
-    expect(s.notices[0]).toMatch(/adds \.safectx\.json\. safectx ran without a team policy/);
+    expect(s.notices[0]).toMatch(/adds \.pinright\.json\. pinright ran without a team policy/);
     expect(loadPolicy(dir, undefined, { text: undefined, label: 'x' }).policy.allow).toEqual([]);
   });
 
@@ -80,24 +80,24 @@ describe('the Action reads the policy from the base commit on pull requests', { 
     const { dir, sha } = repo('{ "deny": ["x"] }', undefined);
     const s = selectPolicySource({ workspace: dir, target: dir, env: prEnv, event: event(sha) });
     expect(s.text).toBe('{ "deny": ["x"] }');
-    expect(s.notices[0]).toMatch(/deletes \.safectx\.json/);
+    expect(s.notices[0]).toMatch(/deletes \.pinright\.json/);
   });
 
   it('the nearest policy above the audited path, in the base tree; a nearer one the PR adds is reported', () => {
     const { dir, sha } = repo('{ "deny": ["root"] }', '{ "deny": ["root"] }');
     fs.mkdirSync(path.join(dir, 'packages', 'web'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'packages', 'web', '.safectx.json'), '{ "allow": ["*"] }');
+    fs.writeFileSync(path.join(dir, 'packages', 'web', '.pinright.json'), '{ "allow": ["*"] }');
     const s = selectPolicySource({ workspace: dir, target: path.join(dir, 'packages', 'web'), env: prEnv, event: event(sha) });
     expect(s.text).toBe('{ "deny": ["root"] }');
-    expect(s.notices[0]).toMatch(/adds packages\/web\/\.safectx\.json, which would replace \.safectx\.json/);
+    expect(s.notices[0]).toMatch(/adds packages\/web\/\.pinright\.json, which would replace \.pinright\.json/);
   });
 
   it('a policy in a subdirectory of the base is found from a file target there', () => {
     const { dir, sha } = repo('{ "deny": ["sub"] }', '{ "deny": [] }', 'app');
     fs.writeFileSync(path.join(dir, 'app', 'package-lock.json'), '{}');
     const s = selectPolicySource({ workspace: dir, target: path.join(dir, 'app', 'package-lock.json'), env: prEnv, event: event(sha) });
-    expect(s.label).toMatch(/^app\/\.safectx\.json at base /);
-    expect(s.notices[0]).toMatch(/changes app\/\.safectx\.json/);
+    expect(s.label).toMatch(/^app\/\.pinright\.json at base /);
+    expect(s.notices[0]).toMatch(/changes app\/\.pinright\.json/);
   });
 
   it('a base commit that is not in the checkout and cannot be fetched fails closed with how to fix the checkout', () => {
@@ -115,13 +115,13 @@ describe('the Action reads the policy from the base commit on pull requests', { 
     const s = selectPolicySource({ workspace: dir, target: dir, env: { ...prEnv, GITHUB_BASE_REF: 'main' }, event: {} });
     expect(s.error).toBeUndefined();
     expect(s.text).toBe('{ "deny": ["x"] }');
-    expect(s.label).toBe('.safectx.json at base main');
+    expect(s.label).toBe('.pinright.json at base main');
   });
 
   it('a base commit missing from a shallow checkout is fetched', () => {
     const { dir: upstream, sha } = repo('{ "deny": ["x"] }', '{}');
     git(upstream, 'config', 'uploadpack.allowReachableSHA1InWant', 'true');
-    const clone = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-clone-')));
+    const clone = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-clone-')));
     tmp.push(clone);
     git(clone, 'clone', '-q', '--depth=1', '--branch', 'pr', `file://${upstream.split(path.sep).join('/')}`, '.');
     expect(gitIn(clone)(['cat-file', '-e', `${sha}^{commit}`]).code).not.toBe(0);
@@ -138,8 +138,8 @@ describe('the Action reads the policy from the base commit on pull requests', { 
 
   it('the config input wins, and other events read the tree as before', () => {
     const { dir, sha } = repo('{ "deny": ["x"] }', '{}');
-    expect(selectPolicySource({ configInput: 'policy/.safectx.json', workspace: dir, target: dir, env: prEnv, event: event(sha) })).toEqual({
-      kind: 'input', file: path.join(dir, 'policy', '.safectx.json'), notices: [],
+    expect(selectPolicySource({ configInput: 'policy/.pinright.json', workspace: dir, target: dir, env: prEnv, event: event(sha) })).toEqual({
+      kind: 'input', file: path.join(dir, 'policy', '.pinright.json'), notices: [],
     });
     expect(selectPolicySource({ workspace: dir, target: dir, env: { GITHUB_EVENT_NAME: 'push' } })).toEqual({ kind: 'tree', notices: [] });
   });

@@ -68,11 +68,11 @@ const CASES: Case[] = [
 ];
 
 function env(cacheDir: string): NodeJS.ProcessEnv {
-  const e: NodeJS.ProcessEnv = { ...process.env, SAFECTX_CACHE_DIR: cacheDir };
+  const e: NodeJS.ProcessEnv = { ...process.env, PINRIGHT_CACHE_DIR: cacheDir };
   if (!withToken) {
     delete e.GITHUB_TOKEN;
     delete e.GH_TOKEN;
-    delete e.SAFECTX_GH_CLI;
+    delete e.PINRIGHT_GH_CLI;
   }
   return e;
 }
@@ -97,7 +97,7 @@ const pct = (xs: number[], p: number) => {
 
 /** A fresh repo-like project: the .git keeps the import check from reading the (often huge) temp dir above it. */
 function project(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-lat-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-lat-'));
   fs.mkdirSync(path.join(dir, '.git'));
   fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"x","version":"1.0.0"}\n');
   return dir;
@@ -108,7 +108,7 @@ const rows: { case: string; mode: string; p50: number; p95: number; action: stri
 async function measure(label: string, argv: string[], input: ((dir: string) => Record<string, unknown>) | undefined) {
   for (const mode of ['cold', 'warm'] as const) {
     const times: number[] = [];
-    const warmCache = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-cache-'));
+    const warmCache = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-cache-'));
     let last = '';
     if (mode === 'warm') {
       const dir = project();
@@ -116,7 +116,7 @@ async function measure(label: string, argv: string[], input: ((dir: string) => R
     }
     for (let i = 0; i < RUNS; i++) {
       const dir = project();
-      const cache = mode === 'cold' ? fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-cache-')) : warmCache;
+      const cache = mode === 'cold' ? fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-cache-')) : warmCache;
       const r = await runOnce(argv, input ? JSON.stringify(input(dir)) : undefined, cache, dir);
       times.push(r.ms);
       last = r.out;

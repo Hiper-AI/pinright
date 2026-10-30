@@ -56,7 +56,7 @@ const { ListRootsRequestSchema } = await import('@modelcontextprotocol/sdk/types
 
 const tmp: string[] = [];
 function tempDir(): string {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-proj-'));
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-proj-'));
   tmp.push(d);
   fs.mkdirSync(path.join(d, '.git'));
   return d;
@@ -77,7 +77,7 @@ const lock = (deps: Record<string, string>, extra: Record<string, { version: str
 beforeEach(() => {
   registry.clear();
   checks.length = 0;
-  delete process.env.SAFECTX_PROJECT_DIR;
+  delete process.env.PINRIGHT_PROJECT_DIR;
 });
 afterEach(() => {
   for (const d of tmp.splice(0)) fs.rmSync(d, { recursive: true, force: true });
@@ -141,10 +141,10 @@ describe('Project.installed', () => {
     expect((await p.installed('npm', 'next'))?.version).toBe('15.1.0');
   });
 
-  it('re-reads a file when it changes, and falls back to SAFECTX_PROJECT_DIR without roots', async () => {
+  it('re-reads a file when it changes, and falls back to PINRIGHT_PROJECT_DIR without roots', async () => {
     const d = tempDir();
     write(d, 'package-lock.json', lock({ next: '15.1.0' }));
-    process.env.SAFECTX_PROJECT_DIR = d;
+    process.env.PINRIGHT_PROJECT_DIR = d;
     const p = new Project();
     expect(p.roots()).toEqual([path.resolve(d)]);
     expect((await p.installed('npm', 'next'))?.version).toBe('15.1.0');
@@ -216,14 +216,14 @@ describe('MCP tools use the installed version', () => {
   it('shows team policy violations and a broken policy file in check-package', async () => {
     const d = tempDir();
     write(d, 'package-lock.json', lock({ 'gpl-thing': '1.0.0' }));
-    write(d, '.safectx.json', '{ "deny": [{ "name": "request", "reason": "unmaintained" }], "licenses": { "deny": ["AGPL-*"] } }');
+    write(d, '.pinright.json', '{ "deny": [{ "name": "request", "reason": "unmaintained" }], "licenses": { "deny": ["AGPL-*"] } }');
     const { client, call } = await connect([d]);
     const denied = JSON.parse(await call('check-package', { name: 'request', ecosystem: 'npm', version: '2.88.2', detail: true }));
-    expect(denied.policy).toEqual(['POLICY: request: denied by the project policy (.safectx.json): unmaintained']);
+    expect(denied.policy).toEqual(['POLICY: request: denied by the project policy (.pinright.json): unmaintained']);
     const lic = JSON.parse(await call('check-package', { name: 'gpl-thing', ecosystem: 'npm', detail: true }));
     expect(lic.notice).toMatch(/POLICY: gpl-thing: license AGPL-3\.0 is not allowed/);
-    write(d, '.safectx.json', '{ "deny": [ }');
-    fs.utimesSync(path.join(d, '.safectx.json'), new Date(), new Date(Date.now() + 5000));
+    write(d, '.pinright.json', '{ "deny": [ }');
+    fs.utimesSync(path.join(d, '.pinright.json'), new Date(), new Date(Date.now() + 5000));
     const broken = JSON.parse(await call('check-package', { name: 'left-pad', ecosystem: 'npm', version: '1.3.0', detail: true }));
     expect(broken.notice).toMatch(/^POLICY ERROR: .*not valid JSON/);
     await client.close();

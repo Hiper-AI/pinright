@@ -7,8 +7,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.SAFECTX_NO_CACHE = '1';
-process.env.SAFECTX_COOLDOWN_DAYS = '3';
+process.env.PINRIGHT_NO_CACHE = '1';
+process.env.PINRIGHT_COOLDOWN_DAYS = '3';
 
 type Route = (url: URL, init?: RequestInit) => Promise<Response> | Response;
 let route: Route = () => new Response(null, { status: 404 });
@@ -60,7 +60,7 @@ function healthy(url: URL): Response | undefined {
 }
 
 const intent = { ecosystem: 'npm' as const, name: 'quuxfixture', spec: '1.1.0', source: 'npm install quuxfixture@1.1.0' };
-const policy = (onError: string) => resolvePolicy(undefined, { SAFECTX_HOOK_ON_ERROR: onError });
+const policy = (onError: string) => resolvePolicy(undefined, { PINRIGHT_HOOK_ON_ERROR: onError });
 
 beforeEach(() => {
   resetHostHealth();
@@ -95,7 +95,7 @@ describe('no network at all (DNS fails for every host)', () => {
     const d = await decide([intent], policy('deny'));
     expect(d.action).toBe('deny');
     expect(d.problems.join('\n')).toMatch(/could not be verified.*onError policy is "deny"/);
-    expect(agentMessage(d)).toMatch(/^safectx blocked this dependency change:\n- quuxfixture.*could not be verified/);
+    expect(agentMessage(d)).toMatch(/^pinright blocked this dependency change:\n- quuxfixture.*could not be verified/);
   });
 
   it('the hook asks with onError ask', async () => {
@@ -180,14 +180,14 @@ describe('a host that accepts connections and never answers', () => {
       const d = await decideWithin([intent], [], 200, process.cwd(), policy(onError));
       expect(Date.now() - t0).toBeLessThan(1_500);
       expect(d.action).toBe('ask');
-      expect(d.problems).toEqual(['safectx could not finish checking quuxfixture in time (0.2 s, SAFECTX_HOOK_TIMEOUT_MS); a human should approve it, or retry once deps.dev and OSV answer.']);
+      expect(d.problems).toEqual(['pinright could not finish checking quuxfixture in time (0.2 s, PINRIGHT_HOOK_TIMEOUT_MS); a human should approve it, or retry once deps.dev and OSV answer.']);
     }
   });
 
   it('a slow upstream behind the full hook: Claude and Cursor ask, Codex, Gemini and Windsurf deny with the same reason', async () => {
     (config as { requestTimeoutMs: number }).requestTimeoutMs = 1_500;
-    const prev = process.env.SAFECTX_HOOK_ON_ERROR;
-    process.env.SAFECTX_HOOK_ON_ERROR = 'allow';
+    const prev = process.env.PINRIGHT_HOOK_ON_ERROR;
+    process.env.PINRIGHT_HOOK_ON_ERROR = 'allow';
     try {
       const t0 = Date.now();
       const { d, msg } = await evaluateHook([{ command: 'npm install quuxfixture@1.1.0' }], process.cwd(), 300);
@@ -200,16 +200,16 @@ describe('a host that accepts connections and never answers', () => {
       expect(JSON.parse(hookAnswer('gemini', d, msg).stdout as string)).toMatchObject({ decision: 'deny', reason: expect.stringMatching(/in time/) });
       expect(hookAnswer('windsurf', d, msg)).toMatchObject({ code: 2, stderr: expect.stringMatching(/in time/) });
     } finally {
-      if (prev === undefined) delete process.env.SAFECTX_HOOK_ON_ERROR;
-      else process.env.SAFECTX_HOOK_ON_ERROR = prev;
+      if (prev === undefined) delete process.env.PINRIGHT_HOOK_ON_ERROR;
+      else process.env.PINRIGHT_HOOK_ON_ERROR = prev;
     }
   });
 
-  it('SAFECTX_HOOK_TIMEOUT_MS that is not a positive number falls back to 45 s instead of firing at once', () => {
+  it('PINRIGHT_HOOK_TIMEOUT_MS that is not a positive number falls back to 45 s instead of firing at once', () => {
     expect(hookTimeoutMs({})).toBe(45_000);
-    expect(hookTimeoutMs({ SAFECTX_HOOK_TIMEOUT_MS: 'soon' })).toBe(45_000);
-    expect(hookTimeoutMs({ SAFECTX_HOOK_TIMEOUT_MS: '0' })).toBe(45_000);
-    expect(hookTimeoutMs({ SAFECTX_HOOK_TIMEOUT_MS: '20000' })).toBe(20_000);
+    expect(hookTimeoutMs({ PINRIGHT_HOOK_TIMEOUT_MS: 'soon' })).toBe(45_000);
+    expect(hookTimeoutMs({ PINRIGHT_HOOK_TIMEOUT_MS: '0' })).toBe(45_000);
+    expect(hookTimeoutMs({ PINRIGHT_HOOK_TIMEOUT_MS: '20000' })).toBe(20_000);
   });
 
   it('check-packages answers by its deadline: pending packages are "not checked", never ok', async () => {

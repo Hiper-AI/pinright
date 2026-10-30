@@ -5,7 +5,7 @@
  *       is the fixed release, pinned to its commit SHA;
  *   (b) a ref that is not a full commit SHA can be moved under you (tags were
  *       re-pointed in that attack): recommend the SHA of the same tag, with the
- *       version as a comment. Warn by default; SAFECTX_ACTIONS_PIN=enforce denies.
+ *       version as a comment. Warn by default; PINRIGHT_ACTIONS_PIN=enforce denies.
  *
  * OSV cannot compare versions for this ecosystem, so we ask for every advisory
  * of the action and evaluate the ranges here. A ref whose version we cannot
@@ -205,15 +205,15 @@ export async function checkAction(use: ActionUse): Promise<ActionReport> {
 }
 
 function allowed(name: string): boolean {
-  const list = (process.env.SAFECTX_ALLOW ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const list = (process.env.PINRIGHT_ALLOW ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   return list.some((p) => (p.endsWith('*') ? name.startsWith(p.slice(0, -1)) : p === name));
 }
 
 type Action = HookDecision['action'];
 
-/** SAFECTX_HOOK_ON_ERROR when the caller has no resolved team policy. */
+/** PINRIGHT_HOOK_ON_ERROR when the caller has no resolved team policy. */
 function envOnError(): Action {
-  const v = process.env.SAFECTX_HOOK_ON_ERROR;
+  const v = process.env.PINRIGHT_HOOK_ON_ERROR;
   return v === 'deny' || v === 'ask' ? v : 'allow';
 }
 
@@ -225,7 +225,7 @@ const advisoryList = (r: ActionReport) => {
 
 const limited = (unverified: string) => unverified.startsWith('GitHub API rate limit');
 const TOKEN_HINT =
-  'GitHub rate limit: without a token GitHub allows 60 API requests an hour. Set GITHUB_TOKEN (or SAFECTX_GH_CLI=1 to use the GitHub CLI login) and re-run to verify the rest.';
+  'GitHub rate limit: without a token GitHub allows 60 API requests an hour. Set GITHUB_TOKEN (or PINRIGHT_GH_CLI=1 to use the GitHub CLI login) and re-run to verify the rest.';
 
 /** The hook's decision for new or changed `uses:` lines. `onError` is the team policy's (see teamConfig.ts). */
 export async function decideActions(uses: ActionUse[], onError: Action = envOnError()): Promise<HookDecision> {
@@ -233,7 +233,7 @@ export async function decideActions(uses: ActionUse[], onError: Action = envOnEr
   const list = unique.slice(0, MAX_CHECKS);
   const reports = await Promise.all(list.map((u) => checkAction(u)));
   const outcomes: { action: Action; problem?: string; warning?: string }[] = [];
-  const enforcePin = process.env.SAFECTX_ACTIONS_PIN === 'enforce';
+  const enforcePin = process.env.PINRIGHT_ACTIONS_PIN === 'enforce';
   for (const r of reports) {
     const label = `uses: ${useKey(r.use)}${r.version && r.version !== r.use.ref ? ` (${r.version})` : ''}`;
     if (!r.exists) {
@@ -371,5 +371,5 @@ export function actionsAuditFails(a: ActionsAudit, floor: number, levels: string
   const s = a.bySeverity as Record<string, number>;
   if (levels.slice(floor).some((l) => s[l] > 0) || (floor === 0 && s.unknown > 0)) return true;
   if (a.missing || a.advisoriesUnknown) return true;
-  return process.env.SAFECTX_ACTIONS_PIN === 'enforce' && a.unpinned > 0;
+  return process.env.PINRIGHT_ACTIONS_PIN === 'enforce' && a.unpinned > 0;
 }

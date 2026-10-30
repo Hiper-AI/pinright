@@ -2,7 +2,7 @@
  * Docs benchmark: the same coding agent writes code for libraries whose API
  * changed in their current major, with one docs source attached per arm:
  *   no-docs : nothing; the agent writes from memory
- *   safectx : this server
+ *   pinright : this server
  * Any other MCP docs server can be added as an arm with --mcp-arm name=mcp.json
  * (a Claude Code MCP config); none is shipped here.
  * Uses the worktree's dist/cli.js: build first, and do not rebuild while runs are in flight.
@@ -23,7 +23,7 @@ const opt = (name: string, def: string) => {
 const root = resolve(import.meta.dirname, '..', '..');
 const MCP: Record<string, object> = {
   'no-docs': { mcpServers: {} },
-  safectx: { mcpServers: { safectx: { command: 'node', args: [join(root, 'dist', 'cli.js')] } } },
+  pinright: { mcpServers: { pinright: { command: 'node', args: [join(root, 'dist', 'cli.js')] } } },
   ...extraArms(args),
 };
 

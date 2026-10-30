@@ -138,7 +138,7 @@ export function intentsFromToolInput(toolName: string, input: Record<string, any
   } catch (err) {
     // A reader bug must not turn into a silent pass: whatever the agent is doing, a human looks at it.
     const what = typeof (input.command ?? input.cmd) === 'string' ? String(input.command ?? input.cmd) : String(input.file_path ?? input.path ?? 'this change');
-    return [unverifiable('npm', 'hook', `safectx could not read this change (${(err as Error).message}).`, what.slice(0, 200))];
+    return [unverifiable('npm', 'hook', `pinright could not read this change (${(err as Error).message}).`, what.slice(0, 200))];
   }
 }
 
@@ -159,7 +159,7 @@ export async function importNotesFromToolInput(input: Record<string, any>, cwd: 
   return Promise.race([notes.catch(() => []), timeout]);
 }
 
-const IMPORTS_DEADLINE_MS = Number(process.env.SAFECTX_IMPORTS_TIMEOUT_MS ?? 15_000);
+const IMPORTS_DEADLINE_MS = Number(process.env.PINRIGHT_IMPORTS_TIMEOUT_MS ?? 15_000);
 
 function merge(a: HookDecision, b: HookDecision): HookDecision {
   const rank = { allow: 0, ask: 1, deny: 2 } as const;
@@ -181,7 +181,7 @@ async function readStdin(): Promise<string> {
  * The whole check under a deadline. The agents give the hook 60 s and then let the change
  * through, so the hook answers first: on its own deadline it asks a human, whatever onError says
  * (see timeoutDecision). The clock starts before the modules load, so a cold start counts too.
- * The team policy is the .safectx.json nearest to cwd; a broken one denies (fail closed) until
+ * The team policy is the .pinright.json nearest to cwd; a broken one denies (fail closed) until
  * it is fixed, since ignoring it would drop its deny list.
  */
 export async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number, cwd: string, given?: Policy): Promise<HookDecision> {
@@ -220,8 +220,8 @@ async function checkAll(
   }
   const policy = given ?? resolvePolicy('config' in team ? team.config : undefined, process.env, 'file' in team ? team.file : undefined);
   applyCooldownDays(policy.cooldownDays);
-  // The Actions check reads SAFECTX_ACTIONS_PIN; the hook is a short-lived process, so the policy can set it.
-  if (policy.actionsPin && !process.env.SAFECTX_ACTIONS_PIN) process.env.SAFECTX_ACTIONS_PIN = policy.actionsPin;
+  // The Actions check reads PINRIGHT_ACTIONS_PIN; the hook is a short-lived process, so the policy can set it.
+  if (policy.actionsPin && !process.env.PINRIGHT_ACTIONS_PIN) process.env.PINRIGHT_ACTIONS_PIN = policy.actionsPin;
   // On timeout: what is known without the network (unverifiable sources, the deny list, lookalike names), then ask.
   onLate(() => timeoutDecision(intents, policy, ms, actionNames));
   const [deps, actions] = await Promise.all([
@@ -237,7 +237,7 @@ function notesOnly(warnings: string[]): HookDecision {
 
 const DEADLINE_MS = hookTimeoutMs();
 
-/** The agents with a pre-tool hook that `safectx hook <agent>` answers. */
+/** The agents with a pre-tool hook that `pinright hook <agent>` answers. */
 export const HOOK_AGENTS = ['claude', 'cursor', 'codex', 'gemini', 'copilot', 'windsurf'] as const;
 export type HookAgent = (typeof HOOK_AGENTS)[number];
 
@@ -312,7 +312,7 @@ export async function evaluateHook(inputs: Record<string, any>[], cwd: string, m
   return { d, msg: agentMessage(d) };
 }
 
-const userLine = (d: HookDecision) => `safectx: ${stripInvisible(d.problems[0] ?? 'dependency check').text.replace(/\s+/g, ' ').slice(0, 300)}`;
+const userLine = (d: HookDecision) => `pinright: ${stripInvisible(d.problems[0] ?? 'dependency check').text.replace(/\s+/g, ' ').slice(0, 300)}`;
 
 /**
  * The answer in each agent's protocol. Agents without an "ask" (Codex, Gemini CLI,
@@ -351,7 +351,7 @@ export async function runHook(agent: HookAgent): Promise<number> {
     JSON.parse(text);
   } catch {
     // Not silent: exit 1 is a non-blocking error the agent app shows to the user (docs/HOOK-THREAT-MODEL.md).
-    process.stderr.write('safectx: the hook input is not JSON; nothing was checked.\n');
+    process.stderr.write('pinright: the hook input is not JSON; nothing was checked.\n');
     return 1;
   }
   const raw = asObject(text);

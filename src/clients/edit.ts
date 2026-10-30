@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- client config files are untyped JSON/TOML, read defensively */
 /**
- * In-place edits of client config files. Only the keys safectx owns change:
+ * In-place edits of client config files. Only the keys pinright owns change:
  * other servers, comments (JSONC) and formatting stay as the user left them.
  * A file that does not parse is an error, never an empty object to write over.
  */
@@ -90,7 +90,7 @@ export function setTomlTable(text: string | undefined, name: string[], body: Rec
     }
     if (!inOwned) kept.push(line);
   }
-  // A table we own may also be written inline (`safectx = { ... }` under [mcp_servers]); refuse rather than duplicate it.
+  // A table we own may also be written inline (`pinright = { ... }` under [mcp_servers]); refuse rather than duplicate it.
   const parent = name.slice(0, -1).join('.');
   let section = '';
   for (const line of kept) {

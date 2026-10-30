@@ -15,7 +15,7 @@ let repo: string;
 let secret: string;
 
 beforeEach(() => {
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-pf-'));
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-pf-'));
   repo = path.join(tmp, 'repo');
   fs.mkdirSync(repo);
   secret = path.join(tmp, 'secret.env');

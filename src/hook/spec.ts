@@ -45,7 +45,7 @@ export function splitPySpec(spec: string): [string, string | undefined] | undefi
 
 /** Local code: a path, a workspace or catalog reference. Nothing to look up and nothing remote. */
 const LOCAL = /^(\.{1,2}([\\/]|$)|[\\/]|~[\\/]|[a-z]:[\\/]|file:|link:|portal:|workspace:|catalog:|patch:)/i;
-/** Fetched from somewhere that is not the registry: safectx cannot vouch for it. */
+/** Fetched from somewhere that is not the registry: pinright cannot vouch for it. */
 const REMOTE = /^(git\+|git:|git@|ssh:|https?:|ftp:|github:|gitlab:|bitbucket:|gist:|svn\+|hg\+|bzr\+)/i;
 const ARCHIVE = /\.(tgz|tar\.gz|tar\.bz2|tar\.xz|whl|zip|gem|crate|egg)$/i;
 
@@ -111,7 +111,7 @@ export function pySpecKind(s: string): SpecKind {
   return p ? { kind: 'package', name: p[0], spec: p[1] } : { kind: 'local' };
 }
 
-/** The public registries safectx checks against. Any other index or registry is a switch it cannot vouch for. */
+/** The public registries pinright checks against. Any other index or registry is a switch it cannot vouch for. */
 const DEFAULT_REGISTRY =
   /^(https?:\/\/)?(registry\.npmjs\.(org|com)|registry\.yarnpkg\.com|pypi\.org|pypi\.python\.org|files\.pythonhosted\.org|(index\.)?rubygems\.org|api\.nuget\.org|www\.nuget\.org|(repo\.)?packagist\.org|proxy\.golang\.org|sum\.golang\.org|(index\.)?crates\.io|static\.crates\.io|github\.com\/rust-lang\/crates\.io-index|jsr\.io|deno\.land|repo1?\.maven\.org|repo\.maven\.apache\.org)([/:?#]|$)/i;
 

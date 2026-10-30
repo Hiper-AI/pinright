@@ -128,7 +128,7 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean; 
     packages = await resolveManifest(tree, notes);
     notes.push(
       GRAPH_ECOSYSTEMS.includes(eco)
-        ? `No lockfile: the tree was resolved by ${eco === 'composer' ? "safectx from Packagist's metadata" : 'deps.dev'}, one direct dependency at a time. Audit the lockfile for the exact tree.`
+        ? `No lockfile: the tree was resolved by ${eco === 'composer' ? "pinright from Packagist's metadata" : 'deps.dev'}, one direct dependency at a time. Audit the lockfile for the exact tree.`
         : 'No lockfile and no graph resolution for this ecosystem: only direct dependencies were checked.',
     );
   }

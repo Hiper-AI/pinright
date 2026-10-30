@@ -94,7 +94,7 @@ describe('http on the built-in fetch', () => {
     const out = await getJson<{ ok: boolean; echo: unknown }>(`${base}/json`, { method: 'POST', body: { q: 1 } });
     expect(out).toEqual({ ok: true, echo: { q: 1 } });
     expect(lastRequest?.method).toBe('POST');
-    expect(lastRequest?.headers['user-agent']).toMatch(/^safectx\//);
+    expect(lastRequest?.headers['user-agent']).toMatch(/^pinright\//);
     expect(lastRequest?.headers['content-type']).toBe('application/json');
   });
 
@@ -195,9 +195,9 @@ describe('when an upstream does not answer', () => {
   });
 
   it('says "DNS lookup failed" for a name that does not resolve', async () => {
-    const err = await getJson('http://safectx-does-not-exist.invalid/x').catch((e: unknown) => e);
+    const err = await getJson('http://pinright-does-not-exist.invalid/x').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(NetworkError);
-    expect((err as Error).message).toMatch(/safectx-does-not-exist\.invalid unreachable \(DNS lookup failed\)/);
+    expect((err as Error).message).toMatch(/pinright-does-not-exist\.invalid unreachable \(DNS lookup failed\)/);
   });
 
   it('keeps a 5xx an HttpError (the host answered) but counts it as unavailable; a 404 is not', async () => {

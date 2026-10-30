@@ -21,7 +21,7 @@ const LOCKFILE =
 const SOURCES =
   /(^|[\\/])(\.npmrc|\.yarnrc(\.yml)?|bunfig\.toml|pip\.conf|pip\.ini|uv\.toml|\.condarc|\.gemrc|nuget\.config|\.cargo[\\/]config(\.toml)?|\.pnpmfile\.c?js|package\.yaml|package\.json5)$/i;
 /** The hook's own configuration. */
-const GUARD = /(^|[\\/])(\.safectx\.json|\.claude[\\/]settings(\.local)?\.json|\.cursor[\\/]hooks\.json)$/i;
+const GUARD = /(^|[\\/])(\.pinright\.json|\.claude[\\/]settings(\.local)?\.json|\.cursor[\\/]hooks\.json)$/i;
 const VENDORED = /node_modules|[\\/]vendor[\\/]/;
 const REQUIREMENTS = /(requirements[^\\/]*|[^\\/]*-requirements|requirements[\\/][^\\/]+)\.(txt|in)$|constraints[^\\/]*\.txt$/i;
 const isRequirements = (file: string) => REQUIREMENTS.test(file);
@@ -67,7 +67,7 @@ export function fromFileWrite(file: string, newContent: string | undefined, oldC
   const eco = ecosystemOf(file);
   if (GUARD.test(file)) return guardChange(file, newContent, oldContent);
   if (!isGuardedFile(file)) return [];
-  if (newContent === undefined) return [unverifiable(eco, base, `changes ${base} in a way safectx cannot read; check the file after the command runs.`, base)];
+  if (newContent === undefined) return [unverifiable(eco, base, `changes ${base} in a way pinright cannot read; check the file after the command runs.`, base)];
   if (newContent === oldContent) return [];
   if (SOURCES.test(file)) return sourcesChange(file, newContent, oldContent);
   if (LOCKFILE.test(file)) return lockfileChange(file, newContent, oldContent);
@@ -265,7 +265,7 @@ function manifestChange(file: string, next: string, old: string | undefined, sib
   const after = declared(reader, next, siblings);
   if (!after) {
     // A manifest that does not parse after the write: the hook cannot see what it declares.
-    return next.trim() ? [unverifiable(eco, base, `${base} would not parse after this change, so safectx cannot see what it declares.`, base)] : [];
+    return next.trim() ? [unverifiable(eco, base, `${base} would not parse after this change, so pinright cannot see what it declares.`, base)] : [];
   }
   const before = declared(reader, old, siblings) ?? [];
   const seen = new Set(before.map((e) => `${e.name}\0${e.spec}`));
@@ -279,8 +279,8 @@ function manifestChange(file: string, next: string, old: string | undefined, sib
       if (k.kind === 'package') context.push({ ecosystem: eco, name: k.name, spec: k.spec, source: base, contextOnly: true });
       continue;
     }
-    if (k.kind === 'remote') out.push(unverifiable(eco, e.name, `${k.what} comes from outside the registry; safectx cannot check it.`, base));
-    else if (k.kind === 'jsr') out.push(unverifiable(eco, k.name, `jsr:${k.name} is a JSR package; safectx does not check JSR.`, base, 'note'));
+    if (k.kind === 'remote') out.push(unverifiable(eco, e.name, `${k.what} comes from outside the registry; pinright cannot check it.`, base));
+    else if (k.kind === 'jsr') out.push(unverifiable(eco, k.name, `jsr:${k.name} is a JSR package; pinright does not check JSR.`, base, 'note'));
     else out.push({ ecosystem: eco, name: k.name, spec: k.spec || undefined, source: base });
   }
   out.push(...manifestSourceLines(file, next, old));
@@ -293,7 +293,7 @@ function manifestSourceLines(file: string, next: string, old: string | undefined
   const base = path.basename(file);
   const eco = ecosystemOf(file);
   const out: DepIntent[] = [];
-  const say = (what: string) => out.push(unverifiable(eco, what, `${base}: "${what.slice(0, 120)}" changes where packages come from; safectx cannot check that source.`, base));
+  const say = (what: string) => out.push(unverifiable(eco, what, `${base}: "${what.slice(0, 120)}" changes where packages come from; pinright cannot check that source.`, base));
   for (const l of addedLines(next, old)) {
     if (isRequirements(file)) {
       const opt = l.match(/^(-i|--index-url|--extra-index-url|-f|--find-links|--trusted-host)[\s=]+(\S+)/);
@@ -323,10 +323,10 @@ function lockfileChange(file: string, next: string, old: string | undefined): De
   const out: DepIntent[] = [];
   const hosts = new Set(customHosts(old ?? ''));
   for (const h of customHosts(next)) {
-    if (!hosts.has(h)) out.push(unverifiable(eco, h, `${base} resolves packages from ${h}, which is not the public registry; safectx cannot check it.`, base));
+    if (!hosts.has(h)) out.push(unverifiable(eco, h, `${base} resolves packages from ${h}, which is not the public registry; pinright cannot check it.`, base));
   }
   if (!detectKind(file)) {
-    out.push(unverifiable(eco, base, `${base} was edited by hand; safectx cannot read it. Let the package manager write lockfiles.`, base));
+    out.push(unverifiable(eco, base, `${base} was edited by hand; pinright cannot read it. Let the package manager write lockfiles.`, base));
     return out;
   }
   const packages = (content: string | undefined) => {
@@ -339,7 +339,7 @@ function lockfileChange(file: string, next: string, old: string | undefined): De
     after = packages(next);
     before = packages(old);
   } catch {
-    out.push(unverifiable(eco, base, `${base} would not parse after this change; safectx cannot see what it pins.`, base));
+    out.push(unverifiable(eco, base, `${base} would not parse after this change; pinright cannot see what it pins.`, base));
     return out;
   }
   const seen = new Set(before.map((p) => `${p.name}@${p.version}`));
@@ -352,13 +352,13 @@ function sourcesChange(file: string, next: string, old: string | undefined): Dep
   const base = path.basename(file);
   const eco = ecosystemOf(file);
   if (/(\.pnpmfile\.c?js|package\.yaml|package\.json5)$/i.test(base)) {
-    return [unverifiable(eco, base, `${base} changes which packages get installed and safectx cannot read it; review it by hand.`, base)];
+    return [unverifiable(eco, base, `${base} changes which packages get installed and pinright cannot read it; review it by hand.`, base)];
   }
   const out: DepIntent[] = [];
   for (const l of addedLines(next, old)) {
     if (/^[#;]/.test(l)) continue;
     const setting = /(registry|index|url|source|mirror|npmScopes|npmRegistryServer|trusted-host|find-links|channel|packageExtensions|unsafeHttpWhitelist|strict-ssl|enableStrictSsl|checksum|ignore-scripts)/i.test(l);
-    if (setting && (customHosts(l).length || !/https?:/.test(l))) out.push(unverifiable(eco, l.slice(0, 80), `${base}: "${l.slice(0, 120)}" changes where or how packages are fetched; safectx cannot vouch for it.`, base));
+    if (setting && (customHosts(l).length || !/https?:/.test(l))) out.push(unverifiable(eco, l.slice(0, 80), `${base}: "${l.slice(0, 120)}" changes where or how packages are fetched; pinright cannot vouch for it.`, base));
   }
   return out;
 }
@@ -368,17 +368,17 @@ function guardChange(file: string, next: string | undefined, old: string | undef
   const base = path.basename(file);
   const ask = (what: string) => [unverifiable('npm', base, what, base, 'guard')];
   if (next === old) return [];
-  if (/\.safectx\.json$/i.test(file)) return ask(`changes the safectx team policy (${base}); a human should approve policy changes.`);
-  if (next === undefined) return old?.includes('safectx') || old?.includes('SAFECTX') ? ask(`changes ${base}, which runs the safectx hook, in a way safectx cannot read.`) : [];
+  if (/\.pinright\.json$/i.test(file)) return ask(`changes the pinright team policy (${base}); a human should approve policy changes.`);
+  if (next === undefined) return old?.includes('pinright') || old?.includes('PINRIGHT') ? ask(`changes ${base}, which runs the pinright hook, in a way pinright cannot read.`) : [];
   const signature = (content: string | undefined) => {
     if (!content) return '';
     const j = JSON.parse(content);
     const parts: string[] = [];
     for (const [event, list] of Object.entries<unknown>(j.hooks ?? {})) {
       if (!Array.isArray(list)) continue;
-      for (const el of list) if (/safectx/i.test(JSON.stringify(el))) parts.push(`${event}:${JSON.stringify(el)}`);
+      for (const el of list) if (/pinright/i.test(JSON.stringify(el))) parts.push(`${event}:${JSON.stringify(el)}`);
     }
-    for (const [k, v] of Object.entries<unknown>(j.env ?? {})) if (/^SAFECTX_/i.test(k)) parts.push(`env:${k}=${String(v)}`);
+    for (const [k, v] of Object.entries<unknown>(j.env ?? {})) if (/^PINRIGHT_/i.test(k)) parts.push(`env:${k}=${String(v)}`);
     if (j.disableAllHooks) parts.push('disableAllHooks');
     return parts.sort().join('\n');
   };
@@ -386,7 +386,7 @@ function guardChange(file: string, next: string | undefined, old: string | undef
   try {
     changed = signature(next) !== signature(old);
   } catch {
-    changed = /safectx/i.test(old ?? '');
+    changed = /pinright/i.test(old ?? '');
   }
-  return changed ? ask(`changes how the safectx hook runs (${base}): its entry, its matcher or its SAFECTX_* settings. A human should approve that.`) : [];
+  return changed ? ask(`changes how the pinright hook runs (${base}): its entry, its matcher or its PINRIGHT_* settings. A human should approve that.`) : [];
 }

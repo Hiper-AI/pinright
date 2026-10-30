@@ -1,7 +1,7 @@
 /**
  * The team policy inside the hook: deny and allow lists, licenses, severity
  * threshold, and the file-level knobs that used to be env-only. A broken
- * .safectx.json fails closed.
+ * .pinright.json fails closed.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -60,15 +60,15 @@ beforeEach(() => {
 
 describe('deny and allow lists', () => {
   it('denies a listed package with the reason, without asking any registry', async () => {
-    const p = resolvePolicy({ deny: [{ name: 'request', ecosystem: 'npm', reason: 'unmaintained; use undici' }] }, {}, '/r/.safectx.json');
+    const p = resolvePolicy({ deny: [{ name: 'request', ecosystem: 'npm', reason: 'unmaintained; use undici' }] }, {}, '/r/.pinright.json');
     const d = await decide([{ ecosystem: 'npm', name: 'request', spec: '2.88.2', source: 'npm i' }], p);
     expect(d.action).toBe('deny');
-    expect(d.problems).toEqual(['request (npm): denied by the project policy (.safectx.json): unmaintained; use undici']);
+    expect(d.problems).toEqual(['request (npm): denied by the project policy (.pinright.json): unmaintained; use undici']);
     expect(looked).toEqual([]);
   });
 
-  it('allow list from the file and SAFECTX_ALLOW both skip checks; allow beats deny', async () => {
-    const p = resolvePolicy({ allow: ['@acme/*'], deny: ['@acme/*'] }, { SAFECTX_ALLOW: 'internal-lib' });
+  it('allow list from the file and PINRIGHT_ALLOW both skip checks; allow beats deny', async () => {
+    const p = resolvePolicy({ allow: ['@acme/*'], deny: ['@acme/*'] }, { PINRIGHT_ALLOW: 'internal-lib' });
     const d = await decide(
       [
         { ecosystem: 'npm', name: '@acme/ui', spec: '1.0.0', source: 'x' },
@@ -156,24 +156,24 @@ describe('file-level knobs', () => {
   });
 });
 
-describe('the hook with a broken .safectx.json', () => {
+describe('the hook with a broken .pinright.json', () => {
   it('denies the dependency change with the parse error, and lets other tool calls through', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-hook-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-hook-'));
     try {
       fs.mkdirSync(path.join(dir, '.git'));
-      fs.writeFileSync(path.join(dir, '.safectx.json'), '{ "deny": [ "request" ');
+      fs.writeFileSync(path.join(dir, '.pinright.json'), '{ "deny": [ "request" ');
       const run = (input: unknown) =>
         spawnSync(process.execPath, ['--import', 'tsx', path.resolve('src/cli.ts'), 'hook', 'claude'], {
           input: JSON.stringify(input),
           encoding: 'utf8',
-          env: { ...process.env, SAFECTX_NO_CACHE: '1', DEPSDEV_BASE_URL: 'http://127.0.0.1:9', OSV_BASE_URL: 'http://127.0.0.1:9' },
+          env: { ...process.env, PINRIGHT_NO_CACHE: '1', DEPSDEV_BASE_URL: 'http://127.0.0.1:9', OSV_BASE_URL: 'http://127.0.0.1:9' },
         });
       const res = run({ tool_name: 'Bash', tool_input: { command: 'npm install left-pad@1.3.0' }, cwd: dir });
       const out = JSON.parse(res.stdout);
       expect(out.hookSpecificOutput.permissionDecision).toBe('deny');
       expect(out.hookSpecificOutput.permissionDecisionReason).toMatch(/project policy cannot be read.*not valid JSON/s);
       // Fixing the file is a policy change: not denied, but a human approves it (an agent could write "allow": ["*"]).
-      const fix = run({ tool_name: 'Write', tool_input: { file_path: path.join(dir, '.safectx.json'), content: '{}' }, cwd: dir });
+      const fix = run({ tool_name: 'Write', tool_input: { file_path: path.join(dir, '.pinright.json'), content: '{}' }, cwd: dir });
       expect(JSON.parse(fix.stdout).hookSpecificOutput.permissionDecision).toBe('ask');
       // Other tool calls still pass.
       expect(run({ tool_name: 'Bash', tool_input: { command: 'ls' }, cwd: dir }).stdout).toBe('');

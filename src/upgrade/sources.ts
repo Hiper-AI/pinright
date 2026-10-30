@@ -166,7 +166,7 @@ export async function githubReleases(meta: PackageMeta, from: string, to: string
       );
     } catch (err) {
       const limited = err instanceof HttpError && (err.status === 403 || err.status === 429);
-      return { notes, note: limited ? `GitHub releases were rate limited${githubAuthConfigured() ? '' : '; set GITHUB_TOKEN or SAFECTX_GH_CLI=1 for more'}.` : undefined };
+      return { notes, note: limited ? `GitHub releases were rate limited${githubAuthConfigured() ? '' : '; set GITHUB_TOKEN or PINRIGHT_GH_CLI=1 for more'}.` : undefined };
     }
     for (const r of list) {
       if (r.draft) continue;

@@ -1,5 +1,5 @@
 /**
- * Retrieval probe, no agent in the loop: asks safectx's get-docs pipeline
+ * Retrieval probe, no agent in the loop: asks pinright's get-docs pipeline
  * (src/docs getDocs) the questions an agent asks for each task, including the
  * ones phrased with the old API's words, and checks whether the answer shows
  * the current API. The agent runs mix docs quality with what the model already

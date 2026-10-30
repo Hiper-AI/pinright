@@ -6,7 +6,7 @@
  *     deprecation, age;
  *   - the whole tree, the way Dependabot sees it: npm audit over a lockfile
  *     resolved without installing, pip-audit over `uv pip compile` output.
- *     These two tools share neither code nor data path with safectx; safectx's own
+ *     These two tools share neither code nor data path with pinright; pinright's own
  *     check-manifest runs on the same files to measure agreement;
  *   - does it install and build (see buildcheck.ts);
  *   - agent cost: USD, turns, wall time, MCP calls, hook blocks.
@@ -21,6 +21,7 @@ import { getAdvisory, getPackage, getVersion } from '../../src/advisories/depsde
 import { auditTree } from '../../src/tree/audit.js';
 import { parseFile } from '../../src/tree/lockfiles.js';
 import { type BuildScore, npmBuild, pypiBuild, run } from './buildcheck.js';
+import { armDir as findArmDir, canonicalScores, HOOK_BLOCKED } from '../legacy.js';
 import { TASKS } from './tasks.js';
 
 const args = process.argv.slice(2);
@@ -33,7 +34,7 @@ const onlyTasks = (args[args.indexOf('--only') + 1] ?? '').split(',').filter((s)
 const onlyArms = (args[args.indexOf('--arms') + 1] ?? '').split(',').filter((s) => args.includes('--arms') && s);
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
-export const ARMS = ['no-docs', 'safectx', 'hook-only', 'safectx+hook', 'latest'];
+export const ARMS = ['no-docs', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
 const DAY = 86_400_000;
 
 interface Dep { name: string; spec: string; version: string; exact: boolean }
@@ -54,8 +55,8 @@ export interface TreeScore {
   critical?: number;
   high?: number;
   vulnerablePackages?: number;
-  /** safectx check-manifest on the same lockfile / resolved requirements. */
-  safectx?: { alerts: number; vulnerablePackages: number; vulnerableNames: string[] };
+  /** pinright check-manifest on the same lockfile / resolved requirements. */
+  pinright?: { alerts: number; vulnerablePackages: number; vulnerableNames: string[] };
   auditNames?: string[];
 }
 export interface RunScore {
@@ -118,7 +119,7 @@ function npmErrorCode(text: string): string | undefined {
   return text.match(/npm error code (\S+)/)?.[1];
 }
 
-async function ours(file: string): Promise<TreeScore['safectx']> {
+async function ours(file: string): Promise<TreeScore['pinright']> {
   const a = await auditTree(parseFile(file, readFileSync(file, 'utf8')));
   return { alerts: a.alerts, vulnerablePackages: a.vulnerablePackages, vulnerableNames: [...new Set(a.findings.map((f) => f.name))] };
 }
@@ -162,7 +163,7 @@ async function npmTree(work: string): Promise<TreeScore> {
       high,
       vulnerablePackages: own.length,
       auditNames: own,
-      safectx: await ours(join(tmp, 'package-lock.json')).catch(() => undefined),
+      pinright: await ours(join(tmp, 'package-lock.json')).catch(() => undefined),
     };
   } finally {
     rmSync(tmp, { recursive: true, force: true, maxRetries: 3 });
@@ -199,7 +200,7 @@ async function pypiTree(work: string): Promise<TreeScore> {
       alerts,
       vulnerablePackages: names.length,
       auditNames: names,
-      safectx: await ours(join(tmp, 'requirements.txt')).catch(() => undefined),
+      pinright: await ours(join(tmp, 'requirements.txt')).catch(() => undefined),
     };
   } finally {
     rmSync(tmp, { recursive: true, force: true, maxRetries: 3 });
@@ -223,7 +224,7 @@ function readTranscript(dir: string) {
       }
     }
     if (l.type === 'user') {
-      for (const c of l.message?.content ?? []) if (c.type === 'tool_result' && /safectx blocked/.test(JSON.stringify(c.content))) hookBlocks++;
+      for (const c of l.message?.content ?? []) if (c.type === 'tool_result' && HOOK_BLOCKED.test(JSON.stringify(c.content))) hookBlocks++;
     }
   }
   const init = lines.find((l) => l.type === 'system' && l.subtype === 'init');
@@ -234,7 +235,7 @@ function readTranscript(dir: string) {
 interface Job { arm: string; name: string; task: (typeof TASKS)[number]; rep: number; dir: string }
 const jobs: Job[] = [];
 for (const arm of ARMS) {
-  const armDir = join(runDir, arm);
+  const armDir = findArmDir(runDir, arm);
   if (!existsSync(armDir)) continue;
   for (const name of readdirSync(armDir).sort()) {
     const m = name.match(/^(.*)-r(\d+)$/);
@@ -261,14 +262,14 @@ await Promise.all(
       const tree = manifest ? await (task.ecosystem === 'npm' ? npmTree(work) : pypiTree(work)) : undefined;
       const build = manifest && doBuild && arm !== 'latest' ? await (task.ecosystem === 'npm' ? npmBuild(work) : pypiBuild(work)).catch((e: Error): BuildScore => ({ installed: false, step: 'harness', error: e.message })) : undefined;
       scores[i] = { arm, task: task.id, rep, ecosystem: task.ecosystem, ...t, deps, tree, build };
-      const treeTxt = tree?.resolved ? `${tree.alerts} (safectx ${tree.safectx?.alerts ?? '?'})` : `X ${tree?.error ?? 'no manifest'}`;
+      const treeTxt = tree?.resolved ? `${tree.alerts} (pinright ${tree.pinright?.alerts ?? '?'})` : `X ${tree?.error ?? 'no manifest'}`;
       const buildTxt = build ? (build.built ? 'ok' : build.installed ? `FAIL ${build.step}${build.inconclusive ? ' (native)' : ''}: ${build.error ?? ''}` : `NOINSTALL ${build.error ?? ''}`) : '-';
       console.log(`${arm.padEnd(13)} ${name.padEnd(26)} deps=${deps.length} vulnDirect=${deps.filter((d) => d.advisories.length).length} tree=${treeTxt} build=${buildTxt.slice(0, 160)}`);
     }
   }),
 );
 const partial = onlyTasks.length || onlyArms.length;
-const prev: RunScore[] = partial && existsSync(join(runDir, 'scores.json')) ? JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8')) : [];
+const prev: RunScore[] = partial && existsSync(join(runDir, 'scores.json')) ? canonicalScores(JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8'))) : [];
 const key = (s: RunScore) => `${s.arm}|${s.task}|${s.rep}`;
 const fresh = new Set(scores.filter(Boolean).map(key));
 writeFileSync(join(runDir, 'scores.json'), JSON.stringify([...prev.filter((s) => !fresh.has(key(s))), ...scores.filter(Boolean)], null, 2));

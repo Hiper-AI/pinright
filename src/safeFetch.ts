@@ -2,7 +2,7 @@
  * Requests to URLs that come from third-party data: a package's homepage or
  * docs site, the pages its llms.txt lists, a link in a release body. Their
  * publisher picks the host, so the request must not reach loopback, private
- * networks or cloud metadata (safectx runs in CI and on developer machines).
+ * networks or cloud metadata (pinright runs in CI and on developer machines).
  *
  * - https only (an http:// link from metadata is upgraded; a redirect to http
  *   is refused), default port, no credentials in the URL;
@@ -97,7 +97,7 @@ function v6Public(b: number[]): boolean {
   return true;
 }
 
-/** True for an address a request from safectx may connect to. */
+/** True for an address a request from pinright may connect to. */
 export function isPublicAddress(ip: string): boolean {
   const bare = ip.replace(/^\[|\]$/g, '');
   if (net.isIPv4(bare)) return v4Public(bare.split('.').map(Number));

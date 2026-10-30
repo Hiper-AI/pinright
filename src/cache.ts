@@ -5,9 +5,9 @@
  *
  * The cache holds verdict inputs (advisory lists, versions, the GitHub rate-limit stop), so
  * whoever can write to it can make a vulnerable package look clean. On POSIX the directory
- * must be the user's own and not writable by group or others (a shared SAFECTX_CACHE_DIR or
+ * must be the user's own and not writable by group or others (a shared PINRIGHT_CACHE_DIR or
  * XDG_CACHE_HOME under /tmp would be); otherwise caching is off. Entries cannot claim a TTL
- * longer than any safectx sets, and files are created without following links.
+ * longer than any pinright sets, and files are created without following links.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
@@ -19,7 +19,7 @@ interface Entry<T> {
   value: T;
 }
 
-/** Longer than the longest TTL safectx uses (a year for tagged repo listings). */
+/** Longer than the longest TTL pinright uses (a year for tagged repo listings). */
 const MAX_TTL_MS = 366 * 24 * 3600_000;
 
 function fileFor(key: string): string {
@@ -43,7 +43,7 @@ export function cacheDirTrusted(dir = config.cacheDir): boolean {
   } catch {
     ok = false;
   }
-  if (!ok && process.env.SAFECTX_DEBUG_HTTP === '1') process.stderr.write(`[safectx] cache disabled: ${dir} is not a private directory of this user
+  if (!ok && process.env.PINRIGHT_DEBUG_HTTP === '1') process.stderr.write(`[pinright] cache disabled: ${dir} is not a private directory of this user
 `);
   vetted.set(dir, ok);
   return ok;

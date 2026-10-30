@@ -6,9 +6,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PackageReport } from '../src/advisories/resolve.js';
 import type { Verdict } from '../src/verdict.js';
 
-process.env.SAFECTX_NO_CACHE = '1';
-// An empty project, so the tools do not pick up versions from safectx's own lockfile.
-process.env.SAFECTX_PROJECT_DIR = (await import('node:fs')).mkdtempSync((await import('node:path')).join((await import('node:os')).tmpdir(), 'sctx-empty-'));
+process.env.PINRIGHT_NO_CACHE = '1';
+// An empty project, so the tools do not pick up versions from pinright's own lockfile.
+process.env.PINRIGHT_PROJECT_DIR = (await import('node:fs')).mkdtempSync((await import('node:path')).join((await import('node:os')).tmpdir(), 'sctx-empty-'));
 
 const base = (over: Partial<PackageReport>): PackageReport => ({
   package: 'x',

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-process.env.SAFECTX_NO_CACHE = '1';
+process.env.PINRIGHT_NO_CACHE = '1';
 
 const files = new Map<string, string>();
 vi.mock('../src/http.js', async () => {

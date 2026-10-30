@@ -25,7 +25,7 @@ import { type SupplyFinding } from '../tree/supply.js';
 import { locatePackage, locateUses, type Region } from './locate.js';
 
 export const SARIF_SCHEMA = 'https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json';
-const INFO_URI = 'https://github.com/Hiper-AI/safectx';
+const INFO_URI = 'https://github.com/Hiper-AI/pinright';
 /** GitHub keeps the top 5,000 results of a run by severity; past that, we drop the mildest ourselves and say so. */
 export const MAX_RESULTS = 5000;
 const MAX_TEXT = 1000; // GitHub truncates descriptions at 1,024 characters
@@ -86,7 +86,7 @@ const pascal = (s: string) => s.replace(/(^|[^a-zA-Z0-9]+)([a-zA-Z0-9])/g, (_, _
 
 /** Fixed rules, one per finding kind that is not an advisory. */
 const KINDS: Record<string, { name: string; short: string; full: string; level: Level; score?: number; tags: string[] }> = {
-  'safectx/malware': {
+  'pinright/malware': {
     name: 'MaliciousPackage',
     short: 'Malicious package in the dependency tree',
     full: 'A package in the dependency tree has a malware record (OSV MAL-*): it was published to steal credentials, run code on install or otherwise attack whoever installs it. Remove it, rotate any secret the machine or CI had access to, and check what ran.',
@@ -94,7 +94,7 @@ const KINDS: Record<string, { name: string; short: string; full: string; level: 
     score: 10,
     tags: ['security', 'malware', 'supply-chain'],
   },
-  'safectx/typosquat': {
+  'pinright/typosquat': {
     name: 'Typosquat',
     short: 'Dependency name looks like a typosquat of a popular package',
     full: 'A direct dependency is one or two edits away from a popular package and is either very new or used by a tiny fraction of its audience. Misspelled names are a common way to get malware installed.',
@@ -102,15 +102,15 @@ const KINDS: Record<string, { name: string; short: string; full: string; level: 
     score: 8.0,
     tags: ['security', 'typosquatting', 'supply-chain'],
   },
-  'safectx/unknown-package': {
+  'pinright/unknown-package': {
     name: 'UnknownPackage',
     short: 'Dependency not found in the public registry',
-    full: 'A direct dependency does not exist in the public registry. It may be a name an agent hallucinated, which anyone could register with malicious code, or a private package; private packages belong in the "allow" list of .safectx.json.',
+    full: 'A direct dependency does not exist in the public registry. It may be a name an agent hallucinated, which anyone could register with malicious code, or a private package; private packages belong in the "allow" list of .pinright.json.',
     level: 'warning',
     score: 5.0,
     tags: ['security', 'slopsquatting', 'supply-chain'],
   },
-  'safectx/unpublished-version': {
+  'pinright/unpublished-version': {
     name: 'UnpublishedVersion',
     short: 'Locked version is not published in the registry',
     full: 'The version a lockfile pins is not published: it was unpublished or yanked (registries remove malicious releases this way), or it is too new to be indexed. Re-lock to a published version.',
@@ -118,28 +118,28 @@ const KINDS: Record<string, { name: string; short: string; full: string; level: 
     score: 5.0,
     tags: ['security', 'supply-chain'],
   },
-  'safectx/deprecated': {
+  'pinright/deprecated': {
     name: 'DeprecatedVersion',
     short: 'Dependency version is deprecated',
     full: 'The registry marks this version as deprecated. Deprecated packages stop receiving security fixes.',
     level: 'note',
     tags: ['maintenance', 'supply-chain'],
   },
-  'safectx/policy-deny': {
+  'pinright/policy-deny': {
     name: 'PolicyDeniedPackage',
     short: 'Package denied by the project policy',
-    full: 'The team policy (.safectx.json) denies this package. Replace it as the policy says, or change the policy.',
+    full: 'The team policy (.pinright.json) denies this package. Replace it as the policy says, or change the policy.',
     level: 'error',
     tags: ['policy', 'supply-chain'],
   },
-  'safectx/policy-license': {
+  'pinright/policy-license': {
     name: 'PolicyLicense',
     short: 'License not allowed by the project policy',
-    full: 'The license of a direct dependency is not allowed by the team policy (.safectx.json).',
+    full: 'The license of a direct dependency is not allowed by the team policy (.pinright.json).',
     level: 'error',
     tags: ['policy', 'license'],
   },
-  'safectx/action-unpinned': {
+  'pinright/action-unpinned': {
     name: 'UnpinnedAction',
     short: 'GitHub Action referenced by a mutable tag or branch',
     full: 'A tag or branch can be re-pointed to other code, as in the tj-actions/changed-files compromise. Pin third-party actions to a full commit SHA, with the version as a comment.',
@@ -147,7 +147,7 @@ const KINDS: Record<string, { name: string; short: string; full: string; level: 
     score: 5.0,
     tags: ['security', 'github-actions', 'supply-chain'],
   },
-  'safectx/action-missing-ref': {
+  'pinright/action-missing-ref': {
     name: 'MissingActionRef',
     short: 'GitHub Action reference does not exist',
     full: 'The tag, branch or commit in a `uses:` line does not exist in the action repository. Check the action name and ref; a misspelled owner is a typosquat risk.',
@@ -155,7 +155,7 @@ const KINDS: Record<string, { name: string; short: string; full: string; level: 
     score: 7.0,
     tags: ['security', 'github-actions'],
   },
-  'safectx/action-unverified': {
+  'pinright/action-unverified': {
     name: 'UnverifiedAction',
     short: 'GitHub Action could not be verified',
     full: 'Advisories exist for this action and the release behind the ref could not be told, or a source did not answer. It is not reported clean.',
@@ -173,7 +173,7 @@ function kindRule(id: string): Rule {
     name: k.name,
     shortDescription: { text: k.short },
     fullDescription: { text: k.full },
-    help: { text: k.full, markdown: `${k.full}\n\nReported by [safectx](${INFO_URI}).` },
+    help: { text: k.full, markdown: `${k.full}\n\nReported by [pinright](${INFO_URI}).` },
     helpUri: `${INFO_URI}#github-action--ci`,
     defaultConfiguration: { level: k.level },
     properties: { tags: k.tags, precision: 'high', ...(k.score ? { 'security-severity': k.score.toFixed(1) } : {}) },
@@ -183,7 +183,7 @@ function kindRule(id: string): Rule {
 function riskRule(signal: string, level: Level): Rule {
   const text = `Supply-chain risk signal "${signal}" (behavior, not a known advisory): install scripts, provenance, publisher changes, package age and downloads. Review the package before trusting it.`;
   return {
-    id: `safectx/risk/${signal}`,
+    id: `pinright/risk/${signal}`,
     name: `Risk${pascal(signal)}`,
     shortDescription: { text: `Supply-chain risk: ${signal.replace(/-/g, ' ')}` },
     fullDescription: { text },
@@ -327,7 +327,7 @@ export function buildSarif(input: SarifInput): SarifLog {
       const { loc, related, via } = where(f.name, f.version);
       const fix = fixText(a, f);
       if (f.malicious) {
-        const rule = addRule(kindRule('safectx/malware'));
+        const rule = addRule(kindRule('pinright/malware'));
         const ids = f.advisories.map((x) => x.id).join(', ');
         push(rule, 'error', `MALWARE: ${f.name}@${f.version} (${via}) is a known malicious package (${ids}). Remove it and rotate any secret the machine or CI could reach.`, loc, [eco, f.name], related);
         continue;
@@ -342,14 +342,14 @@ export function buildSarif(input: SarifInput): SarifLog {
     }
 
     for (const s of t.supply ?? []) {
-      const rule = addRule(s.kind === 'risk' ? riskRule(s.signal ?? 'signal', s.level) : kindRule(`safectx/${s.kind}`));
+      const rule = addRule(s.kind === 'risk' ? riskRule(s.signal ?? 'signal', s.level) : kindRule(`pinright/${s.kind}`));
       const { loc, related } = where(s.name, s.version);
       push(rule, s.level, s.message, loc, [eco, s.name], related);
     }
 
     for (const h of t.policy ?? []) {
       if (h.kind === 'note' || !h.name) continue;
-      const rule = addRule(kindRule(h.kind === 'deny' ? 'safectx/policy-deny' : 'safectx/policy-license'));
+      const rule = addRule(kindRule(h.kind === 'deny' ? 'pinright/policy-deny' : 'pinright/policy-license'));
       const { loc, related } = where(h.name, h.version);
       push(rule, 'error', h.text, loc, [eco, h.name], related);
     }
@@ -373,13 +373,13 @@ export function buildSarif(input: SarifInput): SarifLog {
           push(rule, rule.defaultConfiguration.level, `uses: ${ref}${ver} is affected by ${adv.id}${cve ? ` (${cve})` : ''}: ${titleOf(adv)}. ${fix}`, loc, key);
         }
       } else if (!f.exists) {
-        push(addRule(kindRule('safectx/action-missing-ref')), 'error', `uses: ${ref}: no such tag, branch or commit in ${f.name}.`, loc, key);
+        push(addRule(kindRule('pinright/action-missing-ref')), 'error', `uses: ${ref}: no such tag, branch or commit in ${f.name}.`, loc, key);
       } else if (f.unverified) {
-        push(addRule(kindRule('safectx/action-unverified')), 'note', `uses: ${ref} could not be verified: ${f.unverified}.`, loc, key);
+        push(addRule(kindRule('pinright/action-unverified')), 'note', `uses: ${ref} could not be verified: ${f.unverified}.`, loc, key);
       }
       if (f.exists && !f.pinned && !f.advisories.length) {
         const pin = f.pinTo ? `uses: ${f.pinTo}` : 'uses: owner/repo@<40-char SHA> # tag';
-        push(addRule(kindRule('safectx/action-unpinned')), 'warning', `uses: ${ref} is a mutable ref; a tag can be re-pointed to other code. Pin the commit: ${pin}`, loc, key);
+        push(addRule(kindRule('pinright/action-unpinned')), 'warning', `uses: ${ref} is a mutable ref; a tag can be re-pointed to other code. Pin the commit: ${pin}`, loc, key);
       }
     }
   }
@@ -402,7 +402,7 @@ export function buildSarif(input: SarifInput): SarifLog {
       {
         tool: {
           driver: {
-            name: 'safectx',
+            name: 'pinright',
             semanticVersion: input.toolVersion,
             version: input.toolVersion,
             informationUri: INFO_URI,

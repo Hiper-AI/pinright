@@ -10,7 +10,7 @@ import { closest, colorEnabled, COMMANDS, commandHelp, didYouMean, mainHelp, pai
 import { cacheStats, pruneCache } from '../src/cache.js';
 import { cacheCheck, clientWiring, formatDoctor, nodeCheck, policyCheck, probe, type DoctorReport } from '../src/doctor.js';
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'safectx-ux-'));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-ux-'));
 
 describe('help and typos', () => {
   it('suggests the command a typo meant', () => {
@@ -20,7 +20,7 @@ describe('help and typos', () => {
     expect(didYouMean('upgarde')).toBe('upgrade');
     expect(didYouMean('mcp')).toBe('serve');
     expect(didYouMean('deploy')).toBeUndefined();
-    expect(unknownCommand('chek')).toBe('safectx: unknown command "chek". Did you mean "safectx check"?\nRun "safectx --help" for the list of commands.');
+    expect(unknownCommand('chek')).toBe('pinright: unknown command "chek". Did you mean "pinright check"?\nRun "pinright --help" for the list of commands.');
   });
 
   it('suggests the flag a typo meant', () => {
@@ -37,7 +37,7 @@ describe('help and typos', () => {
       expect(commandHelp(name)).toContain(`Usage: ${COMMANDS[name].usage}`);
     }
     expect(main).toMatch(/Exit codes:\n {2}0 .*\n {2}1 /);
-    expect(main).toContain('npx -y safectx init claude');
+    expect(main).toContain('npx -y pinright init claude');
     // No escape codes unless asked for.
     expect(main).not.toContain('\x1b[');
     expect(mainHelp('9.9.9', true)).toContain('\x1b[1m');
@@ -98,7 +98,7 @@ describe('cache cap', () => {
 describe('doctor', () => {
   it('checks the Node version against engines', () => {
     expect(nodeCheck('v22.11.0').status).toBe('ok');
-    expect(nodeCheck('v18.20.0')).toMatchObject({ status: 'fail', detail: 'Node v18.20.0; safectx needs >=20.9.0' });
+    expect(nodeCheck('v18.20.0')).toMatchObject({ status: 'fail', detail: 'Node v18.20.0; pinright needs >=20.9.0' });
   });
 
   it('a probe is ok for any answer below 500, fails a core source on 5xx or no answer, and only warns for others', async () => {
@@ -120,23 +120,23 @@ describe('doctor', () => {
     expect(cacheCheck(dir).detail).toMatch(/: 0 entries, 0\.0 MB \(cap \d+\.\d MB\)$/);
     const proj = tmp();
     expect(policyCheck(proj).status).toBe('ok');
-    fs.writeFileSync(path.join(proj, '.safectx.json'), '{ "onError": "maybe" }');
-    expect(policyCheck(proj)).toMatchObject({ name: '.safectx.json', status: 'fail' });
-    fs.writeFileSync(path.join(proj, '.safectx.json'), '{ "onError": "deny" }');
+    fs.writeFileSync(path.join(proj, '.pinright.json'), '{ "onError": "maybe" }');
+    expect(policyCheck(proj)).toMatchObject({ name: '.pinright.json', status: 'fail' });
+    fs.writeFileSync(path.join(proj, '.pinright.json'), '{ "onError": "deny" }');
     expect(policyCheck(proj)).toMatchObject({ status: 'ok' });
   });
 
-  it('finds which agents have safectx and whether the hook is wired, from the client registry, reading only', () => {
+  it('finds which agents have pinright and whether the hook is wired, from the client registry, reading only', () => {
     const proj = tmp();
     const home = tmp();
-    fs.writeFileSync(path.join(proj, '.mcp.json'), JSON.stringify({ mcpServers: { safectx: { command: 'npx', args: ['-y', 'safectx'] } } }));
+    fs.writeFileSync(path.join(proj, '.mcp.json'), JSON.stringify({ mcpServers: { pinright: { command: 'npx', args: ['-y', 'pinright'] } } }));
     fs.mkdirSync(path.join(proj, '.claude'));
-    const settings = { hooks: { PreToolUse: [{ matcher: 'Bash|Write|Edit|MultiEdit', hooks: [{ type: 'command', command: 'npx -y safectx hook claude' }] }] } };
+    const settings = { hooks: { PreToolUse: [{ matcher: 'Bash|Write|Edit|MultiEdit', hooks: [{ type: 'command', command: 'npx -y pinright hook claude' }] }] } };
     fs.writeFileSync(path.join(proj, '.claude', 'settings.json'), JSON.stringify(settings));
     fs.mkdirSync(path.join(home, '.cursor'));
     fs.writeFileSync(path.join(home, '.cursor', 'mcp.json'), JSON.stringify({ mcpServers: { other: { command: 'x' } } }));
     fs.mkdirSync(path.join(home, '.codex'));
-    fs.writeFileSync(path.join(home, '.codex', 'config.toml'), '[mcp_servers.safectx]\ncommand = "npx"\n');
+    fs.writeFileSync(path.join(home, '.codex', 'config.toml'), '[mcp_servers.pinright]\ncommand = "npx"\n');
     const before = fs.readFileSync(path.join(proj, '.claude', 'settings.json'), 'utf8');
     const w = clientWiring(proj, home);
     expect(w).toEqual([

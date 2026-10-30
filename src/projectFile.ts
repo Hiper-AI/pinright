@@ -1,8 +1,8 @@
 /**
- * Reading a dependency file, workflow or .safectx.json from a project that may
+ * Reading a dependency file, workflow or .pinright.json from a project that may
  * not be trusted: a cloned repository, a pull request in CI. Such a repository
  * can ship `requirements.txt` as a symlink to ~/.ssh/id_rsa, /proc/self/environ
- * or /dev/zero; what safectx parses goes into tool output, SARIF and registry
+ * or /dev/zero; what pinright parses goes into tool output, SARIF and registry
  * queries, so the content would leak or the process would hang.
  *
  * - the file, after resolving links, must stay inside `root` (by default its

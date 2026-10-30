@@ -1,5 +1,5 @@
 /**
- * `safectx init [client] [--user | --project] [--print]`: the MCP entry and, where
+ * `pinright init [client] [--user | --project] [--print]`: the MCP entry and, where
  * the client has one, the pre-install hook, merged into the client's own files.
  *
  * - Only our entry changes; other servers, hooks, comments and formatting stay.
@@ -26,7 +26,7 @@ export interface InitOptions {
   config: boolean;
   print: boolean;
   launch: Launch;
-  /** Adds SAFECTX_GH_CLI=1 to the entry (see mcpEntryEnv). */
+  /** Adds PINRIGHT_GH_CLI=1 to the entry (see mcpEntryEnv). */
   ghCli: boolean;
 }
 

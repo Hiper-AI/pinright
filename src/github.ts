@@ -4,12 +4,12 @@
  * from jsDelivr first (docs/sources.ts) and tags from the git protocol
  * (actions/github.ts); what still needs the API goes through here, which
  *   - adds a token when there is one: GITHUB_TOKEN, GH_TOKEN or, only with
- *     SAFECTX_GH_CLI=1, the GitHub CLI's login (`gh auth token`, read once on
+ *     PINRIGHT_GH_CLI=1, the GitHub CLI's login (`gh auth token`, read once on
  *     first need);
  *   - sends it only to the API origin over HTTPS: never to a log, a cache key,
  *     an error message or tool output;
  *   - stops calling once GitHub says the budget is spent, until it resets (the
- *     stop is shared with other safectx processes through the cache), and
+ *     stop is shared with other pinright processes through the cache), and
  *     records what was skipped so the answer can say so (trackGitHub).
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -23,7 +23,7 @@ export const GITHUB_API = (process.env.GITHUB_API_URL ?? 'https://api.github.com
 
 /** Opt-in: the CLI's token usually carries the user's full scopes (repo, workflow), more than reading public repos needs. */
 export function ghCliOptIn(): boolean {
-  return process.env.SAFECTX_GH_CLI === '1';
+  return process.env.PINRIGHT_GH_CLI === '1';
 }
 
 /**
@@ -75,38 +75,38 @@ export function ghCliLoggedIn(): boolean {
   return r.status === 0;
 }
 
-/** What `safectx init` tells the user about GitHub auth. It never writes a token anywhere. */
+/** What `pinright init` tells the user about GitHub auth. It never writes a token anywhere. */
 export function githubAuthAdvice(s: { envToken: boolean; ghLoggedIn: boolean; optIn: boolean }): string {
   if (s.optIn && s.ghLoggedIn) {
-    return 'GitHub: added SAFECTX_GH_CLI=1 to the MCP entry. safectx asks `gh auth token` for the token the first time it needs the GitHub API; the token itself is not written to any file.';
+    return 'GitHub: added PINRIGHT_GH_CLI=1 to the MCP entry. pinright asks `gh auth token` for the token the first time it needs the GitHub API; the token itself is not written to any file.';
   }
   if (s.optIn) {
-    return 'GitHub: added SAFECTX_GH_CLI=1 to the MCP entry, but the GitHub CLI is not installed or not logged in (`gh auth login`). Until it is, safectx works without a token.';
+    return 'GitHub: added PINRIGHT_GH_CLI=1 to the MCP entry, but the GitHub CLI is not installed or not logged in (`gh auth login`). Until it is, pinright works without a token.';
   }
   if (s.envToken) {
-    return 'GitHub: GITHUB_TOKEN/GH_TOKEN is set in this shell. safectx uses it when the agent starts from an environment that has it; it is not written to any file.';
+    return 'GitHub: GITHUB_TOKEN/GH_TOKEN is set in this shell. pinright uses it when the agent starts from an environment that has it; it is not written to any file.';
   }
   if (s.ghLoggedIn) {
     return (
-      'GitHub: the GitHub CLI is logged in, but safectx does not read its token unless you opt in with `safectx init --gh-cli`. ' +
+      'GitHub: the GitHub CLI is logged in, but pinright does not read its token unless you opt in with `pinright init --gh-cli`. ' +
       "That token carries your account's full scopes; a fine-grained GITHUB_TOKEN with read-only access to public repositories is the narrower choice."
     );
   }
   return (
-    'GitHub: no token. safectx works anonymously (repo docs come from jsDelivr and Actions refs from git, so most sessions stay under ' +
+    'GitHub: no token. pinright works anonymously (repo docs come from jsDelivr and Actions refs from git, so most sessions stay under ' +
     "GitHub's 60 API requests an hour). For 5,000, export GITHUB_TOKEN in the environment that starts your agent; do not put it in .mcp.json."
   );
 }
 
 /**
- * The env of safectx's MCP entry: what the user already had, plus or minus
- * SAFECTX_GH_CLI. A token found there is left alone (it is the user's file) but
+ * The env of pinright's MCP entry: what the user already had, plus or minus
+ * PINRIGHT_GH_CLI. A token found there is left alone (it is the user's file) but
  * flagged, since a project file is easy to commit.
  */
 export function mcpEntryEnv(previous: Record<string, string> | undefined, optIn: boolean): { env?: Record<string, string>; warnings: string[] } {
   const env = { ...(previous ?? {}) };
-  if (optIn) env.SAFECTX_GH_CLI = '1';
-  else delete env.SAFECTX_GH_CLI;
+  if (optIn) env.PINRIGHT_GH_CLI = '1';
+  else delete env.PINRIGHT_GH_CLI;
   const warnings = Object.keys(env)
     .filter((k) => /token|secret|key/i.test(k))
     .map((k) => `${k} is set in this MCP entry: a credential in a project file is easy to commit. Prefer the environment the agent starts with.`);
@@ -168,7 +168,7 @@ export class GitHubRateLimitError extends HttpError {
     // 429 so callers that already treat 403/429 as "rate limited" keep doing so.
     super(429, url, Math.max(1, Math.ceil((until - Date.now()) / 1000)));
     this.name = 'GitHubRateLimitError';
-    this.message = `GitHub API rate limit reached (${authenticated ? 'token' : 'no token'}); safectx stops calling it until ${hhmm(until)} UTC`;
+    this.message = `GitHub API rate limit reached (${authenticated ? 'token' : 'no token'}); pinright stops calling it until ${hhmm(until)} UTC`;
   }
 }
 
@@ -195,11 +195,11 @@ export function githubNotice(what: string[], until: number, authenticated: boole
   const mins = Math.max(1, Math.ceil((until - now) / 60_000));
   return (
     `NOTE: GitHub's API rate limit was reached (${authenticated ? 'for the configured token' : 'anonymous: 60 requests an hour per IP'}), ` +
-    `so this answer is missing: ${what.join('; ')}. safectx makes no GitHub API calls until ${hhmm(until)} UTC (about ${mins} min); ` +
+    `so this answer is missing: ${what.join('; ')}. pinright makes no GitHub API calls until ${hhmm(until)} UTC (about ${mins} min); ` +
     'the rest of the answer is unaffected.' +
     (authenticated
       ? ''
-      : ' For 5,000 requests an hour, start the agent with GITHUB_TOKEN set (a fine-grained token with read-only access to public repositories is enough), or set SAFECTX_GH_CLI=1 to use the GitHub CLI login.')
+      : ' For 5,000 requests an hour, start the agent with GITHUB_TOKEN set (a fine-grained token with read-only access to public repositories is enough), or set PINRIGHT_GH_CLI=1 to use the GitHub CLI login.')
   );
 }
 

@@ -1,6 +1,6 @@
 # Hook threat model
 
-The safectx hook reads what a coding agent is about to run or write and stops dependency changes that
+The pinright hook reads what a coding agent is about to run or write and stops dependency changes that
 deps.dev and OSV flag: malware, typosquats, names that do not exist, vulnerable pins with a clean
 alternative. This page says what that buys you, what it does not, and how each bypass we tried fared.
 
@@ -20,13 +20,13 @@ It guarantees, for the tools it is wired to (`Bash`, `PowerShell`, `Write`, `Edi
   arguments that `xargs` feeds from a pipe, a manifest rewritten by `sed -i`, a git or URL source, or
   a switch to another registry becomes *unverifiable*. The team policy decides those
   (`unverifiable`, default `ask`).
-- A change to the hook's own configuration (`.safectx.json`, the safectx entry or `SAFECTX_*`
+- A change to the hook's own configuration (`.pinright.json`, the pinright entry or `PINRIGHT_*`
   variables in `.claude/settings*.json`, `disableAllHooks`, `.cursor/hooks.json`) always goes to a
   human, whatever the policy says.
 - Padding a change with harmless packages does not push a bad one past the check: past 40
   dependencies in one change, the hook asks.
 - When deps.dev or OSV cannot answer, a name one edit away from a popular package still asks, even
-  with `onError: allow`. The lookalike list ships with safectx, so this check needs no network.
+  with `onError: allow`. The lookalike list ships with pinright, so this check needs no network.
 
 It does not cover:
 
@@ -70,7 +70,7 @@ Status after this round. "Bypass" means a known-bad package (`expresss`, `reqeus
 | Heredoc into a shell, `echo "npm i x" > s.sh && sh s.sh` | partial | handled |
 | `npm run <script>`, `npm install` lifecycle scripts, `make`, `just`, `sh script.sh`, `. script` | bypass | handled (scripts read from disk) |
 | Lifecycle script added to `package.json` | bypass | handled at write time |
-| `PowerShell` tool in Claude Code | bypass (not in the matcher) | handled after `safectx init` |
+| `PowerShell` tool in Claude Code | bypass (not in the matcher) | handled after `pinright init` |
 | `NotebookEdit` and `.ipynb` writes with `!pip install` / `%pip` / `%%bash` | bypass | handled |
 | npm alias `foo@npm:evil@1` (command or `package.json`) | bypass (checked `foo`) | handled (checks `evil`) |
 | git, GitHub, tarball and URL specs (`github:u/r`, `u/r`, `https://…tgz`, `git+ssh://`) | bypass | unverifiable |
@@ -92,10 +92,10 @@ Status after this round. "Bypass" means a known-bad package (`expresss`, `reqeus
 | `Edit` with `$&` or `$'` in `new_string` (the hook computed a different file and saw no change) | bypass | handled |
 | A manifest that does not parse after the write | bypass (read as empty) | unverifiable |
 | Cursor lazy edit (`// ... existing code ...`) of a manifest | bypass | unverifiable |
-| Writing `.safectx.json` (`"allow": ["*"]`), removing the hook from settings, `SAFECTX_ALLOW` in settings `env` | bypass | always asks |
+| Writing `.pinright.json` (`"allow": ["*"]`), removing the hook from settings, `PINRIGHT_ALLOW` in settings `env` | bypass | always asks |
 | More than 25 dependencies in one change | bypass (the rest passed with a note) | asks past 40 |
 | Registries unreachable (fail-open with `onError: allow`) | bypass | partial: lookalikes, deny list and unverifiable still decide offline |
-| Registries slow enough to outlast the agent's 60 s hook timeout (the agent runs the tool) | bypass | handled: at `SAFECTX_HOOK_TIMEOUT_MS` (45 s) the hook asks, whatever `onError` says |
+| Registries slow enough to outlast the agent's 60 s hook timeout (the agent runs the tool) | bypass | handled: at `PINRIGHT_HOOK_TIMEOUT_MS` (45 s) the hook asks, whatever `onError` says |
 | A reader crash on a crafted command | fail-open | unverifiable |
 | Malformed hook input, hook process crash | fail-open (exit 1) | unchanged: the agent builds the JSON, not the model |
 | `python -c`/`node -e` installers, `curl \| sh`, obfuscated commands, MCP tools that run shell | out of scope | out of scope (`curl \| sh` gets a note) |
@@ -115,7 +115,7 @@ install verb or a guarded file, so a variable in an ordinary command does not tr
 | Setting | Default | Trade-off |
 |---|---|---|
 | `unverifiable` | `ask` | New. A git dependency or a private index asks once per change. Teams that use them set `allow` (or list the names in `allow`); a locked-down repo sets `deny`. |
-| `onError` | `allow` built in, `ask` in the starter `.safectx.json` | Without a policy file, an offline laptop or a deps.dev outage does not stop the work. A project set up with `safectx init` asks instead. See below. |
+| `onError` | `allow` built in, `ask` in the starter `.pinright.json` | Without a policy file, an offline laptop or a deps.dev outage does not stop the work. A project set up with `pinright init` asks instead. See below. |
 | `noFix` | `severity` | Unchanged. |
 | Per-change limit | 40, then `ask` | Raised from 25. A scaffolded `package.json` with 30 dependencies still gets a full check. |
 
@@ -126,10 +126,10 @@ hook off. The cost is an approval prompt for every install while deps.dev or OSV
 no longer lets a lookalike name through, so with `allow` the remaining exposure is a malicious or
 vulnerable package with a name nobody would mistake, installed while the registries do not answer.
 
-safectx keeps `allow` as the built-in default, so adding it to an existing setup changes nothing
-offline. The starter `.safectx.json` that `safectx init` writes sets `"onError": "ask"`, with a
+pinright keeps `allow` as the built-in default, so adding it to an existing setup changes nothing
+offline. The starter `.pinright.json` that `pinright init` writes sets `"onError": "ask"`, with a
 comment that explains the trade-off. A developer who works offline overrides it for their own
-machine with `SAFECTX_HOOK_ON_ERROR=allow`.
+machine with `PINRIGHT_HOOK_ON_ERROR=allow`.
 
 ## Recommendations
 
@@ -138,6 +138,6 @@ machine with `SAFECTX_HOOK_ON_ERROR=allow`.
   and `npm ci` / `pip install --require-hashes` in CI.
 - Run the agent in a container or VM without long-lived credentials. The hook does not limit what an
   allowed package does after install.
-- Re-run `safectx init` after upgrading: the matcher for Claude Code now includes `PowerShell` and
+- Re-run `pinright init` after upgrading: the matcher for Claude Code now includes `PowerShell` and
   `NotebookEdit`, and existing settings keep the old one.
-- Review `.safectx.json` changes in code review like any other policy file.
+- Review `.pinright.json` changes in code review like any other policy file.
