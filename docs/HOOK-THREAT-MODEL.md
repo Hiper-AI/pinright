@@ -114,19 +114,21 @@ install verb or a guarded file, so a variable in an ordinary command does not tr
 | Setting | Default | Trade-off |
 |---|---|---|
 | `unverifiable` | `ask` | New. A git dependency or a private index asks once per change. Teams that use them set `allow` (or list the names in `allow`); a locked-down repo sets `deny`. |
-| `onError` | `allow` | Unchanged. An offline laptop or a deps.dev outage does not stop the work. The cost: on a timeout, only the offline checks run. See the proposal below. |
+| `onError` | `allow` built in, `ask` in the starter `.safectx.json` | Without a policy file, an offline laptop or a deps.dev outage does not stop the work. A project set up with `safectx init` asks instead. See below. |
 | `noFix` | `severity` | Unchanged. |
 | Per-change limit | 40, then `ask` | Raised from 25. A scaffolded `package.json` with 30 dependencies still gets a full check. |
 
-### Proposal for the default `onError`
+### `onError`: built-in `allow`, starter `ask`
 
-For a security tool, `onError: ask` is the safer default: an attacker who can slow the registries
-(or a flaky network) cannot turn the hook off. The cost is an approval prompt for every install
-while deps.dev or OSV is down. With this round, an outage no longer lets a lookalike name through,
-so the remaining exposure is a malicious or vulnerable package with a name nobody would mistake,
-installed while the registries do not answer. Recommendation: keep `allow` for the published default,
-have `safectx init` write `"onError": "ask"` into the starter `.safectx.json`, and say so in the
-README. That decision belongs to the maintainer; this change does not make it.
+With `onError: ask`, an attacker who can slow the registries (or a flaky network) cannot turn the
+hook off. The cost is an approval prompt for every install while deps.dev or OSV is down. An outage
+no longer lets a lookalike name through, so with `allow` the remaining exposure is a malicious or
+vulnerable package with a name nobody would mistake, installed while the registries do not answer.
+
+safectx keeps `allow` as the built-in default, so adding it to an existing setup changes nothing
+offline. The starter `.safectx.json` that `safectx init` writes sets `"onError": "ask"`, with a
+comment that explains the trade-off. A developer who works offline overrides it for their own
+machine with `SAFECTX_HOOK_ON_ERROR=allow`.
 
 ## Recommendations
 

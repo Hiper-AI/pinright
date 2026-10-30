@@ -33,6 +33,14 @@ describe('parsing', () => {
     expect(r.config?.licenses?.deny).toContain('AGPL-*');
   });
 
+  it('the starter asks when the registries cannot answer; without a file the default stays allow', () => {
+    expect(parseTeamConfig(STARTER_CONFIG).config?.onError).toBe('ask');
+    expect(resolvePolicy(parseTeamConfig(STARTER_CONFIG).config, {}).onError).toBe('ask');
+    expect(resolvePolicy(undefined, {}).onError).toBe('allow');
+    // The env still overrides the starter for one developer who works offline.
+    expect(resolvePolicy(parseTeamConfig(STARTER_CONFIG).config, { SAFECTX_HOOK_ON_ERROR: 'allow' }).onError).toBe('allow');
+  });
+
   it('rejects unknown keys and bad values with the path of each problem', () => {
     const typo = parseTeamConfig('{ "alow": ["x"] }');
     expect(typo.error).toMatch(/does not match the safectx schema/);

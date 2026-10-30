@@ -44,9 +44,9 @@ and well under a second once cached (see [Latency](#latency)).
 To let one package through (a private one, say), add it to `"allow"` in `.safectx.json`. To turn
 the hook off, delete the safectx entry from the client's hook file (Claude Code: `hooks.PreToolUse`
 in `.claude/settings.json`; Cursor: `.cursor/hooks.json`; the others under [Clients](#clients)); the
-MCP tools keep working. When deps.dev or OSV cannot be reached, the hook
-allows the change and tells the agent it was not verified; `"onError": "ask"` or `"deny"` changes
-that (see [When a source is down](#when-a-source-is-down)).
+MCP tools keep working. When deps.dev or OSV cannot be reached, the starter `.safectx.json` that
+`init` writes has the hook ask you (`"onError": "ask"`). Without a policy file the hook allows the
+change and tells the agent it was not verified (see [When a source is down](#when-a-source-is-down)).
 
 ```
 agent --MCP--> safectx --> registry + jsDelivr     package files at the exact version (npm)
@@ -578,7 +578,7 @@ override the file:
 | Variable | Default | Meaning |
 |---|---|---|
 | `SAFECTX_ALLOW` | none | Comma list of names that skip the hook, `*` wildcard (`@acme/*`). Added to the file's `allow`. For private packages. |
-| `SAFECTX_HOOK_ON_ERROR` | `allow` | What to do when deps.dev or OSV cannot be reached: `allow`, `ask` or `deny`. A name one edit away from a popular package asks even with `allow`. |
+| `SAFECTX_HOOK_ON_ERROR` | `allow` (`ask` in the starter `.safectx.json`) | What to do when deps.dev or OSV cannot be reached: `allow`, `ask` or `deny`. A name one edit away from a popular package asks even with `allow`. |
 | `SAFECTX_HOOK_UNVERIFIABLE` | `ask` | What safectx cannot check (git or URL sources, another registry, a command or file it cannot read): `allow`, `ask` or `deny`. |
 | `SAFECTX_HOOK_NO_FIX` | `severity` | When no clean version exists: `severity` asks for high/critical and allows the rest; or `allow`, `ask`, `deny` for all. |
 | `SAFECTX_HOOK_COOLDOWN` | `warn` | `enforce` blocks an unpinned install whose newest version is inside the cooldown window. |
@@ -744,6 +744,11 @@ the same rules. It is JSON with `//` comments allowed. Every key is optional:
 
 Precedence is built-in defaults, then the file, then environment variables. Lists merge
 (`SAFECTX_ALLOW` adds to `allow`); single values from the environment replace the file's.
+
+The built-in `onError` is `allow`, so installing safectx never blocks an offline laptop. The starter
+file that `safectx init` writes sets `"onError": "ask"`: with it, a registry that is down or slowed
+on purpose cannot turn the check off, and you approve each install by hand until it answers again.
+A developer who works offline can set `SAFECTX_HOOK_ON_ERROR=allow` for themselves.
 
 A file that is not valid JSON, or has an unknown key or a wrong value, does not count as "no policy":
 the hook denies every dependency change with the error until someone fixes the file, and the MCP tools

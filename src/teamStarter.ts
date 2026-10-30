@@ -33,8 +33,10 @@ export const STARTER_CONFIG = `{
   // When no clean version exists: "severity" asks for high/critical and allows the rest; or allow, ask, deny.
   "noFix": "severity",
 
-  // When deps.dev or OSV cannot be reached: allow, ask or deny.
-  "onError": "allow",
+  // When deps.dev or OSV cannot be reached: allow, ask or deny. Without this file the default is
+  // "allow", so an offline laptop never blocks; "ask" means a slow or unreachable registry cannot
+  // turn the check off, at the cost of one approval per install while it is down.
+  "onError": "ask",
 
   // What safectx cannot check (git or URL sources, another registry, a command it cannot read): allow, ask or deny.
   "unverifiable": "ask"
