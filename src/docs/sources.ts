@@ -83,8 +83,8 @@ const TEXT_LIKE = /\.(md|mdx|markdown|rst|txt)$|(^|\/)[^./]+$/i;
  * is over jsDelivr's 50 MB limit for GitHub (a 403), so only the API can list it.
  * https://github.com/jsdelivr/data.jsdelivr.com: free, no rate limits.
  */
-async function jsdListing(owner: string, repo: string, ref: string): Promise<RepoListing | 'missing' | 'too-large'> {
-  return cached(`jsd:gh:${owner}/${repo}@${ref}`, config.ttl.tagged, async (): Promise<RepoListing | 'too-large'> => {
+async function jsdListing(owner: string, repo: string, ref: string, ttl = config.ttl.tagged): Promise<RepoListing | 'missing' | 'too-large'> {
+  return cached(`jsd:gh:${owner}/${repo}@${ref}`, ttl, async (): Promise<RepoListing | 'too-large'> => {
     try {
       const l = await getJson<JsDelivrFlat>(`https://data.jsdelivr.com/v1/packages/gh/${owner}/${repo}@${encodeURIComponent(ref)}?structure=flat`);
       const files = (l.files ?? []).map((f) => ({ path: f.name.replace(/^\//, ''), size: f.size })).filter((f) => TEXT_LIKE.test(f.path));
@@ -209,6 +209,30 @@ export async function docsRepoFiles(src: NonNullable<DocsSource['repo']>): Promi
   }));
 }
 
+/**
+ * The source of a package's docs site (discover.ts), at its default branch: jsDelivr lists and serves
+ * it, the GitHub API lists it when jsDelivr cannot (over 50 MB). Translations are dropped before the
+ * cap, so the English pages of a site in twenty languages are all kept.
+ */
+export async function siteRepoFiles(site: { owner: string; repo: string; branch: string; paths?: string[] }, translation: RegExp): Promise<RemoteFile[]> {
+  const { owner, repo, branch, paths } = site;
+  const j = await jsdListing(owner, repo, branch, config.ttl.docs).catch(() => 'down' as const);
+  const listing = typeof j === 'object' ? j : await apiListing(owner, repo, 'HEAD').catch(() => undefined);
+  if (!listing) return [];
+  const inScope = (p: string) => !paths || paths.some((prefix) => p.startsWith(prefix));
+  const scoped = docsOnly(listing.files.filter((f) => inScope(f.path) && !translation.test(f.path)));
+  const ref = listing.cdn ? branch : 'HEAD';
+  return scoped.map((f) => ({
+    path: f.path,
+    url: repoFileUrl(owner, repo, ref, f.path, listing.cdn),
+    size: f.size,
+    origin: 'repo' as const,
+    label: `${owner}/${repo}/${f.path} (docs site source, default branch)`,
+    versionAccurate: false,
+    fill: scoped.length <= 60,
+  }));
+}
+
 /** Docs written for several languages with `:::python` / `:::js` blocks (Mintlify): keep one language. */
 export function keepLanguage(md: string, lang: string): string {
   return md
@@ -259,18 +283,35 @@ export function parseLlmsIndex(content: string, base: string): { title: string; 
   return out;
 }
 
-export async function llmsDocs(site: string | undefined): Promise<LlmsDocs | undefined> {
-  if (!site) return undefined;
+/**
+ * Where a site may keep its llms.txt: the docs URL's own folder, then, for a bare homepage, its docs
+ * subdomain and /docs (stripe.com's llms.txt lists product pages, docs.stripe.com's the docs), then
+ * the origin.
+ */
+export function llmsBases(site: string): string[] {
   let u: URL;
   try {
     u = new URL(site);
   } catch {
-    return undefined;
+    return [];
   }
-  const bases = [...new Set([`${u.origin}${u.pathname.replace(/\/[^/]*\.[a-z]+$/i, '').replace(/\/$/, '')}`, u.origin])];
-  for (const base of bases) {
+  const path = `${u.origin}${u.pathname.replace(/\/[^/]*\.[a-z]+$/i, '').replace(/\/$/, '')}`;
+  const host = u.hostname.replace(/^www\./, '');
+  const docs = /^docs\./.test(host) || /(^|\/)docs(\/|$)/.test(u.pathname) ? [] : [`https://docs.${host}`, `${u.origin}/docs`];
+  return path === u.origin ? [...docs, u.origin] : [path, u.origin];
+}
+
+export async function llmsDocs(site: string | undefined): Promise<LlmsDocs | undefined> {
+  if (!site) return undefined;
+  const bases = llmsBases(site);
+  // The indexes together: a site without llms.txt costs one round of requests, not one per base. The full
+  // text (megabytes on some sites) only for the base that has an index, or when none has one.
+  const idxs = await Promise.all(bases.map((base) => fetchTextDoc(`${base}/llms.txt`)));
+  const first = idxs.findIndex(Boolean);
+  for (const [i, base] of bases.entries()) {
+    if (first >= 0 && i !== first) continue;
+    const idx = idxs[i];
     const full = await fetchTextDoc(`${base}/llms-full.txt`);
-    const idx = await fetchTextDoc(`${base}/llms.txt`);
     if (full || idx) {
       return {
         site: base,

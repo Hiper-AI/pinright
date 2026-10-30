@@ -9,11 +9,12 @@ import { packageMeta, type PackageMeta } from '../registry.js';
 import { docsSourceFor } from '../data/docsRepos.js';
 import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
+import { discoverSiteRepo, packageSite, readmeDocsLink } from './discover.js';
 import { expandIncludes } from './includes.js';
 import { applicableRenames, currentGuides, expandQuery, packageRenames, renamesNote, type Rename } from './renames.js';
 import { chunkFile, coverPaths, notUserDocs, olderMajorPath, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile } from './retrieve.js';
 import {
-  docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, type RemoteFile,
+  docsRepoFiles, fetchFile, fetchLlmsPage, keepLanguage, llmsDocs, llmsIndexDocs, npmPackageFiles, repoFiles, siteRepoFiles, type RemoteFile,
 } from './sources.js';
 
 export interface DocsResult {
@@ -110,6 +111,24 @@ function pickFiles(files: RemoteFile[], meta: PackageMeta, query: string, wantUp
   return [...new Set([readme, ...rankedProse, ...upgrade, ...rankedTypes, ...deepTypes].filter((f): f is RemoteFile => Boolean(f)))];
 }
 
+/** Below this many docs pages of its own, a package's docs site is looked for in its org's repos. */
+const THIN_DOCS = 5;
+
+/** User docs pages the package and its repo carry: docs folders and the package's own folder, past README and changelogs. */
+function ownDocs(files: RemoteFile[], query: string): number {
+  return files.filter(
+    (f) =>
+      !f.path.endsWith('.d.ts') && !/(^|\/)(readme|changelog|changes|history|license)[^/]*$/i.test(f.path) && !TRANSLATION.test(f.path) && !notUserDocs(f.path, query) &&
+      (/(^|\/)(docs?|guides?|documentation)\//i.test(f.path) || f.origin === 'package'),
+  ).length;
+}
+
+/** The README of the package, or of its repo. */
+async function readmeText(files: RemoteFile[]): Promise<string | undefined> {
+  const readmes = files.filter((f) => /(^|\/)readme\.(md|mdx|rst|txt)$/i.test(f.path)).sort((a, b) => Number(b.origin === 'package' || b.inPackageDir) - Number(a.origin === 'package' || a.inPackageDir) || a.path.split('/').length - b.path.split('/').length);
+  return readmes[0] ? fetchFile(readmes[0].url) : undefined;
+}
+
 /** Packages often ship the same docs their repo has; keep the first copy of each section. */
 function dedupe(chunks: Chunk[]): Chunk[] {
   const seen = new Set<string>();
@@ -179,16 +198,37 @@ export async function collectDocs(opts: DocsOptions): Promise<{
   // Docs that live outside the package's repo (LangChain, PyYAML...), and the API of a PyPI distribution.
   const docsSource = docsSourceFor(opts.ecosystem, meta.name);
   const keep = (text: string) => (docsSource?.language ? keepLanguage(text, docsSource.language) : text);
-  const [pkgFiles, repo, llms, docsRepo, pyApi] = await Promise.all([
+  // Without an entry there, the docs site is discovered from the package's metadata (discover.ts).
+  const sitePromise = docsSource ? Promise.resolve(undefined) : packageSite(meta);
+  const [pkgFiles, repo, firstLlms, docsRepo, pyApi] = await Promise.all([
     opts.ecosystem === 'npm' ? npmPackageFiles(opts.name, opts.version) : Promise.resolve([] as RemoteFile[]),
     repoFiles(meta),
-    docsSource?.llmsIndex ? llmsIndexDocs(docsSource.llmsIndex) : llmsDocs(meta.docsUrl),
+    docsSource?.llmsIndex ? llmsIndexDocs(docsSource.llmsIndex) : docsSource ? llmsDocs(meta.docsUrl) : sitePromise.then((s) => llmsDocs(s?.site)),
     docsSource?.repo ? docsRepoFiles(docsSource.repo) : Promise.resolve([] as RemoteFile[]),
     opts.ecosystem === 'pypi' ? pythonApi(meta.name, meta.version) : Promise.resolve(undefined),
   ]);
+  const site = await sitePromise;
+  let llms = firstLlms;
+  // A site that covers a product family (supabase.com for supabase-js, platform.claude.com for an SDK):
+  // its pages are ranked with the package name too, and more of them are read.
+  let family = Boolean(docsSource?.llmsIndex || site?.fromRepo);
+  const siteFiles: RemoteFile[] = [];
+  if (!docsSource && !llms) {
+    // No site in the metadata: the one the README sends its readers to.
+    let found = site?.site;
+    if (!found) {
+      const readme = meta.readme ?? (await readmeText([...pkgFiles, ...repo.files]));
+      found = readme ? readmeDocsLink(readme) : undefined;
+      llms = await llmsDocs(found);
+      family = Boolean(llms);
+    }
+    // No llms.txt either: the repo the site is built from, when the package and its repo carry few docs.
+    const repoSite = !llms && found && ownDocs([...pkgFiles, ...repo.files], opts.query) < THIN_DOCS ? await discoverSiteRepo(meta, found) : undefined;
+    if (repoSite) siteFiles.push(...(await siteRepoFiles(repoSite, TRANSLATION)));
+  }
 
   // Names the question uses that this version renamed: the new ones are searched too.
-  const listed = [...pkgFiles, ...repo.files, ...docsRepo];
+  const listed = [...pkgFiles, ...repo.files, ...docsRepo, ...siteFiles];
   const renames = applicableRenames(await packageRenames(opts.ecosystem, meta, listed, pyApi).catch(() => []), opts.query);
   const query = expandQuery(opts.query, renames);
 
@@ -223,10 +263,10 @@ export async function collectDocs(opts: DocsOptions): Promise<{
     docFiles.push({ label: 'llms-full.txt', url: llms.full.url, content: llms.full.content, kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.7 : 1 });
   } else if (llms?.index?.entries.length) {
     const entries = llms.index.entries.filter((e) => wantUpgrade || !/\/(blog|changelog|releases?|news)\b/i.test(e.url));
-    // A curated index (docsRepos.ts) covers a whole product family: favor this package's pages, read more of them.
+    // A curated index (docsRepos.ts) or a family site covers a whole product family: favor this package's pages, read more of them.
     const paths = entries.map((e) => ({ ...e, path: `${e.title} ${e.description} ${new URL(e.url).pathname}` }));
-    const extra = docsSource?.llmsIndex ? [meta.name] : [];
-    const max = docsSource?.llmsIndex ? CURATED_LLMS_PAGES : LLMS_PAGES;
+    const extra = family ? [meta.name] : [];
+    const max = family ? CURATED_LLMS_PAGES : LLMS_PAGES;
     // Several topics: the best page of each, then the best overall, one more page per extra topic.
     const tl = topics(query);
     const ranked = topicsFirst(
