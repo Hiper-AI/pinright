@@ -5,6 +5,7 @@
  * edit from "react" and perfectly fine, "expresss" is not.
  */
 import { assessPackage, type PackageReport } from './advisories/resolve.js';
+import { sameLineTree } from './advisories/lineTree.js';
 import { getPackage } from './advisories/depsdev.js';
 import { config } from './config.js';
 import { type Ecosystem } from './ecosystems.js';
@@ -49,7 +50,13 @@ export async function checkPackage(
   const target = version ? r.requested?.version : r.latestVersion;
   if (!target || r.verdict === 'unknown-package' || r.verdict === 'malicious' || r.verdict === 'unknown') return v;
   const agentText = version && r.requested?.version === target ? (r.requested.agentText ?? []) : [];
-  v.risk = await assessRisk(eco, name, target, Date.now(), agentText).catch(() => ({ version: target, signals: [], unknown: ['risk signals'], sources: [] }));
+  // The same-line fix's own tree (two cached graph lookups, only when it is not the newest safe version) beside the risk signals.
+  const [risk, tree] = await Promise.all([
+    assessRisk(eco, name, target, Date.now(), agentText).catch(() => ({ version: target, signals: [], unknown: ['risk signals'], sources: [] })),
+    sameLineTree(r),
+  ]);
+  v.risk = risk;
+  if (tree) r.sameLineTree = tree;
   return v;
 }
 

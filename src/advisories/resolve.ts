@@ -13,6 +13,7 @@ import { type Ecosystem, NO_DEPS_DEV } from '../ecosystems.js';
 import { getAdvisory, getPackage, getVersion, type DepsDevVersionSummary } from './depsdev.js';
 import { cleanField, cleanText } from '../untrusted/index.js';
 import { fixedVersions, isMalware, queryVersion, severityOf } from './osv.js';
+import type { LineTreeNote } from './lineTree.js';
 
 export type Verdict =
   | 'ok'
@@ -77,6 +78,8 @@ export interface PackageReport {
   recentMajor?: { line: string; since: string };
   /** When no version is clean: the one with the mildest worst advisory (then fewest), newest on ties. */
   leastExposed?: { version: string; advisories: number; maxSeverity?: string };
+  /** The same-line fix pulls dependencies with advisories that only a newer line's safe version clears (lineTree.ts). */
+  sameLineTree?: LineTreeNote;
   /** No advisories, but every stable release is inside the cooldown window, so none is recommended. */
   cooldownOnly?: boolean;
   requested?: RequestedVersionReport;

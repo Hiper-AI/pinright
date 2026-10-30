@@ -5,6 +5,7 @@
 import { normalizePypiName, siblingsFor } from './data/docsRepos.js';
 import { installCommand } from './ecosystems.js';
 import { releaseLine, type PackageReport } from './advisories/resolve.js';
+import { lineTreeMessage } from './advisories/lineTree.js';
 import { riskLines, type RiskReport } from './risk/index.js';
 import { type TyposquatReport } from './typosquat.js';
 
@@ -116,6 +117,7 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
         (isUpgrade ? `. Upgrade: ${cmd(report.safeVersion)}` : '.'),
     );
   }
+  if (report.sameLineTree) lines.push(`NOTE: ${lineTreeMessage(report.package, report.sameLineTree)}`);
   if (report.safeVersion && report.safeVersionLicenses?.length) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
   const le = report.leastExposed;
   if (!report.safeVersion && le && (!req || le.version !== req.version)) {

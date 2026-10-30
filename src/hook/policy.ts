@@ -15,7 +15,8 @@
  */
 import { getDependencies, getPackage } from '../advisories/depsdev.js';
 import { getVuln, queryBatch, severityOf } from '../advisories/osv.js';
-import { recommendedUpgrade } from '../advisories/resolve.js';
+import { lineTreeMessage } from '../advisories/lineTree.js';
+import { recommendedUpgrade, releaseLine } from '../advisories/resolve.js';
 import { satisfiesComposer } from '../composer/constraint.js';
 import { config } from '../config.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
@@ -425,6 +426,9 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
       }
     }
     outcomes.push(o);
+    // Told to move to the same-line fix, whose own tree still has advisories a newer line clears: say so, without blocking.
+    const tree = c.v?.report.sameLineTree;
+    if (tree && tree.version !== c.version && o.problem?.includes(tree.version)) outcomes.push({ action: 'allow', warning: lineTreeMessage(c.i.name, tree) });
     // Behavior signals (install scripts, publisher, provenance, age): deny only the narrow cases, note the rest.
     const risky = riskOutcome(c.label, c.v?.risk);
     if (risky) outcomes.push(risky);
@@ -445,12 +449,16 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
   }
   const mild = await mildIds((ids ?? []).flat(), p);
   const vulnerableBy = new Map<Checked, string[]>();
+  const idsOf = new Map<string, string[]>();
   nodes.forEach((n, k) => {
     const found = ids?.[k] ?? [];
     if (!found.length) return;
     if (found.every((id) => mild.has(id))) {
       outcomes.push({ action: 'allow', warning: `${n.c.label} pulls ${n.name}@${n.version}, whose advisories (${found.slice(0, 3).join(', ')}) are below the project's severity threshold (${p.severityThreshold}).` });
-    } else vulnerableBy.set(n.c, [...(vulnerableBy.get(n.c) ?? []), `${n.name}@${n.version}`]);
+    } else {
+      vulnerableBy.set(n.c, [...(vulnerableBy.get(n.c) ?? []), `${n.name}@${n.version}`]);
+      idsOf.set(`${n.name}@${n.version}`, found);
+    }
   });
   const fixes = await Promise.all(
     [...vulnerableBy].map(([c, vulns]) => parentUpgrade(c, [...new Set(vulns.map((x) => x.slice(0, x.lastIndexOf('@'))))])),
@@ -461,7 +469,16 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
     if (up?.sameLine) {
       outcomes.push({ action: 'deny', problem: `${c.label} pulls dependencies with known advisories (${list}). ${installCommand(c.i.ecosystem, c.i.name, up.to)} pulls fixed versions on the same release line.` });
     } else if (up) {
-      outcomes.push({ action: 'allow', warning: `${c.label} pulls dependencies with known advisories (${list}); only ${c.i.name} ${up.to}, a new major, pulls fixed versions.` });
+      // The pinned version is clean itself; moving to the new major is the only way to clear its tree.
+      const pulls = vulns.map((x) => ({ name: x.slice(0, x.lastIndexOf('@')), version: x.slice(x.lastIndexOf('@') + 1), ids: idsOf.get(x) ?? [] }));
+      const line = c.version ? releaseLine(c.version) : undefined;
+      const clean = c.v?.report.requested?.verdict === 'ok';
+      outcomes.push({
+        action: 'allow',
+        warning: clean && c.version && line
+          ? lineTreeMessage(c.i.name, { version: c.version, line, pulls, cleaner: up.to, cleanerLine: releaseLine(up.to) ?? up.to })
+          : `${c.label} pulls dependencies with known advisories (${list}); only ${c.i.name} ${up.to}, a new major, pulls fixed versions.`,
+      });
     } else {
       outcomes.push({ action: 'allow', warning: `${c.label} pulls dependencies with known advisories (${list}) and no release of ${c.i.name} fixes them yet; consider an override.` });
     }

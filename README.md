@@ -667,6 +667,15 @@ npx safectx upgrade npm next 15.5.28 16.4.3 --query="middleware"
 npx safectx upgrade pypi pydantic 1.10.x 2.x       # ranges resolve to their newest release
 ```
 
+safectx recommends the clean release on your line first. Sometimes that release is clean while its
+own dependencies are not: next 15.5.28 pins a postcss with advisories that only next 16 clears.
+`check-package`, `check-packages` and the hook then add a note and keep the recommendation (npm,
+PyPI, Cargo, Maven and Composer, where safectx has resolved graphs):
+
+```
+NOTE: next 15.5.28 has no advisories itself, but pulls postcss@8.4.31 (GHSA-6g55-p6wh-862q, ...); next 16.4.3 pulls a fixed one. Staying on 15.x keeps that alert; upgrade-guide from 15.5.28 to 16.4.3 explains the changes.
+```
+
 It reads, all at the target version and cached:
 
 1. `CHANGELOG`, `HISTORY`, `CHANGES` and `RELEASES` files from the published package and from the repo

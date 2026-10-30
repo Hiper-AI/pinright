@@ -4,6 +4,7 @@
  * fraction of that, and the full notice is still there for every package that
  * is not plainly ok.
  */
+import { pullsText } from './advisories/lineTree.js';
 import { recommendedUpgrade } from './advisories/resolve.js';
 import { type Ecosystem, parseEcosystem } from './ecosystems.js';
 import { securityNotice } from './format.js';
@@ -103,6 +104,7 @@ function plainlyOk(r: BatchResult): boolean {
   // A supply-chain signal worth a warning (new install scripts, publisher change...) needs its details shown.
   if (v.risk?.signals.some((s) => s.level !== 'info')) return false;
   if (v.report.cooldownOnly) return false;
+  if (v.report.sameLineTree) return false;
   const use = versionToUse(v);
   return !r.version || use === r.version;
 }
@@ -152,6 +154,8 @@ function row(r: BatchResult): string {
       if (rep.safeVersionLicenses?.length && use === rep.safeVersion) notes.push(rep.safeVersionLicenses.join('/'));
       break;
   }
+  const tree = rep.sameLineTree;
+  if (tree && use === tree.version) notes.push(`its tree still pulls ${pullsText(tree.pulls, 2)}; ${tree.cleaner} (${tree.cleanerLine}) pulls fixed versions`);
   const risky = v.risk?.signals.filter((s) => s.level !== 'info') ?? [];
   if (risky.length) notes.push(`supply-chain: ${risky.map((s) => s.id).join(', ')}`);
   if (rep.recentMajor && use !== '-' && use.startsWith(rep.recentMajor.line.replace(/x$/, ''))) {
