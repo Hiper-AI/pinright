@@ -14,7 +14,7 @@
  * A package whose own text tries to steer agents is suspicious in itself: the
  * findings are kept per package version and surface as a risk signal.
  */
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { cacheGet, cacheSet } from '../cache.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { hasExfilImage, scanText, type Level, type ScanResult } from './detect.js';
@@ -120,6 +120,24 @@ export function warningNote(source: string, reasons: string[]): string {
 // ------------------------------------------------------------ responses ----
 
 /**
+ * Scan results by text hash, shared by every response of this process. A scan depends on the
+ * text alone, and a site's llms-full.txt (thousands of sections) used to be rescanned on every
+ * question: 5.6 s per get-docs call for Prisma. Results are never mutated after they are made.
+ */
+const SCAN_MEMO_MAX = 50_000;
+const scanMemo = new Map<string, ScanResult>();
+
+function memoScan(text: string): ScanResult {
+  const key = createHash('sha1').update(text).digest('base64');
+  const hit = scanMemo.get(key);
+  if (hit) return hit;
+  const s = scanText(text);
+  if (scanMemo.size >= SCAN_MEMO_MAX) scanMemo.delete(scanMemo.keys().next().value as string);
+  scanMemo.set(key, s);
+  return s;
+}
+
+/**
  * One tool response: fences its blocks with one id, and collects the notes and
  * findings for what was removed.
  */
@@ -127,15 +145,9 @@ export class UntrustedOutput {
   readonly id = fenceId();
   readonly notes: string[] = [];
   readonly findings: Finding[] = [];
-  private scans = new Map<string, ScanResult>();
 
   scan(text: string): ScanResult {
-    let s = this.scans.get(text);
-    if (!s) {
-      s = scanText(text);
-      this.scans.set(text, s);
-    }
-    return s;
+    return memoScan(text);
   }
 
   /** A whole document normalized before chunking; hidden instructions become a note and a finding. */
