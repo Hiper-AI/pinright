@@ -86,8 +86,9 @@ export function readmeDocsLink(readme: string): string | undefined {
       continue;
     }
     // The word in the text, not in a link target ("[Claude API](https://docs.anthropic.com/...)").
-    if (!inDocs && !/\b(documentation|docs)\b/i.test(line.replace(/\]\([^)\s]*\)/g, ']'))) continue;
-    for (const m of line.matchAll(/\]\((https:\/\/[^)\s]+)\)/g)) {
+    // A link target stops at the next bracket or parenthesis: "](https://a](https://a..." stays linear.
+    if (!inDocs && !/\b(documentation|docs)\b/i.test(line.replace(/\]\([^()[\]\s]*\)/g, ']'))) continue;
+    for (const m of line.matchAll(/\]\((https:\/\/[^()[\]\s]+)\)/g)) {
       const site = docsSite(m[1]);
       if (site && !/(^|\.)(shields\.io|badgen\.net|badge\.fury\.io)$/i.test(new URL(site).hostname) && !/\.(svg|png|gif)$/i.test(new URL(site).pathname)) return site;
     }

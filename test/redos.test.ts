@@ -7,7 +7,10 @@
 import { describe, expect, it } from 'vitest';
 import { fixedFromConstraint, satisfiesComposer } from '../src/composer/constraint.js';
 import { isComposerName } from '../src/composer/packagist.js';
-import { chunkMarkdown } from '../src/docs/retrieve.js';
+import { asksSignature, chunkMarkdown, isGenerated } from '../src/docs/retrieve.js';
+import { readmeDocsLink } from '../src/docs/discover.js';
+import { expandIncludes } from '../src/docs/includes.js';
+import { isDocPath, llmsBases } from '../src/docs/sources.js';
 import { pyStatements } from '../src/docs/pyapi.js';
 import { parseChangelog, tidy } from '../src/upgrade/changelog.js';
 import { cleanMdx } from '../src/upgrade/index.js';
@@ -71,5 +74,22 @@ import {
     expect(fast(() => pyStatements(`from x import (a${ws}b)\n`))).toBeLessThan(BUDGET_MS);
     expect(tidy('Fix the parser by @someone in #12')).toBe('Fix the parser');
     expect(chunkMarkdown('# Install { #install }\n\ntext\n')[0].title).toBe('Install');
+  });
+
+  it('docs discovery, includes and generated-file checks (third round)', async () => {
+    const ws = ' '.repeat(200_000);
+    expect(fast(() => isDocPath(`docs/${'a/'.repeat(50_000)}xrequirements`))).toBeLessThan(BUDGET_MS);
+    expect(fast(() => isDocPath(`docs/${'requirements'.repeat(20_000)}.tx`))).toBeLessThan(BUDGET_MS);
+    expect(fast(() => readmeDocsLink(`## Documentation\n${'](https://a'.repeat(50_000)}`))).toBeLessThan(BUDGET_MS);
+    expect(fast(() => readmeDocsLink(`##${ws}docs${ws}`))).toBeLessThan(BUDGET_MS);
+    expect(fast(() => isGenerated('do not '.repeat(100_000)))).toBeLessThan(BUDGET_MS);
+    expect(fast(() => asksSignature(`type ${ws}${'of '.repeat(50_000)}`))).toBeLessThan(BUDGET_MS);
+    expect(fast(() => llmsBases(`https://a.example/${'docs/'.repeat(20_000)}`))).toBeLessThan(BUDGET_MS);
+    const page = 'https://raw.githubusercontent.com/o/r/HEAD/docs/x.md';
+    for (const text of [`{{ m('${'a/'.repeat(50_000)}'${ws}`, `{{m(${"'a',".repeat(50_000)}${ws}}`, `--8<-- "${'a'.repeat(100_000)}:${'b'.repeat(100_000)}`]) {
+      const t = performance.now();
+      await expandIncludes(text, page, { budget: 1000, prepare: (c) => c });
+      expect(performance.now() - t).toBeLessThan(BUDGET_MS);
+    }
   });
 });

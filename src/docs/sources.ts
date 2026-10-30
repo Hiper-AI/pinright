@@ -35,12 +35,18 @@ export interface RemoteFile {
 /**
  * Docs formats; .txt only as a README or under docs/, where Sphinx projects (Django) keep their reStructuredText.
  * The pip requirements and constraints files, spelling word lists and robots.txt that sit in docs/ (or one folder
- * down) are not pages; Django's ref/models/constraints.txt, deeper, is.
+ * down) are not pages; Django's ref/models/constraints.txt, deeper, is. Checked by hand: the regex that did it
+ * backtracked quadratically on a long file name.
  */
-const DOC_EXT = /\.(md|mdx|markdown|rst)$|(^|\/)readme\.txt$|(^|\/)docs?\/(?!(?:[^/]+\/)?[^/]*(requirements|wordlist|constraints|robots)[^/]*\.txt$).*\.txt$/i;
-/** Whether a path can be a docs page (exported for tests). */
 export function isDocPath(path: string): boolean {
-  return DOC_EXT.test(path);
+  if (/\.(md|mdx|markdown|rst)$/i.test(path) || /(^|\/)readme\.txt$/i.test(path)) return true;
+  if (!/\.txt$/i.test(path)) return false;
+  const parts = path.split('/');
+  const docs = parts.findIndex((p, i) => i < parts.length - 1 && /^docs?$/i.test(p));
+  if (docs < 0) return false;
+  const name = parts[parts.length - 1].toLowerCase();
+  const notPage = ['requirements', 'wordlist', 'constraints', 'robots'].some((w) => name.includes(w));
+  return !notPage || parts.length - docs - 1 > 2;
 }
 
 const SKIP = /(^|\/)(node_modules|test|tests|__tests__|fixtures|\.github|\.changeset|vendor|third_party|dist\/compiled)(\/|$)|LICEN[SC]E|CODE_OF_CONDUCT|SECURITY\.md|CONTRIBUTING|\.d\.ts\.map$/i;
@@ -57,7 +63,7 @@ export async function npmPackageFiles(name: string, version: string): Promise<Re
     getJson<JsDelivrFlat>(`https://data.jsdelivr.com/v1/packages/npm/${name}@${encodeURIComponent(version)}?structure=flat`),
   ).catch(() => ({ files: [] }) as JsDelivrFlat);
   return (listing.files ?? [])
-    .filter((f) => (DOC_EXT.test(f.name) || f.name.endsWith('.d.ts')) && !SKIP.test(f.name) && f.size <= MAX_FILE_BYTES)
+    .filter((f) => (isDocPath(f.name) || f.name.endsWith('.d.ts')) && !SKIP.test(f.name) && f.size <= MAX_FILE_BYTES)
     .map((f) => ({
       path: f.name.replace(/^\//, ''),
       url: `https://cdn.jsdelivr.net/npm/${name}@${version}${f.name}`,
@@ -159,7 +165,7 @@ function docsCode(files: { path: string }[]): string[] {
 
 /** Keep only what can be documentation; a monorepo tree has tens of thousands of entries. */
 function docsOnly(files: { path: string; size?: number }[]): { path: string; size?: number }[] {
-  return files.filter((f) => DOC_EXT.test(f.path) && !SKIP.test(f.path) && (f.size ?? 0) <= MAX_FILE_BYTES).slice(0, 4000);
+  return files.filter((f) => isDocPath(f.path) && !SKIP.test(f.path) && (f.size ?? 0) <= MAX_FILE_BYTES).slice(0, 4000);
 }
 
 /** Release tags come in several spellings; monorepos prefix the package name. */
