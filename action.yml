@@ -27,7 +27,7 @@ inputs:
     required: false
     default: safectx
   config:
-    description: Path to a .safectx.json team policy. Default is the nearest one above the path.
+    description: Path to a .safectx.json team policy. Default is the nearest one above the path; on pull requests, the one in the base commit (the PR cannot loosen its own checks).
     required: false
     default: ''
   supply-chain:

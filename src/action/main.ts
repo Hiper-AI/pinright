@@ -11,7 +11,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AuditInputError, auditExitCode, formatAuditRun, parseFailOn, runAudit, runToSarif, sarifRoot } from '../auditRun.js';
-import { annotations, fenceCommands, summaryMarkdown } from '../sarif/summary.js';
+import { annotations, escData, fenceCommands, summaryMarkdown } from '../sarif/summary.js';
+import { selectPolicySource } from './policySource.js';
 
 const env = process.env;
 const input = (name: string, fallback = '') => (env[`SAFECTX_INPUT_${name}`] ?? '').trim() || fallback;
@@ -44,11 +45,19 @@ async function main(): Promise<number> {
     return 2;
   }
   const configInput = input('CONFIG');
+  // On a pull request the policy comes from the base commit: the PR cannot loosen its own checks.
+  const source = selectPolicySource({ configInput, workspace, target, env });
+  if (source.error) {
+    console.log(`::error title=safectx policy::${escData(source.error)}`);
+    return 2;
+  }
+  for (const n of source.notices) console.log(`::notice title=safectx policy::${escData(n)}`);
   let run;
   try {
     run = await runAudit({
       target,
-      config: configInput ? path.resolve(workspace, configInput) : undefined,
+      config: source.file,
+      policyText: source.kind === 'base' ? { text: source.text, label: source.label ?? 'base branch (no policy)' } : undefined,
       supplyChain: flag('SUPPLY_CHAIN', true),
     });
   } catch (err) {

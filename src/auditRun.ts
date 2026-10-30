@@ -25,6 +25,11 @@ export interface AuditOptions {
   target: string;
   /** A .safectx.json to use instead of the nearest one. */
   config?: string;
+  /**
+   * The policy text itself, read from somewhere other than the tree (the Action reads the base
+   * commit's on a pull request). `text` undefined: no policy, and the tree's file is not read.
+   */
+  policyText?: { text?: string; label: string };
   /** Typosquat, registry and risk-signal checks of direct dependencies (network, one verdict each). */
   supplyChain?: boolean;
 }
@@ -49,9 +54,11 @@ export interface AuditRun {
 
 export class AuditInputError extends Error {}
 
-function loadPolicy(target: string, configFile?: string): { policy: Policy; error?: string } {
+export function loadPolicy(target: string, configFile?: string, given?: AuditOptions['policyText']): { policy: Policy; error?: string } {
   let team;
-  if (configFile) {
+  if (given) {
+    team = given.text === undefined ? {} : parseTeamConfig(given.text, given.label);
+  } else if (configFile) {
     const file = path.resolve(configFile);
     try {
       team = parseTeamConfig(readProjectFile(file, { allowOutside: true }), file);
@@ -76,7 +83,7 @@ export async function runAudit(opts: AuditOptions): Promise<AuditRun> {
   const wf = workflowFiles(target);
   const files = fs.statSync(target).isDirectory() ? manifestsIn(target) : wf.length ? [] : [target];
   if (!files.length && !wf.length) throw new AuditInputError(`No supported lockfile, manifest or workflow in ${target}`);
-  const { policy, error } = loadPolicy(target, opts.config);
+  const { policy, error } = loadPolicy(target, opts.config, opts.policyText);
 
   const out: FileAudit[] = [];
   const notes: string[] = [];

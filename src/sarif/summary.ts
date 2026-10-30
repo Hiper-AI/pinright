@@ -80,7 +80,7 @@ export function summaryMarkdown(log: SarifLog, opts: { exitCode: number; failOn:
   return `${out.join('\n')}\n`;
 }
 
-const escData = (s: string) => s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+export const escData = (s: string) => s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
 const escProp = (s: string) => escData(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
 
 /**

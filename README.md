@@ -1059,13 +1059,23 @@ jobs:
 | `sarif` | `true` | Write SARIF (output `sarif-file`). |
 | `upload-sarif` | `true` | Upload it with `github/codeql-action/upload-sarif` (pinned by SHA in `action.yml`). |
 | `category` | `safectx` | Code scanning category. Give each run its own when you audit several paths. |
-| `config` | nearest `.safectx.json` | Team policy file. |
+| `config` | nearest `.safectx.json`; on a pull request, the base commit's | Team policy file. When set, it wins over both. |
 | `supply-chain` | `true` | Typosquat, registry, deprecation and risk checks of direct dependencies, one lookup each. |
 | `annotations` | `true` | Annotate the worst findings on the pull request diff. |
 | `github-token` | `github.token` | Resolves action tags to commits and authenticates the upload. |
 
 Outputs: `exit-code` (0 clean, 1 findings, 2 bad input, 3 the audit could not run),
 `sarif-file` and `results`.
+
+On `pull_request` and `pull_request_target` events the action reads `.safectx.json` from the
+pull request's base commit (`pull_request.base.sha` in the event, else `GITHUB_BASE_REF`), never
+from the PR's own tree: otherwise a PR could add `"allow": ["*"]` and skip the checks on the change
+under review. When the PR adds, changes or deletes the policy, the run posts a notice so reviewers
+see it, and the new policy applies once the PR is merged. `actions/checkout` fetches one commit by
+default, so safectx fetches the base commit itself. On a public repository that works with
+`persist-credentials: false`, as in the example above; on a private one, keep the default
+credentials or set `fetch-depth: 0`. If the base cannot be read, the step fails (exit 2) with that
+advice instead of falling back to the PR's policy. Passing `config:` turns this off.
 
 The action carries its own Node bundle (`action-dist/index.mjs`, built by
 `npm run bundle:action` from `src/action/main.ts`), so a run installs nothing from npm. It uses
