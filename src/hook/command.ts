@@ -568,6 +568,24 @@ function packageBin(spec: string): string {
   return name.replace(/^@[^/]+\//, '');
 }
 
+/**
+ * Whether node_modules/.bin in cwd or a parent holds this bin: then npx runs it and installs
+ * nothing. "npx tsc" in a TypeScript project is typescript's compiler, not the "tsc" package.
+ */
+function hasLocalBin(ctx: Ctx, spec: string): boolean {
+  const names = [...new Set([spec, packageBin(spec)])].filter((n) => /^[\w.-]+$/.test(n));
+  let dir = path.resolve(ctx.cwd);
+  for (let i = 0; i < 8; i++) {
+    for (const n of names) {
+      for (const f of [n, `${n}.cmd`]) if (ctx.readFile(path.join(dir, 'node_modules', '.bin', f)) !== undefined) return true;
+    }
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return false;
+}
+
 function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src: string, stdin: string | undefined): void {
   let [bin, ...rest] = [binName(words[0]), ...words.slice(1)];
   if (fileWriters(bin, rest, c, ctx, src, stdin)) return;
@@ -643,7 +661,7 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
       const adds = /^(install|i|in|ins|inst|insta|instal|isnt|isnta|isntal|isntall|add|a|update|up|upgrade|udpate)$/;
       if (bin === 'npm' && /^(exec|x)$/.test(verb)) return npx(pos.slice(1), flags);
       if (bin === 'bun' && verb === 'x') return npx(pos.slice(1), flags);
-      if (bin !== 'npm' && verb === 'dlx') return npx(pos.slice(1), flags);
+      if (bin !== 'npm' && verb === 'dlx') return npx(pos.slice(1), flags, false);
       if (/^(create|init|innit)$/.test(verb) && !(bin === 'bun' && verb === 'init')) {
         // npm init foo runs create-foo; npm init @s runs @s/create; @s/foo runs @s/create-foo.
         const t = pos[1];
@@ -890,7 +908,8 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
       return;
   }
 
-  function npx(pos: string[], flags: Map<string, string[]>) {
+  /** npx, npm exec and bun x run a bin the project already installed ("npx tsc" with typescript); dlx always downloads. */
+  function npx(pos: string[], flags: Map<string, string[]>, local = true) {
     const pkgs = all(flags, '-p', '--package');
     for (const script of all(flags, '-c', '--call')) walk(script, ctx, depth + 1);
     if (pkgs.length) {
@@ -898,6 +917,9 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
       return thenRun(pos[0] ?? '', pos.slice(1));
     }
     if (!pos[0]) return;
+    // "tsc@5", "@scope/x@1": a pinned version goes through the registry even when a bin is installed.
+    const pinned = /^(@[^/@]+\/)?[^@]+@/.test(pos[0]);
+    if (local && !pinned && hasLocalBin(ctx, pos[0])) return thenRun(pos[0], pos.slice(1));
     npm([pos[0]], true);
     thenRun(packageBin(pos[0]), pos.slice(1));
   }

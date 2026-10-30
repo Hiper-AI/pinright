@@ -55,6 +55,19 @@ describe('package managers and verbs', () => {
     ['deno add jsr:@evil/x', ['~npm']],
     ['conda install -c conda-forge reqeusts', ['~pypi']],
   ])('%s', (c, want) => expect(cmd(c)).toEqual(want));
+
+  it('a bin the project already installed runs locally: npx tsc is typescript, not the "tsc" package', () => {
+    const local = { '/p/node_modules/.bin/tsc': '#!/bin/sh', '/node_modules/.bin/biome.cmd': '@echo off' };
+    expect(cmd('npx tsc --noEmit', local)).toEqual([]);
+    expect(cmd('npm exec tsc', local)).toEqual([]);
+    expect(cmd('bun x tsc', local)).toEqual([]);
+    // Found in a parent folder, and through the bin a scoped package exposes.
+    expect(cmd('npx @biomejs/biome check', local)).toEqual([]);
+    // Not installed, pinned to a version, or dlx (which always downloads): still checked.
+    expect(cmd('npx tsc')).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npx tsc@5.0.0', local)).toEqual(['npm:tsc 5.0.0 (exec)']);
+    expect(cmd('pnpm dlx tsc', local)).toEqual(['npm:tsc (exec)']);
+  });
 });
 
 describe('shell tricks', () => {
