@@ -2030,8 +2030,8 @@ var require_semver2 = __commonJS({
 });
 
 // src/action/main.ts
-import fs8 from "node:fs";
-import path10 from "node:path";
+import fs9 from "node:fs";
+import path11 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/auditRun.ts
@@ -2446,8 +2446,8 @@ function note(what, until, authenticated) {
   s.until = Math.max(s.until, until);
   s.authenticated = authenticated;
 }
-async function call(path11, opts, get) {
-  const url2 = `${GITHUB_API}${path11}`;
+async function call(path12, opts, get) {
+  const url2 = `${GITHUB_API}${path12}`;
   const token = mayAuthenticate(url2) ? await githubToken() : void 0;
   const authenticated = Boolean(token);
   const until = blockedUntil(authenticated);
@@ -2470,11 +2470,11 @@ async function call(path11, opts, get) {
     throw new GitHubRateLimitError(url2, limit, authenticated);
   }
 }
-function githubJson(path11, opts) {
-  return call(path11, opts, (url2, headers) => getJson(url2, { headers }));
+function githubJson(path12, opts) {
+  return call(path12, opts, (url2, headers) => getJson(url2, { headers }));
 }
-function githubText(path11, opts) {
-  return call(path11, opts, (url2, headers) => getText(url2, { headers }));
+function githubText(path12, opts) {
+  return call(path12, opts, (url2, headers) => getText(url2, { headers }));
 }
 
 // src/advisories/resolve.ts
@@ -3813,333 +3813,100 @@ function cvss3Of(vuln) {
   return scores.length ? Math.max(...scores) : void 0;
 }
 
-// src/risk/signals.ts
-function intEnv2(name, fallback) {
-  const n = Number.parseFloat(process.env[name] ?? "");
-  return Number.isFinite(n) && n >= 0 ? n : fallback;
-}
-function riskThresholds() {
-  return {
-    /** A package first published fewer days ago than this, with install scripts, is denied by the hook. */
-    newPackageDays: intEnv2("SAFECTX_RISK_NEW_PACKAGE_DAYS", 14),
-    /** Window in which a publisher change or a young package is worth mentioning. */
-    recentDays: intEnv2("SAFECTX_RISK_RECENT_DAYS", 30),
-    /** Weekly downloads under this, on a young package, is a warning. */
-    lowDownloads: intEnv2("SAFECTX_RISK_LOW_DOWNLOADS", 100),
-    /** OpenSSF Scorecard under this is a note (never a block). */
-    scorecardLow: intEnv2("SAFECTX_RISK_SCORECARD_LOW", 4),
-    /** Earlier versions compared against for install scripts, provenance and publisher. */
-    history: Math.max(1, Math.round(intEnv2("SAFECTX_RISK_HISTORY", 5)))
-  };
-}
-var DAY = 24 * 36e5;
-var LEVEL_ORDER = { high: 0, warn: 1, info: 2 };
-function daysSince(iso, now) {
-  if (!iso) return void 0;
-  const t = Date.parse(iso);
-  return Number.isFinite(t) ? Math.max(0, Math.floor((now - t) / DAY)) : void 0;
-}
-function plural(n, word) {
-  return `${n} ${word}${n === 1 ? "" : "s"}`;
-}
-var DENY_SIGNALS = /* @__PURE__ */ new Set(["install-script-new-package", "install-script-added-new-publisher"]);
-function riskSignals(facts, now = Date.now(), t = riskThresholds()) {
-  const out = [];
-  const cur = facts.current;
-  const prev = facts.previous;
-  const pkgAge = daysSince(facts.firstPublishedAt, now);
-  const verAge = daysSince(cur.publishedAt, now);
-  const prevWithPublisher = prev.filter((p) => p.publisher);
-  let publisherChange = false;
-  if (cur.publisher && prevWithPublisher.length && verAge !== void 0 && verAge < t.recentDays) {
-    const before = [...new Set(prevWithPublisher.map((p) => p.publisher))];
-    if (!before.includes(cur.publisher)) {
-      publisherChange = true;
-      const wasMaintainer = prev.some((p) => p.maintainers?.includes(cur.publisher));
-      const attested = cur.provenance === true;
-      out.push({
-        id: "publisher-change",
-        level: wasMaintainer || attested ? "info" : "warn",
-        message: `${cur.version} was published ${plural(verAge, "day")} ago by "${cur.publisher}", who published none of the previous ${plural(prevWithPublisher.length, "version")} (${before.join(", ")})` + (attested ? "; built in CI with provenance" : wasMaintainer ? "; already a listed maintainer" : "; not a listed maintainer of those")
-      });
-    }
-  }
-  const scripts = cur.installScripts ?? [];
-  if (scripts.length) {
-    const what = scripts.map((s) => s.length > 70 ? `${s.slice(0, 67)}...` : s).join("; ");
-    const prevKnown = prev.filter((p) => p.installScripts !== void 0);
-    const added = prevKnown.length > 0 && prevKnown.every((p) => !p.installScripts?.length);
-    if (pkgAge !== void 0 && pkgAge < t.newPackageDays) {
-      out.push({
-        id: "install-script-new-package",
-        level: "high",
-        message: `the package was first published ${plural(pkgAge, "day")} ago and runs install scripts (${what})`
-      });
-    } else if (added && publisherChange) {
-      out.push({
-        id: "install-script-added-new-publisher",
-        level: "high",
-        message: `adds install scripts (${what}) that the previous ${plural(prevKnown.length, "version")} did not have, from a new publisher`
-      });
-    } else if (added) {
-      out.push({
-        id: "install-script-added",
-        level: "warn",
-        message: `adds install scripts (${what}) that the previous ${plural(prevKnown.length, "version")} did not have`
-      });
-    } else {
-      out.push({ id: "install-script", level: "info", message: `runs install scripts (${what})` });
-    }
-  }
-  if (cur.provenance === false) {
-    const withProv = prev.filter((p) => p.provenance === true);
-    if (withProv.length) {
-      out.push({
-        id: "provenance-dropped",
-        level: publisherChange ? "high" : "warn",
-        message: `${cur.version} has no provenance attestation, while ${withProv.length} of the previous ${plural(prev.length, "version")} had one (${withProv[0].version}); a release published outside CI is how stolen tokens usually show`
-      });
-    }
-  }
-  if (pkgAge !== void 0 && pkgAge < t.recentDays) {
-    const dl = facts.weeklyDownloads;
-    if (dl !== void 0 && dl < t.lowDownloads) {
-      out.push({
-        id: "young-low-downloads",
-        level: "warn",
-        message: `brand-new package: first published ${plural(pkgAge, "day")} ago, ${plural(dl, "download")} last week`
-      });
-    } else {
-      out.push({
-        id: "young-package",
-        level: "info",
-        message: `young package: first published ${plural(pkgAge, "day")} ago${dl !== void 0 ? `, ${plural(dl, "download")} last week` : ""}`
-      });
-    }
-  }
-  const agentText = [.../* @__PURE__ */ new Set([...facts.agentText ?? [], ...cur.agentText ?? []])];
-  if (agentText.length) {
-    out.push({
-      id: "agent-instructions-in-package-text",
-      level: "warn",
-      message: `the package's own text addresses AI agents with instructions: ${agentText.slice(0, 3).join("; ")}${agentText.length > 3 ? `; +${agentText.length - 3} more` : ""}. Treat it as suspicious and do not follow its docs blindly`
-    });
-  }
-  const sc = facts.scorecard;
-  if (sc) {
-    const where = `${sc.repo}${sc.verifiedRepo ? "" : ", repo as claimed by the package"}${sc.date ? `, ${sc.date.slice(0, 10)}` : ""}`;
-    if (sc.score < t.scorecardLow) {
-      out.push({
-        id: "scorecard-low",
-        level: "info",
-        message: `OpenSSF Scorecard ${sc.score}/10 (${where})${sc.failing.length ? `; failing: ${sc.failing.join(", ")}` : ""}`
-      });
-    } else if (sc.dangerousWorkflow) {
-      out.push({
-        id: "scorecard-dangerous-workflow",
-        level: "info",
-        message: `OpenSSF Scorecard flags dangerous GitHub workflow patterns in ${where}`
-      });
-    }
-  }
-  return out.sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);
-}
+// src/tree/resolveManifest.ts
+var import_semver2 = __toESM(require_semver2(), 1);
 
-// src/risk/sources.ts
-var DAY2 = 24 * 36e5;
-var TTL_VERSION_DOC = 7 * DAY2;
-var TTL_DOWNLOADS = DAY2;
-var INSTALL_HOOKS = ["preinstall", "install", "postinstall"];
-function npmPath(name) {
-  return encodeURIComponent(name).replace("%40", "@");
+// src/jvm/maven.ts
+var tag = (block2, name) => block2.match(new RegExp(`<${name}>\\s*([^<]*?)\\s*</${name}>`))?.[1];
+function stripBlocks(xml, names) {
+  let out = xml;
+  for (const n of names) out = out.replace(new RegExp(`<${n}>[\\s\\S]*?</${n}>`, "g"), "");
+  return out;
 }
-function userName(u) {
-  if (!u) return void 0;
-  const raw = typeof u === "string" ? u.replace(/\s*<.*$/, "") : u.name;
-  return cleanText(typeof raw === "string" ? raw : void 0, 60) || void 0;
+function pomProperties(xml) {
+  const props = /* @__PURE__ */ new Map();
+  for (const block2 of xml.match(/<properties>[\s\S]*?<\/properties>/g) ?? []) {
+    for (const m of block2.matchAll(/<([A-Za-z0-9_.-]+)>\s*([^<]*?)\s*<\/\1>/g)) props.set(m[1], m[2]);
+  }
+  const top = stripBlocks(xml, ["parent", "dependencies", "dependencyManagement", "build", "profiles", "properties", "reporting", "plugins"]);
+  const parent = xml.match(/<parent>[\s\S]*?<\/parent>/)?.[0] ?? "";
+  const version3 = tag(top, "version") ?? tag(parent, "version");
+  const group = tag(top, "groupId") ?? tag(parent, "groupId");
+  if (version3) {
+    props.set("project.version", version3);
+    props.set("version", version3);
+  }
+  if (group) props.set("project.groupId", group);
+  if (tag(parent, "version")) props.set("project.parent.version", tag(parent, "version"));
+  return props;
 }
-function agentTextOf(doc) {
+function interpolate(value, props) {
+  let v = value;
+  for (let i = 0; i < 5 && v.includes("${"); i++) v = v.replace(/\$\{([^}]+)\}/g, (all, k) => props.get(k) ?? all);
+  return v.includes("${") ? void 0 : v;
+}
+function pomDependencies(content) {
+  const xml = content.replace(/<!--[\s\S]*?-->/g, "");
+  const props = pomProperties(xml);
+  const body = stripBlocks(xml, ["build", "reporting", "pluginRepositories"]);
   const out = [];
-  for (const [field, value] of [["description", doc.description], ["deprecation message", doc.deprecated]]) {
-    if (typeof value !== "string") continue;
-    const f = cleanField(value, 300);
-    if (f.level === "high") out.push(`${field} (${f.flags.join(", ")})`);
+  for (const m of body.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
+    const g = tag(m[1], "groupId");
+    const a = tag(m[1], "artifactId");
+    const v = tag(m[1], "version");
+    if (!g || !a || !v) continue;
+    const group = interpolate(g, props);
+    const artifact = interpolate(a, props);
+    const version3 = interpolate(v, props);
+    if (!group || !artifact || !version3) continue;
+    out.push({ name: `${group}:${artifact}`, spec: version3, dev: tag(m[1], "scope") === "test" ? true : void 0 });
   }
   return out;
 }
-function installScriptsOf(doc) {
-  const out = [];
-  for (const hook of INSTALL_HOOKS) {
-    const cmd = doc.scripts?.[hook];
-    if (typeof cmd === "string" && cmd.trim()) out.push(`${hook}: ${cleanText(cmd, 200)}`);
+function parsePom(file2, content) {
+  return { ecosystem: "maven", kind: "manifest", file: file2, packages: [], declared: pomDependencies(content) };
+}
+function tuple(v) {
+  return v.split(/[.-]/).map((p) => /^\d+$/.test(p) ? Number(p) : p.toLowerCase());
+}
+function compareMaven(a, b) {
+  const ta = tuple(a);
+  const tb = tuple(b);
+  for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
+    const x = ta[i];
+    const y = tb[i];
+    if (x === y) continue;
+    if (x === void 0) return typeof y === "number" ? y === 0 ? 0 : -1 : 1;
+    if (y === void 0) return typeof x === "number" ? x === 0 ? 0 : 1 : -1;
+    if (typeof x === "number" && typeof y === "number") return x - y;
+    if (typeof x === "number") return 1;
+    if (typeof y === "number") return -1;
+    return x < y ? -1 : 1;
   }
-  if (!out.length && doc.gypfile) out.push("install: node-gyp rebuild (binding.gyp)");
-  if (!out.length && doc.hasInstallScript) out.push("install script (flagged by the registry)");
-  return out;
+  return 0;
 }
-function versionFactsFromDoc(version3, doc) {
-  const agentText = agentTextOf(doc);
-  return {
-    version: version3,
-    installScripts: installScriptsOf(doc),
-    provenance: Boolean(doc.dist?.attestations?.provenance),
-    publisher: userName(doc._npmUser),
-    maintainers: (doc.maintainers ?? []).map(userName).filter((m) => Boolean(m)),
-    ...agentText.length ? { agentText } : {}
-  };
-}
-async function npmVersionFacts(name, version3) {
-  const url2 = `https://registry.npmjs.org/${npmPath(name)}/${encodeURIComponent(version3)}`;
-  const facts = await cached(`risk:npmver:${name}@${version3}`, TTL_VERSION_DOC, async () => {
-    try {
-      return versionFactsFromDoc(version3, await getJson(url2));
-    } catch (err) {
-      if (isNotFound(err)) return null;
-      throw err;
-    }
+function satisfiesMavenSpec(version3, spec) {
+  const s = spec.trim();
+  if (s.endsWith("+")) return version3.startsWith(s.slice(0, -1));
+  if (!/^[[(]/.test(s)) return void 0;
+  const ranges = s.match(/[[(][^\])]*[\])]/g) ?? [];
+  if (!ranges.length) return void 0;
+  return ranges.some((r) => {
+    const inner = r.slice(1, -1);
+    if (!inner.includes(",")) return compareMaven(version3, inner.trim()) === 0;
+    const [lo, hi] = inner.split(",").map((x) => x.trim());
+    if (lo && (r[0] === "[" ? compareMaven(version3, lo) < 0 : compareMaven(version3, lo) <= 0)) return false;
+    if (hi && (r.endsWith("]") ? compareMaven(version3, hi) > 0 : compareMaven(version3, hi) >= 0)) return false;
+    return true;
   });
-  return facts ?? void 0;
 }
-async function weeklyDownloads(eco, name) {
-  let url2;
-  let pick2;
-  if (eco === "npm") {
-    url2 = `https://api.npmjs.org/downloads/point/last-week/${npmPath(name)}`;
-    pick2 = (b) => b.downloads;
-  } else if (eco === "pypi") {
-    url2 = `https://pypistats.org/api/packages/${encodeURIComponent(name.toLowerCase().replace(/[-_.]+/g, "-"))}/recent`;
-    pick2 = (b) => b.data?.last_week;
-  } else {
-    return void 0;
-  }
-  const n = await cached(`risk:dl:${eco}:${name}`, TTL_DOWNLOADS, async () => {
-    try {
-      const v = pick2(await getJson(url2));
-      return typeof v === "number" && Number.isFinite(v) ? v : null;
-    } catch (err) {
-      if (isNotFound(err)) return null;
-      throw err;
-    }
-  });
-  return n ?? void 0;
-}
-var DOWNLOAD_ECOSYSTEMS = ["npm", "pypi"];
-var NOTABLE_CHECKS = [
-  "Dangerous-Workflow",
-  "Maintained",
-  "Code-Review",
-  "Branch-Protection",
-  "Token-Permissions",
-  "Binary-Artifacts",
-  "Vulnerabilities",
-  "Signed-Releases"
-];
-function scorecardFacts(repo, verifiedRepo, sc) {
-  if (!sc || typeof sc.overallScore !== "number") return void 0;
-  const checks = sc.checks ?? [];
-  const failing = checks.filter((c) => NOTABLE_CHECKS.includes(c.name) && c.score >= 0 && c.score <= 3).map((c) => `${c.name} ${c.score}`);
-  return {
-    repo,
-    score: sc.overallScore,
-    date: sc.date,
-    failing,
-    dangerousWorkflow: checks.some((c) => c.name === "Dangerous-Workflow" && c.score === 0),
-    verifiedRepo
-  };
-}
-async function depsDevFacts(eco, name, version3) {
-  const v = await getVersion(eco, name, version3);
-  if (!v) return {};
-  const provenance = Boolean(v.slsaProvenances?.length || v.attestations?.length) || void 0;
-  const repos = (v.relatedProjects ?? []).filter((p) => p.relationType === "SOURCE_REPO");
-  const repo = repos.find((p) => p.relationProvenance && p.relationProvenance !== "UNVERIFIED_METADATA") ?? repos[0];
-  if (!repo) return { provenance };
-  const project = await getProject(repo.projectKey.id);
-  const verified = Boolean(repo.relationProvenance && repo.relationProvenance !== "UNVERIFIED_METADATA");
-  return { provenance, scorecard: scorecardFacts(repo.projectKey.id, verified, project?.scorecard) };
-}
-
-// src/risk/index.ts
-var strip = (v) => v.replace(/^v/, "");
-function previousVersions(versions, version3, limit) {
-  const cur = versions.find((v) => strip(v.versionKey.version) === strip(version3));
-  const at = cur?.publishedAt;
-  if (!at) return [];
-  const pre = isPrerelease(version3);
-  return versions.filter((v) => v.publishedAt && v.publishedAt < at && (pre || !isPrerelease(v.versionKey.version))).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, limit);
-}
-async function assessRisk(eco, name, version3, now = Date.now(), agentText = []) {
-  const t = riskThresholds();
-  const unknown2 = [];
-  const sources = /* @__PURE__ */ new Set();
-  let versions = [];
-  try {
-    versions = (await getPackage(eco, name))?.versions ?? [];
-  } catch {
-    unknown2.push("package age");
-  }
-  const summary = versions.find((v) => strip(v.versionKey.version) === strip(version3));
-  const firstPublishedAt2 = versions.map((v) => v.publishedAt).filter((d) => Boolean(d)).sort()[0];
-  const earlier = previousVersions(versions, version3, t.history);
-  const npm = eco === "npm";
-  const [current, previous, downloads, dd] = await Promise.all([
-    npm ? npmVersionFacts(name, version3).then(
-      (f) => {
-        if (f) sources.add("registry.npmjs.org");
-        else unknown2.push("install scripts, provenance and publisher (version not in the npm registry)");
-        return f;
-      },
-      () => {
-        unknown2.push("install scripts, provenance and publisher (npm registry did not answer)");
-        return void 0;
-      }
-    ) : Promise.resolve(void 0),
-    npm ? Promise.all(
-      earlier.map(
-        (v) => npmVersionFacts(name, v.versionKey.version).then(
-          (f) => f ? { ...f, publishedAt: v.publishedAt } : void 0,
-          () => void 0
-        )
-      )
-    ).then((list) => list.filter((f) => Boolean(f))) : Promise.resolve([]),
-    DOWNLOAD_ECOSYSTEMS.includes(eco) ? weeklyDownloads(eco, name).then(
-      (n) => {
-        if (n !== void 0) sources.add(npm ? "api.npmjs.org" : "pypistats.org");
-        else unknown2.push("weekly downloads (no data yet)");
-        return n;
-      },
-      () => {
-        unknown2.push("weekly downloads");
-        return void 0;
-      }
-    ) : Promise.resolve(void 0),
-    depsDevFacts(eco, name, version3).catch(() => {
-      unknown2.push("OpenSSF Scorecard");
-      return {};
-    })
-  ]);
-  if (npm && earlier.length && !previous.length && current) unknown2.push("earlier versions (npm registry did not answer)");
-  if (dd.scorecard) sources.add("OpenSSF Scorecard via deps.dev");
-  const cur = {
-    ...current ?? { version: version3 },
-    publishedAt: summary?.publishedAt,
-    // The registry's own field for npm; elsewhere only a positive answer from deps.dev counts.
-    provenance: current ? current.provenance || dd.provenance === true : dd.provenance
-  };
-  const seen = findingsFor(eco, name, version3).map((f) => `${f.where} (${f.reasons.join(", ")})`);
-  const facts = { current: cur, previous, firstPublishedAt: firstPublishedAt2, weeklyDownloads: downloads, scorecard: dd.scorecard, agentText: [...agentText, ...seen] };
-  return {
-    version: version3,
-    signals: riskSignals(facts, now, t),
-    installScripts: cur.installScripts,
-    provenance: cur.provenance,
-    publisher: cur.publisher,
-    firstPublishedAt: firstPublishedAt2,
-    weeklyDownloads: downloads,
-    scorecard: dd.scorecard,
-    unknown: unknown2,
-    sources: [...sources].sort()
-  };
+function pickMavenVersion(spec, stable, fallback) {
+  const s = spec.trim();
+  if (!s || /^latest\.(release|integration)$/.test(s) || s === "+") return fallback;
+  if (stable.includes(s)) return s;
+  const ok = stable.filter((v) => satisfiesMavenSpec(v, s) === true);
+  if (ok.length) return ok.sort(compareMaven).pop();
+  return void 0;
 }
 
 // src/jvm/gradle.ts
@@ -4163,7 +3930,7 @@ function variables(content, gradleProperties) {
   for (const m of content.matchAll(/\bset\(\s*["']([^"']+)["']\s*,\s*["']([^"'$]+)["']\s*\)/g)) vars.set(m[1], m[2]);
   return vars;
 }
-function interpolate(s, vars) {
+function interpolate2(s, vars) {
   const out = s.replace(/\$\{([A-Za-z0-9_.]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g, (all, a, b) => vars.get(a ?? b) ?? all);
   return out.includes("$") ? void 0 : out;
 }
@@ -4219,11 +3986,11 @@ function gradleDependencies(content, siblings = {}) {
   const out = [];
   const push = (conf, name, spec) => {
     if (!spec) return;
-    const v = interpolate(spec, vars);
+    const v = interpolate2(spec, vars);
     if (v) out.push({ name, spec: v, dev: isTestConf(conf) || void 0 });
   };
   for (const m of code2.matchAll(STRING_DEP)) {
-    const s = interpolate(m[2], vars);
+    const s = interpolate2(m[2], vars);
     const coord = s ? coordinates(s) : void 0;
     if (coord) push(m[1], coord.name, coord.spec);
   }
@@ -4258,99 +4025,6 @@ function parseGradleLockfile(file2, content, siblings = {}) {
     seen.set(key2, { name, version: m[3], direct: direct ? direct.has(name) : void 0, dev: confs.length > 0 && confs.every(isTestConf) });
   }
   return { ecosystem: "maven", kind: "lockfile", file: file2, packages: [...seen.values()] };
-}
-
-// src/jvm/maven.ts
-var tag = (block2, name) => block2.match(new RegExp(`<${name}>\\s*([^<]*?)\\s*</${name}>`))?.[1];
-function stripBlocks(xml, names) {
-  let out = xml;
-  for (const n of names) out = out.replace(new RegExp(`<${n}>[\\s\\S]*?</${n}>`, "g"), "");
-  return out;
-}
-function pomProperties(xml) {
-  const props = /* @__PURE__ */ new Map();
-  for (const block2 of xml.match(/<properties>[\s\S]*?<\/properties>/g) ?? []) {
-    for (const m of block2.matchAll(/<([A-Za-z0-9_.-]+)>\s*([^<]*?)\s*<\/\1>/g)) props.set(m[1], m[2]);
-  }
-  const top = stripBlocks(xml, ["parent", "dependencies", "dependencyManagement", "build", "profiles", "properties", "reporting", "plugins"]);
-  const parent = xml.match(/<parent>[\s\S]*?<\/parent>/)?.[0] ?? "";
-  const version3 = tag(top, "version") ?? tag(parent, "version");
-  const group = tag(top, "groupId") ?? tag(parent, "groupId");
-  if (version3) {
-    props.set("project.version", version3);
-    props.set("version", version3);
-  }
-  if (group) props.set("project.groupId", group);
-  if (tag(parent, "version")) props.set("project.parent.version", tag(parent, "version"));
-  return props;
-}
-function interpolate2(value, props) {
-  let v = value;
-  for (let i = 0; i < 5 && v.includes("${"); i++) v = v.replace(/\$\{([^}]+)\}/g, (all, k) => props.get(k) ?? all);
-  return v.includes("${") ? void 0 : v;
-}
-function pomDependencies(content) {
-  const xml = content.replace(/<!--[\s\S]*?-->/g, "");
-  const props = pomProperties(xml);
-  const body = stripBlocks(xml, ["build", "reporting", "pluginRepositories"]);
-  const out = [];
-  for (const m of body.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
-    const g = tag(m[1], "groupId");
-    const a = tag(m[1], "artifactId");
-    const v = tag(m[1], "version");
-    if (!g || !a || !v) continue;
-    const group = interpolate2(g, props);
-    const artifact = interpolate2(a, props);
-    const version3 = interpolate2(v, props);
-    if (!group || !artifact || !version3) continue;
-    out.push({ name: `${group}:${artifact}`, spec: version3, dev: tag(m[1], "scope") === "test" ? true : void 0 });
-  }
-  return out;
-}
-function parsePom(file2, content) {
-  return { ecosystem: "maven", kind: "manifest", file: file2, packages: [], declared: pomDependencies(content) };
-}
-function tuple(v) {
-  return v.split(/[.-]/).map((p) => /^\d+$/.test(p) ? Number(p) : p.toLowerCase());
-}
-function compareMaven(a, b) {
-  const ta = tuple(a);
-  const tb = tuple(b);
-  for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
-    const x = ta[i];
-    const y = tb[i];
-    if (x === y) continue;
-    if (x === void 0) return typeof y === "number" ? y === 0 ? 0 : -1 : 1;
-    if (y === void 0) return typeof x === "number" ? x === 0 ? 0 : 1 : -1;
-    if (typeof x === "number" && typeof y === "number") return x - y;
-    if (typeof x === "number") return 1;
-    if (typeof y === "number") return -1;
-    return x < y ? -1 : 1;
-  }
-  return 0;
-}
-function satisfiesMavenSpec(version3, spec) {
-  const s = spec.trim();
-  if (s.endsWith("+")) return version3.startsWith(s.slice(0, -1));
-  if (!/^[[(]/.test(s)) return void 0;
-  const ranges = s.match(/[[(][^\])]*[\])]/g) ?? [];
-  if (!ranges.length) return void 0;
-  return ranges.some((r) => {
-    const inner = r.slice(1, -1);
-    if (!inner.includes(",")) return compareMaven(version3, inner.trim()) === 0;
-    const [lo, hi] = inner.split(",").map((x) => x.trim());
-    if (lo && (r[0] === "[" ? compareMaven(version3, lo) < 0 : compareMaven(version3, lo) <= 0)) return false;
-    if (hi && (r.endsWith("]") ? compareMaven(version3, hi) > 0 : compareMaven(version3, hi) >= 0)) return false;
-    return true;
-  });
-}
-function pickMavenVersion(spec, stable, fallback) {
-  const s = spec.trim();
-  if (!s || /^latest\.(release|integration)$/.test(s) || s === "+") return fallback;
-  if (stable.includes(s)) return s;
-  const ok = stable.filter((v) => satisfiesMavenSpec(v, s) === true);
-  if (ok.length) return ok.sort(compareMaven).pop();
-  return void 0;
 }
 
 // src/tree/lockfiles.ts
@@ -4479,16 +4153,16 @@ function parseNpmLock(file2, content) {
     for (const [key2, e] of Object.entries(entries)) {
       if (!key2 || e.link || !e.version || !key2.includes("node_modules/")) continue;
       const name = npmNameFromKey(key2);
-      const path11 = pathOf.get(key2);
-      packages.push({ name, version: e.version, direct: key2 === `node_modules/${name}` && directNames.has(name), dev: Boolean(e.dev), path: path11 });
+      const path12 = pathOf.get(key2);
+      packages.push({ name, version: e.version, direct: key2 === `node_modules/${name}` && directNames.has(name), dev: Boolean(e.dev), path: path12 });
     }
   } else if (j.dependencies) {
     const walk = (deps, chain) => {
       for (const [name, d] of Object.entries(deps)) {
         if (!d?.version || String(d.version).startsWith("file:")) continue;
-        const path11 = [...chain, name];
-        packages.push({ name, version: d.version, direct: chain.length === 0, dev: Boolean(d.dev), path: path11 });
-        if (d.dependencies) walk(d.dependencies, path11);
+        const path12 = [...chain, name];
+        packages.push({ name, version: d.version, direct: chain.length === 0, dev: Boolean(d.dev), path: path12 });
+        if (d.dependencies) walk(d.dependencies, path12);
       }
     };
     walk(j.dependencies, []);
@@ -4743,11 +4417,7 @@ function dedupe(list) {
   return [...seen.values()];
 }
 
-// src/hook/policy.ts
-var import_semver3 = __toESM(require_semver2(), 1);
-
 // src/tree/resolveManifest.ts
-var import_semver2 = __toESM(require_semver2(), 1);
 var GRAPH_ECOSYSTEMS = ["npm", "pypi", "cargo", "maven", "composer"];
 function pep440(v) {
   const m = v.match(/^(\d+(?:\.\d+)*)/);
@@ -4849,6 +4519,416 @@ async function resolveManifest(tree, notes) {
   }
   return [...out.values()];
 }
+
+// src/advisories/lineTree.ts
+async function vulnerableIn(eco, name, version3) {
+  const g = await getDependencies(eco, name, version3).catch(() => void 0);
+  if (!g?.nodes?.length) return void 0;
+  const nodes = [...new Map(g.nodes.slice(1).map((n) => [`${n.versionKey.name}@${n.versionKey.version}`, n.versionKey])).values()];
+  if (!nodes.length) return [];
+  const ids = await queryBatch(nodes.map((n) => ({ ecosystem: eco, name: n.name, version: n.version }))).catch(() => void 0);
+  if (!ids) return void 0;
+  return nodes.flatMap((n, k) => ids[k]?.length ? [{ name: n.name, version: n.version, ids: ids[k] }] : []);
+}
+var memo2 = /* @__PURE__ */ new Map();
+var MEMO_MS = 15 * 6e4;
+function sameLineTree(r) {
+  const same2 = r.safeVersionSameLine;
+  const newest = r.safeVersion;
+  if (!r.requested || !r.line || !same2 || !newest || same2 === newest || !GRAPH_ECOSYSTEMS.includes(r.ecosystem)) return Promise.resolve(void 0);
+  if (r.verdict === "malicious" || r.verdict === "unknown" || r.verdict === "unknown-package") return Promise.resolve(void 0);
+  const key2 = `${r.ecosystem}:${r.package}:${same2}:${newest}`;
+  const hit = memo2.get(key2);
+  if (hit && Date.now() - hit.at < MEMO_MS) return hit.p;
+  const p = (async () => {
+    const pulls = await vulnerableIn(r.ecosystem, r.package, same2);
+    if (!pulls?.length) return void 0;
+    const after = await vulnerableIn(r.ecosystem, r.package, newest);
+    if (!after || after.length) return void 0;
+    return { version: same2, line: r.line, pulls, cleaner: newest, cleanerLine: releaseLine(newest) ?? newest };
+  })().catch(() => void 0);
+  if (memo2.size > 500) memo2.clear();
+  if (!config.cacheDisabled) memo2.set(key2, { at: Date.now(), p });
+  return p;
+}
+
+// src/risk/signals.ts
+function intEnv2(name, fallback) {
+  const n = Number.parseFloat(process.env[name] ?? "");
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+function riskThresholds() {
+  return {
+    /** A package first published fewer days ago than this, with install scripts, is denied by the hook. */
+    newPackageDays: intEnv2("SAFECTX_RISK_NEW_PACKAGE_DAYS", 14),
+    /** Window in which a publisher change or a young package is worth mentioning. */
+    recentDays: intEnv2("SAFECTX_RISK_RECENT_DAYS", 30),
+    /** Weekly downloads under this, on a young package, is a warning. */
+    lowDownloads: intEnv2("SAFECTX_RISK_LOW_DOWNLOADS", 100),
+    /** OpenSSF Scorecard under this is a note (never a block). */
+    scorecardLow: intEnv2("SAFECTX_RISK_SCORECARD_LOW", 4),
+    /** Earlier versions compared against for install scripts, provenance and publisher. */
+    history: Math.max(1, Math.round(intEnv2("SAFECTX_RISK_HISTORY", 5)))
+  };
+}
+var DAY = 24 * 36e5;
+var LEVEL_ORDER = { high: 0, warn: 1, info: 2 };
+function daysSince(iso, now) {
+  if (!iso) return void 0;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? Math.max(0, Math.floor((now - t) / DAY)) : void 0;
+}
+function plural(n, word) {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+var DENY_SIGNALS = /* @__PURE__ */ new Set(["install-script-new-package", "install-script-added-new-publisher"]);
+function riskSignals(facts, now = Date.now(), t = riskThresholds()) {
+  const out = [];
+  const cur = facts.current;
+  const prev = facts.previous;
+  const pkgAge = daysSince(facts.firstPublishedAt, now);
+  const verAge = daysSince(cur.publishedAt, now);
+  const prevWithPublisher = prev.filter((p) => p.publisher);
+  let publisherChange = false;
+  if (cur.publisher && prevWithPublisher.length && verAge !== void 0 && verAge < t.recentDays) {
+    const before = [...new Set(prevWithPublisher.map((p) => p.publisher))];
+    if (!before.includes(cur.publisher)) {
+      publisherChange = true;
+      const wasMaintainer = prev.some((p) => p.maintainers?.includes(cur.publisher));
+      const attested = cur.provenance === true;
+      out.push({
+        id: "publisher-change",
+        level: wasMaintainer || attested ? "info" : "warn",
+        message: `${cur.version} was published ${plural(verAge, "day")} ago by "${cur.publisher}", who published none of the previous ${plural(prevWithPublisher.length, "version")} (${before.join(", ")})` + (attested ? "; built in CI with provenance" : wasMaintainer ? "; already a listed maintainer" : "; not a listed maintainer of those")
+      });
+    }
+  }
+  const scripts = cur.installScripts ?? [];
+  if (scripts.length) {
+    const what = scripts.map((s) => s.length > 70 ? `${s.slice(0, 67)}...` : s).join("; ");
+    const prevKnown = prev.filter((p) => p.installScripts !== void 0);
+    const added = prevKnown.length > 0 && prevKnown.every((p) => !p.installScripts?.length);
+    if (pkgAge !== void 0 && pkgAge < t.newPackageDays) {
+      out.push({
+        id: "install-script-new-package",
+        level: "high",
+        message: `the package was first published ${plural(pkgAge, "day")} ago and runs install scripts (${what})`
+      });
+    } else if (added && publisherChange) {
+      out.push({
+        id: "install-script-added-new-publisher",
+        level: "high",
+        message: `adds install scripts (${what}) that the previous ${plural(prevKnown.length, "version")} did not have, from a new publisher`
+      });
+    } else if (added) {
+      out.push({
+        id: "install-script-added",
+        level: "warn",
+        message: `adds install scripts (${what}) that the previous ${plural(prevKnown.length, "version")} did not have`
+      });
+    } else {
+      out.push({ id: "install-script", level: "info", message: `runs install scripts (${what})` });
+    }
+  }
+  if (cur.provenance === false) {
+    const withProv = prev.filter((p) => p.provenance === true);
+    if (withProv.length) {
+      out.push({
+        id: "provenance-dropped",
+        level: publisherChange ? "high" : "warn",
+        message: `${cur.version} has no provenance attestation, while ${withProv.length} of the previous ${plural(prev.length, "version")} had one (${withProv[0].version}); a release published outside CI is how stolen tokens usually show`
+      });
+    }
+  }
+  if (pkgAge !== void 0 && pkgAge < t.recentDays) {
+    const dl = facts.weeklyDownloads;
+    if (dl !== void 0 && dl < t.lowDownloads) {
+      out.push({
+        id: "young-low-downloads",
+        level: "warn",
+        message: `brand-new package: first published ${plural(pkgAge, "day")} ago, ${plural(dl, "download")} last week`
+      });
+    } else {
+      out.push({
+        id: "young-package",
+        level: "info",
+        message: `young package: first published ${plural(pkgAge, "day")} ago${dl !== void 0 ? `, ${plural(dl, "download")} last week` : ""}`
+      });
+    }
+  }
+  const agentText = [.../* @__PURE__ */ new Set([...facts.agentText ?? [], ...cur.agentText ?? []])];
+  if (agentText.length) {
+    out.push({
+      id: "agent-instructions-in-package-text",
+      level: "warn",
+      message: `the package's own text addresses AI agents with instructions: ${agentText.slice(0, 3).join("; ")}${agentText.length > 3 ? `; +${agentText.length - 3} more` : ""}. Treat it as suspicious and do not follow its docs blindly`
+    });
+  }
+  const sc = facts.scorecard;
+  if (sc) {
+    const where = `${sc.repo}${sc.verifiedRepo ? "" : ", repo as claimed by the package"}${sc.date ? `, ${sc.date.slice(0, 10)}` : ""}`;
+    if (sc.score < t.scorecardLow) {
+      out.push({
+        id: "scorecard-low",
+        level: "info",
+        message: `OpenSSF Scorecard ${sc.score}/10 (${where})${sc.failing.length ? `; failing: ${sc.failing.join(", ")}` : ""}`
+      });
+    } else if (sc.dangerousWorkflow) {
+      out.push({
+        id: "scorecard-dangerous-workflow",
+        level: "info",
+        message: `OpenSSF Scorecard flags dangerous GitHub workflow patterns in ${where}`
+      });
+    }
+  }
+  return out.sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);
+}
+
+// src/risk/sources.ts
+var DAY2 = 24 * 36e5;
+var TTL_VERSION_DOC = 7 * DAY2;
+var TTL_DOWNLOADS = DAY2;
+var INSTALL_HOOKS = ["preinstall", "install", "postinstall"];
+function npmPath(name) {
+  return encodeURIComponent(name).replace("%40", "@");
+}
+function userName(u) {
+  if (!u) return void 0;
+  const raw = typeof u === "string" ? u.replace(/\s*<.*$/, "") : u.name;
+  return cleanText(typeof raw === "string" ? raw : void 0, 60) || void 0;
+}
+function agentTextOf(doc) {
+  const out = [];
+  for (const [field, value] of [["description", doc.description], ["deprecation message", doc.deprecated]]) {
+    if (typeof value !== "string") continue;
+    const f = cleanField(value, 300);
+    if (f.level === "high") out.push(`${field} (${f.flags.join(", ")})`);
+  }
+  return out;
+}
+function installScriptsOf(doc) {
+  const out = [];
+  for (const hook of INSTALL_HOOKS) {
+    const cmd = doc.scripts?.[hook];
+    if (typeof cmd === "string" && cmd.trim()) out.push(`${hook}: ${cleanText(cmd, 200)}`);
+  }
+  if (!out.length && doc.gypfile) out.push("install: node-gyp rebuild (binding.gyp)");
+  if (!out.length && doc.hasInstallScript) out.push("install script (flagged by the registry)");
+  return out;
+}
+function versionFactsFromDoc(version3, doc) {
+  const agentText = agentTextOf(doc);
+  return {
+    version: version3,
+    installScripts: installScriptsOf(doc),
+    provenance: Boolean(doc.dist?.attestations?.provenance),
+    publisher: userName(doc._npmUser),
+    maintainers: (doc.maintainers ?? []).map(userName).filter((m) => Boolean(m)),
+    ...agentText.length ? { agentText } : {}
+  };
+}
+async function npmVersionFacts(name, version3) {
+  const url2 = `https://registry.npmjs.org/${npmPath(name)}/${encodeURIComponent(version3)}`;
+  const facts = await cached(`risk:npmver:${name}@${version3}`, TTL_VERSION_DOC, async () => {
+    try {
+      return versionFactsFromDoc(version3, await getJson(url2));
+    } catch (err) {
+      if (isNotFound(err)) return null;
+      throw err;
+    }
+  });
+  return facts ?? void 0;
+}
+var NPM_DOWNLOADS = "https://api.npmjs.org/downloads/point/last-week";
+var BULK_WINDOW_MS = 25;
+var BULK_MAX = 128;
+var SCOPED_CONCURRENCY = 3;
+var finite = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
+var bulkQueue = [];
+var bulkTimer;
+async function sendBulk(batch) {
+  const names = [...new Set(batch.map((w) => w.name))];
+  let counts;
+  try {
+    const body = await getJson(`${NPM_DOWNLOADS}/${names.map(npmPath).join(",")}`);
+    counts = names.length === 1 ? { [names[0]]: body } : body;
+  } catch (err) {
+    if (isNotFound(err)) counts = {};
+    else {
+      for (const w of batch) w.reject(err);
+      return;
+    }
+  }
+  for (const w of batch) w.resolve(finite(counts?.[w.name]?.downloads));
+}
+function flushBulk() {
+  if (bulkTimer) clearTimeout(bulkTimer);
+  bulkTimer = void 0;
+  const all = bulkQueue;
+  bulkQueue = [];
+  for (let i = 0; i < all.length; i += BULK_MAX) void sendBulk(all.slice(i, i + BULK_MAX));
+}
+function npmBulkDownloads(name) {
+  return new Promise((resolve2, reject) => {
+    bulkQueue.push({ name, resolve: resolve2, reject });
+    if (new Set(bulkQueue.map((w) => w.name)).size >= BULK_MAX) flushBulk();
+    else bulkTimer ??= setTimeout(flushBulk, BULK_WINDOW_MS);
+  });
+}
+var scopedActive = 0;
+var scopedWaiting = [];
+async function oneAtATime(fn) {
+  while (scopedActive >= SCOPED_CONCURRENCY) await new Promise((r) => scopedWaiting.push(r));
+  scopedActive++;
+  try {
+    return await fn();
+  } finally {
+    scopedActive--;
+    scopedWaiting.shift()?.();
+  }
+}
+async function singleDownloads(url2, pick2) {
+  try {
+    return finite(pick2(await getJson(url2)));
+  } catch (err) {
+    if (isNotFound(err)) return null;
+    throw err;
+  }
+}
+async function weeklyDownloads(eco, name) {
+  let load;
+  if (eco === "npm") {
+    load = name.startsWith("@") ? () => oneAtATime(() => singleDownloads(`${NPM_DOWNLOADS}/${npmPath(name)}`, (b) => b.downloads)) : () => npmBulkDownloads(name);
+  } else if (eco === "pypi") {
+    const url2 = `https://pypistats.org/api/packages/${encodeURIComponent(name.toLowerCase().replace(/[-_.]+/g, "-"))}/recent`;
+    load = () => singleDownloads(url2, (b) => b.data?.last_week);
+  } else {
+    return void 0;
+  }
+  const n = await cached(`risk:dl:${eco}:${name}`, TTL_DOWNLOADS, load);
+  return n ?? void 0;
+}
+var DOWNLOAD_ECOSYSTEMS = ["npm", "pypi"];
+var NOTABLE_CHECKS = [
+  "Dangerous-Workflow",
+  "Maintained",
+  "Code-Review",
+  "Branch-Protection",
+  "Token-Permissions",
+  "Binary-Artifacts",
+  "Vulnerabilities",
+  "Signed-Releases"
+];
+function scorecardFacts(repo, verifiedRepo, sc) {
+  if (!sc || typeof sc.overallScore !== "number") return void 0;
+  const checks = sc.checks ?? [];
+  const failing = checks.filter((c) => NOTABLE_CHECKS.includes(c.name) && c.score >= 0 && c.score <= 3).map((c) => `${c.name} ${c.score}`);
+  return {
+    repo,
+    score: sc.overallScore,
+    date: sc.date,
+    failing,
+    dangerousWorkflow: checks.some((c) => c.name === "Dangerous-Workflow" && c.score === 0),
+    verifiedRepo
+  };
+}
+async function depsDevFacts(eco, name, version3) {
+  const v = await getVersion(eco, name, version3);
+  if (!v) return {};
+  const provenance = Boolean(v.slsaProvenances?.length || v.attestations?.length) || void 0;
+  const repos = (v.relatedProjects ?? []).filter((p) => p.relationType === "SOURCE_REPO");
+  const repo = repos.find((p) => p.relationProvenance && p.relationProvenance !== "UNVERIFIED_METADATA") ?? repos[0];
+  if (!repo) return { provenance };
+  const project = await getProject(repo.projectKey.id);
+  const verified = Boolean(repo.relationProvenance && repo.relationProvenance !== "UNVERIFIED_METADATA");
+  return { provenance, scorecard: scorecardFacts(repo.projectKey.id, verified, project?.scorecard) };
+}
+
+// src/risk/index.ts
+var strip = (v) => v.replace(/^v/, "");
+function previousVersions(versions, version3, limit) {
+  const cur = versions.find((v) => strip(v.versionKey.version) === strip(version3));
+  const at = cur?.publishedAt;
+  if (!at) return [];
+  const pre = isPrerelease(version3);
+  return versions.filter((v) => v.publishedAt && v.publishedAt < at && (pre || !isPrerelease(v.versionKey.version))).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, limit);
+}
+async function assessRisk(eco, name, version3, now = Date.now(), agentText = []) {
+  const t = riskThresholds();
+  const unknown2 = [];
+  const sources = /* @__PURE__ */ new Set();
+  let versions = [];
+  try {
+    versions = (await getPackage(eco, name))?.versions ?? [];
+  } catch {
+    unknown2.push("package age");
+  }
+  const summary = versions.find((v) => strip(v.versionKey.version) === strip(version3));
+  const firstPublishedAt2 = versions.map((v) => v.publishedAt).filter((d) => Boolean(d)).sort()[0];
+  const earlier = previousVersions(versions, version3, t.history);
+  const npm = eco === "npm";
+  const [current, previous, downloads, dd] = await Promise.all([
+    npm ? npmVersionFacts(name, version3).then(
+      (f) => {
+        if (f) sources.add("registry.npmjs.org");
+        else unknown2.push("install scripts, provenance and publisher (version not in the npm registry)");
+        return f;
+      },
+      () => {
+        unknown2.push("install scripts, provenance and publisher (npm registry did not answer)");
+        return void 0;
+      }
+    ) : Promise.resolve(void 0),
+    npm ? Promise.all(
+      earlier.map(
+        (v) => npmVersionFacts(name, v.versionKey.version).then(
+          (f) => f ? { ...f, publishedAt: v.publishedAt } : void 0,
+          () => void 0
+        )
+      )
+    ).then((list) => list.filter((f) => Boolean(f))) : Promise.resolve([]),
+    DOWNLOAD_ECOSYSTEMS.includes(eco) ? weeklyDownloads(eco, name).then(
+      (n) => {
+        if (n !== void 0) sources.add(npm ? "api.npmjs.org" : "pypistats.org");
+        else unknown2.push("weekly downloads (no data yet)");
+        return n;
+      },
+      () => {
+        unknown2.push("weekly downloads");
+        return void 0;
+      }
+    ) : Promise.resolve(void 0),
+    depsDevFacts(eco, name, version3).catch(() => {
+      unknown2.push("OpenSSF Scorecard");
+      return {};
+    })
+  ]);
+  if (npm && earlier.length && !previous.length && current) unknown2.push("earlier versions (npm registry did not answer)");
+  if (dd.scorecard) sources.add("OpenSSF Scorecard via deps.dev");
+  const cur = {
+    ...current ?? { version: version3 },
+    publishedAt: summary?.publishedAt,
+    // The registry's own field for npm; elsewhere only a positive answer from deps.dev counts.
+    provenance: current ? current.provenance || dd.provenance === true : dd.provenance
+  };
+  const seen = findingsFor(eco, name, version3).map((f) => `${f.where} (${f.reasons.join(", ")})`);
+  const facts = { current: cur, previous, firstPublishedAt: firstPublishedAt2, weeklyDownloads: downloads, scorecard: dd.scorecard, agentText: [...agentText, ...seen] };
+  return {
+    version: version3,
+    signals: riskSignals(facts, now, t),
+    installScripts: cur.installScripts,
+    provenance: cur.provenance,
+    publisher: cur.publisher,
+    firstPublishedAt: firstPublishedAt2,
+    weeklyDownloads: downloads,
+    scorecard: dd.scorecard,
+    unknown: unknown2,
+    sources: [...sources].sort()
+  };
+}
+
+// src/hook/policy.ts
+var import_semver3 = __toESM(require_semver2(), 1);
 
 // src/teamConfig.ts
 import fs4 from "node:fs";
@@ -5672,10 +5752,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path11) {
-  if (!path11)
+function getElementAtPath(obj, path12) {
+  if (!path12)
     return obj;
-  return path11.reduce((acc, key2) => acc?.[key2], obj);
+  return path12.reduce((acc, key2) => acc?.[key2], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -6015,11 +6095,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path11, issues) {
+function prefixIssues(path12, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path11);
+    iss.path.unshift(path12);
     return iss;
   });
 }
@@ -6481,16 +6561,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path11 = []) => {
+  const processError = (error63, path12 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else {
-        const fullpath = [...path11, ...issue2.path];
+        const fullpath = [...path12, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -6529,17 +6609,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path11 = []) => {
+  const processError = (error63, path12 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else {
-        const fullpath = [...path11, ...issue2.path];
+        const fullpath = [...path12, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -6578,8 +6658,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path11 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path11) {
+  const path12 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path12) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -8247,8 +8327,8 @@ function handleArrayResult(result, final, index) {
 }
 var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
   $ZodType.init(inst, def);
-  const memo3 = globalConfig.memoizer;
-  memo3?.attach(inst);
+  const memo4 = globalConfig.memoizer;
+  memo4?.attach(inst);
   inst._zod.parse = (payload, ctx) => {
     const input3 = payload.value;
     if (!Array.isArray(input3)) {
@@ -8260,7 +8340,7 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
       });
       return payload;
     }
-    payload.value = memo3 ? memo3.alloc(inst, payload, Array(input3.length), ctx) : Array(input3.length);
+    payload.value = memo4 ? memo4.alloc(inst, payload, Array(input3.length), ctx) : Array(input3.length);
     const proms = [];
     const abortEarly = ctx?.abortEarly;
     for (let i = 0; i < input3.length; i++) {
@@ -8420,8 +8500,8 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   const isObject2 = isObject;
   const catchall = def.catchall;
   let value;
-  const memo3 = globalConfig.memoizer;
-  memo3?.attach(inst);
+  const memo4 = globalConfig.memoizer;
+  memo4?.attach(inst);
   inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input3 = payload.value;
@@ -8434,7 +8514,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
       });
       return payload;
     }
-    payload.value = memo3 ? memo3.alloc(inst, payload, {}, ctx) : {};
+    payload.value = memo4 ? memo4.alloc(inst, payload, {}, ctx) : {};
     const proms = [];
     const shape = value.shape;
     const abortEarly = ctx?.abortEarly;
@@ -8467,11 +8547,11 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
   $ZodObject.init(inst, def);
   const superParse = inst._zod.parse;
   const _normalized = cached2(() => normalizeDef(def));
-  const memo3 = globalConfig.memoizer;
+  const memo4 = globalConfig.memoizer;
   const generateFastpass = (shape) => {
     const normalized = _normalized.value;
     const syms = normalized.symbolKeys;
-    const doc = new Doc(["payload", "ctx"], { shape, inst, memo: memo3, syms });
+    const doc = new Doc(["payload", "ctx"], { shape, inst, memo: memo4, syms });
     const parseStr = (k) => `shape[${k}]._zod.run({ value: input[${k}], issues: [] }, ctx)`;
     const prefixStr = (id, k) => `
           let ${id}_ab = false;
@@ -8491,7 +8571,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
     for (const key2 of normalized.allKeys) {
       ids[key2] = `key_${counter++}`;
     }
-    doc.write(memo3 ? `const newResult = memo.alloc(inst, payload, {}, ctx);` : `const newResult = {};`);
+    doc.write(memo4 ? `const newResult = memo.alloc(inst, payload, {}, ctx);` : `const newResult = {};`);
     for (const key2 of normalized.allKeys) {
       if (key2 === "__proto__")
         continue;
@@ -8925,8 +9005,8 @@ function handleIntersectionResults(result, left, right) {
 var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
   $ZodType.init(inst, def);
   const items = def.items;
-  const memo3 = globalConfig.memoizer;
-  memo3?.attach(inst);
+  const memo4 = globalConfig.memoizer;
+  memo4?.attach(inst);
   inst._zod.parse = (payload, ctx) => {
     const input3 = payload.value;
     if (!Array.isArray(input3)) {
@@ -8938,7 +9018,7 @@ var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
       });
       return payload;
     }
-    payload.value = memo3 ? memo3.alloc(inst, payload, [], ctx) : [];
+    payload.value = memo4 ? memo4.alloc(inst, payload, [], ctx) : [];
     const proms = [];
     const optinStart = getTupleOptStart(items, "optin");
     const optoutStart = getTupleOptStart(items, "optout");
@@ -9047,8 +9127,8 @@ function handleTupleResults(itemResults, final, items, input3, optoutStart) {
 }
 var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
   $ZodType.init(inst, def);
-  const memo3 = globalConfig.memoizer;
-  memo3?.attach(inst);
+  const memo4 = globalConfig.memoizer;
+  memo4?.attach(inst);
   inst._zod.parse = (payload, ctx) => {
     const input3 = payload.value;
     if (!isPlainObject(input3)) {
@@ -9063,7 +9143,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
     const proms = [];
     const values = def.keyType._zod.values;
     if (values && !def.partial) {
-      payload.value = memo3 ? memo3.alloc(inst, payload, {}, ctx) : {};
+      payload.value = memo4 ? memo4.alloc(inst, payload, {}, ctx) : {};
       const recordKeys = /* @__PURE__ */ new Set();
       for (const key2 of values) {
         if (typeof key2 === "string" || typeof key2 === "number" || typeof key2 === "symbol") {
@@ -9127,7 +9207,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
         });
       }
     } else {
-      payload.value = memo3 ? memo3.alloc(inst, payload, {}, ctx) : {};
+      payload.value = memo4 ? memo4.alloc(inst, payload, {}, ctx) : {};
       let unrecognized;
       for (const key2 of Reflect.ownKeys(input3)) {
         if (key2 === "__proto__")
@@ -9202,8 +9282,8 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
 });
 var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
   $ZodType.init(inst, def);
-  const memo3 = globalConfig.memoizer;
-  memo3?.attach(inst);
+  const memo4 = globalConfig.memoizer;
+  memo4?.attach(inst);
   inst._zod.parse = (payload, ctx) => {
     const input3 = payload.value;
     if (!(input3 instanceof Map)) {
@@ -9216,7 +9296,7 @@ var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
       return payload;
     }
     const proms = [];
-    payload.value = memo3 ? memo3.alloc(inst, payload, /* @__PURE__ */ new Map(), ctx) : /* @__PURE__ */ new Map();
+    payload.value = memo4 ? memo4.alloc(inst, payload, /* @__PURE__ */ new Map(), ctx) : /* @__PURE__ */ new Map();
     const abortEarly = ctx?.abortEarly;
     let seen = payload.issues.length;
     for (const [key2, value] of input3) {
@@ -9273,8 +9353,8 @@ function handleMapResult(keyResult, valueResult, final, key2, input3, inst, ctx)
 }
 var $ZodSet = /* @__PURE__ */ $constructor("$ZodSet", (inst, def) => {
   $ZodType.init(inst, def);
-  const memo3 = globalConfig.memoizer;
-  memo3?.attach(inst);
+  const memo4 = globalConfig.memoizer;
+  memo4?.attach(inst);
   inst._zod.parse = (payload, ctx) => {
     const input3 = payload.value;
     if (!(input3 instanceof Set)) {
@@ -9287,7 +9367,7 @@ var $ZodSet = /* @__PURE__ */ $constructor("$ZodSet", (inst, def) => {
       return payload;
     }
     const proms = [];
-    payload.value = memo3 ? memo3.alloc(inst, payload, /* @__PURE__ */ new Set(), ctx) : /* @__PURE__ */ new Set();
+    payload.value = memo4 ? memo4.alloc(inst, payload, /* @__PURE__ */ new Set(), ctx) : /* @__PURE__ */ new Set();
     const abortEarly = ctx?.abortEarly;
     let seen = payload.issues.length;
     for (const item of input3) {
@@ -10072,7 +10152,7 @@ function bucketFor(state, inst) {
 }
 var handoff;
 var open = [];
-var memo2 = {
+var memo3 = {
   alloc(_inst, payload, empty) {
     const bucket2 = handoff;
     if (!bucket2)
@@ -10173,7 +10253,7 @@ var memo2 = {
   }
 };
 function memoizer() {
-  return memo2;
+  return memo3;
 }
 function isBackEdge(ctx, value) {
   const backEdges = ctx[STATE]?.backEdges;
@@ -23717,13 +23797,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path11 = ref.slice(1).split("/").filter(Boolean);
-  if (path11.length === 0) {
+  const path12 = ref.slice(1).split("/").filter(Boolean);
+  if (path12.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path11[0] === defsKey) {
-    const key2 = path11[1] === void 0 ? void 0 : decodeJSONPointerSegment(path11[1]);
+  if (path12[0] === defsKey) {
+    const key2 = path12[1] === void 0 ? void 0 : decodeJSONPointerSegment(path12[1]);
     if (!key2 || !ctx.defs[key2]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -31741,7 +31821,12 @@ async function checkPackage(eco, name, version3, opts = {}) {
   const target = version3 ? r.requested?.version : r.latestVersion;
   if (!target || r.verdict === "unknown-package" || r.verdict === "malicious" || r.verdict === "unknown") return v;
   const agentText = version3 && r.requested?.version === target ? r.requested.agentText ?? [] : [];
-  v.risk = await assessRisk(eco, name, target, Date.now(), agentText).catch(() => ({ version: target, signals: [], unknown: ["risk signals"], sources: [] }));
+  const [risk, tree] = await Promise.all([
+    assessRisk(eco, name, target, Date.now(), agentText).catch(() => ({ version: target, signals: [], unknown: ["risk signals"], sources: [] })),
+    sameLineTree(r)
+  ]);
+  v.risk = risk;
+  if (tree) r.sameLineTree = tree;
   return v;
 }
 async function checkVerdict(eco, name, version3) {
@@ -33090,9 +33175,11 @@ function toFindings(p, v) {
 var SEVERITIES2 = ["low", "moderate", "high", "critical"];
 var AuditInputError = class extends Error {
 };
-function loadPolicy(target, configFile) {
+function loadPolicy(target, configFile, given) {
   let team;
-  if (configFile) {
+  if (given) {
+    team = given.text === void 0 ? {} : parseTeamConfig(given.text, given.label);
+  } else if (configFile) {
     const file2 = path9.resolve(configFile);
     try {
       team = parseTeamConfig(readProjectFile(file2, { allowOutside: true }), file2);
@@ -33115,7 +33202,7 @@ async function runAudit(opts) {
   const wf = workflowFiles(target);
   const files = fs7.statSync(target).isDirectory() ? manifestsIn(target) : wf.length ? [] : [target];
   if (!files.length && !wf.length) throw new AuditInputError(`No supported lockfile, manifest or workflow in ${target}`);
-  const { policy, error: error62 } = loadPolicy(target, opts.config);
+  const { policy, error: error62 } = loadPolicy(target, opts.config, opts.policyText);
   const out = [];
   const notes = [];
   for (const f of files) {
@@ -33273,6 +33360,103 @@ ${text.split(token).join("[token]")}
 ::${token}::`;
 }
 
+// src/action/policySource.ts
+import { spawnSync as spawnSync2 } from "node:child_process";
+import fs8 from "node:fs";
+import path10 from "node:path";
+var PR_EVENTS = /* @__PURE__ */ new Set(["pull_request", "pull_request_target"]);
+var SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
+var BRANCH = /^(?!-)(?!.*\.\.)[A-Za-z0-9._/-]{1,250}$/;
+function gitIn(cwd) {
+  return (args) => {
+    const r = spawnSync2("git", args, { cwd, encoding: "utf8", maxBuffer: 2e6, timeout: 6e4, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+    return { code: r.status ?? 1, stdout: r.stdout ?? "", stderr: r.stderr ?? (r.error?.message ?? "") };
+  };
+}
+function readEvent(env2) {
+  try {
+    return env2.GITHUB_EVENT_PATH ? JSON.parse(fs8.readFileSync(env2.GITHUB_EVENT_PATH, "utf8")) : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function baseCommit(git, sha, branch) {
+  const has = (rev) => git(["cat-file", "-e", `${rev}^{commit}`]).code === 0;
+  if (sha) {
+    if (has(sha)) return { rev: sha };
+    git(["fetch", "--no-tags", "--no-recurse-submodules", "--depth=1", "origin", sha]);
+    if (has(sha)) return { rev: sha };
+  } else if (branch) {
+    const ref = `refs/remotes/origin/${branch}`;
+    if (!has(ref)) git(["fetch", "--no-tags", "--no-recurse-submodules", "--depth=1", "origin", `+refs/heads/${branch}:${ref}`]);
+    if (has(ref)) return { rev: ref };
+  }
+  const what = sha ? `the base commit ${sha.slice(0, 12)}` : `the base branch ${branch ?? "(unknown)"}`;
+  return {
+    error: `safectx reads the team policy from the pull request's base, and ${what} is not in this checkout and could not be fetched. Check out with actions/checkout and "fetch-depth: 0", or keep its default "persist-credentials: true" so safectx can fetch that one commit, or pass "config:" with a policy file the PR cannot change.`
+  };
+}
+function selectPolicySource(opts) {
+  const { env: env2, workspace } = opts;
+  if (opts.configInput) return { kind: "input", file: path10.resolve(workspace, opts.configInput), notices: [] };
+  if (!PR_EVENTS.has(env2.GITHUB_EVENT_NAME ?? "")) return { kind: "tree", notices: [] };
+  const git = opts.git ?? gitIn(workspace);
+  const event = opts.event ?? readEvent(env2);
+  const pr = event?.pull_request ?? {};
+  const rawSha = typeof pr.base?.sha === "string" ? pr.base.sha.toLowerCase() : void 0;
+  const rawBranch = typeof pr.base?.ref === "string" ? pr.base.ref : env2.GITHUB_BASE_REF;
+  const sha = rawSha && SHA.test(rawSha) ? rawSha : void 0;
+  const branch = rawBranch && BRANCH.test(rawBranch) ? rawBranch : void 0;
+  const fail = (error62) => ({ kind: "base", notices: [], error: error62 });
+  if (!sha && !branch) return fail(`safectx reads the team policy from the pull request's base, but the event names no base commit or branch. Pass "config:" with a policy file the PR cannot change.`);
+  const top = git(["rev-parse", "--show-toplevel"]);
+  if (top.code !== 0) return fail(`safectx reads the team policy from the pull request's base, but ${workspace} is not a git checkout (${top.stderr.trim().slice(0, 200)}). Check out the repository with actions/checkout, or pass "config:".`);
+  const real = (p) => {
+    try {
+      return fs8.realpathSync.native(p);
+    } catch {
+      return path10.resolve(p);
+    }
+  };
+  const root = real(top.stdout.trim());
+  const base = baseCommit(git, sha, branch);
+  if (!base.rev) return fail(base.error);
+  let dir = real(fs8.existsSync(opts.target) && !fs8.statSync(opts.target).isDirectory() ? path10.dirname(opts.target) : opts.target);
+  const candidates = [];
+  for (; ; ) {
+    const rel = path10.relative(root, dir);
+    if (rel.startsWith("..") || path10.isAbsolute(rel)) break;
+    candidates.push(rel ? `${rel.split(path10.sep).join("/")}/${CONFIG_FILE}` : CONFIG_FILE);
+    if (!rel) break;
+    dir = path10.dirname(dir);
+  }
+  const short = base.rev.startsWith("refs/") ? branch : base.rev.slice(0, 7);
+  const inTree = (rel) => {
+    try {
+      return fs8.readFileSync(path10.join(root, rel), "utf8");
+    } catch {
+      return void 0;
+    }
+  };
+  const notices = [];
+  const same2 = (a, b) => a.replace(/\r\n/g, "\n") === b.replace(/\r\n/g, "\n");
+  for (const rel of candidates) {
+    const shown = git(["show", `${base.rev}:${rel}`]);
+    if (shown.code !== 0) continue;
+    const head = inTree(rel);
+    if (head === void 0) notices.push(`This pull request deletes ${rel}. safectx used the base branch's version; the change applies once it is merged.`);
+    else if (!same2(head, shown.stdout)) notices.push(`This pull request changes ${rel}. safectx used the base branch's version; review the policy change before merging.`);
+    for (const nearer of candidates.slice(0, candidates.indexOf(rel))) {
+      if (inTree(nearer) !== void 0) notices.push(`This pull request adds ${nearer}, which would replace ${rel} for this path. safectx used ${rel} from the base branch; review the new policy before merging.`);
+    }
+    return { kind: "base", text: shown.stdout, label: `${rel} at base ${short}`, notices };
+  }
+  for (const rel of candidates) {
+    if (inTree(rel) !== void 0) notices.push(`This pull request adds ${rel}. safectx ran without a team policy, as on the base branch; review the policy before merging.`);
+  }
+  return { kind: "base", notices };
+}
+
 // src/action/main.ts
 var env = process.env;
 var input2 = (name, fallback = "") => (env[`SAFECTX_INPUT_${name}`] ?? "").trim() || fallback;
@@ -33282,20 +33466,20 @@ var flag = (name, fallback) => {
 };
 function setOutput(name, value) {
   const file2 = env.GITHUB_OUTPUT;
-  if (file2) fs8.appendFileSync(file2, `${name}=${value}
+  if (file2) fs9.appendFileSync(file2, `${name}=${value}
 `);
   else console.log(`[safectx] output ${name}=${value}`);
 }
 function version2() {
   try {
-    return JSON.parse(fs8.readFileSync(path10.join(path10.dirname(fileURLToPath2(import.meta.url)), "..", "package.json"), "utf8")).version;
+    return JSON.parse(fs9.readFileSync(path11.join(path11.dirname(fileURLToPath2(import.meta.url)), "..", "package.json"), "utf8")).version;
   } catch {
     return "0.0.0";
   }
 }
 async function main() {
   const workspace = env.GITHUB_WORKSPACE ?? process.cwd();
-  const target = path10.resolve(workspace, input2("PATH", "."));
+  const target = path11.resolve(workspace, input2("PATH", "."));
   const failOnRaw = input2("FAIL_ON", "high");
   const failOn = parseFailOn(failOnRaw);
   if (!failOn) {
@@ -33303,11 +33487,18 @@ async function main() {
     return 2;
   }
   const configInput = input2("CONFIG");
+  const source = selectPolicySource({ configInput, workspace, target, env });
+  if (source.error) {
+    console.log(`::error title=safectx policy::${escData(source.error)}`);
+    return 2;
+  }
+  for (const n of source.notices) console.log(`::notice title=safectx policy::${escData(n)}`);
   let run;
   try {
     run = await runAudit({
       target,
-      config: configInput ? path10.resolve(workspace, configInput) : void 0,
+      config: source.file,
+      policyText: source.kind === "base" ? { text: source.text, label: source.label ?? "base branch (no policy)" } : void 0,
       supplyChain: flag("SUPPLY_CHAIN", true)
     });
   } catch (err) {
@@ -33322,15 +33513,15 @@ async function main() {
   const log = runToSarif(run, { root: sarifRoot(target, workspace), toolVersion: version2() });
   let sarifFile = "";
   if (flag("SARIF", true)) {
-    sarifFile = path10.join(env.RUNNER_TEMP ?? path10.join(workspace, ".safectx"), "safectx", "results.sarif");
-    fs8.mkdirSync(path10.dirname(sarifFile), { recursive: true });
-    fs8.writeFileSync(sarifFile, JSON.stringify(log));
+    sarifFile = path11.join(env.RUNNER_TEMP ?? path11.join(workspace, ".safectx"), "safectx", "results.sarif");
+    fs9.mkdirSync(path11.dirname(sarifFile), { recursive: true });
+    fs9.writeFileSync(sarifFile, JSON.stringify(log));
   }
   if (flag("ANNOTATIONS", true)) for (const line of annotations(log)) console.log(line);
   if (env.GITHUB_STEP_SUMMARY) {
-    fs8.appendFileSync(
+    fs9.appendFileSync(
       env.GITHUB_STEP_SUMMARY,
-      summaryMarkdown(log, { exitCode: code2, failOn, sarifFile: sarifFile ? path10.basename(sarifFile) : void 0, uploaded: Boolean(sarifFile) && flag("UPLOAD", true) })
+      summaryMarkdown(log, { exitCode: code2, failOn, sarifFile: sarifFile ? path11.basename(sarifFile) : void 0, uploaded: Boolean(sarifFile) && flag("UPLOAD", true) })
     );
   }
   setOutput("sarif-file", sarifFile);
