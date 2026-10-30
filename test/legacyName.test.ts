@@ -42,6 +42,8 @@ describe('entries written under the old name', () => {
     expect(isLegacyHook({ hooks: [{ command: 'npx -y safectx hook claude' }] })).toBe(true);
     expect(isLegacyHook({ command: checkoutHook })).toBe(true);
     expect(isLegacyHook({ command: 'node /src/other/dist/cli.js hook claude' })).toBe(false);
+    // A worktree of the old checkout is not the old folder; the entry init writes from there is current.
+    expect(isLegacyHook({ command: 'node "C:\\Hiper AI\\_worktrees\\safectx-integracion\\dist\\cli.js" hook claude' })).toBe(false);
     expect(isLegacyHook({ command: 'npx -y pinright hook claude' })).toBe(false);
     expect(hasLegacyEntry(JSON.stringify({ hooks: { PreToolUse: [{ command: checkoutHook }] } }))).toBe(true);
     expect(hasLegacyEntry('[mcp_servers.safectx]\ncommand = "npx"\n')).toBe(true);

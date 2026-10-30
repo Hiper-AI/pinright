@@ -13,9 +13,9 @@ function strings(v: unknown): string[] {
   return [];
 }
 
-/** `safectx hook <agent>`, or `node ".../safectx/dist/cli.js" hook <agent>` from a checkout. */
+/** `safectx hook <agent>`, or `node ".../safectx/dist/cli.js" hook <agent>` from a checkout in a folder named safectx. */
 const oldHookCommand = (s: string) =>
-  new RegExp(`\\b${OLD_NAME}(@\\S*)?\\s+hook\\b`).test(s) || (s.includes(OLD_NAME) && /cli\.js"?\s+hook\b/.test(s));
+  new RegExp(`\\b${OLD_NAME}(@\\S*)?\\s+hook\\b`).test(s) || new RegExp(`[\\\\/]${OLD_NAME}[\\\\/]+dist[\\\\/]+cli\\.js"?\\s+hook\\b`).test(s);
 
 /** A hook list entry (any shape) that runs the old hook. */
 export const isLegacyHook = (entry: unknown): boolean => strings(entry).some(oldHookCommand);
