@@ -256,6 +256,98 @@ on unknown keys".
 SQLModel's partial update (`sqlmodel_update`), which passed on the base. Set B gained Jotai 3 (2),
 pydantic-settings' `env_nested_delimiter` and SQLModel's `select().where()`.
 
+## Third round: docs sites found from metadata, set C
+
+Before changing code we wrote set C: 45 questions over 15 libraries outside sets A and B and the
+benchmark (Nuxt 4, SolidStart 2, Elysia, Effect 4, Kysely, BullMQ 6, Pino 10, Litestar, Pandera,
+DuckDB 2, LangGraph, LlamaIndex, Instructor, Ruff, uv), with expected strings checked against the
+docs or changelog linked next to each. We scored it on main and again at the end, and read none of
+its answers in between. We tuned on set A's misses only.
+
+| | Main (`d2f082a`) | This branch |
+|---|---|---|
+| Original probe (25 questions) | 24 | 24 |
+| Held-out set A (81, looked at) | 63 | 75 |
+| Held-out set B (28, untouched since round two) | 25 | 25 |
+| Held-out set C (45, untouched) | 28 | 33 |
+| Replay: new-API markers (16 runs) | 58 / 66 | 58 / 66 |
+| Mean answer, set A (chars) | 9,800 | 10,270 |
+| Replay answers, total chars | 349,451 | 356,007 |
+| Set A, cold cache: total / median per question | 666 s / 4.7 s | 345 s / 3.0 s |
+| Set A, warm cache: total / median per question | 83.9 s / 624 ms | 102.1 s / 601 ms |
+| Set C, warm cache: total / median per question | 28.1 s / 343 ms | 33.3 s / 484 ms |
+
+Cold timings swing with the network: main ran first, on a cold jsDelivr. The warm total grew 22% on
+set A. Two libraries account for all of it: NestJS (0.1 s to 6.8 s over three questions) and Prisma
+(6 s to 26 s) now read the `llms-full.txt` of their `docs.` subdomain, a whole site that safectx
+splits into sections on every question. Without those two, set A's warm total is 75 s. Answers grew
+5% on set A and 2% on the replay.
+
+Steps, in the order we committed them (scores on one shared warm cache):
+
+| Change | Original | Set A | Set B | Replay |
+|---|---|---|---|---|
+| Main | 24 | 63 | 25 | 58 |
+| Docs site found from metadata (`65f5c16`) | 24 | 71 | 25 | 58 |
+| mkdocs macros and snippet sections (`6510ce0`) | 24 | 72 | 25 | 58 |
+| Generated SDK types rank below the prose (`a2a2751`) | 24 | 73 | 25 | 58 |
+| Sphinx `constraints.txt` pages kept (`42ac4d4`) | 24 | 74 | 25 | 58 |
+| `llms-full.txt`: the per-file cap counts pages (`52a29d5`) | 24 | 75 | 25 | 58 |
+
+**Docs sites found from metadata.** Supabase, Stripe and Astro keep their docs outside the package
+and its repo. safectx used to read the registry's homepage and stop there. It now takes the site from
+the registry's docs URL or homepage; when that points to GitHub or a registry, from the homepage the
+source repo declares (supabase/supabase-js lists supabase.com); and without either, from the link in
+the README's Documentation section (platform.claude.com for the Claude SDKs). It looks for llms.txt
+in the site's folder, then at `docs.<host>` and under `/docs` (stripe.com's llms.txt lists product
+pages; docs.stripe.com's lists the docs). A site with no llms.txt is read from the repo it is built
+from: safectx asks GitHub about `<org>/docs`, `<org>/<name>-docs`, `<org>/<name>.dev`, `<org>/<site
+host>` and the docs folders of `<org>/<org>`, and reads a candidate only when GitHub lists its homepage
+as the same site. Astro's docs come from `withastro/docs` and NestJS's from `nestjs/docs.nestjs.com`
+this way. It asks only when the package and its repo carry fewer than five docs pages, and caches
+the answers. Every URL taken from metadata goes through `getUntrustedText`. A site found through the
+repo or the README covers a product family, so its llms.txt pages rank with the package name too.
+This step fixed Astro (3), Supabase (2), NestJS (2) and the Anthropic TypeScript SDK's tool
+definition. We added no entry to `docsRepos.ts`.
+
+**mkdocs macros.** Polars writes `{{code_block('user-guide/expressions/aggregation','basic',[...])}}`,
+which its macro turns into `--8<-- "python/user-guide/expressions/aggregation.py:basic"` under
+`docs/source/src/`. The repo listing now keeps the example code under `docs/` folders. A directive
+whose path does not resolve from the page's folders is looked up by its ending in that code; a macro
+path gets the ecosystem's extension (`.py` for PyPI); `:basic` keeps the lines between
+`[start:basic]` and `[end:basic]`. Polars runs the same snippet in a second block, which stays as is.
+
+**Generated SDK types.** OpenAI's and Anthropic's wheels ship hundreds of modules headed "File
+generated from our OpenAPI spec by Stainless". A file that says it was generated now weighs half
+for a how-to question and full weight when the question asks about a signature, a type or its fields.
+OpenAI's `responses.parse` now comes from `helpers.md`.
+
+**Ranking misses.** Django's `constraints.txt` never reached the ranking: the filter for pip files
+in `docs/` dropped every `.txt` whose name contained "constraints". It now drops them only in
+`docs/` or one folder down. Prisma's `defineConfig` page ranked fourth inside `llms-full.txt`, and the
+cap of three sections per file stopped there; in `llms-full.txt` the cap now counts each page.
+NestJS's `ValidationPipe` and constructor injection passed in the first step, once safectx read
+docs.nestjs.com.
+
+**Remaining misses in set A (6):**
+- Anthropic `system=` (Python) and `system:` (TypeScript): neither the SDK repo nor
+  platform.claude.com's llms.txt has a page that shows a system prompt in code; the prompting guide
+  that does ranks below "Mid-conversation system messages".
+- Stripe's checkout session: safectx reads the right API reference page, but the section it picks
+  lists parameters, not the `stripe.checkout.sessions.create` call.
+- Supabase `.eq()`: `llms/js.txt` has it, in a section that ranks below the `select()` one.
+- Polars "read a large CSV lazily": "lazily" does not match "lazy", and the lazy API page loses to
+  `io/csv.md`.
+- React Router "useNavigate in onSubmit", as before.
+
+The original probe's miss (Zod's "reject unknown keys") is unchanged: the `z.strictObject` section
+says "throws on unknown keys" and shares no other word with the question.
+
+**Set B** did not move (25). **Set C** went from 28 to 33: Elysia 0 to 3 and SolidStart 0 to 2, with no
+new misses. Its 12 misses after: Nuxt 4's `srcDir`, SolidStart's `"use server"`, Effect 4's
+`Effect.result` and `forkDetach`, BullMQ's `deduplication`, Pino's `redact`, Pandera's validation
+depth, DuckDB 2 (3), LlamaIndex's `agent.run`, uv workspaces.
+
 ## Before and after on the agents
 
 We reran the five tasks the fixes touch on the safectx arm (`docs-v1-fix`, 10 runs): 10 of 10 current,
@@ -280,7 +372,7 @@ GITHUB_TOKEN=... npx tsx bench/docs/run.ts --reps 2 --concurrency 2 --stamp <sta
 npx tsx bench/docs/score.ts <stamp> --concurrency 2
 npx tsx bench/docs/report.ts <stamp>                # fills the Results section above
 GITHUB_TOKEN=... npx tsx bench/docs/retrieval.ts
-GITHUB_TOKEN=... npx tsx bench/docs/probe-heldout.ts --set a   # or b, all; --show for the sections of each miss
+GITHUB_TOKEN=... npx tsx bench/docs/probe-heldout.ts --set a   # or b, c, all; --show for the sections of each miss
 GITHUB_TOKEN=... npx tsx bench/docs/replay.ts <stamp>
 npx tsx bench/docs/calls.ts <stamp> <task> safectx  # what each docs call returned
 ```

@@ -851,12 +851,24 @@ before deps.dev mirrors them.
    safectx skips translations, notes for contributors and coding agents (`AGENTS.md`,
    `.agents/skills`, `docs/plans`), eval prompts, example apps and copies of an older major the
    package still ships (Zod 4's `v3/`). When a page pulls its example from another file
-   (`{* docs_src/x.py *}`, `--8<--`, `literalinclude`, `<<<`), the answer shows that file.
+   (`{* docs_src/x.py *}`, `--8<--`, `literalinclude`, `<<<`, or an mkdocs macro such as Polars'
+   `{{code_block('user-guide/x', 'section')}}`), the answer shows that file, cut to the named
+   snippet section. Generated SDK types (files headed "generated from our OpenAPI spec") rank
+   below the README and guides unless the question asks for a signature or a type.
 3. The project's `llms-full.txt` or `llms.txt`, which describe the current site and may be newer
-   than the version you use; sections from it are labeled as such. Packages whose docs live in
-   another repo or site (LangChain, LangGraph, PyYAML, Streamlit, Selenium) are mapped to it in
-   `src/data/docsRepos.ts`. For LangChain's split packages, the answer lists the sibling packages
-   the question needs that are not dependencies (`langchain-text-splitters`, `langchain-community`).
+   than the version you use; sections from it are labeled as such. The site comes from the
+   package's metadata: the registry's homepage or docs URL, the homepage its GitHub repo declares
+   (supabase.com for `@supabase/supabase-js`), or the docs link of its README (platform.claude.com
+   for the Claude SDKs). safectx looks for the llms.txt in the site's folder, at `docs.<host>` and
+   under `/docs`. A site without one is read from the GitHub repo it is built from, at its default
+   branch: `<org>/docs`, `<org>/<name>-docs`, `<org>/<name>.dev`, `<org>/<site host>` or the docs
+   folder of the org's monorepo, only when GitHub lists that repo's homepage as the same site
+   (Astro's docs come from `withastro/docs` this way). Every URL taken from metadata goes through the
+   same SSRF guard as llms.txt. Packages whose docs cannot be found that way (LangChain, LangGraph,
+   PyYAML, Streamlit, Selenium) are mapped in `src/data/docsRepos.ts`, and so is Tailwind CSS,
+   whose site repo is found but whose 200 utility pages need a hand-picked set of guides. For
+   LangChain's split packages, the answer lists the sibling packages the question needs that are
+   not dependencies (`langchain-text-splitters`, `langchain-community`).
 
 safectx does not call any docs index: everything comes from the sources above, with no account
 or key. A GitHub repo id (`/vercel/next.js`) also works and is mapped to the package.
