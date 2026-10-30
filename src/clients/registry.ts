@@ -9,7 +9,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PKG_NAME, SERVER_KEY } from '../pkg.js';
 import type { HookAgent } from '../hook/run.js';
-import { getAt, parseJsonc, setJsonc, setTomlTable, tomlEnv } from './edit.js';
+import { getAt, parseJsonc, removeTomlTable, setJsonc, setTomlTable, tomlEnv } from './edit.js';
+import { isLegacyHook, OLD_NAME, renameEnv } from './legacy.js';
 
 export type Scope = 'project' | 'user';
 
@@ -83,7 +84,10 @@ function jsonOrJsonc(file: string): string {
 
 // ----------------------------------------------------------------- entries ---
 
-/** `<keyPath>.<server>` = entry in a JSON/JSONC file; `shape` builds the entry from the previous one. */
+/**
+ * `<keyPath>.<server>` = entry in a JSON/JSONC file; `shape` builds the entry from the previous one.
+ * An entry under the old name (see legacy.ts) is removed, and its env carries over when ours is new.
+ */
 function jsonServer(file: string, keyPath: string[], what: string, shape: (prev: any) => unknown): FileWrite {
   return {
     file,
@@ -91,7 +95,11 @@ function jsonServer(file: string, keyPath: string[], what: string, shape: (prev:
     update(current) {
       const doc = parseJsonc(current ?? '', file);
       const at = [...keyPath, SERVER_KEY];
-      return setJsonc(current, file, at, shape(getAt(doc, at)));
+      const oldAt = [...keyPath, OLD_NAME];
+      const old = OLD_NAME !== SERVER_KEY ? getAt(doc, oldAt) : undefined;
+      const text = old === undefined ? current : setJsonc(current, file, oldAt, undefined);
+      const prev = getAt(doc, at) ?? (old && { env: renameEnv(old.env), environment: renameEnv(old.environment) });
+      return setJsonc(text, file, at, shape(prev));
     },
   };
 }
@@ -104,8 +112,8 @@ const stdio = (launch: Launch, env: EnvFor) => (prev: any) => {
 const mcpServers = (file: string, launch: Launch, env: EnvFor, keyPath = ['mcpServers']) =>
   jsonServer(file, keyPath, 'MCP server', stdio(launch, env));
 
-/** Our hook entries carry the package name in their command; anything else in the list is someone else's. */
-const notOurs = (list: unknown) => (Array.isArray(list) ? list : []).filter((h) => !JSON.stringify(h).includes(PKG_NAME));
+/** Our hook entries carry the package name in their command (or the old name, see legacy.ts); anything else in the list is someone else's. */
+const notOurs = (list: unknown) => (Array.isArray(list) ? list : []).filter((h) => !JSON.stringify(h).includes(PKG_NAME) && !isLegacyHook(h));
 
 /** Replaces our entry in each `hooks.<event>` list of a JSON file, keeping the other hooks. */
 function hookLists(file: string, events: Record<string, unknown>, extra: Record<string, unknown> = {}): FileWrite {
@@ -271,8 +279,9 @@ export const CLIENTS: Client[] = [
           file,
           what: 'MCP server',
           update: (current) => {
-            const e = env(tomlEnv(current, name));
-            return setTomlTable(current, name, { command: launch.command, args: launch.args, ...(e ? { env: e } : {}) });
+            const old = ['mcp_servers', OLD_NAME];
+            const e = env(tomlEnv(current, name) ?? renameEnv(tomlEnv(current, old)));
+            return setTomlTable(removeTomlTable(current, old), name, { command: launch.command, args: launch.args, ...(e ? { env: e } : {}) });
           },
         },
       ];

@@ -132,3 +132,25 @@ export function tomlEnv(text: string | undefined, name: string[]): Record<string
   }
   return Object.keys(env).length ? env : undefined;
 }
+
+/** Removes the table `name` and its subtables from a TOML file; the text is unchanged when it has none. */
+export function removeTomlTable(text: string | undefined, name: string[]): string | undefined {
+  if (!text) return text;
+  const lines = text.split(/\r?\n/);
+  const eol = text.includes('\r\n') ? '\r\n' : '\n';
+  const kept: string[] = [];
+  let inOwned = false;
+  let removed = false;
+  for (const line of lines) {
+    const h = headerRe.exec(line);
+    if (h) {
+      const parts = splitHeader(h[1]);
+      inOwned = parts.length >= name.length && name.every((p, i) => parts[i] === p);
+    }
+    if (inOwned) removed = true;
+    else if (!(removed && line.trim() === '' && kept.length && kept[kept.length - 1].trim() === '')) kept.push(line);
+  }
+  if (!removed) return text;
+  while (kept.length && kept[kept.length - 1].trim() === '') kept.pop();
+  return kept.length ? `${kept.join(eol)}${eol}` : '';
+}

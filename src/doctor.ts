@@ -17,6 +17,7 @@ import { GITHUB_API, ghCliLoggedIn, ghCliOptIn, githubJson } from './github.js';
 import { USER_AGENT } from './http.js';
 import { PKG_NAME, PKG_VERSION, SERVER_KEY } from './pkg.js';
 import { CLIENTS, type Ctx } from './clients/registry.js';
+import { hasLegacyEntry, legacySibling, OLD_NAME } from './clients/legacy.js';
 import { loadTeamConfig } from './teamConfig.js';
 
 export type Status = 'ok' | 'warn' | 'fail' | 'skip';
@@ -35,6 +36,8 @@ export interface ClientWiring {
   mcp: boolean;
   /** Undefined where the client has no hook pinright can use. */
   hook?: boolean;
+  /** Files that still hold entries written under the project's old name (clients/legacy.ts). */
+  legacy?: string[];
 }
 
 export interface DoctorReport {
@@ -193,12 +196,15 @@ export function clientWiring(cwd = process.cwd(), home = os.homedir(), platform 
       } catch {
         continue; // a client whose paths cannot be worked out here
       }
-      const files = [...mcpFiles, ...(hookFile ? [hookFile] : [])].filter((f, k, all) => all.indexOf(f) === k && fs.existsSync(f));
-      if (!files.length) continue;
+      const ours = [...mcpFiles, ...(hookFile ? [hookFile] : [])];
+      const files = ours.filter((f, k, all) => all.indexOf(f) === k && fs.existsSync(f));
+      const oldFiles = ours.map((f) => legacySibling(f, SERVER_KEY)).filter((f): f is string => Boolean(f && fs.existsSync(f)));
+      if (!files.length && !oldFiles.length) continue;
+      const legacy = [...files.filter((f) => hasLegacyEntry(readText(f) ?? '')), ...oldFiles].map((f) => shown(f, cwd, home));
       const mcp = mcpFiles.some((f) => namesUs(readText(f) ?? ''));
       const hookText = hookFile ? (readText(hookFile) ?? '') : '';
       const hook = c.hook?.scopes.includes(scope) ? namesUs(hookText) && new RegExp(`\\bhook\\s+${c.hook.agent}\\b`).test(hookText) : undefined;
-      out.push({ client: c.title, file: files.map((f) => shown(f, cwd, home)).join(', '), scope, mcp, ...(hook === undefined ? {} : { hook }) });
+      out.push({ client: c.title, file: files.map((f) => shown(f, cwd, home)).join(', '), scope, mcp, ...(hook === undefined ? {} : { hook }), ...(legacy.length ? { legacy } : {}) });
     }
   }
   return out;
@@ -255,6 +261,7 @@ export function formatDoctor(r: DoctorReport, color = false): string {
     const mcp = w.mcp ? p.green('MCP server') : p.dim('no MCP server');
     const hook = w.hook === undefined ? '' : w.hook ? `, ${p.green('hook wired')}` : `, ${p.yellow('no hook')}`;
     lines.push(`  ${w.client} (${w.scope}: ${w.file}): ${mcp}${hook}`);
+    if (w.legacy) lines.push(`    ${p.yellow('old entries')} written under the former name ${OLD_NAME} in ${w.legacy.join(', ')}: run "${PKG_NAME} init" for this client again to replace them`);
   }
   const anyHook = r.clients.some((w) => w.hook);
   if (r.clients.length && !anyHook) lines.push('  No pre-install hook is wired: installs are not checked unless the agent calls the MCP tools.');

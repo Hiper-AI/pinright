@@ -16,6 +16,7 @@ import { PKG_NAME, SERVER_KEY } from '../pkg.js';
 import { CONFIG_FILE, STARTER_CONFIG } from '../teamStarter.js';
 import { mcpEntryEnv } from '../github.js';
 import { ConfigError } from './edit.js';
+import { hasLegacyEntry, legacySibling, OLD_NAME } from './legacy.js';
 import { CLIENTS, type Client, type Ctx, type EnvFor, type FileWrite, type Launch, type Scope, findClient } from './registry.js';
 
 export interface InitOptions {
@@ -64,6 +65,19 @@ function plan(client: Client, scope: Scope, ctx: Ctx, o: InitOptions, env: EnvFo
   return writes;
 }
 
+/** The old name's own file next to ours (legacy.ts): moved to a backup, so the client does not load both. */
+function replaceLegacyFile(file: string, ctx: Ctx, o: InitOptions, out: InitResult): void {
+  const old = legacySibling(file, SERVER_KEY);
+  if (!old || !fs.existsSync(old)) return;
+  const bak = `${old}.${SERVER_KEY}.bak`;
+  if (o.print) out.lines.push(`--- ${show(old, ctx)} (written under the old name ${OLD_NAME}, would move to ${show(bak, ctx)})`);
+  else {
+    fs.renameSync(old, bak);
+    out.lines.push(`replaced ${show(old, ctx)} (written under the old name ${OLD_NAME}; moved to ${show(bak, ctx)})`);
+  }
+  out.files.push(old);
+}
+
 /** Runs the writes of one file in order (Gemini CLI keeps the server and the hook in the same file). */
 function apply(writes: FileWrite[], ctx: Ctx, o: InitOptions, out: InitResult): void {
   const byFile = new Map<string, FileWrite[]>();
@@ -73,6 +87,10 @@ function apply(writes: FileWrite[], ctx: Ctx, o: InitOptions, out: InitResult): 
     let after = before;
     for (const w of ws) after = w.update(after);
     const what = [...new Set(ws.map((w) => w.what))].join(' + ');
+    replaceLegacyFile(file, ctx, o, out);
+    if (before !== undefined && hasLegacyEntry(before) && !hasLegacyEntry(after ?? '')) {
+      out.lines.push(`${o.print ? 'would replace' : 'replaced'} the entries written under the old name ${OLD_NAME} in ${show(file, ctx)}`);
+    }
     if (after === before) {
       out.lines.push(`unchanged ${show(file, ctx)} (${what} already set)`);
       continue;
