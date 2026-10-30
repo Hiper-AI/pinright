@@ -582,7 +582,7 @@ override the file:
 | `SAFECTX_HOOK_UNVERIFIABLE` | `ask` | What safectx cannot check (git or URL sources, another registry, a command or file it cannot read): `allow`, `ask` or `deny`. |
 | `SAFECTX_HOOK_NO_FIX` | `severity` | When no clean version exists: `severity` asks for high/critical and allows the rest; or `allow`, `ask`, `deny` for all. |
 | `SAFECTX_HOOK_COOLDOWN` | `warn` | `enforce` blocks an unpinned install whose newest version is inside the cooldown window. |
-| `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check; on timeout it behaves as `SAFECTX_HOOK_ON_ERROR`. |
+| `SAFECTX_HOOK_TIMEOUT_MS` | `45000` | Deadline for the whole check, counted from the hook's start. On timeout the hook asks a human, whatever `onError` says (a stricter `deny` still denies); Codex, Gemini CLI and Windsurf have no ask and get a deny with the reason. Keep it below the hook timeout in the agent's settings (60 s as `init` writes it): past that, the agent lets the change through. |
 | `SAFECTX_HOOK_RISK` | `enforce` | Supply-chain signals: `enforce` blocks the two patterns above, `warn` only notes them, `off` ignores them. |
 | `SAFECTX_SEVERITY_THRESHOLD` | `low` | Advisories below this severity (`low`, `moderate`, `high`, `critical`) become notes instead of blocks. |
 | `SAFECTX_ACTIONS_PIN` | `warn` | `enforce` blocks a GitHub Action referenced by a tag or branch instead of a commit SHA. |
@@ -598,16 +598,21 @@ and malware reports reach OSV first.
 The hook then applies `onError` and says so. With the default `allow`, the agent gets a note
 ending in `Allowed unverified (onError: allow)`. With `ask` or `deny`, the reason heads the block
 message: `... could not be verified (...). The project's onError policy is "deny" for checks that
-cannot complete.` The same goes for transitive dependencies it could not check, for GitHub Actions
-refs it could not resolve (reported as unverified, never as "does not exist"), and for a check that
-outlives `SAFECTX_HOOK_TIMEOUT_MS`.
+cannot complete.` The same goes for transitive dependencies it could not check and for GitHub
+Actions refs it could not resolve (reported as unverified, never as "does not exist").
+
+A check that outlives `SAFECTX_HOOK_TIMEOUT_MS` (45 s) is different. The agents give the hook 60 s
+and then run the tool anyway, so safectx answers first and asks you, even with `onError: allow`:
+`safectx could not finish checking left-pad in time (45 s, SAFECTX_HOOK_TIMEOUT_MS); a human should
+approve it, or retry once deps.dev and OSV answer.` The deny list, unverifiable sources and lookalike
+names still decide as usual, since they need no network.
 
 | What fails | Verdict / tool answer | Hook (`onError: allow` / `deny`) |
 |---|---|---|
 | No network, DNS failure | `unknown`: "deps.dev did not answer (api.deps.dev unreachable (DNS lookup failed))" | allow with the note / deny with the reason |
 | deps.dev 5xx | `unknown`, with the HTTP status | same |
 | OSV down, deps.dev up | deps.dev's advisories still count; otherwise `unknown` ("osv.dev did not answer ...; unverified") | same for the unverified ones |
-| A host that never answers | timeout after `SAFECTX_TIMEOUT_MS`; later calls to that host fail at once for 30 s | decision by `SAFECTX_HOOK_TIMEOUT_MS` at the latest |
+| A host that never answers | timeout after `SAFECTX_TIMEOUT_MS`; later calls to that host fail at once for 30 s | ask by `SAFECTX_HOOK_TIMEOUT_MS` at the latest |
 | GitHub rate limit | the answer ends with what it is missing and when the limit resets | Actions refs: unverified, `onError` decides |
 | jsDelivr 5xx (docs) | fewer docs, and a closing NOTE naming the hosts that failed | not involved |
 

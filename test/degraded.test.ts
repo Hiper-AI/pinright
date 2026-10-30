@@ -32,7 +32,8 @@ const { resetHostHealth, trackUpstreams } = await import('../src/http.js');
 const { checkPackage } = await import('../src/verdict.js');
 const { securityNotice } = await import('../src/format.js');
 const { decide, agentMessage } = await import('../src/hook/policy.js');
-const { decideWithin } = await import('../src/hook/run.js');
+const { decideWithin, evaluateHook, hookAnswer } = await import('../src/hook/run.js');
+const { hookTimeoutMs } = await import('../src/hook/late.js');
 const { resolvePolicy } = await import('../src/teamConfig.js');
 const { checkPackages, formatBatch } = await import('../src/batch.js');
 const { decideActions } = await import('../src/actions/check.js');
@@ -170,14 +171,45 @@ describe('a host that accepts connections and never answers', () => {
     expect(t1 - t0).toBeLessThan(2_000);
   });
 
-  it('the hook decision comes back within its deadline and follows onError', async () => {
+  it('the hook decision comes back within its deadline and asks, even with onError allow', async () => {
     // The upstream outlasts the hook deadline (but not the test: an in-flight lookup is shared with later callers).
     (config as { requestTimeoutMs: number }).requestTimeoutMs = 1_500;
-    const t0 = Date.now();
-    const d = await decideWithin([intent], [], 200, process.cwd(), policy('ask'));
-    expect(Date.now() - t0).toBeLessThan(1_500);
-    expect(d.action).toBe('ask');
-    expect(d.problems.join('\n')).toMatch(/verification timed out \(SAFECTX_HOOK_TIMEOUT_MS\); dependencies not checked\. The project's onError policy is "ask"/);
+    for (const onError of ['allow', 'ask'] as const) {
+      resetHostHealth();
+      const t0 = Date.now();
+      const d = await decideWithin([intent], [], 200, process.cwd(), policy(onError));
+      expect(Date.now() - t0).toBeLessThan(1_500);
+      expect(d.action).toBe('ask');
+      expect(d.problems).toEqual(['safectx could not finish checking quuxfixture in time (0.2 s, SAFECTX_HOOK_TIMEOUT_MS); a human should approve it, or retry once deps.dev and OSV answer.']);
+    }
+  });
+
+  it('a slow upstream behind the full hook: Claude and Cursor ask, Codex, Gemini and Windsurf deny with the same reason', async () => {
+    (config as { requestTimeoutMs: number }).requestTimeoutMs = 1_500;
+    const prev = process.env.SAFECTX_HOOK_ON_ERROR;
+    process.env.SAFECTX_HOOK_ON_ERROR = 'allow';
+    try {
+      const t0 = Date.now();
+      const { d, msg } = await evaluateHook([{ command: 'npm install quuxfixture@1.1.0' }], process.cwd(), 300);
+      expect(Date.now() - t0).toBeLessThan(1_500);
+      expect(d.action).toBe('ask');
+      expect(msg).toMatch(/needs approval.*could not finish checking quuxfixture in time/s);
+      expect(JSON.parse(hookAnswer('claude', d, msg).stdout as string).hookSpecificOutput.permissionDecision).toBe('ask');
+      expect(JSON.parse(hookAnswer('cursor', d, msg).stdout as string).permission).toBe('ask');
+      expect(JSON.parse(hookAnswer('codex', d, msg).stdout as string).hookSpecificOutput.permissionDecision).toBe('deny');
+      expect(JSON.parse(hookAnswer('gemini', d, msg).stdout as string)).toMatchObject({ decision: 'deny', reason: expect.stringMatching(/in time/) });
+      expect(hookAnswer('windsurf', d, msg)).toMatchObject({ code: 2, stderr: expect.stringMatching(/in time/) });
+    } finally {
+      if (prev === undefined) delete process.env.SAFECTX_HOOK_ON_ERROR;
+      else process.env.SAFECTX_HOOK_ON_ERROR = prev;
+    }
+  });
+
+  it('SAFECTX_HOOK_TIMEOUT_MS that is not a positive number falls back to 45 s instead of firing at once', () => {
+    expect(hookTimeoutMs({})).toBe(45_000);
+    expect(hookTimeoutMs({ SAFECTX_HOOK_TIMEOUT_MS: 'soon' })).toBe(45_000);
+    expect(hookTimeoutMs({ SAFECTX_HOOK_TIMEOUT_MS: '0' })).toBe(45_000);
+    expect(hookTimeoutMs({ SAFECTX_HOOK_TIMEOUT_MS: '20000' })).toBe(20_000);
   });
 
   it('check-packages answers by its deadline: pending packages are "not checked", never ok', async () => {

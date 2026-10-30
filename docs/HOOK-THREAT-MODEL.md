@@ -94,7 +94,8 @@ Status after this round. "Bypass" means a known-bad package (`expresss`, `reqeus
 | Cursor lazy edit (`// ... existing code ...`) of a manifest | bypass | unverifiable |
 | Writing `.safectx.json` (`"allow": ["*"]`), removing the hook from settings, `SAFECTX_ALLOW` in settings `env` | bypass | always asks |
 | More than 25 dependencies in one change | bypass (the rest passed with a note) | asks past 40 |
-| Registries unreachable or slow (fail-open with `onError: allow`) | bypass | partial: lookalikes, deny list and unverifiable still decide offline |
+| Registries unreachable (fail-open with `onError: allow`) | bypass | partial: lookalikes, deny list and unverifiable still decide offline |
+| Registries slow enough to outlast the agent's 60 s hook timeout (the agent runs the tool) | bypass | handled: at `SAFECTX_HOOK_TIMEOUT_MS` (45 s) the hook asks, whatever `onError` says |
 | A reader crash on a crafted command | fail-open | unverifiable |
 | Malformed hook input, hook process crash | fail-open (exit 1) | unchanged: the agent builds the JSON, not the model |
 | `python -c`/`node -e` installers, `curl \| sh`, obfuscated commands, MCP tools that run shell | out of scope | out of scope (`curl \| sh` gets a note) |

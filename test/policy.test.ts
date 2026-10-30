@@ -368,12 +368,24 @@ describe('what the hook cannot check', () => {
     expect((await decide([{ ecosystem: 'npm', name: 'left-pad', source: 'npm i left-pad' }])).action).toBe('allow');
   });
 
-  it('on timeout, what is known offline still decides', () => {
+  it('on timeout, what is known offline still decides, and the rest asks whatever onError says', () => {
     const p = resolvePolicy({ deny: ['request'] }, {});
-    expect(timeoutDecision([{ ecosystem: 'npm', name: 'left-pad', source: 'x' }], p).action).toBe('allow');
-    expect(timeoutDecision([{ ecosystem: 'npm', name: 'expresss', source: 'x' }], p).action).toBe('ask');
+    expect(p.onError).toBe('allow');
+    const late = timeoutDecision([{ ecosystem: 'npm', name: 'left-pad', source: 'x' }], p, 45_000);
+    expect(late.action).toBe('ask');
+    expect(late.problems).toEqual(['safectx could not finish checking left-pad in time (45 s, SAFECTX_HOOK_TIMEOUT_MS); a human should approve it, or retry once deps.dev and OSV answer.']);
+    const look = timeoutDecision([{ ecosystem: 'npm', name: 'expresss', source: 'x' }], p);
+    expect(look.action).toBe('ask');
+    expect(look.problems[0]).toMatch(/one edit away from "express"/);
     expect(timeoutDecision([{ ecosystem: 'npm', name: 'request', source: 'x' }], p).action).toBe('deny');
     expect(timeoutDecision([remote], p).action).toBe('ask');
     expect(timeoutDecision([{ ecosystem: 'npm', name: 'left-pad', source: 'x' }], resolvePolicy({ onError: 'ask' }, {})).action).toBe('ask');
+    // A stricter onError still wins; an allowed (private) name is not waited for.
+    expect(timeoutDecision([{ ecosystem: 'npm', name: 'left-pad', source: 'x' }], resolvePolicy({ onError: 'deny' }, {})).action).toBe('deny');
+    expect(timeoutDecision([{ ecosystem: 'npm', name: '@acme/x', source: 'x' }], resolvePolicy({ allow: ['@acme/*'] }, {})).action).toBe('allow');
+    // GitHub Actions refs that were still being resolved are named too.
+    expect(timeoutDecision([], p, 1000, ['actions/checkout@v4']).problems[0]).toMatch(/checking actions\/checkout@v4 in time \(1 s/);
+    const many = Array.from({ length: 6 }, (_, k) => ({ ecosystem: 'npm' as const, name: `pkg${k}`, source: 'x' }));
+    expect(timeoutDecision(many, p).problems[0]).toMatch(/checking pkg0, pkg1, pkg2, pkg3 and 2 more in time/);
   });
 });

@@ -29,6 +29,7 @@ import { stripInvisible } from '../untrusted/normalize.js';
 import { type ActionUse, changedUses, isWorkflowFile } from '../actions/workflow.js';
 import { languageOf } from './languages.js';
 import { parseApplyPatch } from './applyPatch.js';
+import { hookTimeoutMs, lateProblem } from './late.js';
 
 function readIfExists(p: string): string | undefined {
   try {
@@ -177,11 +178,28 @@ async function readStdin(): Promise<string> {
 }
 
 /**
- * The whole check under a deadline: a hook that hangs blocks the agent.
- * The team policy is the .safectx.json nearest to cwd; a broken one denies
- * (fail closed) until it is fixed, since ignoring it would drop its deny list.
+ * The whole check under a deadline. The agents give the hook 60 s and then let the change
+ * through, so the hook answers first: on its own deadline it asks a human, whatever onError says
+ * (see timeoutDecision). The clock starts before the modules load, so a cold start counts too.
+ * The team policy is the .safectx.json nearest to cwd; a broken one denies (fail closed) until
+ * it is fixed, since ignoring it would drop its deny list.
  */
 export async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: number, cwd: string, given?: Policy): Promise<HookDecision> {
+  const actionNames = uses.map((u) => `${u.owner}/${u.repo}${u.path ? `/${u.path}` : ''}@${u.ref}`);
+  // Until the policy is loaded, the deadline can only ask; afterwards it also applies what is known offline.
+  let late = (): HookDecision => ({
+    action: 'ask',
+    problems: [lateProblem([...intents.filter((i) => !i.contextOnly).map((i) => i.name), ...actionNames], ms)],
+    warnings: [],
+    checked: 0,
+  });
+  const timeout = new Promise<HookDecision>((resolve) => setTimeout(() => resolve(late()), ms).unref());
+  return Promise.race([checkAll(intents, uses, cwd, given, (f) => (late = f), ms, actionNames), timeout]);
+}
+
+async function checkAll(
+  intents: DepIntent[], uses: ActionUse[], cwd: string, given: Policy | undefined, onLate: (f: () => HookDecision) => void, ms: number, actionNames: string[],
+): Promise<HookDecision> {
   const [{ loadTeamConfig, resolvePolicy }, { decide, timeoutDecision }, { decideActions }] = await Promise.all([
     import('../teamConfig.js'),
     import('./policy.js'),
@@ -204,23 +222,20 @@ export async function decideWithin(intents: DepIntent[], uses: ActionUse[], ms: 
   applyCooldownDays(policy.cooldownDays);
   // The Actions check reads SAFECTX_ACTIONS_PIN; the hook is a short-lived process, so the policy can set it.
   if (policy.actionsPin && !process.env.SAFECTX_ACTIONS_PIN) process.env.SAFECTX_ACTIONS_PIN = policy.actionsPin;
-  // On timeout: what is known without the network (unverifiable sources, the deny list, lookalike names), then onError.
-  const timeout = new Promise<HookDecision>((resolve) => setTimeout(() => resolve(timeoutDecision(intents, policy)), ms).unref());
-  const both = async () => {
-    const [deps, actions] = await Promise.all([
-      intents.length ? decide(intents, policy) : undefined,
-      uses.length ? decideActions(uses, policy.onError) : undefined,
-    ]);
-    return deps && actions ? merge(deps, actions) : ((deps ?? actions) as HookDecision);
-  };
-  return Promise.race([both(), timeout]);
+  // On timeout: what is known without the network (unverifiable sources, the deny list, lookalike names), then ask.
+  onLate(() => timeoutDecision(intents, policy, ms, actionNames));
+  const [deps, actions] = await Promise.all([
+    intents.length ? decide(intents, policy) : undefined,
+    uses.length ? decideActions(uses, policy.onError) : undefined,
+  ]);
+  return deps && actions ? merge(deps, actions) : ((deps ?? actions) as HookDecision);
 }
 
 function notesOnly(warnings: string[]): HookDecision {
   return { action: 'allow', problems: [], warnings, checked: 0 };
 }
 
-const DEADLINE_MS = Number(process.env.SAFECTX_HOOK_TIMEOUT_MS ?? 45_000);
+const DEADLINE_MS = hookTimeoutMs();
 
 /** The agents with a pre-tool hook that `safectx hook <agent>` answers. */
 export const HOOK_AGENTS = ['claude', 'cursor', 'codex', 'gemini', 'copilot', 'windsurf'] as const;
@@ -280,15 +295,18 @@ export function hookInputs(agent: HookAgent, input: Record<string, any>, fallbac
 
 /** The decision for a set of tool inputs, and the message for the agent. Not a dependency change -> only notes about undeclared imports. */
 export async function evaluateHook(inputs: Record<string, any>[], cwd: string, ms = DEADLINE_MS): Promise<{ d: HookDecision; msg: string }> {
+  const started = Date.now();
   const intents = inputs.flatMap((i) => intentsFromToolInput('', i, cwd));
   const uses = inputs.flatMap((i) => actionUsesFromToolInput(i, cwd));
-  const notes = Promise.all(inputs.map((i) => importNotesFromToolInput(i, cwd))).then((all) => all.flat());
+  // The import notes run alongside the check and never outlast the hook's deadline.
+  const notes = Promise.all(inputs.map((i) => importNotesFromToolInput(i, cwd, Math.min(IMPORTS_DEADLINE_MS, ms)))).then((all) => all.flat());
   if (!intents.length && !uses.length) {
     // Not a dependency change; a source file may still import something nobody declared.
     const d = notesOnly(await notes);
     return { d, msg: d.warnings.length ? (await import('./policy.js')).agentMessage(d) : '' };
   }
-  const d = await decideWithin(intents, uses, ms, cwd);
+  // Reading the command and the files already took part of the budget.
+  const d = await decideWithin(intents, uses, Math.max(0, ms - (Date.now() - started)), cwd);
   d.warnings.push(...(await notes));
   const { agentMessage } = await import('./policy.js');
   return { d, msg: agentMessage(d) };

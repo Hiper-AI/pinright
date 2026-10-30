@@ -28,6 +28,7 @@ import { findLookalike } from '../typosquat.js';
 import { stripInvisible } from '../untrusted/index.js';
 import { checkPackage, type Verdict } from '../verdict.js';
 import { type DepIntent } from './intent.js';
+import { lateProblem } from './late.js';
 
 export type Action = 'allow' | 'deny' | 'ask';
 
@@ -314,18 +315,27 @@ function offlineOutcomes(intents: DepIntent[], p: Policy): Outcome[] {
   return out;
 }
 
-/** The hook's answer when the full check ran out of time: what is known offline, then onError for the rest. */
-export function timeoutDecision(intents: DepIntent[], policy: Policy): HookDecision {
+/**
+ * The hook's answer when the full check ran out of time: what is known offline (unverifiable
+ * sources, the deny list), then "ask" for the rest. Not onError: the agent's own hook timeout lets
+ * the change through when the hook does not answer, so the hook answers first and a human decides.
+ * Only a stricter onError ("deny") wins. Codex, Gemini CLI and Windsurf have no "ask" and get a deny.
+ */
+export function timeoutDecision(intents: DepIntent[], policy: Policy, ms = 0, actions: string[] = []): HookDecision {
   const outcomes = offlineOutcomes(intents, policy);
   const rest = intents.filter((i) => !i.unverifiable && !i.contextOnly && !isAllowed(policy, i.ecosystem, i.name));
+  const late: string[] = [];
   for (const i of rest) {
     const d = denyEntry(policy, i.ecosystem, i.name);
     if (d) outcomes.push({ action: 'deny', problem: `${i.name} (${i.ecosystem}): ${denyMessage(policy, d)}` });
-    else if (findLookalike(i.ecosystem, i.name)) outcomes.push(unreachable(policy, i, `${i.name} (${i.ecosystem}): not verified before the deadline.`));
+    else {
+      const look = findLookalike(i.ecosystem, i.name);
+      if (look) outcomes.push({ action: 'ask', problem: `${i.name} (${i.ecosystem}) is one edit away from "${look.of}"; a human should confirm it.` });
+      late.push(i.name);
+    }
   }
-  if (rest.length) {
-    outcomes.push(unverified(policy, 'safectx: verification timed out (SAFECTX_HOOK_TIMEOUT_MS); dependencies not checked.'));
-  }
+  late.push(...actions);
+  if (late.length) outcomes.push({ action: policy.onError === 'deny' ? 'deny' : 'ask', problem: lateProblem(late, ms) });
   const action: Action = outcomes.some((o) => o.action === 'deny') ? 'deny' : outcomes.some((o) => o.action === 'ask') ? 'ask' : 'allow';
   return {
     action,
