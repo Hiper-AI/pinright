@@ -8,7 +8,10 @@
  * branch. Set B was written at the same time and scored only before and after, never looked at in
  * between: it is the honest number.
  *
- *   GITHUB_TOKEN=... npx tsx bench/docs/probe-heldout.ts [--set a|b|all] [--only lib1,lib2] [--show] [--json out.json]
+ * Set C was written later (2026-10-30), over libraries in neither A nor B, and is scored only at the
+ * start and at the end of the third round of fixes.
+ *
+ *   GITHUB_TOKEN=... npx tsx bench/docs/probe-heldout.ts [--set a|b|c|all] [--only lib1,lib2] [--show] [--json out.json]
  */
 import { writeFileSync } from 'node:fs';
 import { runProbe, type Probe, type ProbeResult } from './retrieval.js';
@@ -136,6 +139,54 @@ export const HELDOUT_B: HeldoutProbe[] = [
   pypi('sqlmodel', 'sqlmodel', '0.0.48', 'partially update a row from a FastAPI PATCH body', [/model_dump\(exclude_unset=True\)/, /sqlmodel_update\(/], 'https://sqlmodel.tiangolo.com/tutorial/fastapi/update/'),
 ];
 
+export const HELDOUT_C: HeldoutProbe[] = [
+  npm('nuxt', 'nuxt', '4.6.3', 'where do pages/, components/ and composables/ go in a Nuxt 4 project? I keep them at the project root like in Nuxt 3', [/srcDir/, /app\//], 'https://nuxt.com/docs/4.x/getting-started/upgrade'),
+  npm('nuxt', 'nuxt', '4.6.3', 'useFetch: my check data.value === null before the request finishes stopped working; also what replaces dedupe: true', [/undefined/, /['"]cancel['"]/], 'https://nuxt.com/docs/4.x/getting-started/upgrade'),
+  npm('nuxt', 'nuxt', '4.6.3', 'expose a public API base URL to the client and override it with an environment variable in production', [/useRuntimeConfig\(/, /NUXT_PUBLIC_/], 'https://nuxt.com/docs/4.x/guide/going-further/runtime-config'),
+  npm('solid-start', '@solidjs/start', '2.1.0', 'set the deployment preset in app.config.ts (defineConfig from @solidjs/start/config with server.preset)', [/solidStart\(/, /from\s+['"]nitro\/vite['"]/], 'https://docs.solidjs.com/solid-start/v2/migrating-from-v1'),
+  npm('solid-start', '@solidjs/start', '2.1.0', 'read a cookie and the session inside a server function (getCookie and useSession from vinxi/http)', [/@solidjs\/start\/http/], 'https://docs.solidjs.com/solid-start/v2/migrating-from-v1'),
+  npm('solid-start', '@solidjs/start', '2.1.0', 'load posts from the database on the server for a route with cache() and createAsync', [/query\(/, /['"]use server['"]/, /createAsync/], 'https://docs.solidjs.com/solid-start/v2/guides/data-fetching'),
+  npm('elysia', 'elysia', '1.4.30', 'call my Elysia API type-safely from the frontend with edenTreaty from @elysiajs/eden', [/treaty</, /@elysia\/eden/], 'https://elysiajs.com/eden/treaty/overview'),
+  npm('elysia', 'elysia', '1.4.30', 'return 401 Unauthorized with a message from a handler using the error() helper', [/status\(\s*\d{3}/], 'https://elysiajs.com/blog/elysia-14'),
+  npm('elysia', 'elysia', '1.4.30', 'auth macro that resolves the current user for the routes that opt in (macro with onBeforeHandle)', [/\.macro\(\{/, /resolve/], 'https://elysiajs.com/patterns/macro'),
+  npm('effect', 'effect', '4.1.0', 'define a service with Context.Tag and provide its implementation with a Layer', [/Context\.Service</, /Layer\.effect\(/], 'https://github.com/Effect-TS/effect/blob/main/migration/services.md'),
+  npm('effect', 'effect', '4.1.0', 'recover from any failure with Effect.catchAll; recover only from some errors with catchSome', [/Effect\.catch\b(?!All)/, /catchFilter/], 'https://github.com/Effect-TS/effect/blob/main/migration/error-handling.md'),
+  npm('effect', 'effect', '4.1.0', 'turn a failing Effect into a value I can inspect (Effect.either, then Either.isLeft)', [/Effect\.result/, /effect\/Result|Result\.(?:succeed|fail)/], 'https://github.com/Effect-TS/effect/blob/main/migration/v3-to-v4.md'),
+  npm('effect', 'effect', '4.1.0', 'start a background fiber that outlives its parent (Effect.forkDaemon)', [/forkDetach/], 'https://github.com/Effect-TS/effect/blob/main/migration/forking.md'),
+  npm('kysely', 'kysely', '0.29.7', 'run migrations to latest with Migrator and FileMigrationProvider imported from kysely', [/['"]kysely\/migration['"]/, /migrateToLatest\(/], 'https://kysely.dev/docs/migrations'),
+  npm('kysely', 'kysely', '0.29.7', 'begin a transaction without the db.transaction().execute callback, set a savepoint and roll back to it on error', [/startTransaction\(\)/, /rollbackToSavepoint\(/], 'https://kysely.dev/docs/examples/transactions/controlled-transaction-w-savepoints'),
+  npm('kysely', 'kysely', '0.29.7', 'select users with their pets as a nested JSON array in one Postgres query', [/jsonArrayFrom/, /kysely\/helpers\/postgres/], 'https://kysely.dev/docs/recipes/relations'),
+  npm('bullmq', 'bullmq', '6.5.1', 'run a job every day at 3am with the repeat option of queue.add', [/upsertJobScheduler\(/, /pattern:/], 'https://docs.bullmq.io/guide/job-schedulers'),
+  npm('bullmq', 'bullmq', '6.5.1', 'ignore duplicate jobs added within 5 seconds (debounce option)', [/deduplication:\s*\{/, /ttl:/], 'https://docs.bullmq.io/guide/jobs/deduplication'),
+  npm('bullmq', 'bullmq', '6.5.1', 'get the underlying Redis client of a Queue (queue.client) to run a custom command', [/getBackend\(/], 'https://docs.bullmq.io/changelog'),
+  npm('pino', 'pino', '10.4.0', 'pretty print logs in development (prettyPrint: true)', [/transport/, /target:\s*['"]pino-pretty['"]/], 'https://github.com/pinojs/pino/blob/main/docs/pretty.md'),
+  npm('pino', 'pino', '10.4.0', 'write logs to a file and to stdout at the same time', [/targets:/, /['"]pino\/file['"]/], 'https://github.com/pinojs/pino/blob/main/docs/transports.md'),
+  npm('pino', 'pino', '10.4.0', 'hide the password field and the authorization header from the logs', [/redact:/], 'https://github.com/pinojs/pino/blob/main/docs/redaction.md'),
+  pypi('litestar', 'litestar', '2.25.0', 'inject a database session dependency declared with Provide into a route handler (parameter named after the key)', [/Provide\(/, /NamedDependency/], 'https://docs.litestar.dev/latest/usage/dependency-injection.html'),
+  pypi('litestar', 'litestar', '2.25.0', 'exclude the password field from the response with a DTO', [/DTOConfig\(/, /exclude=/, /return_dto=/], 'https://docs.litestar.dev/latest/usage/dto/1-abstract-dto.html'),
+  pypi('pandera', 'pandera', '0.35.0', 'define a DataFrameModel schema for a pandas DataFrame (import pandera as pa) with month between 1 and 12', [/import pandera\.pandas as pa/, /DataFrameModel/], 'https://pandera.readthedocs.io/en/stable/dataframe_models.html'),
+  pypi('pandera', 'pandera', '0.35.0', 'collect every validation error at once instead of stopping at the first', [/lazy=True/, /SchemaErrors/], 'https://pandera.readthedocs.io/en/stable/lazy_validation.html'),
+  pypi('pandera', 'pandera', '0.35.0', 'validate a polars LazyFrame; my value checks (in_range) do not seem to run', [/pandera\.polars/, /PANDERA_VALIDATION_DEPTH|SCHEMA_AND_DATA/], 'https://pandera.readthedocs.io/en/stable/polars.html'),
+  pypi('duckdb-py', 'duckdb', '2.0.0', 'get query results as an Arrow table with con.execute(query).fetch_arrow_table()', [/to_arrow_table\(\)/, /con\.sql\(/], 'https://github.com/duckdb/duckdb-python/releases/tag/v2.0.0'),
+  pypi('duckdb-py', 'duckdb', '2.0.0', 'compare two columns in a relational filter: rel.filter(c("s") == "x") stopped matching rows after upgrading', [/(?:c|col|ColumnExpression)\(\s*["']x["']\s*\)/], 'https://github.com/duckdb/duckdb-python/releases/tag/v2.0.0'),
+  pypi('duckdb-py', 'duckdb', '2.0.0', 'list_transform(l, x -> x + 1) in duckdb.sql now fails with a syntax error', [/lambda\s+x\s*:/, /lambda_syntax/], 'https://duckdb.org/docs/2.0/operations_manual/migration'),
+  pypi('langgraph', 'langgraph', '1.2.18', 'pause the graph for human approval before a tool runs (interrupt_before / NodeInterrupt) and resume it', [/interrupt\(/, /Command\(\s*resume\s*=/], 'https://docs.langchain.com/oss/python/langgraph/interrupts'),
+  pypi('langgraph', 'langgraph', '1.2.18', 'build a ReAct agent with tools using create_react_agent from langgraph.prebuilt', [/\bcreate_agent\b/], 'https://docs.langchain.com/oss/python/releases/langgraph-v1'),
+  pypi('langgraph', 'langgraph', '1.2.18', 'pass per-run context like user_id or the LLM provider to nodes (config_schema / config["configurable"])', [/context_schema\s*=/, /Runtime\[/], 'https://docs.langchain.com/oss/python/langgraph/graph-api'),
+  pypi('llama-index', 'llama-index-core', '0.14.25', 'set the default LLM and embedding model for everything (ServiceContext.from_defaults)', [/Settings\.llm\s*=/, /Settings\.embed_model/], 'https://developers.llamaindex.ai/python/framework/module_guides/supporting_modules/settings/'),
+  pypi('llama-index', 'llama-index-core', '0.14.25', 'create a tool-calling agent with ReActAgent.from_tools(tools, llm=llm) and ask it a question', [/llama_index\.core\.agent\.workflow/, /await agent\.run\(/], 'https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/'),
+  pypi('llama-index', 'llama-index-core', '0.14.25', 'save a VectorStoreIndex to disk and load it back later', [/persist\(persist_dir/, /load_index_from_storage/], 'https://developers.llamaindex.ai/python/framework/module_guides/storing/save_load/'),
+  pypi('instructor', 'instructor', '1.17.0', 'get a pydantic model back from OpenAI with instructor.patch(OpenAI()) or instructor.from_openai', [/from_provider\(/, /response_model\s*=/], 'https://python.useinstructor.com/'),
+  pypi('instructor', 'instructor', '1.17.0', 'stream a partially filled object while the model is still generating', [/create_partial\(/], 'https://python.useinstructor.com/concepts/partial/'),
+  pypi('instructor', 'instructor', '1.17.0', 'use instructor with Claude (instructor.from_anthropic(Anthropic()))', [/from_provider\(/, /['"]anthropic\//], 'https://python.useinstructor.com/integrations/anthropic/'),
+  pypi('ruff', 'ruff', '0.17.3', 'pyproject.toml: I put select = ["E", "F", "B"] and ignore under [tool.ruff] and ruff warns about it', [/\[tool\.ruff\.lint\]/], 'https://docs.astral.sh/ruff/settings/'),
+  pypi('ruff', 'ruff', '0.17.3', 'ignore E402 only in __init__.py files', [/\[tool\.ruff\.lint\.per-file-ignores\]/], 'https://docs.astral.sh/ruff/configuration/'),
+  pypi('ruff', 'ruff', '0.17.3', 'make ruff format use single quotes and tabs', [/\[tool\.ruff\.format\]/, /quote-style\s*=\s*["']single["']/], 'https://docs.astral.sh/ruff/formatter/'),
+  pypi('uv', 'uv', '0.13.6', 'monorepo with several Python packages that depend on each other', [/\[tool\.uv\.workspace\]/, /workspace\s*=\s*true/], 'https://docs.astral.sh/uv/concepts/projects/workspaces/'),
+  pypi('uv', 'uv', '0.13.6', 'add pytest as a dev dependency (tool.uv.dev-dependencies)', [/\[dependency-groups\]/, /uv add --dev/], 'https://docs.astral.sh/uv/concepts/projects/dependencies/'),
+  pypi('uv', 'uv', '0.13.6', 'install torch from the PyTorch CPU index without using that index for other packages', [/\[\[tool\.uv\.index\]\]/, /explicit\s*=\s*true/], 'https://docs.astral.sh/uv/guides/integration/pytorch/'),
+];
+
 export { npm as heldoutNpm, pypi as heldoutPypi };
 
 const isMain = process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('bench/docs/probe-heldout.ts');
@@ -144,7 +195,7 @@ if (isMain) {
   const opt = (k: string) => (args.includes(k) ? args[args.indexOf(k) + 1] : undefined);
   const set = opt('--set') ?? 'a';
   const only = (opt('--only') ?? '').split(',').filter(Boolean);
-  const probes = (set === 'b' ? HELDOUT_B : set === 'all' ? [...HELDOUT_A, ...HELDOUT_B] : HELDOUT_A).filter((p) => !only.length || only.includes(p.task));
+  const probes = (set === 'b' ? HELDOUT_B : set === 'c' ? HELDOUT_C : set === 'all' ? [...HELDOUT_A, ...HELDOUT_B, ...HELDOUT_C] : HELDOUT_A).filter((p) => !only.length || only.includes(p.task));
   const results: (ProbeResult & { ms: number })[] = [];
   for (const p of probes) {
     const t0 = Date.now();
