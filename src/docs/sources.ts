@@ -64,18 +64,23 @@ interface TreeResult {
   /** False when no tag matched and we fell back to the default branch. */
   atTag: boolean;
   files: { path: string; size?: number }[];
+  /** Example code under docs folders, for the include directives of the pages (includes.ts). */
+  code?: string[];
   /** Listed by jsDelivr: read the files from its CDN too (it resolves the tag the same way). */
   cdn?: boolean;
 }
 
 export interface RepoListing {
-  /** Text-like files only (docs, changelogs): source code is never needed and makes the cache large. */
+  /** Text-like files (docs, changelogs) and the example code of docs folders: the rest of the source is never needed and makes the cache large. */
   files: { path: string; size?: number }[];
   cdn: boolean;
 }
 
 /** Docs, changelogs and extension-less files ("CHANGES"): what the docs and upgrade readers can use. */
 const TEXT_LIKE = /\.(md|mdx|markdown|rst|txt)$|(^|\/)[^./]+$/i;
+/** Example code kept under a docs folder, which pages pull in by path (Polars' docs/source/src/python/...). */
+const DOCS_CODE = /(^|\/)docs?\/.*\.(py|ts|tsx|js|jsx|mjs|cjs|rs|go|rb|java|kt|php|cs|swift)$/i;
+const listable = (p: string) => TEXT_LIKE.test(p) || DOCS_CODE.test(p);
 
 /**
  * jsDelivr's file list of a repo at a tag. It needs no GitHub API call, and
@@ -84,10 +89,10 @@ const TEXT_LIKE = /\.(md|mdx|markdown|rst|txt)$|(^|\/)[^./]+$/i;
  * https://github.com/jsdelivr/data.jsdelivr.com: free, no rate limits.
  */
 async function jsdListing(owner: string, repo: string, ref: string, ttl = config.ttl.tagged): Promise<RepoListing | 'missing' | 'too-large'> {
-  return cached(`jsd:gh:${owner}/${repo}@${ref}`, ttl, async (): Promise<RepoListing | 'too-large'> => {
+  return cached(`jsd:gh2:${owner}/${repo}@${ref}`, ttl, async (): Promise<RepoListing | 'too-large'> => {
     try {
       const l = await getJson<JsDelivrFlat>(`https://data.jsdelivr.com/v1/packages/gh/${owner}/${repo}@${encodeURIComponent(ref)}?structure=flat`);
-      const files = (l.files ?? []).map((f) => ({ path: f.name.replace(/^\//, ''), size: f.size })).filter((f) => TEXT_LIKE.test(f.path));
+      const files = (l.files ?? []).map((f) => ({ path: f.name.replace(/^\//, ''), size: f.size })).filter((f) => listable(f.path));
       return { files, cdn: true };
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) return 'too-large';
@@ -102,13 +107,13 @@ async function jsdListing(owner: string, repo: string, ref: string, ttl = config
 
 async function apiListing(owner: string, repo: string, ref: string): Promise<RepoListing | undefined> {
   const ttl = ref === 'HEAD' ? config.ttl.docs : config.ttl.tagged;
-  const files = await cached(`gh:listing:${owner}/${repo}@${ref}`, ttl, async () => {
+  const files = await cached(`gh:listing2:${owner}/${repo}@${ref}`, ttl, async () => {
     try {
       const t = await githubJson<{ tree: { path: string; type: string; size?: number }[] }>(
         `/repos/${owner}/${repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
         { what: `the file list of ${owner}/${repo}${ref === 'HEAD' ? '' : `@${ref}`} (docs, changelogs and migration guides from the repo)` },
       );
-      return t.tree.filter((e) => e.type === 'blob' && TEXT_LIKE.test(e.path)).map((e) => ({ path: e.path, size: e.size }));
+      return t.tree.filter((e) => e.type === 'blob' && listable(e.path)).map((e) => ({ path: e.path, size: e.size }));
     } catch (err) {
       if (err instanceof HttpError && (err.status === 404 || err.status === 422)) return null;
       throw err;
@@ -138,6 +143,11 @@ export function repoFileUrl(owner: string, repo: string, ref: string, path: stri
     : `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(ref)}/${path}`;
 }
 
+/** The example code a docs page may include by path. */
+function docsCode(files: { path: string }[]): string[] {
+  return files.filter((f) => DOCS_CODE.test(f.path) && !SKIP.test(f.path)).map((f) => f.path).slice(0, 3000);
+}
+
 /** Keep only what can be documentation; a monorepo tree has tens of thousands of entries. */
 function docsOnly(files: { path: string; size?: number }[]): { path: string; size?: number }[] {
   return files.filter((f) => DOC_EXT.test(f.path) && !SKIP.test(f.path) && (f.size ?? 0) <= MAX_FILE_BYTES).slice(0, 4000);
@@ -154,10 +164,18 @@ export function tagCandidates(name: string, version: string): string[] {
   ];
 }
 
-export async function repoFiles(meta: PackageMeta): Promise<{ files: RemoteFile[]; ref?: string; atTag: boolean }> {
+export interface RepoFiles {
+  files: RemoteFile[];
+  ref?: string;
+  atTag: boolean;
+  /** Example code under docs folders, with where to read it. */
+  code?: { path: string; url: string }[];
+}
+
+export async function repoFiles(meta: PackageMeta): Promise<RepoFiles> {
   if (!meta.repo) return { files: [], atTag: false };
   const { owner, repo } = meta.repo;
-  const key = `gh:tree3:${owner}/${repo}@${meta.name}@${meta.version}`;
+  const key = `gh:tree4:${owner}/${repo}@${meta.name}@${meta.version}`;
   const res = await cached<TreeResult | null>(key, config.ttl.docs, async () => {
     // Every tag spelling at once on jsDelivr (no API budget); the API only for what jsDelivr cannot list.
     const tags = tagCandidates(meta.name, meta.version);
@@ -166,10 +184,10 @@ export async function repoFiles(meta: PackageMeta): Promise<{ files: RemoteFile[
       const p = probes[i];
       if (p === 'missing') continue;
       const listing = typeof p === 'object' ? p : await apiListing(owner, repo, tag);
-      if (listing) return { ref: tag, atTag: true, files: docsOnly(listing.files), cdn: listing.cdn };
+      if (listing) return { ref: tag, atTag: true, files: docsOnly(listing.files), code: docsCode(listing.files), cdn: listing.cdn };
     }
     const head = await apiListing(owner, repo, 'HEAD');
-    return head ? { ref: 'HEAD', atTag: false, files: docsOnly(head.files) } : null;
+    return head ? { ref: 'HEAD', atTag: false, files: docsOnly(head.files), code: docsCode(head.files) } : null;
   }).catch(() => null); // rate limit or network: no repo docs this time
   if (!res) return { files: [], atTag: false };
   const dir = meta.repo.directory?.replace(/^\.?\//, '').replace(/\/$/, '');
@@ -184,6 +202,7 @@ export async function repoFiles(meta: PackageMeta): Promise<{ files: RemoteFile[
       // In a monorepo, the package's own folder is the most relevant part of the repo.
       inPackageDir: Boolean(dir && f.path.startsWith(`${dir}/`)),
     })),
+    code: (res.code ?? []).map((path) => ({ path, url: repoFileUrl(owner, repo, res.ref, path, res.cdn) })),
   };
 }
 

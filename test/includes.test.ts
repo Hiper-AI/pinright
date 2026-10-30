@@ -15,7 +15,7 @@ vi.mock('../src/http.js', async () => {
   };
 });
 
-const { expandIncludes, includeCandidates } = await import('../src/docs/includes.js');
+const { expandIncludes, includeCandidates, snippetSection } = await import('../src/docs/includes.js');
 
 const PAGE = 'https://cdn.jsdelivr.net/gh/fastapi/fastapi@0.162.0/docs/en/docs/advanced/events.md';
 const ROOT = 'https://cdn.jsdelivr.net/gh/fastapi/fastapi@0.162.0/';
@@ -51,6 +51,41 @@ describe('include directives', () => {
     expect(r.added).toBeGreaterThan(0);
     // Every included file goes through the same normalization as the docs.
     expect(prepared).toEqual(['tutorial003_py310.py', 'snip.ts']);
+  });
+
+  it('mkdocs macros and snippet paths found by their ending in the docs code, cut to their section, shown once', async () => {
+    const page = 'https://raw.githubusercontent.com/pola-rs/polars/HEAD/docs/source/user-guide/expressions/aggregation.md';
+    const code = 'https://raw.githubusercontent.com/pola-rs/polars/HEAD/docs/source/src/python/user-guide/expressions/aggregation.py';
+    files.set(code, ['# --8<-- [start:setup]', 'import polars as pl', '# --8<-- [end:setup]', '', '# --8<-- [start:basic]', 'q = df.group_by("a").agg(pl.len())', '# --8<-- [end:basic]'].join('\n'));
+    const listing = [{ path: 'docs/source/src/python/user-guide/expressions/aggregation.py', url: code }];
+    const findFile = (suffix: string) => listing.find((f) => f.path.endsWith(`/${suffix}`))?.url;
+    const text = [
+      "{{code_block('user-guide/expressions/aggregation','basic',['group_by'])}}",
+      '',
+      '```python exec="on" result="text"',
+      '--8<-- "python/user-guide/expressions/aggregation.py:basic"',
+      '```',
+      '',
+      '```python exec="on"',
+      '--8<-- "python/user-guide/expressions/aggregation.py:setup"',
+      '```',
+      '',
+      "{{code_block('user-guide/expressions/missing','x')}}",
+    ].join('\n');
+    const r = await expandIncludes(text, page, { budget: 5000, prepare: (c) => c, findFile, exts: ['py'] });
+    // The macro becomes a fenced block with the section only.
+    expect(r.text).toContain('```python\nq = df.group_by("a").agg(pl.len())\n```');
+    expect(r.text).not.toContain('[start:basic]');
+    // The same section again stays a directive; inside a code block, another section is the code alone.
+    expect(r.text).toContain('--8<-- "python/user-guide/expressions/aggregation.py:basic"');
+    expect(r.text).toContain('```python exec="on"\nimport polars as pl\n```');
+    // A macro whose file is not in the repo stays as written.
+    expect(r.text).toContain("{{code_block('user-guide/expressions/missing','x')}}");
+  });
+
+  it('snippet sections: the lines between the markers, none without them', () => {
+    expect(snippetSection('a\n# [start:x]\nb\n# [start:y]\nc\n# [end:y]\n# [end:x]\nd', 'x')).toBe('b\nc');
+    expect(snippetSection('a\nb', 'x')).toBeUndefined();
   });
 
   it('respects the budget and the line cap', async () => {

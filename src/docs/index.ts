@@ -174,10 +174,10 @@ export interface DocsOptions {
 export async function getDocs(opts: DocsOptions): Promise<DocsResult> {
   const budget = opts.budgetChars ?? config.docsBudgetChars;
   const out = new UntrustedOutput();
-  const { meta, docFiles, pyApi, query, renames } = await collectDocs(opts);
+  const { meta, docFiles, pyApi, query, renames, code } = await collectDocs(opts);
   // Normalized before chunking: hidden text never reaches a chunk, and hiding instructions is a finding.
   for (const d of docFiles) d.content = out.prepare(d.content, `${d.label}, ${meta.name}@${meta.version}`, d.kind === 'types' ? 'code' : 'markdown');
-  const result = await assemble({ ...opts, query }, budget, meta, docFiles, pyApi, out, renames);
+  const result = await assemble({ ...opts, query }, budget, meta, docFiles, pyApi, out, renames, code);
   out.record(opts.ecosystem, meta.name, meta.version);
   return result;
 }
@@ -191,6 +191,8 @@ export async function collectDocs(opts: DocsOptions): Promise<{
   /** The question, with the new name next to each old one it uses (see renames.ts). */
   query: string;
   renames: Rename[];
+  /** Example code under the repo's docs folders, which pages include by path. */
+  code: { path: string; url: string }[];
 }> {
   const meta = await packageMeta(opts.ecosystem, opts.name, opts.version);
   const wantUpgrade = Boolean(opts.upgrade) || UPGRADE_TERMS.test(opts.query);
@@ -280,10 +282,10 @@ export async function collectDocs(opts: DocsOptions): Promise<{
       if (content) docFiles.push({ label: e.title, url: e.url, content: keep(content), kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.8 : 1 });
     }
   }
-  return { meta, docFiles, pyApi, wantUpgrade, query, renames };
+  return { meta, docFiles, pyApi, wantUpgrade, query, renames, code: repo.code ?? [] };
 }
 
-async function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput, renames: Rename[] = []): Promise<DocsResult> {
+async function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput, renames: Rename[] = [], code: { path: string; url: string }[] = []): Promise<DocsResult> {
   // Sections the injection scanner flags stay apart, so dropping one never takes clean neighbors with it.
   const chunks = docFiles.flatMap((d) => chunkFile(d, (t) => out.scan(t).level === 'none'));
   const ranked = dedupe(rank(chunks, opts.query, topics(opts.query)));
@@ -311,9 +313,12 @@ async function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, do
   // budget left plus a third (it is what the agent came for). A section whose code scans high keeps its directive.
   const used = selected.reduce((a, c) => a + c.text.length + c.title.length + 80, 0);
   let room = Math.max(0, budget - used) + Math.round(budget / 3);
+  // A path a page names without its folder ("python/user-guide/x.py", or "user-guide/x" in a macro), by its ending.
+  const findFile = (suffix: string) => code.find((f) => f.path === suffix || f.path.endsWith(`/${suffix}`))?.url;
+  const exts = opts.ecosystem === 'pypi' ? ['py'] : ['ts', 'tsx', 'js', 'mjs'];
   const picked: Chunk[] = [];
   for (const c of selected) {
-    const { text, added } = room > 200 ? await expandIncludes(c.text, c.file.url, { budget: room, prepare: (code, src) => out.prepare(code, `${src}, ${meta.name}@${meta.version}`, 'code') }) : { text: c.text, added: 0 };
+    const { text, added } = room > 200 ? await expandIncludes(c.text, c.file.url, { budget: room, prepare: (src, from) => out.prepare(src, `${from}, ${meta.name}@${meta.version}`, 'code'), findFile, exts }) : { text: c.text, added: 0 };
     const keep = added > 0 && out.scan(text).level !== 'high';
     picked.push(keep ? { ...c, text } : c);
     if (keep) room -= added;
