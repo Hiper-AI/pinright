@@ -16,6 +16,8 @@ export interface DocFile {
   boost?: number;
   /** Code language of a `types` file; TypeScript when unset. */
   lang?: 'python';
+  /** A whole site in one file (llms-full.txt): each top-level page counts as a file for `select`'s cap. */
+  multiPage?: boolean;
 }
 
 export interface Chunk {
@@ -421,6 +423,11 @@ export function trimSection(text: string, max: number): string | undefined {
   return kept.length >= 200 ? `${kept}\n\n[...]` : undefined;
 }
 
+/** The page a section belongs to, for the per-file cap: its file, or its top heading in a multi-page file. */
+function pageKey(c: Chunk): string {
+  return c.file.multiPage ? `${c.file.url}#${c.title.split(' > ')[0]}` : c.file.url;
+}
+
 /**
  * Best chunks that fit the budget, at most `perFile` from one file so one long page cannot crowd out
  * the rest, and no near-duplicate of a chunk already picked.
@@ -432,13 +439,14 @@ export function select(ranked: Chunk[], budgetChars: number, perFile = 3): Chunk
   let used = 0;
   const sizeOf = (c: Chunk) => c.text.length + c.title.length + 80;
   const take = (c: Chunk, limit: number, maxPerFile = perFile): boolean => {
-    const n = count.get(c.file.url) ?? 0;
+    const key = pageKey(c);
+    const n = count.get(key) ?? 0;
     if (n >= maxPerFile || out.includes(c) || used + sizeOf(c) > limit) return false;
     const toks = new Set(tokenize(c.text));
     if (toks.size >= 20 && picked.some((p) => overlap(toks, p) >= NEAR_DUPLICATE)) return false;
     out.push(c);
     picked.push(toks);
-    count.set(c.file.url, n + 1);
+    count.set(key, n + 1);
     used += sizeOf(c);
     return true;
   };

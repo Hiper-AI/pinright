@@ -266,7 +266,7 @@ export async function collectDocs(opts: DocsOptions): Promise<{
   }
 
   if (llms?.full) {
-    docFiles.push({ label: 'llms-full.txt', url: llms.full.url, content: llms.full.content, kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.7 : 1 });
+    docFiles.push({ label: 'llms-full.txt', url: llms.full.url, content: llms.full.content, kind: 'markdown', versionAccurate: false, boost: docFiles.length ? 0.7 : 1, multiPage: true });
   } else if (llms?.index?.entries.length) {
     const entries = llms.index.entries.filter((e) => wantUpgrade || !/\/(blog|changelog|releases?|news)\b/i.test(e.url));
     // A curated index (docsRepos.ts) or a family site covers a whole product family: favor this package's pages, read more of them.

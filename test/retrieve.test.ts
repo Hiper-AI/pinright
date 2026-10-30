@@ -275,3 +275,13 @@ describe('docs paths', () => {
     expect(isDocPath('src/notes.txt')).toBe(false);
   });
 });
+
+describe('a whole site in one file', () => {
+  it('llms-full.txt: the per-file cap counts each page, so four pages can each give their best section', () => {
+    const pages = ['A', 'B', 'C', 'D'].map((p) => `# Page ${p}\n## Connection url ${p}\nSet the connection url for page ${p} in the config.\n`).join('\n');
+    const site: DocFile = { ...file('llms-full.txt', pages), multiPage: true };
+    const q = 'connection url config';
+    expect(select(rank(chunkFile(site), q), 10_000)).toHaveLength(4);
+    expect(select(rank(chunkFile({ ...site, multiPage: false }), q), 10_000)).toHaveLength(3);
+  });
+});
