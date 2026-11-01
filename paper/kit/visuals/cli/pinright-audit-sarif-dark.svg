@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="968" height="387" viewBox="0 0 968 387" role="img" aria-labelledby="t d">
+<title id="t">pinright audit --sarif</title>
+<desc id="d">pinright audit of an agent-written package.json (axios 1.7.9, form-data 4.0.1): 35 alerts in 29 packages, the fix for each direct dependency, and the SARIF file written.</desc>
+<rect x="0.5" y="0.5" width="967" height="386" rx="10" fill="#111110" stroke="#383835"/>
+<path d="M0.5,34 V10.5 Q0.5,0.5 10.5,0.5 H957.5 Q967.5,0.5 967.5,10.5 V34 Z" fill="#262624"/>
+<circle cx="20" cy="17" r="5.5" fill="#383835"/>
+<circle cx="38" cy="17" r="5.5" fill="#383835"/>
+<circle cx="56" cy="17" r="5.5" fill="#383835"/>
+<text x="484" y="18" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#c3c2b7" text-anchor="middle" dominant-baseline="middle">pinright audit --sarif</text>
+<text x="22" y="60" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec" font-weight="700">~/demo-app $ npx pinright audit package.json --fail-on high --sarif /tmp/pinright.sarif</tspan></text>
+<text x="22" y="81" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"></text>
+<text x="22" y="102" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">SECURITY NOTICE: 2 of 29 packages in ~/demo-app/package.json have known advisories (35 alerts: 1 critical, 14</tspan></text>
+<text x="22" y="123" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">  high, 19 moderate, 1 low, 0 unrated).</tspan></text>
+<text x="22" y="144" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">  - form-data@4.0.1 [CRITICAL] direct: GHSA-fjxv-7rqg-78g4 (CVE-2025-7783) form-data uses unsafe random</tspan></text>
+<text x="22" y="165" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">    function in form-data for choosing boundary +1 more; fixed in 4.0.6</tspan></text>
+<text x="22" y="186" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">  - axios@1.7.9 [HIGH] direct: GHSA-35jp-ww65-95wh (CVE-2026-44494) axios Vulnerable to Full Man-in-the-Middle</tspan></text>
+<text x="22" y="207" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">    via Prototype Pollution Gadget in `config.proxy` +32 more; fixed in 1.20.0</tspan></text>
+<text x="22" y="228" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">Fixes:</tspan></text>
+<text x="22" y="249" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">  - npm install form-data@4.0.6. Clears form-data@4.0.1.</tspan></text>
+<text x="22" y="270" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">  - npm install axios@1.21.0. Clears axios@1.7.9.</tspan></text>
+<text x="22" y="291" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">Note: No lockfile: the tree was resolved by deps.dev, one direct dependency at a time. Audit the lockfile for</tspan></text>
+<text x="22" y="312" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">  the exact tree.</tspan></text>
+<text x="22" y="333" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">Verified against osv.dev + deps.dev on 2026-11-01.</tspan></text>
+<text x="22" y="354" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#f0efec">[pinright] SARIF written to /tmp/pinright.sarif (35 results)</tspan></text>
+</svg>

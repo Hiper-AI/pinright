@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# The committed GitHub Action bundle (scripts/bundle-action.ts).
+action-dist/** linguist-generated=true

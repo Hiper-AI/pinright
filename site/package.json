@@ -1,0 +1,20 @@
+{
+  "name": "pinright-site",
+  "private": true,
+  "version": "1.0.0",
+  "description": "The pinright.dev website. Static HTML and CSS built with Vite; not part of the npm package.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "prepare-assets": "node scripts/prepare-assets.mjs",
+    "dev": "node scripts/prepare-assets.mjs && vite --port 4320 --strictPort",
+    "build": "node scripts/prepare-assets.mjs --strict && vite build && node scripts/check-dist.mjs",
+    "preview": "vite preview --port 4321 --strictPort",
+    "check": "node scripts/check-dist.mjs"
+  },
+  "devDependencies": {
+    "vite": "8.3.4"
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "name": "pinright",
+  "version": "1.0.0",
+  "mcpName": "io.github.Hiper-AI/pinright",
+  "description": "Version-accurate docs and a dependency check for coding agents: MCP server, pre-install hook, CLI and GitHub Action.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "supply-chain",
+    "security",
+    "sca",
+    "osv",
+    "deps.dev",
+    "npm",
+    "pypi",
+    "dependencies",
+    "vulnerabilities",
+    "typosquatting",
+    "provenance",
+    "coding-agents",
+    "claude-code",
+    "cursor",
+    "documentation"
+  ],
+  "homepage": "https://pinright.dev",
+  "bugs": {
+    "url": "https://github.com/Hiper-AI/pinright/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hiper-AI/pinright.git"
+  },
+  "license": "MIT",
+  "author": "Hiper AI <opensource@hiperai.com> (https://hiperai.com)",
+  "type": "module",
+  "bin": {
+    "pinright": "dist/cli.js"
+  },
+  "files": [
+    "dist/**/*.js",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md"
+  ],
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "start": "node dist/cli.js",
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "bench:agents": "tsx bench/agents/run.ts",
+    "coverage:ecosystem": "tsx scripts/coverage.ts",
+    "prepack": "npm run clean && npm run build",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm test",
+    "bundle:action": "tsx scripts/bundle-action.ts",
+    "dist:artifacts": "tsx scripts/distribution.ts",
+    "build:mcpb": "npm run build && tsx scripts/build-mcpb.ts",
+    "smoke:clients": "npm run build && tsx scripts/smoke-clients.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0",
+    "jsonc-parser": "3.3.1",
+    "semver": "7.8.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@types/node": "^22.20.5",
+    "@types/semver": "^7.5.8",
+    "ajv": "^8.20.0",
+    "ajv-draft-04": "^1.0.0",
+    "esbuild": "0.28.2",
+    "eslint": "^9.20.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.24.0",
+    "vitest": "^5.0.5"
+  }
+}

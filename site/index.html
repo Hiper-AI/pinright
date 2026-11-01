@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>pinright · Version-accurate docs and a dependency check for coding agents</title>
+    <meta name="description" content="pinright gives coding agents library docs for the version they install and checks every dependency they add for known advisories, malware and lookalike names, before the install runs. MCP server, CLI, pre-install hook and GitHub Action. Open source, MIT.">
+    <link rel="canonical" href="https://pinright.dev/">
+    <meta property="og:url" content="https://pinright.dev/">
+    <meta property="og:title" content="pinright · Version-accurate docs and a dependency check for coding agents">
+    <meta property="og:description" content="Without tools, coding agents pinned direct dependencies with known advisories 40% to 42% of the time in our benchmark. With pinright: 0%. Open source, MIT, runs locally.">
+    <meta name="twitter:title" content="pinright · Version-accurate docs and a dependency check for coding agents">
+    <meta name="twitter:description" content="Docs for the version your agent installs, and a verdict on every dependency it adds. MCP server, CLI, pre-install hook, GitHub Action. MIT.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html / -->
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="wrap hero-grid">
+          <div>
+            <ul class="badges" aria-label="Release">
+              <li>v1.0.0</li>
+              <li>MIT</li>
+              <li>by Hiper AI</li>
+            </ul>
+            <h1 id="hero-title">Your coding agent pins versions from memory. <span class="wm">pinright</span> checks them first.</h1>
+            <p class="lead">Library docs for the exact version your agent installs, and a verdict on every dependency it adds: known advisories, malware records, lookalike names, packages that do not exist.</p>
+          </div>
+          <div class="install-block">
+            <div>
+              <p class="install-label"><strong>Just you, every project.</strong> Global install, user config.</p>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npm i -g pinright &amp;&amp; pinright init --user</code></pre>
+                <button class="copy" type="button" data-copy aria-label="Copy: npm i -g pinright &amp;&amp; pinright init --user"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copy</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+            </div>
+            <div>
+              <p class="install-label"><strong>Your team, or just to try it.</strong> Writes project files you commit.</p>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npx -y pinright init</code></pre>
+                <button class="copy" type="button" data-copy aria-label="Copy: npx -y pinright init"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copy</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+            </div>
+            <p class="req">Node 20.9 or newer. No account, no key, no telemetry. Restart the agent afterward.</p>
+            <div class="ctas hero-ctas">
+              <a class="btn btn-primary" href="/install/">Install guide</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright">GitHub</a>
+              <a class="btn btn-ghost" href="/report.pdf">Report (PDF)</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft tight-top" id="evidence" aria-labelledby="evidence-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Benchmark v6 · 2026-11-01</p>
+            <h2 id="evidence-title">What we measured</h2>
+            <p>Claude Code with three models wrote 12 projects that ask for pinned versions. We audited each one with npm audit or pip-audit, which share no code with pinright.</p>
+          </div>
+          <dl class="stats five">
+            <div class="stat">
+              <dt>~30<span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span>0.3</dt>
+              <dd>whole-tree alerts per project, no docs vs the pinright MCP server.</dd>
+              <dd>0.3 is what installing with no version gets: nuxt dependencies with no fix yet.</dd>
+            </div>
+            <div class="stat">
+              <dt>40–42%<span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span>0%</dt>
+              <dd>of direct dependencies pinned with a known advisory, no docs vs any pinright setup.</dd>
+            </div>
+            <div class="stat">
+              <dt>48 · 21 · 6</dt>
+              <dd>alerts over 24 projects with docs only, verdict off (Sonnet, Haiku, Opus).</dd>
+              <dd>Current docs remove most alerts on their own. The verdict took each model to 6.</dd>
+            </div>
+            <div class="stat">
+              <dt>16/16</dt>
+              <dd>docs-benchmark runs that wrote the current API, for each model. 10 to 13 of 16 without docs.</dd>
+            </div>
+            <div class="stat">
+              <dt>1.46%</dt>
+              <dd>of 25,077 public commands the hook blocked or asked about, most of them on purpose.</dd>
+            </div>
+          </dl>
+          <figure class="fig">
+            <div class="fig-frame">
+              <img class="only-light" src="/kit/fig-a-alerts-per-project.svg" width="1240" height="600" loading="lazy" decoding="async" alt="Bar chart of mean whole-tree alerts per project for three models and six arms, with 95% intervals. Without tools: 33.1 (Sonnet), 29.6 (Haiku), 29.9 (Opus). pinright with its security layer off: 2.0, 0.9, 0.3. pinright MCP server and MCP plus hook: 0.3 for every model. Hook only: 0.6, 0.4, 0.6. Packages installed without a version: 0.3. A second panel repeats the data without the no-tools arm on a scale of 0 to 6.">
+              <img class="only-dark" src="/kit/fig-a-alerts-per-project-dark.svg" width="1240" height="600" loading="lazy" decoding="async" alt="Bar chart of mean whole-tree alerts per project for three models and six arms, with 95% intervals. Without tools: 33.1 (Sonnet), 29.6 (Haiku), 29.9 (Opus). pinright with its security layer off: 2.0, 0.9, 0.3. pinright MCP server and MCP plus hook: 0.3 for every model. Hook only: 0.6, 0.4, 0.6. Packages installed without a version: 0.3. A second panel repeats the data without the no-tools arm on a scale of 0 to 6.">
+            </div>
+            <figcaption><strong>Whole-tree alerts per project, by arm and model.</strong> Whiskers are 95% intervals that resample tasks.</figcaption>
+          </figure>
+          <p class="qualifier">Claude Code with Sonnet 5.5, Haiku 5.5 and Opus 5.5, 12 tasks we wrote, 2 runs per arm, advisory data from one day. One vendor's models and new projects only.</p>
+          <div class="ctas">
+            <a class="btn btn-ghost" href="/evidence/">Method, ablation and caveats</a>
+            <a class="btn btn-ghost" href="/report.pdf">Technical report (PDF)</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="sees-title">
+        <div class="wrap split">
+          <div>
+            <p class="eyebrow">What the agent sees</p>
+            <h2 id="sees-title">The install does not run. The agent gets the fix.</h2>
+            <p>The hook reads install commands and manifest writes before they run, even when the agent never asked. The agent reads the reason and usually retries with the version pinright names.</p>
+            <p class="muted small">The hook block is real output of <code>pinright hook claude</code> on 2026-11-01. The get-docs answer is the README's example, shortened.</p>
+          </div>
+          <div class="stack">
+            <figure class="term" aria-label="Hook answer in Claude Code">
+              <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><span>Claude Code · PreToolUse · pinright hook claude</span></div>
+              <pre><code><span class="run">agent runs: npm install lodash@4.17.20</span>
+
+<span class="bad">pinright blocked this dependency change:</span>
+- lodash@4.17.20 (npm) has 5 known advisories (CVE-2021-23337, CVE-2026-4800, CVE-2020-28500, HIGH). Use 4.x release 4.18.1: <span class="good">npm install lodash@4.18.1</span>
+<span class="dim">Change the version (or the name) and try again. check-package and get-docs from the pinright MCP server explain each case.</span></code></pre>
+            </figure>
+            <figure class="term" aria-label="get-docs answer for a vulnerable version">
+              <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><span>MCP · get-docs</span></div>
+              <pre><code><span class="run">get-docs { libraryId: "npm:next@15.1.0", query: "protect routes with middleware" }</span>
+
+<span class="bad">SECURITY NOTICE: next (npm)@15.1.0 has 36 known advisories.</span>
+  - GHSA-f82v-jwr5-mffw (CVE-2025-29927) [CRITICAL]: Authorization Bypass in Next.js Middleware fixed in 13.5.9, 14.2.25, 15.2.3
+  - ...
+Recommended within 15.x: <span class="good">15.5.28</span> (same release line, no API break expected). Upgrade: npm install next@15.5.28
+Newest safe overall: 16.4.3 (a different major: read its migration guide before switching).
+These docs are for 15.5.28, the version to move to, not 15.1.0.
+
+<span class="dim">&lt;untrusted-data id="9f3c21ab" source="next.js/docs/01-app/02-guides/authentication.mdx@v15.5.28"&gt;
+...
+&lt;/untrusted-data id="9f3c21ab"&gt;</span></code></pre>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft" aria-labelledby="pieces-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">How it works</p>
+            <h2 id="pieces-title">One npm package, four ways in</h2>
+          </div>
+          <ul class="cards">
+            <li class="card">
+              <span class="n">01 · Docs</span>
+              <h3>Docs for the version you pin</h3>
+              <p>README, docs and type definitions published at that version, the repo at its release tag, the project's llms.txt. No index service in between.</p>
+            </li>
+            <li class="card">
+              <span class="n">02 · Verdict</span>
+              <h3>A verdict per dependency</h3>
+              <p>Advisories from OSV and deps.dev, malware records, deprecation, lookalike and nonexistent names. The fix stays on your release line when one exists.</p>
+            </li>
+            <li class="card">
+              <span class="n">03 · Hook</span>
+              <h3>A pre-install hook</h3>
+              <p>Checks installs and manifest writes before they run, in Claude Code, Cursor, VS Code, Codex, Gemini CLI and Windsurf.</p>
+            </li>
+            <li class="card">
+              <span class="n">04 · CI</span>
+              <h3>A GitHub Action</h3>
+              <p>Whole-tree audit of lockfiles and workflows, with SARIF for code scanning and annotations on the pull request.</p>
+            </li>
+          </ul>
+          <p class="qualifier">Also a CLI for people: <code>pinright check npm axios@1.7.9</code>, <code>pinright audit .</code>, <code>pinright upgrade</code>, <code>pinright doctor</code>. Ecosystems: npm, PyPI, Cargo, Go, RubyGems, NuGet, Maven and Gradle, Composer, GitHub Actions.</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="privacy-title">
+        <div class="wrap split">
+          <div>
+            <p class="eyebrow">Privacy</p>
+            <h2 id="privacy-title">Runs on your machine</h2>
+          </div>
+          <div>
+            <ul class="checks">
+              <li>No account, no key, no telemetry.</li>
+              <li>No install scripts: installing it runs no code.</li>
+              <li>Sends package names and versions to public services (deps.dev, OSV, registries, jsDelivr, GitHub). Never your source code, files or environment.</li>
+              <li>A guardrail, not a sandbox: it reads commands and files; it does not contain what an allowed package does.</li>
+            </ul>
+            <p><a href="/security/">What is sent where, and the threat model</a></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft" aria-labelledby="oss-title">
+        <div class="wrap split">
+          <div>
+            <p class="eyebrow">Open source</p>
+            <h2 id="oss-title">MIT licensed, on GitHub</h2>
+            <p>The most useful report you can send is a false positive: a command the hook stopped that it should have let through.</p>
+          </div>
+          <div>
+            <div class="ctas">
+              <a class="btn btn-primary" href="https://github.com/Hiper-AI/pinright">pinright on GitHub</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/issues/new?template=false-positive.yml">Report a false positive</a>
+            </div>
+            <ul class="small">
+              <li><a href="https://github.com/Hiper-AI/pinright/blob/main/CONTRIBUTING.md">Contributing guide</a></li>
+              <li><a href="https://github.com/Hiper-AI/pinright/security/advisories/new">Report a vulnerability privately</a></li>
+              <li>Contact: <a href="mailto:opensource@hiperai.com">opensource@hiperai.com</a></li>
+              <li>Built by <a href="https://hiperai.com">Hiper AI</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

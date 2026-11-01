@@ -1,0 +1,12 @@
+source,entries,distinct,blocked_or_asked_pct_baseline,blocked_or_asked_pct_after_fixes,scope
+package.json scripts,6588,2276,0.27,0.06,"without ${{ }} templating"
+README / CONTRIBUTING lines,2146,1945,0.98,0.61,"without ${{ }} templating"
+Makefile / justfile targets,711,511,5.34,0.42,"without ${{ }} templating"
+GitHub Actions run: steps,14040,9038,2.29,1.54,"without ${{ }} templating"
+Dockerfile RUN,1171,996,4.78,4.36,"without ${{ }} templating"
+Manifest writes,421,412,7.60,2.61,"without ${{ }} templating"
+All sources,25077,14902,2.22,1.44,all entries
+All sources,25077,14902,1.92,1.16,"without ${{ }} templating"
+All sources (denied only),25077,14902,0.42,0.13,"without ${{ }} templating"
+All sources (on top of the second security review),25077,14902,,1.46,all entries
+All sources (on top of the second security review),25077,14902,,1.18,"without ${{ }} templating"

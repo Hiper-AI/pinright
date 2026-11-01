@@ -1,0 +1,9 @@
+SECURITY NOTICE: lodash (npm)@4.17.20 has 5 known advisories.
+  - GHSA-35jh-r3h4-6jhm (CVE-2021-23337) [HIGH]: Command Injection in lodash fixed in 4.17.21
+  - GHSA-r5fr-rjxr-66jc (CVE-2026-4800) [HIGH]: lodash vulnerable to Code Injection via `_.template` imports key names fixed in 4.18.0
+  - GHSA-29mw-wpgm-hmr9 (CVE-2020-28500) [MODERATE]: Regular Expression Denial of Service (ReDoS) in lodash fixed in 4.17.21
+  - GHSA-f23m-r3pf-42rh (CVE-2026-2950) [MODERATE]: lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit` fixed in 4.18.0
+  - GHSA-xxjr-mmjv-4gpg (CVE-2025-13465) [MODERATE]: Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions fixed in 4.17.23
+Recommended within 4.x: 4.18.1 (same release line, no API break expected). Upgrade: npm install lodash@4.18.1
+License: MIT
+Verified against deps.dev + osv.dev + OpenSSF Scorecard via deps.dev + api.npmjs.org + registry.npmjs.org on 2026-11-01.

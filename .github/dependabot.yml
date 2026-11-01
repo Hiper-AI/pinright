@@ -1,0 +1,50 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # A version gets a few days on the registry before we take it, the same idea as
+    # pinright's own cooldown: most malicious releases are pulled within that window.
+    # Security updates skip the cooldown.
+    cooldown:
+      default-days: 5
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    ignore:
+      # The types must match the oldest Node in "engines" (>=20.9.0): a newer major types APIs
+      # that Node 20 lacks. Raise @types/node by hand, together with "engines".
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    groups:
+      # ESLint and its plugins peer-depend on each other: @eslint/js 10 alone fails npm ci
+      # (ERESOLVE against eslint 9). One PR for all of them, majors included. A dependency
+      # goes to the first group it matches, so this one comes before "dev".
+      lint:
+        patterns: ['eslint', '@eslint/*', 'typescript-eslint', '@typescript-eslint/*']
+        update-types: [major, minor, patch]
+      # Runtime dependencies ship to users: one PR per week, reviewed on its own.
+      runtime:
+        dependency-type: production
+      dev:
+        dependency-type: development
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ['*']
+    commit-message:
+      prefix: deps
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci

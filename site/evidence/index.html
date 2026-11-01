@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Evidence · pinright</title>
+    <meta name="description" content="pinright's benchmark v6: three models in Claude Code, whole-tree alerts per project, the docs-only ablation, the docs benchmark, hook false positives and latency, with method and caveats.">
+    <link rel="canonical" href="https://pinright.dev/evidence/">
+    <meta property="og:url" content="https://pinright.dev/evidence/">
+    <meta property="og:title" content="Evidence · pinright">
+    <meta property="og:description" content="Three models, 12 tasks, audited with npm audit and pip-audit: about 30 alerts per project without docs, 0.3 with pinright. Docs-only ablation, method and caveats.">
+    <meta name="twitter:title" content="Evidence · pinright">
+    <meta name="twitter:description" content="Benchmark v6: alerts per project, vulnerable pins, the docs-only ablation, the docs benchmark and hook false positives.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html /evidence/ -->
+    <main id="main">
+      <header class="page-head">
+        <div class="wrap">
+          <p class="eyebrow">Evidence · benchmark v6 · 2026-11-01</p>
+          <h1>What we measured, and how far to trust it</h1>
+          <p class="lead">Every number here comes from the repository's data files and can be regenerated. The limits sit next to the results.</p>
+          <ul class="toc" aria-label="On this page">
+            <li><a href="#method">Method</a></li>
+            <li><a href="#alerts">Alerts per project</a></li>
+            <li><a href="#pins">Vulnerable pins</a></li>
+            <li><a href="#ablation">Docs-only ablation</a></li>
+            <li><a href="#docs">Docs benchmark</a></li>
+            <li><a href="#hook">Hook false positives</a></li>
+            <li><a href="#latency">Latency</a></li>
+            <li><a href="#caveats">Caveats</a></li>
+            <li><a href="#data">Data</a></li>
+          </ul>
+        </div>
+      </header>
+
+      <section class="section" id="method" aria-labelledby="method-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="method-title">Method</h2>
+          </div>
+          <div>
+            <ul>
+              <li>Claude Code 2.1.308 in headless mode, driving Sonnet 5.5, Haiku 5.5 and Opus 5.5.</li>
+              <li>12 coding tasks we wrote (8 npm, 4 PyPI) that ask for pinned versions. 2 runs per arm and model.</li>
+              <li>Arms: no docs; docs-only (pinright with its verdict off); pinright MCP server; hook only; MCP plus hook. A no-pin reference installs the same packages without a version.</li>
+              <li>Each project audited with <code>npm audit</code> or <code>pip-audit</code>, which share no code with pinright, then installed and built.</li>
+              <li>360 agent runs plus 112 docs runs, USD 31.34 in total at API list price.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft" id="alerts" aria-labelledby="alerts-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="alerts-title">About 30 alerts per project without docs, 0.3 with pinright</h2>
+            <p>Without tools, projects averaged 29.6 to 33.1 whole-tree alerts. With the pinright MCP server every model averaged 0.3, the same as installing the packages with no version. That 0.3 is nuxt's: its current release pulls <code>deepmerge</code>, <code>glob</code> and <code>minimatch</code> versions with advisories and no fix yet.</p>
+          </div>
+          <figure class="fig">
+            <div class="fig-frame">
+              <img class="only-light" src="/kit/fig-a-alerts-per-project.svg" width="1240" height="600" loading="lazy" decoding="async" alt="Bar chart of mean whole-tree alerts per project for three models and six arms, with 95% intervals. Without tools: 33.1 (Sonnet), 29.6 (Haiku), 29.9 (Opus). pinright with its security layer off: 2.0, 0.9, 0.3. pinright MCP server and MCP plus hook: 0.3 for every model. Hook only: 0.6, 0.4, 0.6. Packages installed without a version: 0.3. A second panel repeats the data without the no-tools arm on a scale of 0 to 6.">
+              <img class="only-dark" src="/kit/fig-a-alerts-per-project-dark.svg" width="1240" height="600" loading="lazy" decoding="async" alt="Bar chart of mean whole-tree alerts per project for three models and six arms, with 95% intervals. Without tools: 33.1 (Sonnet), 29.6 (Haiku), 29.9 (Opus). pinright with its security layer off: 2.0, 0.9, 0.3. pinright MCP server and MCP plus hook: 0.3 for every model. Hook only: 0.6, 0.4, 0.6. Packages installed without a version: 0.3. A second panel repeats the data without the no-tools arm on a scale of 0 to 6.">
+            </div>
+            <figcaption><strong>Whole-tree alerts per project.</strong> Mean npm audit / pip-audit alerts per generated project, 12 tasks x 2 runs per arm and model. Whiskers: 95% cluster-bootstrap intervals that resample tasks. Right panel: the same data without the no-docs arm, on a 0 to 6 scale.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section" id="pins" aria-labelledby="pins-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="pins-title">40% to 42% of direct pins had a known advisory, 0% with pinright</h2>
+            <p>Sonnet pinned 66 of 157 direct dependencies with an advisory, Haiku 63 of 157, Opus 65 of 157. Examples: <code>axios@1.7.9</code>, <code>pillow@11.0.0</code>, <code>pyjwt@2.10.1</code>. No arm pinned a package or version that does not exist.</p>
+          </div>
+          <figure class="fig">
+            <div class="fig-frame">
+              <img class="only-light" src="/kit/fig-b-direct-deps-with-advisories.svg" width="1040" height="560" loading="lazy" decoding="async" alt="Bar chart of the share of pinned direct dependencies with a known advisory. Without tools: 42% for Sonnet, 40% for Haiku, 41% for Opus. pinright with its security layer off: 1%, 2%, 0%. Every pinright arm and the unpinned reference: 0%.">
+              <img class="only-dark" src="/kit/fig-b-direct-deps-with-advisories-dark.svg" width="1040" height="560" loading="lazy" decoding="async" alt="Bar chart of the share of pinned direct dependencies with a known advisory. Without tools: 42% for Sonnet, 40% for Haiku, 41% for Opus. pinright with its security layer off: 1%, 2%, 0%. Every pinright arm and the unpinned reference: 0%.">
+            </div>
+            <figcaption><strong>Direct dependencies pinned with a known advisory.</strong> At least one OSV advisory on 2026-11-01, with 95% cluster-bootstrap intervals.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section soft" id="ablation" aria-labelledby="ablation-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="ablation-title">Current docs do most of the work. The verdict does the rest.</h2>
+            <p>The docs-only arm is pinright's own server with the verdict turned off, documenting each package's latest release. Steering the agent to current versions that way cut alerts by 94% to 99%. Without the verdict, Sonnet pinned a vulnerable <code>next@15.5.4</code> and Haiku a <code>next-auth</code> beta with advisories, and the runs took more turns and cost 1.6x to 1.8x more than with the full server.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <caption>Whole-tree alerts, sum over 24 projects (direct deps with an advisory)</caption>
+              <thead>
+                <tr><th scope="col">Arm</th><th scope="col" class="num">Sonnet 5.5</th><th scope="col" class="num">Haiku 5.5</th><th scope="col" class="num">Opus 5.5</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">No docs</th><td class="num">794 (42%)</td><td class="num">711 (40%)</td><td class="num">718 (41%)</td></tr>
+                <tr><th scope="row">docs-only (verdict off)</th><td class="num">48 (1%)</td><td class="num">21 (2%)</td><td class="num">6 (0%)</td></tr>
+                <tr class="hl"><th scope="row">pinright MCP</th><td class="num">6 (0%)</td><td class="num">6 (0%)</td><td class="num">6 (0%)</td></tr>
+                <tr><th scope="row">pinright hook only</th><td class="num">14 (0%)</td><td class="num">10 (0%)</td><td class="num">14 (0%)</td></tr>
+                <tr><th scope="row">pinright MCP + hook</th><td class="num">6 (0%)</td><td class="num">6 (0%)</td><td class="num">6 (0%)</td></tr>
+                <tr><th scope="row">Projects that build, pinright MCP</th><td class="num">23/24</td><td class="num">22/24</td><td class="num">24/24</td></tr>
+                <tr><th scope="row">Cost per run, no docs / MCP (USD, list price)</th><td class="num">0.034 / 0.051</td><td class="num">0.003 / 0.005</td><td class="num">0.080 / 0.130</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="qualifier">The hook-only remainder comes from <code>next</code> 15.5.28, which has no advisories itself but pulls a <code>postcss</code> with some. On the same 394 lockfiles, pinright's <code>check-manifest</code> flagged the same packages as npm audit and pip-audit (mean Jaccard 0.96 for npm, 1.00 for PyPI).</p>
+        </div>
+      </section>
+
+      <section class="section" id="docs" aria-labelledby="docs-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="docs-title">16 of 16 runs wrote the current API, against 10 to 13 without docs</h2>
+            <p>Eight tasks that only come out right with a library's current major: Next.js 16, Tailwind CSS 4, Zod 4, AI SDK 7, Express 5, ESLint 10, Pydantic 2 and LangChain 1. A run counts when it installs, builds, passes a smoke test, pins the asked major and uses no removed API. Without docs, every model wrote AI SDK 5/6 code for AI SDK 7.</p>
+          </div>
+          <figure class="fig">
+            <div class="fig-frame">
+              <img class="only-light" src="/kit/fig-c-docs-current-api.svg" width="1000" height="540" loading="lazy" decoding="async" alt="Bar chart of docs-benchmark runs that wrote the current API of eight recently changed libraries. Without docs: 13 of 16 (Sonnet), 10 of 16 (Haiku), 12 of 16 (Opus). pinright with its security layer off, Sonnet only: 15 of 16. pinright: 16 of 16 for every model.">
+              <img class="only-dark" src="/kit/fig-c-docs-current-api-dark.svg" width="1000" height="540" loading="lazy" decoding="async" alt="Bar chart of docs-benchmark runs that wrote the current API of eight recently changed libraries. Without docs: 13 of 16 (Sonnet), 10 of 16 (Haiku), 12 of 16 (Opus). pinright with its security layer off, Sonnet only: 15 of 16. pinright: 16 of 16 for every model.">
+            </div>
+            <figcaption><strong>Docs benchmark.</strong> 16 runs per arm and model; whiskers are 95% intervals. "16 of 16" is a measured result on these tasks, not an accuracy rate.</figcaption>
+          </figure>
+          <p class="qualifier">Without an agent, pinright's docs answered 25 of 28 and 33 of 45 questions in two held-out sets nobody tuned on, over libraries outside the benchmark. A probe checks for strings of the current API, not for a correct answer.</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="hook" aria-labelledby="hook-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="hook-title">The hook stopped 1.46% of 25,077 public commands</h2>
+            <p>We ran 25,077 commands and manifest writes from 180 public repositories (CI steps, package.json scripts, README lines, Dockerfiles, Makefiles) through the real hook. The 1.0.0 release blocked or asked about 1.46%. Most of those ask on purpose: a version in a variable, a git source, another package index. 32 were true positives, such as <code>npm install -g pnpm@8</code> with 26 advisories in a public workflow.</p>
+          </div>
+          <figure class="fig">
+            <div class="fig-frame">
+              <img class="only-light" src="/kit/fig-e-hook-false-positives.svg" width="1040" height="544" loading="lazy" decoding="async" alt="Horizontal bar chart of the share of public commands the hook blocked or asked about, before and after fixes, by source. package.json scripts 0.27% to 0.06%. README lines 0.98% to 0.61%. Makefile targets 5.34% to 0.42%. GitHub Actions steps 2.29% to 1.54%. Dockerfiles 4.78% to 4.36%. Manifest writes 7.60% to 2.61%.">
+              <img class="only-dark" src="/kit/fig-e-hook-false-positives-dark.svg" width="1040" height="544" loading="lazy" decoding="async" alt="Horizontal bar chart of the share of public commands the hook blocked or asked about, before and after fixes, by source. package.json scripts 0.27% to 0.06%. README lines 0.98% to 0.61%. Makefile targets 5.34% to 0.42%. GitHub Actions steps 2.29% to 1.54%. Dockerfiles 4.78% to 4.36%. Manifest writes 7.60% to 2.61%.">
+            </div>
+            <figcaption><strong>Hook false-positive rate by source.</strong> Gray: the release candidate; blue: after the fixes this replay prompted (2.22% to 1.44% over all entries). Two fixes from the second security review ask on purpose, which puts the release at 1.46%. The corpus is CI and README commands, not agent sessions.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section" id="latency" aria-labelledby="latency-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="latency-title">Latency</h2>
+            <p>The hook runs before every shell command. A command that installs nothing took 121 ms at the median; one install took 358 ms with a warm cache and 2.4 s cold. With the MCP server, runs took about 2 to 4 more agent turns and 1.5 to 2 times the API-equivalent cost of a run without tools.</p>
+          </div>
+          <figure class="fig">
+            <div class="fig-frame">
+              <img class="only-light" src="/kit/fig-f-hook-latency.svg" width="1040" height="446" loading="lazy" decoding="async" alt="Horizontal bar chart of hook latency on a log scale with budget markers. A command that installs nothing: 121 ms median, 177 ms at p95, within its budget. One install with a warm cache: 358 and 372 ms, under 1 second. One install with a cold cache: 2.4 and 3.7 seconds, under 5 seconds.">
+              <img class="only-dark" src="/kit/fig-f-hook-latency-dark.svg" width="1040" height="446" loading="lazy" decoding="async" alt="Horizontal bar chart of hook latency on a log scale with budget markers. A command that installs nothing: 121 ms median, 177 ms at p95, within its budget. One install with a warm cache: 358 and 372 ms, under 1 second. One install with a cold cache: 2.4 and 3.7 seconds, under 5 seconds.">
+            </div>
+            <figcaption><strong>Hook latency.</strong> p50 bars, p95 whiskers, 5 runs per case, Windows, Node 24, live services; the dashed tick is the budget. Measured once, on one machine.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section soft" id="caveats" aria-labelledby="caveats-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="caveats-title">Caveats</h2>
+          </div>
+          <div>
+            <ul>
+              <li>One vendor's models, all driven by Claude Code. Other agents may pin differently.</li>
+              <li>Tasks we wrote, and new projects only. Editing an old codebase is a different problem.</li>
+              <li>Advisory data from one day, 2026-11-01. New advisories change the counts.</li>
+              <li>2 runs per arm and model, so 16 to 24 runs per cell. Read the intervals, not just the bars.</li>
+              <li>pinright knows published advisories only. A package with no advisory on record has none reported yet.</li>
+              <li>The false-positive corpus is public CI and README commands, not agent sessions.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="data" aria-labelledby="data-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="data-title">Data and report</h2>
+          </div>
+          <div>
+            <p>The technical report covers design, method, results and the security reviews. The CSVs and the scripts that regenerate every figure are in the repository.</p>
+            <div class="ctas">
+              <a class="btn btn-primary" href="/report.pdf">Technical report (PDF)</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v6.md">Results v6</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/tree/main/paper/kit/data">Raw data (CSV)</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

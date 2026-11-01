@@ -1,0 +1,57 @@
+name: Docs answer wrong
+description: get-docs or upgrade-guide returned docs for the wrong version, missed the relevant section, or the agent wrote outdated code from them.
+title: "Docs: "
+labels: ["docs-answer"]
+body:
+  - type: textarea
+    id: call
+    attributes:
+      label: Exact tool call
+      description: The MCP tool and its arguments (libraryId, version, query), or the CLI command.
+      placeholder: 'get-docs { libraryId: "npm:next@16.4.3", query: "protect routes with middleware" }'
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: got
+    attributes:
+      label: What came back
+      description: The relevant part of the answer, including the source lines (`source="..."`).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What the right answer is
+      description: A link to the correct page or file at that version helps the most.
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Client
+      options:
+        - Claude Code
+        - Cursor
+        - VS Code (GitHub Copilot)
+        - OpenAI Codex
+        - Gemini CLI
+        - Windsurf
+        - Other MCP client
+        - None (CLI)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pinright version
+      description: Output of `npx pinright --version`
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`npx pinright doctor --json`"
+      description: It shows whether GitHub answered and whether a token is set (not the token). It also shows local paths; edit them out if you prefer.
+      render: json

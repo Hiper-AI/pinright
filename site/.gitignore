@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# Copied from ../paper/kit by scripts/prepare-assets.mjs on every dev and build.
+public/kit/
+public/report.pdf

@@ -1,0 +1,12 @@
+{
+  "name": "eslint10-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": { "lint": "eslint ." },
+  "devDependencies": {
+    "eslint": "10.13.0",
+    "@eslint/js": "10.0.1",
+    "typescript-eslint": "8.72.1",
+    "typescript": "6.0.3"
+  }
+}

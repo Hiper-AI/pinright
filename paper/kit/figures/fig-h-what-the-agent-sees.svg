@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="850" height="261" viewBox="0 0 850 261" role="img" aria-labelledby="t d">
+<title id="t">Claude Code, PreToolUse hook: pinright hook claude</title>
+<desc id="d">The hook answer the agent receives for npm install lodash@4.17.20: pinright blocked this dependency change; lodash 4.17.20 has 5 known advisories; use 4.x release 4.18.1.</desc>
+<rect x="0.5" y="0.5" width="849" height="260" rx="10" fill="#f4f3f0" stroke="#e1e0d9"/>
+<path d="M0.5,34 V10.5 Q0.5,0.5 10.5,0.5 H839.5 Q849.5,0.5 849.5,10.5 V34 Z" fill="#e8e7e3"/>
+<circle cx="20" cy="17" r="5.5" fill="#c3c2b7"/>
+<circle cx="38" cy="17" r="5.5" fill="#c3c2b7"/>
+<circle cx="56" cy="17" r="5.5" fill="#c3c2b7"/>
+<text x="425" y="18" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e" text-anchor="middle" dominant-baseline="middle">Claude Code, PreToolUse hook: pinright hook claude</text>
+<text x="22" y="60" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b" font-weight="700">agent runs: npm install lodash@4.17.20</tspan></text>
+<text x="22" y="81" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"></text>
+<rect x="14" y="87" width="822" height="21" fill="#fbe9e7"/>
+<text x="22" y="102" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">pinright blocked this dependency change:</tspan></text>
+<text x="22" y="123" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">- lodash@4.17.20 (npm) has 5 known advisories (CVE-2021-23337, CVE-2026-4800, CVE-2020-28500,</tspan></text>
+<text x="22" y="144" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">  HIGH). Use 4.x release 4.18.1: npm install lodash@4.18.1</tspan></text>
+<text x="22" y="165" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">Change the version (or the name) and try again. check-package and get-docs from the pinright MCP</tspan></text>
+<text x="22" y="186" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">  server explain each case.</tspan></text>
+<text x="22" y="207" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"></text>
+<text x="22" y="228" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#6f6e69">(permissionDecision: deny; the command does not run)</tspan></text>
+</svg>

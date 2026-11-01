@@ -1,0 +1,68 @@
+name: False negative (a bad package got through)
+description: A package or version with a known advisory, a malware record, a lookalike name or a deprecation passed without a block or note.
+title: "False negative: "
+labels: ["false-negative"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        pinright checks known advisories and the [supply-chain signals](https://github.com/Hiper-AI/pinright/blob/main/docs/how-it-works.md#supply-chain-signals) in its docs. A package with no published advisory or malware record is out of reach; if yours has one (an OSV, GHSA or CVE id), this is the right place.
+        If the package is malicious and still on the registry, report it to the registry too (npm: `npm report`, PyPI: the "Report project as malware" link).
+  - type: textarea
+    id: input
+    attributes:
+      label: Exact command or file
+      description: The command the agent ran, pasted as is, or the lines of the manifest, lockfile or workflow it wrote.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: package
+    attributes:
+      label: Package, version and ecosystem
+      placeholder: "npm: lodash@4.17.20"
+    validations:
+      required: true
+  - type: input
+    id: advisory
+    attributes:
+      label: Advisory or evidence
+      description: OSV / GHSA / CVE id, malware report, or a link that shows the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What pinright said, if anything
+      description: The note or verdict, or "nothing" if the hook let it through silently.
+      render: text
+  - type: dropdown
+    id: client
+    attributes:
+      label: Client
+      options:
+        - Claude Code
+        - Cursor
+        - VS Code (GitHub Copilot)
+        - OpenAI Codex
+        - Gemini CLI
+        - Windsurf
+        - Other MCP client
+        - None (CLI or Action)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pinright version
+      description: Output of `npx pinright --version`
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`npx pinright doctor --json`"
+      description: Run it in the same project. It has no tokens, but it shows local paths; edit them out if you prefer.
+      render: json
+    validations:
+      required: true

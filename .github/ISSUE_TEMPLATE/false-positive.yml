@@ -1,0 +1,75 @@
+name: False positive (blocked or flagged when it should not be)
+description: The hook blocked or asked about a command or file that was fine, or a verdict flagged a package that is fine.
+title: "False positive: "
+labels: ["false-positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks. False positives are the most useful report we get: each one is a rule that costs people an approval click.
+        If the package is private, you can let it through today with `"allow"` in `.pinright.json` (or `PINRIGHT_ALLOW`); please still report the rule if it looks wrong.
+        Security problems in pinright itself go to private vulnerability reporting, not here (see SECURITY.md).
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did you see it?
+      options:
+        - Hook (blocked or asked before a command or file write)
+        - MCP tool (check-package, check-packages, check-manifest, find-library)
+        - CLI (pinright check / pinright audit)
+        - GitHub Action
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Exact command or file
+      description: The command the agent ran, pasted as is (quoting matters), or the lines of the manifest, lockfile or workflow it wrote. For the CLI or Action, the exact invocation.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What pinright said
+      description: The full block or ask message, or the verdict.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it is wrong
+      description: For example, the advisory does not apply to this version, the name is a real package, the command installs nothing.
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Client
+      options:
+        - Claude Code
+        - Cursor
+        - VS Code (GitHub Copilot)
+        - OpenAI Codex
+        - Gemini CLI
+        - Windsurf
+        - Other MCP client
+        - None (CLI or Action)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pinright version
+      description: Output of `npx pinright --version`
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`npx pinright doctor --json`"
+      description: Run it in the same project. It has no tokens, but it shows local paths; edit them out if you prefer.
+      render: json
+    validations:
+      required: true

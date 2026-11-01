@@ -1,0 +1,10 @@
+case,cache,budget,budget_ms,p50_ms,p95_ms,note
+Command that installs nothing (npm test),n/a,under 150 ms above Node's own start,238,121,177,"node -e 0 took 88 ms; budget_ms = 88 + 150"
+One install (npm i express),warm,under 1 s,1000,358,372,
+One install,cold,under 5 s,5000,2400,3700,
+15-line requirements.txt,warm,under 1 s,1000,1000,1500,
+15-line requirements.txt,cold,under 5 s,5000,4600,5600,p95 over budget
+package.json with 30 new dependencies,warm,under 1.5 s,1500,1200,1500,
+package.json with 30 new dependencies,cold,bounded by PINRIGHT_HOOK_TIMEOUT_MS (45 s),45000,10900,15200,about 600 requests the first time
+Workflow with 3 uses: lines,warm,under 1 s,1000,392,436,
+Workflow with 3 uses: lines,cold,under 5 s,5000,1500,2000,

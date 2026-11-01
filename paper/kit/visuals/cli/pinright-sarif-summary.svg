@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="968" height="408" viewBox="0 0 968 408" role="img" aria-labelledby="t d">
+<title id="t">pinright.sarif, summarized (fields read from the file)</title>
+<desc id="d">Summary of the SARIF 2.1.0 file pinright audit wrote: 35 results with rule ids, levels, security-severity and stable fingerprints, located at the package.json lines that bring each package in.</desc>
+<rect x="0.5" y="0.5" width="967" height="407" rx="10" fill="#f4f3f0" stroke="#e1e0d9"/>
+<path d="M0.5,34 V10.5 Q0.5,0.5 10.5,0.5 H957.5 Q967.5,0.5 967.5,10.5 V34 Z" fill="#e8e7e3"/>
+<circle cx="20" cy="17" r="5.5" fill="#c3c2b7"/>
+<circle cx="38" cy="17" r="5.5" fill="#c3c2b7"/>
+<circle cx="56" cy="17" r="5.5" fill="#c3c2b7"/>
+<text x="484" y="18" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e" text-anchor="middle" dominant-baseline="middle">pinright.sarif, summarized (fields read from the file)</text>
+<text x="22" y="60" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">tool        pinright 1.0.0, SARIF 2.1.0</tspan></text>
+<text x="22" y="81" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">rules       35</tspan></text>
+<text x="22" y="102" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">results     35: 16 error, 18 warning, 1 note</tspan></text>
+<text x="22" y="123" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">locations   package.json:8, package.json:6</tspan></text>
+<text x="22" y="144" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">fingerprint partialFingerprints.primaryLocationLineHash on every result</tspan></text>
+<text x="22" y="165" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"></text>
+<text x="22" y="186" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">error    GHSA-fjxv-7rqg-78g4 (security-severity 9.5): form-data@4.0.1 (direct dependency) is affected by</tspan></text>
+<text x="22" y="207" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">  GHSA-fjxv-7rqg-78g4 (CVE-2025-7783): form-data uses unsafe random function in form-data for choosing</tspan></text>
+<text x="22" y="228" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">  boundary</tspan></text>
+<text x="22" y="249" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">error    GHSA-hmw2-7cc7-3qxx (security-severity 7.5): form-data@4.0.1 (direct dependency) is affected by</tspan></text>
+<text x="22" y="270" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">  GHSA-hmw2-7cc7-3qxx (CVE-2026-12143): form-data: CRLF injection in form-data via unescaped multipart field</tspan></text>
+<text x="22" y="291" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">  names and filenames</tspan></text>
+<text x="22" y="312" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">error    GHSA-35jp-ww65-95wh (security-severity 8.7): axios@1.7.9 (direct dependency) is affected by</tspan></text>
+<text x="22" y="333" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">  GHSA-35jp-ww65-95wh (CVE-2026-44494): axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution</tspan></text>
+<text x="22" y="354" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">  Gadget in `config.proxy`</tspan></text>
+<text x="22" y="375" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve"><tspan fill="#0b0b0b">... 32 more</tspan></text>
+</svg>

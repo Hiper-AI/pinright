@@ -1,0 +1,12 @@
+measure,set,items,flagged_high,flagged_medium,flagged_total,expected,note
+False positives on real docs,"every section get-docs gathered for 32 packages (18 npm, 14 PyPI), 45.6 MB",38381,4,26,30,0,all flagged sections are false positives
+False positives in the served answers,"get-docs answers for those 32 questions",32,0,0,0,0,nothing removed or warned
+False positives in upgrade guides,"upgrade-guide on 6 real upgrades",6,0,0,0,0,nothing removed or warned
+Adversarial corpus (written with the rules),test/fixtures/injection/cases.ts,61,52,9,61,61,regression floor; 61/61 at the expected level
+Hard negatives,test/fixtures/injection/cases.ts,41,,,0,0,
+Held-out attacks (first rules),bench/injection/heldout.ts,20,3,2,5,20,written after the rules froze; scored once
+Held-out attacks (after round 1),bench/injection/heldout2.ts,15,2,4,6,15,written after the rules froze; scored once
+Held-out attacks (after round 2),bench/injection/heldout3.ts,15,2,1,3,15,written after the rules froze; scored once
+Held-out benign (first rules),bench/injection/heldout.ts,15,,,0,0,
+Held-out benign (after round 1),bench/injection/heldout2.ts,10,,,0,0,
+Held-out benign (after round 2),bench/injection/heldout3.ts,10,,,0,0,

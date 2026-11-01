@@ -1,0 +1,689 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildSarif > matches the snapshot 1`] = `
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "columnKind": "utf16CodeUnits",
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": [
+            {
+              "level": "note",
+              "message": {
+                "text": "a note for the run",
+              },
+            },
+          ],
+        },
+      ],
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "uri": "file:///repo/",
+        },
+      },
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package-lock.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 27,
+                  "startColumn": 19,
+                  "startLine": 26,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "minimist@0.0.8 (via mkdirp > minimist) is affected by GHSA-xvch-5gv4-984h (CVE-2021-44906): Prototype Pollution in minimist. Severity: critical. Fix: upgrade mkdirp from 0.5.1 to 0.5.6, which no longer pulls the affected version: npm install mkdirp@0.5.6",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "80eda347f253fc63855ba8aedfd92c79",
+          },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": {
+                "text": "mkdirp brings in minimist",
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 12,
+                  "startColumn": 6,
+                  "startLine": 9,
+                },
+              },
+            },
+          ],
+          "ruleId": "GHSA-xvch-5gv4-984h",
+          "ruleIndex": 3,
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 12,
+                  "startColumn": 6,
+                  "startLine": 8,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "lodash@4.17.20 (direct dependency) is affected by GHSA-35jh-r3h4-6jhm (CVE-2021-23337): Command Injection in lodash. Severity: high. Fix: upgrade to 4.17.21: npm install lodash@4.17.21",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "7b03a5bedb176ac4e827e97ec80f9282",
+          },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": {
+                "text": "lodash@4.17.20 locked here",
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package-lock.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 25,
+                  "startColumn": 19,
+                  "startLine": 21,
+                },
+              },
+            },
+          ],
+          "ruleId": "GHSA-35jh-r3h4-6jhm",
+          "ruleIndex": 1,
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 12,
+                  "startColumn": 6,
+                  "startLine": 8,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "lodash@4.17.20 (direct dependency) is affected by GHSA-29mw-wpgm-hmr9 (CVE-2020-28500): Regular Expression Denial of Service (ReDoS) in lodash. Severity: moderate. Fix: upgrade to 4.17.21: npm install lodash@4.17.21",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ce4d4e368d253bc6b84668e0b0d67987",
+          },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": {
+                "text": "lodash@4.17.20 locked here",
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package-lock.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 25,
+                  "startColumn": 19,
+                  "startLine": 21,
+                },
+              },
+            },
+          ],
+          "ruleId": "GHSA-29mw-wpgm-hmr9",
+          "ruleIndex": 0,
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 14,
+                  "startColumn": 6,
+                  "startLine": 7,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "expresss looks like a typosquat of "express".",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "75be6f2908007f4a89f358c9024b41f2",
+          },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": {
+                "text": "expresss@0.0.0 locked here",
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package-lock.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 27,
+                  "startColumn": 19,
+                  "startLine": 16,
+                },
+              },
+            },
+          ],
+          "ruleId": "pinright/typosquat",
+          "ruleIndex": 8,
+        },
+        {
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 12,
+                  "startColumn": 6,
+                  "startLine": 9,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "mkdirp@0.5.1 is deprecated.",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "625483b374ea5b8d1eba7a4e48129609",
+          },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": {
+                "text": "mkdirp@0.5.1 locked here",
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package-lock.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 25,
+                  "startColumn": 19,
+                  "startLine": 31,
+                },
+              },
+            },
+          ],
+          "ruleId": "pinright/deprecated",
+          "ruleIndex": 5,
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 12,
+                  "startColumn": 6,
+                  "startLine": 8,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "lodash@4.17.20: new package with install scripts",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f773de6b5747050516f285dcf5a23503",
+          },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": {
+                "text": "lodash@4.17.20 locked here",
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package-lock.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 25,
+                  "startColumn": 19,
+                  "startLine": 21,
+                },
+              },
+            },
+          ],
+          "ruleId": "pinright/risk/install-script-new-package",
+          "ruleIndex": 7,
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package-lock.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 27,
+                  "startColumn": 19,
+                  "startLine": 26,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "minimist: denied by the project policy (.pinright.json): use yargs.",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "52252b5e691c11e5c47feac1aab55257",
+          },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": {
+                "text": "mkdirp brings in minimist",
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/package.json",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 12,
+                  "startColumn": 6,
+                  "startLine": 9,
+                },
+              },
+            },
+          ],
+          "ruleId": "pinright/policy-deny",
+          "ruleIndex": 6,
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".github/workflows/ci.yml",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 43,
+                  "startColumn": 15,
+                  "startLine": 9,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "uses: tj-actions/changed-files@v35 (v35.9.3) is affected by GHSA-mrrh-fwg8-r2c3 (CVE-2025-30066): tj-actions changed-files allows remote attackers to discover secrets by reading actions logs. Use: uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "75b0dd60eacd3c362e8f80766b74160b",
+          },
+          "ruleId": "GHSA-mrrh-fwg8-r2c3",
+          "ruleIndex": 2,
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".github/workflows/ci.yml",
+                  "uriBaseId": "%SRCROOT%",
+                },
+                "region": {
+                  "endColumn": 34,
+                  "startColumn": 15,
+                  "startLine": 7,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "uses: actions/checkout@v4 is a mutable ref; a tag can be re-pointed to other code. Pin the commit: uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0",
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fdf598565a59933f2ade01ede416effe",
+          },
+          "ruleId": "pinright/action-unpinned",
+          "ruleIndex": 4,
+        },
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/Hiper-AI/pinright",
+          "name": "pinright",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "warning",
+              },
+              "fullDescription": {
+                "text": "GHSA-29mw-wpgm-hmr9 (CVE-2020-28500): Regular Expression Denial of Service (ReDoS) in lodash. Severity: moderate.",
+              },
+              "help": {
+                "markdown": "**GHSA-29mw-wpgm-hmr9** (CVE-2020-28500): Regular Expression Denial of Service (ReDoS) in lodash
+
+Severity: moderate.
+
+[Advisory](https://github.com/advisories/GHSA-29mw-wpgm-hmr9) · [OSV](https://osv.dev/vulnerability/GHSA-29mw-wpgm-hmr9)
+
+The result message has the upgrade that clears it.",
+                "text": "GHSA-29mw-wpgm-hmr9 (CVE-2020-28500): Regular Expression Denial of Service (ReDoS) in lodash. Severity: moderate. Details: https://github.com/advisories/GHSA-29mw-wpgm-hmr9. Upgrade to a version without the advisory; the result message names it.",
+              },
+              "helpUri": "https://github.com/advisories/GHSA-29mw-wpgm-hmr9",
+              "id": "GHSA-29mw-wpgm-hmr9",
+              "name": "GHSA29mwWpgmHmr9",
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "5.5",
+                "tags": [
+                  "security",
+                  "vulnerability",
+                  "dependency",
+                  "npm",
+                  "CVE-2020-28500",
+                ],
+              },
+              "shortDescription": {
+                "text": "CVE-2020-28500: Regular Expression Denial of Service (ReDoS) in lodash",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error",
+              },
+              "fullDescription": {
+                "text": "GHSA-35jh-r3h4-6jhm (CVE-2021-23337): Command Injection in lodash. Severity: high, CVSS 7.2.",
+              },
+              "help": {
+                "markdown": "**GHSA-35jh-r3h4-6jhm** (CVE-2021-23337): Command Injection in lodash
+
+Severity: high.
+
+[Advisory](https://github.com/advisories/GHSA-35jh-r3h4-6jhm) · [OSV](https://osv.dev/vulnerability/GHSA-35jh-r3h4-6jhm)
+
+The result message has the upgrade that clears it.",
+                "text": "GHSA-35jh-r3h4-6jhm (CVE-2021-23337): Command Injection in lodash. Severity: high, CVSS 7.2. Details: https://github.com/advisories/GHSA-35jh-r3h4-6jhm. Upgrade to a version without the advisory; the result message names it.",
+              },
+              "helpUri": "https://github.com/advisories/GHSA-35jh-r3h4-6jhm",
+              "id": "GHSA-35jh-r3h4-6jhm",
+              "name": "GHSA35jhR3h46jhm",
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "7.2",
+                "tags": [
+                  "security",
+                  "vulnerability",
+                  "dependency",
+                  "npm",
+                  "CVE-2021-23337",
+                ],
+              },
+              "shortDescription": {
+                "text": "CVE-2021-23337: Command Injection in lodash",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error",
+              },
+              "fullDescription": {
+                "text": "GHSA-mrrh-fwg8-r2c3 (CVE-2025-30066): tj-actions changed-files allows remote attackers to discover secrets by reading actions logs. Severity: high, CVSS 8.6.",
+              },
+              "help": {
+                "markdown": "**GHSA-mrrh-fwg8-r2c3** (CVE-2025-30066): tj-actions changed-files allows remote attackers to discover secrets by reading actions logs
+
+Severity: high.
+
+[Advisory](https://github.com/advisories/GHSA-mrrh-fwg8-r2c3) · [OSV](https://osv.dev/vulnerability/GHSA-mrrh-fwg8-r2c3)
+
+The result message has the upgrade that clears it.",
+                "text": "GHSA-mrrh-fwg8-r2c3 (CVE-2025-30066): tj-actions changed-files allows remote attackers to discover secrets by reading actions logs. Severity: high, CVSS 8.6. Details: https://github.com/advisories/GHSA-mrrh-fwg8-r2c3. Upgrade to a version without the advisory; the result message names it.",
+              },
+              "helpUri": "https://github.com/advisories/GHSA-mrrh-fwg8-r2c3",
+              "id": "GHSA-mrrh-fwg8-r2c3",
+              "name": "GHSAMrrhFwg8R2c3",
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "8.6",
+                "tags": [
+                  "security",
+                  "vulnerability",
+                  "dependency",
+                  "github-actions",
+                  "CVE-2025-30066",
+                ],
+              },
+              "shortDescription": {
+                "text": "CVE-2025-30066: tj-actions changed-files allows remote attackers to discover secrets by reading actions logs",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error",
+              },
+              "fullDescription": {
+                "text": "GHSA-xvch-5gv4-984h (CVE-2021-44906): Prototype Pollution in minimist. Severity: critical, CVSS 9.8.",
+              },
+              "help": {
+                "markdown": "**GHSA-xvch-5gv4-984h** (CVE-2021-44906): Prototype Pollution in minimist
+
+Severity: critical.
+
+[Advisory](https://github.com/advisories/GHSA-xvch-5gv4-984h) · [OSV](https://osv.dev/vulnerability/GHSA-xvch-5gv4-984h)
+
+The result message has the upgrade that clears it.",
+                "text": "GHSA-xvch-5gv4-984h (CVE-2021-44906): Prototype Pollution in minimist. Severity: critical, CVSS 9.8. Details: https://github.com/advisories/GHSA-xvch-5gv4-984h. Upgrade to a version without the advisory; the result message names it.",
+              },
+              "helpUri": "https://github.com/advisories/GHSA-xvch-5gv4-984h",
+              "id": "GHSA-xvch-5gv4-984h",
+              "name": "GHSAXvch5gv4984h",
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "9.8",
+                "tags": [
+                  "security",
+                  "vulnerability",
+                  "dependency",
+                  "npm",
+                  "CVE-2021-44906",
+                ],
+              },
+              "shortDescription": {
+                "text": "CVE-2021-44906: Prototype Pollution in minimist",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "warning",
+              },
+              "fullDescription": {
+                "text": "A tag or branch can be re-pointed to other code, as in the tj-actions/changed-files compromise. Pin third-party actions to a full commit SHA, with the version as a comment.",
+              },
+              "help": {
+                "markdown": "A tag or branch can be re-pointed to other code, as in the tj-actions/changed-files compromise. Pin third-party actions to a full commit SHA, with the version as a comment.
+
+Reported by [pinright](https://github.com/Hiper-AI/pinright).",
+                "text": "A tag or branch can be re-pointed to other code, as in the tj-actions/changed-files compromise. Pin third-party actions to a full commit SHA, with the version as a comment.",
+              },
+              "helpUri": "https://github.com/Hiper-AI/pinright/blob/main/docs/action.md",
+              "id": "pinright/action-unpinned",
+              "name": "UnpinnedAction",
+              "properties": {
+                "precision": "high",
+                "security-severity": "5.0",
+                "tags": [
+                  "security",
+                  "github-actions",
+                  "supply-chain",
+                ],
+              },
+              "shortDescription": {
+                "text": "GitHub Action referenced by a mutable tag or branch",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "note",
+              },
+              "fullDescription": {
+                "text": "The registry marks this version as deprecated. Deprecated packages stop receiving security fixes.",
+              },
+              "help": {
+                "markdown": "The registry marks this version as deprecated. Deprecated packages stop receiving security fixes.
+
+Reported by [pinright](https://github.com/Hiper-AI/pinright).",
+                "text": "The registry marks this version as deprecated. Deprecated packages stop receiving security fixes.",
+              },
+              "helpUri": "https://github.com/Hiper-AI/pinright/blob/main/docs/action.md",
+              "id": "pinright/deprecated",
+              "name": "DeprecatedVersion",
+              "properties": {
+                "precision": "high",
+                "tags": [
+                  "maintenance",
+                  "supply-chain",
+                ],
+              },
+              "shortDescription": {
+                "text": "Dependency version is deprecated",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error",
+              },
+              "fullDescription": {
+                "text": "The team policy (.pinright.json) denies this package. Replace it as the policy says, or change the policy.",
+              },
+              "help": {
+                "markdown": "The team policy (.pinright.json) denies this package. Replace it as the policy says, or change the policy.
+
+Reported by [pinright](https://github.com/Hiper-AI/pinright).",
+                "text": "The team policy (.pinright.json) denies this package. Replace it as the policy says, or change the policy.",
+              },
+              "helpUri": "https://github.com/Hiper-AI/pinright/blob/main/docs/action.md",
+              "id": "pinright/policy-deny",
+              "name": "PolicyDeniedPackage",
+              "properties": {
+                "precision": "high",
+                "tags": [
+                  "policy",
+                  "supply-chain",
+                ],
+              },
+              "shortDescription": {
+                "text": "Package denied by the project policy",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error",
+              },
+              "fullDescription": {
+                "text": "Supply-chain risk signal "install-script-new-package" (behavior, not a known advisory): install scripts, provenance, publisher changes, package age and downloads. Review the package before trusting it.",
+              },
+              "help": {
+                "markdown": "Supply-chain risk signal "install-script-new-package" (behavior, not a known advisory): install scripts, provenance, publisher changes, package age and downloads. Review the package before trusting it.",
+                "text": "Supply-chain risk signal "install-script-new-package" (behavior, not a known advisory): install scripts, provenance, publisher changes, package age and downloads. Review the package before trusting it.",
+              },
+              "helpUri": "https://github.com/Hiper-AI/pinright/blob/main/docs/how-it-works.md#supply-chain-signals",
+              "id": "pinright/risk/install-script-new-package",
+              "name": "RiskInstallScriptNewPackage",
+              "properties": {
+                "precision": "medium",
+                "security-severity": "7.5",
+                "tags": [
+                  "security",
+                  "supply-chain",
+                  "risk",
+                ],
+              },
+              "shortDescription": {
+                "text": "Supply-chain risk: install script new package",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error",
+              },
+              "fullDescription": {
+                "text": "A direct dependency is one or two edits away from a popular package and is either very new or used by a tiny fraction of its audience. Misspelled names are a common way to get malware installed.",
+              },
+              "help": {
+                "markdown": "A direct dependency is one or two edits away from a popular package and is either very new or used by a tiny fraction of its audience. Misspelled names are a common way to get malware installed.
+
+Reported by [pinright](https://github.com/Hiper-AI/pinright).",
+                "text": "A direct dependency is one or two edits away from a popular package and is either very new or used by a tiny fraction of its audience. Misspelled names are a common way to get malware installed.",
+              },
+              "helpUri": "https://github.com/Hiper-AI/pinright/blob/main/docs/action.md",
+              "id": "pinright/typosquat",
+              "name": "Typosquat",
+              "properties": {
+                "precision": "high",
+                "security-severity": "8.0",
+                "tags": [
+                  "security",
+                  "typosquatting",
+                  "supply-chain",
+                ],
+              },
+              "shortDescription": {
+                "text": "Dependency name looks like a typosquat of a popular package",
+              },
+            },
+          ],
+          "semanticVersion": "0.2.0",
+          "version": "0.2.0",
+        },
+      },
+    },
+  ],
+  "version": "2.1.0",
+}
+`;

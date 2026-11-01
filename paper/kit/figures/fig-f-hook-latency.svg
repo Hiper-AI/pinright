@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="446" viewBox="0 0 1040 446" role="img" aria-labelledby="t d">
+<title id="t">Hook latency, p50 and p95, against budgets</title>
+<desc id="d">Non-install command 121 ms p50 and 177 ms p95 (budget 238 ms including Node start); one install warm 358 / 372 ms (budget 1 s); one install cold 2.4 / 3.7 s (budget 5 s).</desc>
+<rect x="0.5" y="0.5" width="1039" height="445" rx="10" fill="#fcfcfb" stroke="#e1e0d9"/>
+<text x="32" y="40" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="19" fill="#0b0b0b" font-weight="650">Hook latency</text>
+<text x="32" y="64" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13.5" fill="#52514e">p50 bar and p95 whisker, 5 runs per case, live services (Windows, Node 24). The dashed tick is the budget. Log scale.</text>
+<rect x="32" y="90" width="12" height="12" rx="3" fill="#2a78d6"/>
+<text x="50" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e">p50</text>
+<rect x="97.5" y="90" width="12" height="12" rx="3" fill="#52514e"/>
+<text x="115.5" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e">p95 (whisker)</text>
+<rect x="228" y="90" width="12" height="12" rx="3" fill="#eb6834"/>
+<text x="246" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e">Budget</text>
+<line x1="330" x2="330" y1="140" y2="372" stroke="#e1e0d9"/>
+<text x="330" y="390" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">50 ms</text>
+<line x1="415" x2="415" y1="140" y2="372" stroke="#e1e0d9"/>
+<text x="415" y="390" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">100 ms</text>
+<line x1="527.4" x2="527.4" y1="140" y2="372" stroke="#e1e0d9"/>
+<text x="527.4" y="390" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">250 ms</text>
+<line x1="612.5" x2="612.5" y1="140" y2="372" stroke="#e1e0d9"/>
+<text x="612.5" y="390" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">500 ms</text>
+<line x1="697.5" x2="697.5" y1="140" y2="372" stroke="#e1e0d9"/>
+<text x="697.5" y="390" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">1 s</text>
+<line x1="809.9" x2="809.9" y1="140" y2="372" stroke="#e1e0d9"/>
+<text x="809.9" y="390" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">2.5 s</text>
+<line x1="895" x2="895" y1="140" y2="372" stroke="#e1e0d9"/>
+<text x="895" y="390" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">5 s</text>
+<line x1="980" x2="980" y1="140" y2="372" stroke="#e1e0d9"/>
+<text x="980" y="390" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">10 s</text>
+<text x="32" y="174" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">Command that installs nothing (npm test)</text>
+<text x="32" y="192" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">budget: under 150 ms above Node's own start</text>
+<g><title>Command that installs nothing (npm test): p50 121 ms, p95 177 ms</title><path d="M330,164 H434.4 Q438.4,164 438.4,168 V182 Q438.4,186 434.4,186 H330 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25"><line x1="438.4" x2="485.1" y1="175" y2="175"/><line x1="485.1" x2="485.1" y1="169" y2="181"/></g>
+<line x1="521.4" x2="521.4" y1="156" y2="194" stroke="#eb6834" stroke-width="2" stroke-dasharray="4 3"/>
+<text x="330" y="204" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">p50 121 ms, p95 177 ms</text>
+<text x="32" y="248" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">One install, warm cache</text>
+<text x="32" y="266" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">budget: under 1 s</text>
+<g><title>One install, warm cache: p50 358 ms, p95 372 ms</title><path d="M330,238 H567.5 Q571.5,238 571.5,242 V256 Q571.5,260 567.5,260 H330 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25"><line x1="571.5" x2="576.2" y1="249" y2="249"/><line x1="576.2" x2="576.2" y1="243" y2="255"/></g>
+<line x1="697.5" x2="697.5" y1="230" y2="268" stroke="#eb6834" stroke-width="2" stroke-dasharray="4 3"/>
+<text x="330" y="278" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">p50 358 ms, p95 372 ms</text>
+<text x="32" y="322" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">One install, cold cache</text>
+<text x="32" y="340" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">budget: under 5 s</text>
+<g><title>One install, cold cache: p50 2400 ms, p95 3700 ms</title><path d="M330,312 H800.9 Q804.9,312 804.9,316 V330 Q804.9,334 800.9,334 H330 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25"><line x1="804.9" x2="858" y1="323" y2="323"/><line x1="858" x2="858" y1="317" y2="329"/></g>
+<line x1="895" x2="895" y1="304" y2="342" stroke="#eb6834" stroke-width="2" stroke-dasharray="4 3"/>
+<text x="330" y="352" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">p50 2.4 s, p95 3.7 s</text>
+<text x="32" y="428" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">Source: README &quot;Latency&quot; (scripts/latency.ts); paper/kit/data/latency.csv. First row: Node alone (node -e 0) took 88 ms, so the budget is 88 + 150 ms.</text>
+</svg>

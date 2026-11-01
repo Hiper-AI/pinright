@@ -1,0 +1,20 @@
+# Cloudflare Pages response headers. HSTS is implicit: .dev is on the HSTS preload list.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()
+  Cross-Origin-Opener-Policy: same-origin
+  X-Frame-Options: DENY
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/kit/*
+  Cache-Control: public, max-age=86400
+
+# Browser PDF viewers run as a plugin; the page CSP's object-src 'none' can break them.
+/report.pdf
+  ! Content-Security-Policy
+  Content-Disposition: inline; filename="pinright-report.pdf"
+  Cache-Control: public, max-age=3600

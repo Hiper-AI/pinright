@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.*
+*.log
+.DS_Store
+bench/agents/runs/
+pack.json
+*.tgz
+bench/docs/runs/
+build/
+paper/kit/pinright-paper-kit.zip

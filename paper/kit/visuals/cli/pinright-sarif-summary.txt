@@ -1,0 +1,10 @@
+tool        pinright 1.0.0, SARIF 2.1.0
+rules       35
+results     35: 16 error, 18 warning, 1 note
+locations   package.json:8, package.json:6
+fingerprint partialFingerprints.primaryLocationLineHash on every result
+
+error    GHSA-fjxv-7rqg-78g4 (security-severity 9.5): form-data@4.0.1 (direct dependency) is affected by GHSA-fjxv-7rqg-78g4 (CVE-2025-7783): form-data uses unsafe random function in form-data for choosing boundary
+error    GHSA-hmw2-7cc7-3qxx (security-severity 7.5): form-data@4.0.1 (direct dependency) is affected by GHSA-hmw2-7cc7-3qxx (CVE-2026-12143): form-data: CRLF injection in form-data via unescaped multipart field names and filenames
+error    GHSA-35jp-ww65-95wh (security-severity 8.7): axios@1.7.9 (direct dependency) is affected by GHSA-35jp-ww65-95wh (CVE-2026-44494): axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy`
+... 32 more

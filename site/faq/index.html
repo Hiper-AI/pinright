@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>FAQ · pinright</title>
+    <meta name="description" content="Does pinright upload code? Which ecosystems? What if a registry is down? How it relates to Dependabot and npm audit, speed, bypasses, cost and license.">
+    <link rel="canonical" href="https://pinright.dev/faq/">
+    <meta property="og:url" content="https://pinright.dev/faq/">
+    <meta property="og:title" content="FAQ · pinright">
+    <meta property="og:description" content="Short, honest answers about privacy, coverage, outages, speed, bypasses and cost.">
+    <meta name="twitter:title" content="FAQ · pinright">
+    <meta name="twitter:description" content="Short, honest answers about privacy, coverage, outages, speed, bypasses and cost.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html /faq/ -->
+    <main id="main">
+      <header class="page-head">
+        <div class="wrap">
+          <p class="eyebrow">FAQ</p>
+          <h1>Questions developers ask first</h1>
+        </div>
+      </header>
+      <section class="section" aria-label="Questions and answers">
+        <div class="wrap faq">
+          <details id="upload" open>
+            <summary>Does it upload my code?</summary>
+            <div class="answer">
+              <p>No. pinright sends package names and versions to public services (deps.dev, OSV, the registries, jsDelivr, GitHub), never your source code, file contents or environment. A private package name you check does reach those services. No telemetry, no account. <a href="/security/#network">What goes where</a></p>
+            </div>
+          </details>
+          <details id="ecosystems">
+            <summary>Which ecosystems does it cover?</summary>
+            <div class="answer">
+              <p>Verdicts and audits: npm, PyPI, Cargo, Go, RubyGems, NuGet, Maven and Gradle, Composer and GitHub Actions. The hook reads install commands for most of them and manifest writes for all but RubyGems and NuGet. Version-accurate docs cover npm and PyPI packages and GitHub repositories.</p>
+            </div>
+          </details>
+          <details id="down">
+            <summary>What happens if a registry or advisory database is down?</summary>
+            <div class="answer">
+              <p>pinright says ok only when deps.dev and OSV both answered. Otherwise the verdict is <code>unknown</code> and names the host. The starter <code>.pinright.json</code> that <code>init</code> writes makes the hook ask you; without a policy file it allows the change and tells the agent it was not verified. A check that runs past 45 seconds asks a human. Answers are cached for 24 hours, docs for 7 days.</p>
+            </div>
+          </details>
+          <details id="dependabot">
+            <summary>How is this different from Dependabot or npm audit?</summary>
+            <div class="answer">
+              <p>Those tools report on dependencies already in your lockfile or repository. pinright acts earlier, while the agent picks the version: it names a clean release on the line you use, gives the agent docs for that version, and the hook checks the install before it runs. It also checks lookalike names, malware records and packages that do not exist. For CI, <code>pinright audit</code> and the Action audit the whole tree; on 394 benchmark lockfiles they flagged the same packages as npm audit and pip-audit. Use them together.</p>
+            </div>
+          </details>
+          <details id="slow">
+            <summary>Does it slow my agent down?</summary>
+            <div class="answer">
+              <p>A little. The hook took 121 ms at the median on a command that installs nothing, 358 ms on one install with a warm cache and 2.4 s cold. In the benchmark, runs with the MCP server took about 2 to 4 more turns and 1.5 to 2 times the API-equivalent cost of a run without tools. A global install starts faster than npx; see the <a href="https://github.com/Hiper-AI/pinright#latency">Latency</a> section of the README.</p>
+            </div>
+          </details>
+          <details id="bypass">
+            <summary>Can the hook be bypassed?</summary>
+            <div class="answer">
+              <p>Yes. It reads commands; it is not a sandbox. Code that calls <code>pip</code> from inside a program, <code>curl … | sh</code>, heavy obfuscation and tools the hook is not wired to get past it. What it cannot read asks by default. Keep a proxy registry and run agents in a sandbox. <a href="/security/#hook">Threat model in brief</a></p>
+            </div>
+          </details>
+          <details id="unknown">
+            <summary>Does "ok" mean a package is clean?</summary>
+            <div class="answer">
+              <p>It means no advisory or malware record is published for that version, and the name does not look like a typo of a popular one. pinright knows published advisories only. For brand-new attacks it adds supply-chain signals, and the hook blocks two patterns: a package younger than 14 days that runs install scripts, and a release that adds install scripts and comes from a publisher the previous releases never had.</p>
+            </div>
+          </details>
+          <details id="false-positive">
+            <summary>The hook blocked something it should not have. What now?</summary>
+            <div class="answer">
+              <p>Add the name to <code>"allow"</code> in <code>.pinright.json</code> to let it through, and please <a href="https://github.com/Hiper-AI/pinright/issues/new?template=false-positive.yml">report the false positive</a> with the exact command and the output of <code>pinright doctor --json</code>. It is the report we value most.</p>
+            </div>
+          </details>
+          <details id="cost">
+            <summary>What does it cost?</summary>
+            <div class="answer">
+              <p>Nothing. No account, no key, no paid tier. The data comes from public services. The only cost is the extra agent turns described above.</p>
+            </div>
+          </details>
+          <details id="license">
+            <summary>What is the license?</summary>
+            <div class="answer">
+              <p>MIT, by <a href="https://hiperai.com">Hiper AI</a>. Contributions are welcome; start with <a href="https://github.com/Hiper-AI/pinright/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>. Questions: <a href="mailto:opensource@hiperai.com">opensource@hiperai.com</a>.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

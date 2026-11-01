@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="544" viewBox="0 0 1040 544" role="img" aria-labelledby="t d">
+<title id="t">Hook false-positive rate by source, before and after fixes</title>
+<desc id="d">package.json scripts: 0.27% to 0.06%; README / CONTRIBUTING lines: 0.98% to 0.61%; Makefile / justfile targets: 5.34% to 0.42%; GitHub Actions run: steps: 2.29% to 1.54%; Dockerfile RUN: 4.78% to 4.36%; Manifest writes: 7.60% to 2.61%</desc>
+<rect x="0.5" y="0.5" width="1039" height="543" rx="10" fill="#fcfcfb" stroke="#e1e0d9"/>
+<text x="32" y="40" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="19" fill="#0b0b0b" font-weight="650">Hook false positives on public commands, by source</text>
+<text x="32" y="64" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13.5" fill="#52514e">25,077 commands and manifest writes from 180 public repositories, replayed through the real hook. Share blocked or asked, without ${{ }} templating.</text>
+<rect x="32" y="90" width="12" height="12" rx="3" fill="#a9a8a2"/>
+<text x="50" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e">Baseline (1.0.0 RC)</text>
+<rect x="201.5" y="90" width="12" height="12" rx="3" fill="#2a78d6"/>
+<text x="219.5" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e">After the false-positive fixes</text>
+<line x1="282" x2="282" y1="140" y2="474" stroke="#c3c2b7"/>
+<text x="282" y="492" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">0%</text>
+<line x1="449" x2="449" y1="140" y2="474" stroke="#e1e0d9"/>
+<text x="449" y="492" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">2%</text>
+<line x1="616" x2="616" y1="140" y2="474" stroke="#e1e0d9"/>
+<text x="616" y="492" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">4%</text>
+<line x1="783" x2="783" y1="140" y2="474" stroke="#e1e0d9"/>
+<text x="783" y="492" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">6%</text>
+<line x1="950" x2="950" y1="140" y2="474" stroke="#e1e0d9"/>
+<text x="950" y="492" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="middle">8%</text>
+<text x="32" y="170" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">package.json scripts</text>
+<text x="32" y="188" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">6,588 entries</text>
+<g><title>package.json scripts, baseline: 0.27%</title><path d="M282,156 H300.5 Q304.5,156 304.5,160 V168 Q304.5,172 300.5,172 H282 Z" fill="#a9a8a2"/></g>
+<text x="310.5" y="169" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">0.27%</text>
+<g><title>package.json scripts, after: 0.06%</title><path d="M282,175 H283 Q287,175 287,179 V187 Q287,191 283,191 H282 Z" fill="#2a78d6"/></g>
+<text x="293" y="188" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">0.06%</text>
+<text x="32" y="224" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">README / CONTRIBUTING lines</text>
+<text x="32" y="242" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">2,146 entries</text>
+<g><title>README / CONTRIBUTING lines, baseline: 0.98%</title><path d="M282,210 H359.8 Q363.8,210 363.8,214 V222 Q363.8,226 359.8,226 H282 Z" fill="#a9a8a2"/></g>
+<text x="369.8" y="223" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">0.98%</text>
+<g><title>README / CONTRIBUTING lines, after: 0.61%</title><path d="M282,229 H328.9 Q332.9,229 332.9,233 V241 Q332.9,245 328.9,245 H282 Z" fill="#2a78d6"/></g>
+<text x="338.9" y="242" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">0.61%</text>
+<text x="32" y="278" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">Makefile / justfile targets</text>
+<text x="32" y="296" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">711 entries</text>
+<g><title>Makefile / justfile targets, baseline: 5.34%</title><path d="M282,264 H723.9 Q727.9,264 727.9,268 V276 Q727.9,280 723.9,280 H282 Z" fill="#a9a8a2"/></g>
+<text x="733.9" y="277" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">5.34%</text>
+<g><title>Makefile / justfile targets, after: 0.42%</title><path d="M282,283 H313.1 Q317.1,283 317.1,287 V295 Q317.1,299 313.1,299 H282 Z" fill="#2a78d6"/></g>
+<text x="323.1" y="296" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">0.42%</text>
+<text x="32" y="332" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">GitHub Actions run: steps</text>
+<text x="32" y="350" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">14,040 entries</text>
+<g><title>GitHub Actions run: steps, baseline: 2.29%</title><path d="M282,318 H469.2 Q473.2,318 473.2,322 V330 Q473.2,334 469.2,334 H282 Z" fill="#a9a8a2"/></g>
+<text x="479.2" y="331" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">2.29%</text>
+<g><title>GitHub Actions run: steps, after: 1.54%</title><path d="M282,337 H406.6 Q410.6,337 410.6,341 V349 Q410.6,353 406.6,353 H282 Z" fill="#2a78d6"/></g>
+<text x="416.6" y="350" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">1.54%</text>
+<text x="32" y="386" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">Dockerfile RUN</text>
+<text x="32" y="404" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">1,171 entries</text>
+<g><title>Dockerfile RUN, baseline: 4.78%</title><path d="M282,372 H677.1 Q681.1,372 681.1,376 V384 Q681.1,388 677.1,388 H282 Z" fill="#a9a8a2"/></g>
+<text x="687.1" y="385" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">4.78%</text>
+<g><title>Dockerfile RUN, after: 4.36%</title><path d="M282,391 H642.1 Q646.1,391 646.1,395 V403 Q646.1,407 642.1,407 H282 Z" fill="#2a78d6"/></g>
+<text x="652.1" y="404" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">4.36%</text>
+<text x="32" y="440" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" font-weight="600">Manifest writes</text>
+<text x="32" y="458" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">421 entries</text>
+<g><title>Manifest writes, baseline: 7.6%</title><path d="M282,426 H912.6 Q916.6,426 916.6,430 V438 Q916.6,442 912.6,442 H282 Z" fill="#a9a8a2"/></g>
+<text x="922.6" y="439" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">7.60%</text>
+<g><title>Manifest writes, after: 2.61%</title><path d="M282,445 H495.9 Q499.9,445 499.9,449 V457 Q499.9,461 495.9,461 H282 Z" fill="#2a78d6"/></g>
+<text x="505.9" y="458" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#52514e">2.61%</text>
+<text x="32" y="510" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">Source: bench/fp/RESULTS.md; paper/kit/data/fp_by_source.csv. All entries: 2.22% to 1.44% (1.46% on top of the second security review). Most remaining asks are</text>
+<text x="32" y="526" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">by design (versions or paths in variables).</text>
+</svg>

@@ -1,0 +1,38 @@
+name: Feature request
+description: A new ecosystem, client, check or option.
+title: "Feature: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The situation, with a concrete command, file or package if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Hook
+        - Verdict and supply-chain signals
+        - Docs and upgrade guides
+        - New ecosystem
+        - New client
+        - Team policy (.pinright.json)
+        - CLI or GitHub Action
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Links
+      description: For a new client or ecosystem, the official docs for its config files, hooks or registry API.

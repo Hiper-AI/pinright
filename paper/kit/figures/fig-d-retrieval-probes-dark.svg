@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="540" viewBox="0 0 1000 540" role="img" aria-labelledby="t d">
+<title id="t">Retrieval probe scores before and after tuning</title>
+<desc id="d">Original 16 to 24 of 25; held-out A 53 to 75 of 81; held-out B 22 to 25 of 28 (untouched); held-out C 28 to 33 of 45 (untouched).</desc>
+<rect x="0.5" y="0.5" width="999" height="539" rx="10" fill="#1a1a19" stroke="#383835"/>
+<text x="32" y="40" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="19" fill="#f0efec" font-weight="650">Retrieval probes: answers that show the current API</text>
+<text x="32" y="64" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13.5" fill="#c3c2b7">pinright’s docs pipeline without an agent. Sets B and C were not looked at while tuning; set A was; the original set covers the benchmark tasks.</text>
+<rect x="32" y="90" width="12" height="12" rx="3" fill="#6b6a65"/>
+<text x="50" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#c3c2b7">Before tuning (first score of each set)</text>
+<rect x="331.5" y="90" width="12" height="12" rx="3" fill="#3987e5"/>
+<text x="349.5" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#c3c2b7">Release candidate, rerun 2026-11-01</text>
+<line x1="76" x2="968" y1="460" y2="460" stroke="#383835" stroke-width="1"/>
+<text x="68" y="464" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#a3a29b" text-anchor="end">0%</text>
+<line x1="76" x2="968" y1="380" y2="380" stroke="#2c2c2a" stroke-width="1"/>
+<text x="68" y="384" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#a3a29b" text-anchor="end">25%</text>
+<line x1="76" x2="968" y1="300" y2="300" stroke="#2c2c2a" stroke-width="1"/>
+<text x="68" y="304" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#a3a29b" text-anchor="end">50%</text>
+<line x1="76" x2="968" y1="220" y2="220" stroke="#2c2c2a" stroke-width="1"/>
+<text x="68" y="224" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#a3a29b" text-anchor="end">75%</text>
+<line x1="76" x2="968" y1="140" y2="140" stroke="#2c2c2a" stroke-width="1"/>
+<text x="68" y="144" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#a3a29b" text-anchor="end">100%</text>
+<g><title>Original, before: 16/25</title><path d="M156.5,460 V259.2 Q156.5,255.2 160.5,255.2 H182.5 Q186.5,255.2 186.5,259.2 V460 Z" fill="#6b6a65"/></g>
+<text x="171.5" y="249.2" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#c3c2b7" text-anchor="middle">16/25</text>
+<g><title>Original, after: 24/25</title><path d="M188.5,460 V156.8 Q188.5,152.8 192.5,152.8 H214.5 Q218.5,152.8 218.5,156.8 V460 Z" fill="#3987e5"/></g>
+<text x="203.5" y="146.8" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#c3c2b7" text-anchor="middle">24/25</text>
+<text x="187.5" y="482" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#f0efec" text-anchor="middle" font-weight="600">Original</text>
+<g><title>Held-out A, before: 53/81</title><path d="M379.5,460 V254.6 Q379.5,250.6 383.5,250.6 H405.5 Q409.5,250.6 409.5,254.6 V460 Z" fill="#6b6a65"/></g>
+<text x="394.5" y="244.6" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#c3c2b7" text-anchor="middle">53/81</text>
+<g><title>Held-out A, after: 75/81</title><path d="M411.5,460 V167.7 Q411.5,163.7 415.5,163.7 H437.5 Q441.5,163.7 441.5,167.7 V460 Z" fill="#3987e5"/></g>
+<text x="426.5" y="157.7" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#c3c2b7" text-anchor="middle">75/81</text>
+<text x="410.5" y="482" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#f0efec" text-anchor="middle" font-weight="600">Held-out A</text>
+<g><title>Held-out B, before: 22/28</title><path d="M602.5,460 V212.6 Q602.5,208.6 606.5,208.6 H628.5 Q632.5,208.6 632.5,212.6 V460 Z" fill="#6b6a65"/></g>
+<text x="617.5" y="202.6" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#c3c2b7" text-anchor="middle">22/28</text>
+<g><title>Held-out B, after: 25/28</title><path d="M634.5,460 V178.3 Q634.5,174.3 638.5,174.3 H660.5 Q664.5,174.3 664.5,178.3 V460 Z" fill="#3987e5"/></g>
+<text x="649.5" y="168.3" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#c3c2b7" text-anchor="middle">25/28</text>
+<text x="633.5" y="482" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#f0efec" text-anchor="middle" font-weight="600">Held-out B</text>
+<g><title>Held-out C, before: 28/45</title><path d="M825.5,460 V264.9 Q825.5,260.9 829.5,260.9 H851.5 Q855.5,260.9 855.5,264.9 V460 Z" fill="#6b6a65"/></g>
+<text x="840.5" y="254.9" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#c3c2b7" text-anchor="middle">28/45</text>
+<g><title>Held-out C, after: 33/45</title><path d="M857.5,460 V229.3 Q857.5,225.3 861.5,225.3 H883.5 Q887.5,225.3 887.5,229.3 V460 Z" fill="#3987e5"/></g>
+<text x="872.5" y="219.3" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#c3c2b7" text-anchor="middle">33/45</text>
+<text x="856.5" y="482" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#f0efec" text-anchor="middle" font-weight="600">Held-out C</text>
+<text x="32" y="506" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#a3a29b">Source: bench/DOCS.md; paper/kit/data/probes.csv. Before = e644213 (original), dd570aa (A, B), d2f082a (C). A probe checks for strings of the current API, not</text>
+<text x="32" y="522" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#a3a29b">for a correct answer.</text>
+</svg>

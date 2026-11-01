@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Nothing in CI writes to the repository. Jobs that need more ask for it themselves.
+permissions:
+  contents: read
+
+# The jobs run on Hiper AI's own runner (hiperai-ci), not GitHub-hosted minutes. That machine
+# also serves other repositories, so a pull request from a fork never runs here: code from
+# outside the organization does not execute on it. Fork PRs are reviewed and pushed to a
+# branch of this repository by a maintainer to get CI.
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: hiperai-ci # self-hosted (GCP hiperai-ci-linux); see the note on fork PRs above
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      # No dependency gets to run code at install time; the tree needs none.
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  self-audit:
+    # pinright checks its own supply chain with the CLI it just built.
+    name: self-audit
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: hiperai-ci
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - name: Audit the lockfile (runtime and dev dependencies)
+        run: node dist/cli.js audit package-lock.json --fail-on=high
+      - name: Audit the workflows (advisories and SHA pinning)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node dist/cli.js audit .github/workflows --fail-on=high
+      - name: Verify registry signatures and provenance of installed packages
+        run: npm audit signatures
+
+  package:
+    # What would be published: only dist, docs and the license; installs and runs without scripts.
+    name: package contents
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: hiperai-ci
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - name: Pack
+        run: npm pack --ignore-scripts --json > pack.json
+      - name: Check the file list
+        run: node scripts/check-pack.mjs pack.json
+      - name: Install the tarball in an empty project and run it
+        run: |
+          tarball="$PWD/$(node -p "require('./pack.json')[0].filename")"
+          dir="$(mktemp -d)"
+          cd "$dir"
+          npm init -y > /dev/null
+          npm install --ignore-scripts --no-audit --no-fund "$tarball"
+          npx --no-install pinright --version
+          npx --no-install pinright check npm express

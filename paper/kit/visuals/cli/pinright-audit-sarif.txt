@@ -1,0 +1,9 @@
+SECURITY NOTICE: 2 of 29 packages in ~/demo-app/package.json have known advisories (35 alerts: 1 critical, 14 high, 19 moderate, 1 low, 0 unrated).
+  - form-data@4.0.1 [CRITICAL] direct: GHSA-fjxv-7rqg-78g4 (CVE-2025-7783) form-data uses unsafe random function in form-data for choosing boundary +1 more; fixed in 4.0.6
+  - axios@1.7.9 [HIGH] direct: GHSA-35jp-ww65-95wh (CVE-2026-44494) axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy` +32 more; fixed in 1.20.0
+Fixes:
+  - npm install form-data@4.0.6. Clears form-data@4.0.1.
+  - npm install axios@1.21.0. Clears axios@1.7.9.
+Note: No lockfile: the tree was resolved by deps.dev, one direct dependency at a time. Audit the lockfile for the exact tree.
+Verified against osv.dev + deps.dev on 2026-11-01.
+[pinright] SARIF written to /tmp/pinright.sarif (35 results)

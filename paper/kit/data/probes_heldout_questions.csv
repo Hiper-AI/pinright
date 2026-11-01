@@ -1,0 +1,155 @@
+set,library,package,question,pass,answer_chars,ms_cold_cache
+A,react,react,show a pending state while a form action runs,true,10176,3254
+A,react,react,read a promise in render and suspend until it resolves,true,9693,624
+A,react,react,optimistic UI update while a mutation is in flight,true,11077,758
+A,react-router,react-router,define a route with a loader and read its data in the component,true,10393,6669
+A,react-router,react-router,configure routes in routes.ts (framework mode),true,10581,550
+A,react-router,react-router,navigate programmatically after a form submit (useNavigate in onSubmit?),false,9981,101
+A,tanstack-query,@tanstack/react-query,fetch data with useQuery and handle loading,true,10970,5705
+A,tanstack-query,@tanstack/react-query,invalidate a query after a mutation succeeds,true,11343,722
+A,tanstack-query,@tanstack/react-query,keep unused data in the cache for 10 minutes (cacheTime),true,10858,237
+A,svelte,svelte,reactive state and a derived value in a component,true,8347,8060
+A,svelte,svelte,receive props in a component (export let),true,10994,803
+A,svelte,svelte,run a side effect when state changes (like $: reactive statement),true,10707,405
+A,vue,vue,two-way binding v-model on a custom component,true,9110,3162
+A,vue,vue,access a template ref in script setup,true,9302,124
+A,vue,vue,declare props with default values,true,8956,110
+A,astro,astro,define a content collection of markdown blog posts with a schema,true,9916,9548
+A,astro,astro,server action to handle a form,true,10576,664
+A,astro,astro,render a component on the server after the page (server island),true,11844,628
+A,angular,@angular/core,component input as a signal (instead of @Input),true,10896,10754
+A,angular,@angular/core,derived state from signals,true,9084,858
+A,angular,@angular/core,load async data into a signal from an HTTP request,true,9597,970
+A,vite,vite,proxy /api requests to a backend in the dev server,true,9852,6367
+A,vite,vite,environment variables exposed to client code,true,10500,170
+A,vite,vite,configure rollupOptions output manualChunks to split a vendor chunk,true,9621,184
+A,vitest,vitest,mock a module,true,10765,7580
+A,vitest,vitest,multiple test projects (vitest.workspace file),true,10008,841
+A,vitest,vitest,code coverage with v8,true,10867,830
+A,playwright,@playwright/test,click a button by its role and check the text,true,10368,6264
+A,playwright,@playwright/test,mock a network request,true,10717,713
+A,playwright,@playwright/test,reuse authentication state between tests,true,9796,539
+A,prisma,prisma,configure the database connection url,true,9160,13051
+A,prisma,@prisma/client,instantiate PrismaClient with the Postgres driver adapter,true,9923,6085
+A,prisma,@prisma/client,run several writes in a transaction,true,10627,1031
+A,drizzle,drizzle-orm,define a postgres table schema,true,8676,5754
+A,drizzle,drizzle-orm,select rows with a where condition,true,10877,615
+A,drizzle,drizzle-orm,drizzle-kit config for migrations,true,10698,1758
+A,hono,hono,validate a JSON body with zod,true,9204,3605
+A,hono,hono,enable CORS,true,10371,93
+A,hono,hono,run the app on Node.js,true,9946,117
+A,fastify,fastify,validate the request body with a JSON schema,true,8693,6359
+A,fastify,fastify,start the server on port 3000,true,10642,1943
+A,fastify,fastify,write and register a plugin,true,10557,1744
+A,nestjs,@nestjs/common,protect a route with a guard,true,9416,7809
+A,nestjs,@nestjs/common,validate request DTOs globally,true,8548,1806
+A,nestjs,@nestjs/common,dependency injection of a service into a controller,true,10792,1013
+A,trpc,@trpc/server,create a router with a query procedure and zod input,true,9458,7676
+A,trpc,@trpc/server,use tRPC with TanStack React Query hooks,true,11610,1388
+A,supabase,@supabase/supabase-js,sign in a user with email and password,true,9711,7748
+A,supabase,@supabase/supabase-js,select rows filtered by a column,false,7591,76
+A,supabase,@supabase/supabase-js,subscribe to realtime inserts on a table,true,10924,908
+A,stripe,stripe,create a checkout session for a subscription,false,8925,6758
+A,stripe,stripe,verify a webhook signature,true,9589,2098
+A,anthropic-ts,@anthropic-ai/sdk,stream a message response,true,10233,5160
+A,anthropic-ts,@anthropic-ai/sdk,define a tool the model can call,true,9048,1043
+A,anthropic-ts,@anthropic-ai/sdk,send a system prompt,false,8670,81
+A,openai-py,openai,generate text with the Responses API,true,7460,5078
+A,openai-py,openai,structured output parsed into a pydantic model,true,10993,149
+A,openai-py,openai,stream the response,true,9600,158
+A,anthropic-py,anthropic,send a message with a system prompt,false,10026,5443
+A,anthropic-py,anthropic,stream a message,true,10406,1725
+A,fastapi,fastapi,dependency injection with Annotated,true,12929,14101
+A,fastapi,fastapi,run code on startup and shutdown (on_event),true,11303,9552
+A,fastapi,fastapi,return a 404 error,true,12941,7721
+A,sqlalchemy,sqlalchemy,declare a mapped class with type annotations,true,10875,6062
+A,sqlalchemy,sqlalchemy,query rows with select (2.0 style),true,11015,633
+A,sqlalchemy,sqlalchemy,async engine and session,true,11774,757
+A,django,django,run a background task (tasks framework),true,9536,7534
+A,django,django,unique constraint across two fields,true,8738,644
+A,django,django,async view,true,11024,794
+A,polars,polars,group by and aggregate,true,12772,10366
+A,polars,polars,read a large CSV lazily,false,10774,2233
+A,polars,polars,add a computed column,true,12503,3249
+A,pytest,pytest,parametrize a test with several inputs,true,11206,2998
+A,pytest,pytest,fixture with teardown,true,9810,128
+A,pytest,pytest,temporary directory in a test,true,10730,125
+A,httpx,httpx,async client with a timeout,true,10873,2358
+A,httpx,httpx,retry failed connections,true,10788,56
+A,celery,celery,define a task and call it asynchronously,true,9595,4146
+A,celery,celery,run a periodic task every morning,true,10935,244
+A,typer,typer,CLI command with an option and an argument,true,12492,18223
+A,typer,typer,group subcommands,true,9344,459
+B,mongoose,mongoose,hash the password in a pre save hook and call next() when done,true,8577,7584
+B,mongoose,mongoose,make findOneAndUpdate return the updated document instead of the original (new: true),true,8951,1080
+B,mongoose,mongoose,what TypeScript type should I use for a query filter object passed to Model.find (FilterQuery),true,10238,3571
+B,redux-toolkit,@reduxjs/toolkit,handle createAsyncThunk pending and fulfilled actions in a slice with the extraReducers object map,true,9159,4922
+B,redux-toolkit,@reduxjs/toolkit,add a custom logger middleware to configureStore while keeping the default middleware,true,10315,211
+B,zustand,zustand,select several values from a store as an object without extra re-renders,true,11256,3593
+B,zustand,zustand,type a store with TypeScript when calling create,true,10126,54
+B,better-auth,better-auth,get the current user session on the server inside a route handler,true,10102,6913
+B,better-auth,better-auth,mount the auth handler in a Next.js App Router route,true,10724,151
+B,sveltekit,@sveltejs/kit,read the current URL and route params in a component (I used the $page store),true,10823,6940
+B,sveltekit,@sveltejs/kit,"handle a form POST on the server, return validation errors, and progressively enhance the form",true,10206,884
+B,sveltekit,@sveltejs/kit,redirect to an external URL from a load function,true,9874,378
+B,jotai,jotai,create parameterized atoms per id with atomFamily from jotai/utils,true,10993,3616
+B,jotai,jotai,read an async atom without Suspense using loadable,true,10739,98
+B,pandas,pandas,"set a column value for rows matching a condition; df[""foo""][df[""bar""] > 5] = 100 does nothing / SettingWithCopyWarning",true,11316,2720
+B,pandas,pandas,what dtype does pandas infer for a column of strings by default,false,11208,106
+B,pandas,pandas,groupby and compute several aggregations with custom output column names,true,10386,116
+B,numpy,numpy,numerically integrate samples with np.trapz,true,10405,4225
+B,numpy,numpy,test which elements of an array are in another array with np.in1d,true,9788,636
+B,numpy,numpy,generate reproducible random numbers (np.random.seed then np.random.rand),true,10954,1516
+B,requests,requests,automatically retry failed requests with backoff on 502/503/504,true,11200,196
+B,requests,requests,POST a JSON body and set a timeout,true,10865,30
+B,flask,flask,rotate the SECRET_KEY without logging out existing sessions,false,9636,3845
+B,flask,flask,limit request body size and multipart form field size/count,true,10773,80
+B,pydantic-settings,pydantic-settings,load settings from a .env file (inner class Config with env_file),true,8883,2924
+B,pydantic-settings,pydantic-settings,populate a nested settings model from environment variables like DB__HOST,true,8941,349
+B,sqlmodel,sqlmodel,query rows with a WHERE filter (session.query(Hero).filter),true,11499,4619
+B,sqlmodel,sqlmodel,partially update a row from a FastAPI PATCH body,false,14813,6239
+C,nuxt,nuxt,"where do pages/, components/ and composables/ go in a Nuxt 4 project? I keep them at the project root like in Nuxt 3",false,10958,4252
+C,nuxt,nuxt,useFetch: my check data.value === null before the request finishes stopped working; also what replaces dedupe: true,true,10618,1457
+C,nuxt,nuxt,expose a public API base URL to the client and override it with an environment variable in production,true,11103,1027
+C,solid-start,@solidjs/start,set the deployment preset in app.config.ts (defineConfig from @solidjs/start/config with server.preset),true,11508,4679
+C,solid-start,@solidjs/start,read a cookie and the session inside a server function (getCookie and useSession from vinxi/http),true,12830,707
+C,solid-start,@solidjs/start,load posts from the database on the server for a route with cache() and createAsync,false,10438,772
+C,elysia,elysia,call my Elysia API type-safely from the frontend with edenTreaty from @elysiajs/eden,true,10828,2372
+C,elysia,elysia,return 401 Unauthorized with a message from a handler using the error() helper,true,10205,85
+C,elysia,elysia,auth macro that resolves the current user for the routes that opt in (macro with onBeforeHandle),true,10765,89
+C,effect,effect,define a service with Context.Tag and provide its implementation with a Layer,true,10483,7976
+C,effect,effect,recover from any failure with Effect.catchAll; recover only from some errors with catchSome,true,10115,481
+C,effect,effect,"turn a failing Effect into a value I can inspect (Effect.either, then Either.isLeft)",false,9513,158
+C,effect,effect,start a background fiber that outlives its parent (Effect.forkDaemon),false,8382,458
+C,kysely,kysely,run migrations to latest with Migrator and FileMigrationProvider imported from kysely,true,9230,3201
+C,kysely,kysely,"begin a transaction without the db.transaction().execute callback, set a savepoint and roll back to it on error",true,8663,107
+C,kysely,kysely,select users with their pets as a nested JSON array in one Postgres query,true,7582,531
+C,bullmq,bullmq,run a job every day at 3am with the repeat option of queue.add,true,11092,5478
+C,bullmq,bullmq,ignore duplicate jobs added within 5 seconds (debounce option),false,8514,150
+C,bullmq,bullmq,get the underlying Redis client of a Queue (queue.client) to run a custom command,true,9617,555
+C,pino,pino,pretty print logs in development (prettyPrint: true),true,10561,4828
+C,pino,pino,write logs to a file and to stdout at the same time,true,9997,76
+C,pino,pino,hide the password field and the authorization header from the logs,false,10555,71
+C,litestar,litestar,inject a database session dependency declared with Provide into a route handler (parameter named after the key),true,10802,5942
+C,litestar,litestar,exclude the password field from the response with a DTO,true,12597,7777
+C,pandera,pandera,define a DataFrameModel schema for a pandas DataFrame (import pandera as pa) with month between 1 and 12,true,10862,6336
+C,pandera,pandera,collect every validation error at once instead of stopping at the first,true,10320,630
+C,pandera,pandera,validate a polars LazyFrame; my value checks (in_range) do not seem to run,false,9932,617
+C,duckdb-py,duckdb,get query results as an Arrow table with con.execute(query).fetch_arrow_table(),false,11031,2402
+C,duckdb-py,duckdb,"compare two columns in a relational filter: rel.filter(c(""s"") == ""x"") stopped matching rows after upgrading",false,10841,41
+C,duckdb-py,duckdb,"list_transform(l, x -> x + 1) in duckdb.sql now fails with a syntax error",false,11261,532
+C,langgraph,langgraph,pause the graph for human approval before a tool runs (interrupt_before / NodeInterrupt) and resume it,true,10421,5659
+C,langgraph,langgraph,build a ReAct agent with tools using create_react_agent from langgraph.prebuilt,true,10278,800
+C,langgraph,langgraph,"pass per-run context like user_id or the LLM provider to nodes (config_schema / config[""configurable""])",true,10572,1282
+C,llama-index,llama-index-core,set the default LLM and embedding model for everything (ServiceContext.from_defaults),true,11743,6424
+C,llama-index,llama-index-core,"create a tool-calling agent with ReActAgent.from_tools(tools, llm=llm) and ask it a question",false,11936,1134
+C,llama-index,llama-index-core,save a VectorStoreIndex to disk and load it back later,true,11436,435
+C,instructor,instructor,get a pydantic model back from OpenAI with instructor.patch(OpenAI()) or instructor.from_openai,true,10396,6032
+C,instructor,instructor,stream a partially filled object while the model is still generating,true,10396,963
+C,instructor,instructor,use instructor with Claude (instructor.from_anthropic(Anthropic())),true,11392,713
+C,ruff,ruff,"pyproject.toml: I put select = [""E"", ""F"", ""B""] and ignore under [tool.ruff] and ruff warns about it",true,10779,7003
+C,ruff,ruff,ignore E402 only in __init__.py files,true,10850,803
+C,ruff,ruff,make ruff format use single quotes and tabs,true,10606,466
+C,uv,uv,monorepo with several Python packages that depend on each other,false,9762,6810
+C,uv,uv,add pytest as a dev dependency (tool.uv.dev-dependencies),true,10141,1152
+C,uv,uv,install torch from the PyTorch CPU index without using that index for other packages,true,10634,794

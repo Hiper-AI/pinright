@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Privacy and security · pinright</title>
+    <meta name="description" content="pinright runs locally with no telemetry. What it sends to which public service, what the pre-install hook stops and what it does not, and the two security reviews of 1.0.0.">
+    <link rel="canonical" href="https://pinright.dev/security/">
+    <meta property="og:url" content="https://pinright.dev/security/">
+    <meta property="og:title" content="Privacy and security · pinright">
+    <meta property="og:description" content="Runs locally, no telemetry. What is sent where, the hook's threat model, and two security reviews.">
+    <meta name="twitter:title" content="Privacy and security · pinright">
+    <meta name="twitter:description" content="Runs locally, no telemetry. What is sent where, the hook's threat model, and two security reviews.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html /security/ -->
+    <main id="main">
+      <header class="page-head">
+        <div class="wrap">
+          <p class="eyebrow">Privacy and security</p>
+          <h1>It runs on your machine and tells you what it sends</h1>
+          <p class="lead">pinright is a local process that talks to your agent over stdio. No account, no telemetry. This page summarizes <a href="https://github.com/Hiper-AI/pinright/blob/main/SECURITY.md">SECURITY.md</a> and the <a href="https://github.com/Hiper-AI/pinright/blob/main/docs/HOOK-THREAT-MODEL.md">hook threat model</a>.</p>
+          <ul class="toc" aria-label="On this page">
+            <li><a href="#local">On your machine</a></li>
+            <li><a href="#network">Network</a></li>
+            <li><a href="#hook">Hook threat model</a></li>
+            <li><a href="#injection">Prompt injection</a></li>
+            <li><a href="#reviews">Security reviews</a></li>
+            <li><a href="#report">Report a vulnerability</a></li>
+          </ul>
+        </div>
+      </header>
+
+      <section class="section" id="local" aria-labelledby="local-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="local-title">On your machine</h2>
+          </div>
+          <div>
+            <ul class="checks">
+              <li>No <code>preinstall</code>, <code>install</code> or <code>postinstall</code> scripts. Installing it runs no code.</li>
+              <li>Four runtime dependencies, pinned to exact versions. Releases are published from GitHub Actions with npm provenance.</li>
+              <li>It never executes what it downloads. Archives, READMEs and docs are parsed as text and handed to the agent as data.</li>
+              <li>It reads dependency files in your project, and writes only to its cache directory and, when you run <code>init</code>, to the agent config files it names.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft" id="network" aria-labelledby="network-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="network-title">What it sends, and to whom</h2>
+            <p>Every request goes from your machine to a public service, for the package you asked about. pinright never sends your source code, file contents or environment. The names you check do reach these services, and that includes a private package name.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th scope="col">Service</th><th scope="col">What it receives</th><th scope="col">When</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row"><code>api.deps.dev</code>, <code>api.osv.dev</code></th><td>ecosystem, package name, version</td><td>every check</td></tr>
+                <tr><th scope="row">Registries: npm, PyPI, pypistats, crates.io, RubyGems, Packagist</th><td>package name, version</td><td>checks, risk signals, docs</td></tr>
+                <tr><th scope="row"><code>cdn.jsdelivr.net</code>, <code>data.jsdelivr.com</code></th><td>package name, version, file path</td><td>docs from the published package</td></tr>
+                <tr><th scope="row"><code>api.github.com</code>, <code>raw.githubusercontent.com</code></th><td>repository, tag, file path</td><td>repo docs, upgrade guides, Actions audit</td></tr>
+                <tr><th scope="row">The package's own docs site</th><td>a request for <code>/llms.txt</code> and the pages it lists</td><td>when the package metadata names a site</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="qualifier">The only credential, an optional <code>GITHUB_TOKEN</code>, goes only to <code>api.github.com</code>. URLs that come from package metadata go through a guard: https only, no private, loopback or cloud-metadata addresses (checked again after DNS and on each of at most 3 redirects), a 10 MB body cap.</p>
+        </div>
+      </section>
+
+      <section class="section" id="hook" aria-labelledby="hook-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="hook-title">The hook is a guardrail, not a sandbox</h2>
+            <p>It reads command lines and file contents before the tool runs. It helps an honest agent that makes mistakes and slows down one that a prompt injection talks into an install. It does not watch the process or the network.</p>
+          </div>
+          <div class="split even">
+            <div>
+              <h3>What it stops or asks about</h3>
+              <ul class="checks">
+                <li>Installs it can read, through <code>bash -c</code>, <code>eval</code>, <code>$(…)</code>, <code>cmd /c</code>, <code>powershell -Command</code>, <code>sudo</code>, <code>xargs</code> and scripts run by name.</li>
+                <li>Writes to manifests and workflows: only new or changed dependencies count.</li>
+                <li>What it cannot read (a name in a variable, a git or URL source, another registry) asks by default.</li>
+                <li>Changes to <code>.pinright.json</code> or to the hook's own entry always go to a human.</li>
+                <li>More than 40 dependencies in one change asks, so padding cannot hide a bad one.</li>
+              </ul>
+            </div>
+            <div>
+              <h3>What gets past it</h3>
+              <ul class="checks crosses">
+                <li>Code that installs from inside a program: <code>python -c "subprocess.run(['pip', ...])"</code>.</li>
+                <li>Remote scripts such as <code>curl … | sh</code>: noted, not read.</li>
+                <li>Obfuscation beyond what a shell reader resolves, and variables set in an earlier tool call.</li>
+                <li>Tools the hook is not wired to, and anything after it said yes: a human typing <code>npm install</code>, a CI job.</li>
+                <li>What an allowed package does after install.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="note accent">
+            <p>57 bypass vectors are listed in the threat model, each reproduced in <code>test/hookBypass.test.ts</code>. Pair the hook with a proxy registry, <code>npm ci</code> or <code>pip install --require-hashes</code> in CI, and an agent sandbox without long-lived credentials.</p>
+          </div>
+          <p class="small muted">When deps.dev or OSV does not answer, the verdict is <code>unknown</code>, not ok. The starter <code>.pinright.json</code> then asks you; without a policy file the hook allows the change and tells the agent it was not verified.</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="injection" aria-labelledby="injection-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="injection-title">Prompt injection in package text</h2>
+          </div>
+          <div>
+            <p>pinright puts text written by package authors in front of your agent. It strips hidden characters and markup, drops passages that give the agent orders, and wraps every third-party block in an <code>&lt;untrusted-data&gt;</code> fence with a random id.</p>
+            <p>The detector matches wording. On attack phrasings written after its rules were frozen, it caught 20% to 40%. Treat it as a tripwire; the fence depends on the agent honoring it.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="reviews" aria-labelledby="reviews-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="reviews-title">Two security reviews before 1.0.0</h2>
+            <p>Both by internal reviewers who did not write the code under review. The attackers modeled: a repository you open, a package publisher, a local user on a shared machine, and for the hook, the agent itself.</p>
+          </div>
+          <dl class="stats">
+            <div class="stat">
+              <dt>11 findings</dt>
+              <dd>Round 1, 2026-10-29: 5 high, 5 medium, 1 low, all fixed. 759 regex literals timed on about 900 inputs.</dd>
+            </div>
+            <div class="stat">
+              <dt>13 findings</dt>
+              <dd>Round 2, 2026-11-01, on the release candidate: 1 high, 9 medium, 3 low, all fixed. About 120 hook red-team cases.</dd>
+            </div>
+          </dl>
+          <p class="qualifier">Open items after both rounds, such as the self-hosted release runner and gaps in the hook's reader, are listed in <a href="https://github.com/Hiper-AI/pinright/blob/main/docs/SECURITY-REVIEW.md">docs/SECURITY-REVIEW.md</a>.</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="report" aria-labelledby="report-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="report-title">Report a vulnerability</h2>
+          </div>
+          <div>
+            <p>Report it privately through GitHub, not in a public issue. Include the version (<code>pinright --version</code>), the command or tool call, and what you expected. We aim to acknowledge within 3 business days and credit you in the advisory unless you ask us not to.</p>
+            <div class="ctas">
+              <a class="btn btn-primary" href="https://github.com/Hiper-AI/pinright/security/advisories/new">Report privately on GitHub</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/blob/main/SECURITY.md">SECURITY.md</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

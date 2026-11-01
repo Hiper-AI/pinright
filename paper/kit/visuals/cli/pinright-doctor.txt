@@ -1,0 +1,19 @@
+pinright 1.0.0 doctor
+
+  [32mok  [39m  node                          Node v24.20.0
+  [32mok  [39m  deps.dev              404 ms  versions and advisories (the verdict)
+  [32mok  [39m  osv.dev               570 ms  advisory details and malware reports (the verdict)
+  [32mok  [39m  registry.npmjs.org    356 ms  install scripts, provenance, publisher (npm)
+  [32mok  [39m  pypi.org              132 ms  PyPI files and metadata
+  [32mok  [39m  repo.packagist.org    230 ms  Composer versions and advisories
+  [32mok  [39m  data.jsdelivr.com     118 ms  repository file listings for get-docs
+  [32mok  [39m  cdn.jsdelivr.net      125 ms  package and repository files for get-docs
+  [32mok  [39m  github                233 ms  anonymous (60 requests an hour per IP); 46/60 API requests left until 14:56 UTC
+  [32mok  [39m  cache                         ~/.cache/pinright: 0 entries, 0.0 MB (cap 200.0 MB)
+  [32mok  [39m  .pinright.json                none found from here up; built-in defaults apply ("pinright init" writes a starter)
+  [32mok  [39m  hook startup          138 ms  "npm test" through the Claude Code hook, node start included
+
+Agents (read-only; nothing was changed):
+  no agent config found here or in your home directory. Run "pinright init claude" or "pinright init cursor".
+
+No blocking problem found.

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability in pinright
+    url: https://github.com/Hiper-AI/pinright/security/advisories/new
+    about: Report it privately. Please do not open a public issue for a vulnerability.
+  - name: Questions and setup help
+    url: https://github.com/Hiper-AI/pinright/blob/main/docs/install.md
+    about: Install, client setup and configuration are in the docs.

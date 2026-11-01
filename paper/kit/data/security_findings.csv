@@ -1,0 +1,25 @@
+round,date,id,severity,area,finding,status,commits
+1,2026-10-29,F1,High,"Action, CLI in CI","Workflow command injection through newlines in lockfile keys or advisory text",Fixed,3239274
+1,2026-10-29,F2,High,"MCP, CLI, Action, hook","Dependency files read through symlinks (could leak fragments of files outside the repo)",Fixed,a60295d
+1,2026-10-29,F3,High,"Verdict, hook","Malware reported as vulnerable or unknown, letting the hook allow it",Fixed,"c68a81d 534a527"
+1,2026-10-29,F4,Medium,Action,"Markdown and HTML injection in the job summary",Fixed,3239274
+1,2026-10-29,F5,High,Tree audit,"Fail-open on OSV rate limits: a critical passed fail-on: high",Fixed,b215059
+1,2026-10-29,F6,Medium,Actions audit,"Unverifiable action refs exited 0",Fixed,12f5864
+1,2026-10-29,F7,Medium,Supply checks,"A malicious verdict from deps.dev alone did not block",Fixed,10edbb8
+1,2026-10-29,F8,Medium,Docs (PyPI),"Overlapping-entry zip bomb in a wheel inflated to about 5 GB",Fixed,b5497be
+1,2026-10-29,F9,High,"Parsers, hook","ReDoS: one exponential and several cubic regexes; import plus 4,000 spaces stalled the hook 45 s",Fixed,"e54f701 ab379c0"
+1,2026-10-29,F10,Medium,Cache,"Cache poisoning through a writable shared cache directory",Fixed,4dc6a09
+1,2026-10-29,F11,Low,HTTP,"No body timeout or size cap in the HTTP client",Fixed,76191f1
+2,2026-11-01,R1,High,init,"A symlinked backup file or a .claude junction made init write outside the project (could plant shell in ~/.bashrc)",Fixed,e19f1ef
+2,2026-11-01,R2,Medium,Cache,"Daily prune and cache clear could delete unrelated files when the cache dir pointed at a shared folder",Fixed,9b40043
+2,2026-11-01,R3,Medium,Hook,"An exception while deciding exited 1 and the agent ran the tool",Fixed (asks),8708f1f
+2,2026-11-01,R4,Medium,Hook,"Lines past 2,000 commands or six nesting levels went partly unread",Fixed (unverifiable),78cda15
+2,2026-11-01,R5,Medium,Hook,"npx @scope/x matched an unscoped local bin and went unchecked",Fixed,78cda15
+2,2026-11-01,R6,Medium,Hook (Codex),"apply_patch Delete File and Move to were ignored",Fixed,a7d82f3
+2,2026-11-01,R7,Medium,Hook,"Writes through ::$DATA, 8.3 short names or links skipped manifest checks",Fixed,735b379
+2,2026-11-01,R8,Medium,Hook,"git checkout/restore/mv/rm of manifests and .pinright.json passed silently",Fixed (unverifiable or asks),f5c5da5
+2,2026-11-01,R9,Medium,Hook,"Removing pinright from other clients' hook files did not ask",Fixed,bf507bd
+2,2026-11-01,R10,Medium,Release,"Runbook made the repo public before reserving the npm name",Fixed in the runbook,4abbb9b
+2,2026-11-01,R11,Low,Action,"Base-branch policy read failures other than missing file fell through",Fixed (fails closed),"d11f66c 22cbd02"
+2,2026-11-01,R12,Low,doctor,"doctor read client configs with no size or type check",Fixed,a2c1f2c
+2,2026-11-01,R13,Low,Fencing,"Scan memo keyed by SHA-1",Fixed (SHA-256),a2c1f2c

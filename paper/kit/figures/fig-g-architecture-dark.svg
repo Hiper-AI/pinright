@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680" role="img" aria-labelledby="t d">
+<title id="t">pinright architecture</title>
+<desc id="d">The coding agent calls MCP tools or triggers the pre-install hook. Both use the verdict pipeline (deps.dev, OSV, registries, offline lookalike list); the MCP tools also use the docs pipeline (package files at the version, repo at the release tag via jsDelivr, llms.txt, site discovery). The answer goes back fenced: a security notice, docs inside untrusted-data blocks, or a deny, ask or allow decision.</desc>
+<rect x="0.5" y="0.5" width="1279" height="679" rx="10" fill="#1a1a19" stroke="#383835"/>
+<defs><marker id="ah-dark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c3c2b7"/></marker></defs>
+<text x="32" y="40" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="19" fill="#f0efec" font-weight="650">How pinright answers</text>
+<text x="32" y="64" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13.5" fill="#c3c2b7">Two entry points (MCP tools the agent calls, a hook that runs before each command or write) feed one verdict pipeline and one docs pipeline.</text>
+<rect x="32" y="260" width="200" height="140" rx="10" fill="#222221" stroke="#383835" stroke-width="1.25"/>
+<text x="48" y="286" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#f0efec" font-weight="650">Coding agent</text>
+<text x="48" y="310" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Claude Code, Cursor,</text>
+<text x="48" y="330" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">VS Code (Copilot), Codex,</text>
+<text x="48" y="350" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Gemini CLI, Windsurf</text>
+<text x="48" y="370" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">+10 MCP-only clients</text>
+<rect x="330" y="110" width="250" height="180" rx="10" fill="#222221" stroke="#3987e5" stroke-width="1.75"/>
+<text x="346" y="136" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#f0efec" font-weight="650">MCP tools (stdio)</text>
+<text x="346" y="160" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="12.5" fill="#c3c2b7">check-packages</text>
+<text x="346" y="180" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="12.5" fill="#c3c2b7">check-package</text>
+<text x="346" y="200" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="12.5" fill="#c3c2b7">check-manifest</text>
+<text x="346" y="220" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="12.5" fill="#c3c2b7">find-library</text>
+<text x="346" y="240" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="12.5" fill="#c3c2b7">get-docs</text>
+<text x="346" y="260" font-family="'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace" font-size="12.5" fill="#c3c2b7">upgrade-guide</text>
+<rect x="330" y="360" width="250" height="160" rx="10" fill="#222221" stroke="#3987e5" stroke-width="1.75"/>
+<text x="346" y="386" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#f0efec" font-weight="650">Pre-install hook</text>
+<text x="346" y="410" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">install commands (npm, pip, uv,</text>
+<text x="346" y="430" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">cargo, go, ...) through bash -c,</text>
+<text x="346" y="450" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">eval, npm run, make, ...</text>
+<text x="346" y="470" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">manifest and workflow writes</text>
+<text x="346" y="490" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">registry settings, lockfiles</text>
+<rect x="660" y="100" width="340" height="220" rx="10" fill="#222221" stroke="#383835" stroke-width="1.25"/>
+<text x="676" y="126" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#f0efec" font-weight="650">Verdict pipeline</text>
+<text x="676" y="150" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">deps.dev: versions, advisories,</text>
+<text x="690" y="170" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">dependency graphs, Scorecard</text>
+<text x="676" y="190" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">OSV: advisory details, fixes, MAL-*</text>
+<text x="676" y="210" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Registries: name and version exist,</text>
+<text x="690" y="230" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">install scripts, provenance, publisher</text>
+<text x="676" y="250" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Lookalike list (offline)</text>
+<text x="676" y="270" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Safe version: same release line first,</text>
+<text x="690" y="290" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">3-day cooldown, ok only if both answered</text>
+<rect x="660" y="360" width="340" height="180" rx="10" fill="#222221" stroke="#383835" stroke-width="1.25"/>
+<text x="676" y="386" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#f0efec" font-weight="650">Docs pipeline</text>
+<text x="676" y="410" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Package files at the version</text>
+<text x="690" y="430" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">(README, docs, .d.ts; wheel API)</text>
+<text x="676" y="450" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Repo at the release tag (jsDelivr)</text>
+<text x="676" y="470" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">llms.txt / llms-full.txt</text>
+<text x="676" y="490" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Site discovery from metadata</text>
+<text x="676" y="510" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">Normalize, scan for injection, BM25</text>
+<rect x="1050" y="170" width="200" height="290" rx="10" fill="#222221" stroke="#d95926" stroke-width="1.75"/>
+<text x="1066" y="196" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#f0efec" font-weight="650">Fenced answer</text>
+<text x="1066" y="220" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">SECURITY NOTICE with</text>
+<text x="1066" y="240" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">the version to pin</text>
+<text x="1066" y="260" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7"></text>
+<text x="1066" y="280" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">docs inside</text>
+<text x="1066" y="300" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">&lt;untrusted-data</text>
+<text x="1080" y="320" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">id source&gt;</text>
+<text x="1066" y="340" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7"></text>
+<text x="1066" y="360" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">hook: deny / ask /</text>
+<text x="1066" y="380" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">allow with a note</text>
+<text x="1066" y="400" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7"></text>
+<text x="1066" y="420" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">URLs through the</text>
+<text x="1066" y="440" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" fill="#c3c2b7">SSRF guard</text>
+<path d="M232,310 C282,310 280,200 328,200" fill="none" stroke="#c3c2b7" stroke-width="1.75" marker-end="url(#ah-dark)"/>
+<text x="258" y="222" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#c3c2b7" text-anchor="middle">calls</text>
+<path d="M232,350 C282,350 280,440 328,440" fill="none" stroke="#c3c2b7" stroke-width="1.75" marker-end="url(#ah-dark)"/>
+<text x="262" y="474" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#c3c2b7" text-anchor="middle">runs first</text>
+<path d="M580,190 L658,190" fill="none" stroke="#c3c2b7" stroke-width="1.75" marker-end="url(#ah-dark)"/>
+<path d="M580,250 C620,250 620,440 658,440" fill="none" stroke="#c3c2b7" stroke-width="1.75" marker-end="url(#ah-dark)"/>
+<path d="M580,440 C620,440 620,270 658,270" fill="none" stroke="#c3c2b7" stroke-width="1.75" marker-end="url(#ah-dark)"/>
+<path d="M1000,210 C1025,210 1025,280 1048,280" fill="none" stroke="#c3c2b7" stroke-width="1.75" marker-end="url(#ah-dark)"/>
+<path d="M1000,450 C1025,450 1025,380 1048,380" fill="none" stroke="#c3c2b7" stroke-width="1.75" marker-end="url(#ah-dark)"/>
+<path d="M1150,462 V583 Q1150,598 1135,598 H147 Q132,598 132,583 V403" fill="none" stroke="#a3a29b" stroke-width="1.75" marker-end="url(#ah-dark)"/>
+<text x="640" y="622" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#c3c2b7" text-anchor="middle">the agent reads the verdict and the docs, or gets the hook decision</text>
+<text x="32" y="662" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#a3a29b">Public services only: deps.dev, OSV, the package registries, jsDelivr, GitHub, and the docs site a package’s metadata names. No telemetry, no account.</text>
+</svg>

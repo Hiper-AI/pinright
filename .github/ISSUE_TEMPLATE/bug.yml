@@ -1,0 +1,72 @@
+name: Bug
+description: Something else does not work (init, doctor, the server does not start, a crash, the Action).
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A block or verdict you disagree with goes in "False positive" or "False negative". Security problems go to private vulnerability reporting (see SECURITY.md).
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command or file
+      description: What you ran, or the config file involved (`.mcp.json`, `.claude/settings.json`, `.cursor/hooks.json`, `.pinright.json`, the workflow).
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: got
+    attributes:
+      label: What happened
+      description: Full output or error.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Client
+      options:
+        - Claude Code
+        - Claude Desktop
+        - Cursor
+        - VS Code (GitHub Copilot)
+        - OpenAI Codex
+        - Gemini CLI
+        - Windsurf
+        - Zed
+        - JetBrains (Junie or AI Assistant)
+        - Cline, Roo Code or Continue
+        - Amp, opencode or Kiro
+        - None (CLI or Action)
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and shell
+      placeholder: "Windows 11, PowerShell 7 / macOS 15, zsh / Ubuntu 24.04, bash"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pinright version
+      description: Output of `npx pinright --version`
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`npx pinright doctor --json`"
+      description: Run it in the same project. It has no tokens, but it shows local paths; edit them out if you prefer.
+      render: json
+    validations:
+      required: true

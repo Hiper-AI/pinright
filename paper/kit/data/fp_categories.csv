@@ -1,0 +1,21 @@
+table,cause,entries,kind,example,commits
+fixed,"""$X"" -m module read as an install verb; known program in a variable folder read as unknown",62,false positive (fixed),"$PYTHON -m pytest","5bc28f2 f2d747c"
+fixed,"Make variables read as command substitutions; long $(MAKE) chains hit the nesting limit",43,false positive (fixed),"make test in nodejs/node, gin, yt-dlp","d407204 29ef681"
+fixed,"Go pins looked up without their v; go install module/cmd/tool looked up the package path; @<commit> read as a release",25,false positive (fixed),"go install github.com/google/go-licenses/v2@v2.0.1","6461b81 1b90b07 42e42c2"
+fixed,"A path read as a package or as unknown",17,false positive (fixed),"uv pip install -e sdk/python","e501f9d"
+fixed,"Options after the command parsed as npx/uv options",30,false positive (fixed),"npx http-server -c-1 -p 5000","6eff725"
+fixed,"Install-conflict check on npm/Cargo and on ranges",11,false positive (fixed),"numpy<2 scipy","53205c2 4463e8f"
+fixed,"Lookalike check on real packages",6,false positive (fixed),"unicorn read as a uvicorn lookalike","a249b7f 87ca494"
+fixed,"pip install --group tests read tests as a package",3,false positive (fixed),"fastapi","8727281"
+fixed,"--ignore-scripts still followed lifecycle scripts",2,false positive (fixed),"pnpm install --frozen-lockfile --ignore-scripts","210e2ee"
+fixed,"Smaller ones (bun --filter, uvx x@v, --find-links, npm config set auth token)",4,false positive (fixed),"bun install --filter <workspace>","8139413 1824bb9 127180c 08433e4"
+remaining,"Package or path in a variable",89,by design (asks),"pip install ""$wheel""",
+remaining,"Manifest rewritten by a program (sed -i, jq > tmp && mv, grep -v > other.txt)",63,by design (asks),"sed -i ... pyproject.toml",
+remaining,"Version in a variable",62,by design (asks),"npm i -g pnpm@$PNPM_VERSION",
+remaining,"GitHub ${{ }} templating",58,CI only,"${{ matrix.x }}",
+remaining,"Known advisories (deny 25, ask 7 with no fixed release)",32,true positive,"pip install uv==0.11.23",
+remaining,"Git or URL source",26,by design (asks),"cargo install --git",
+remaining,"Another registry or index",24,by design (asks),"--index-url https://download.pytorch.org/whl/cpu",
+remaining,"Lookalike name",2,trade-off,"pyzes (one edit from pyaes)",
+remaining,"Unknown package or version",2,"true positive, corpus artifact","pipx install 'poetry==1.3.0rc1'",
+remaining,"Other: 84 requirements in one pip install -r, xargs uv run, Go install at a commit",3,by design (asks),"pip install -r requirements-dev.txt (pandas)",

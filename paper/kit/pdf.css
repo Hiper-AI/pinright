@@ -1,0 +1,16 @@
+/* Paper kit additions on top of paper/pdf.css: figures, wide tables, no em dashes anywhere. */
+body { font-size: 9.8pt; line-height: 1.38; }
+h2 { margin-top: 1.1em; }
+p { margin: 0.5em 0; }
+h1 { font-size: 17pt; margin-bottom: 0.3em; }
+h2 { page-break-after: avoid; }
+h3 { page-break-after: avoid; }
+p img { display: block; max-width: 100%; width: 86%; margin: 0.6em auto 0.2em; page-break-inside: avoid; }
+p img[src*="fig-h-"] { width: 72%; }
+p img[src*="fig-e-"], p img[src*="fig-c-"] { width: 74%; }
+p:has(> img) { page-break-inside: avoid; margin-bottom: 0; }
+p:has(> img) + p > em:only-child { display: block; font-size: 8.5pt; color: #444; margin-bottom: 1em; }
+table { font-size: 7.6pt; page-break-inside: avoid; width: 100%; }
+th, td { padding: 2px 4px; }
+pre { font-size: 7.6pt; page-break-inside: avoid; }
+li { margin: 0.15em 0; }

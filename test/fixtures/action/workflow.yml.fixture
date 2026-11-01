@@ -1,0 +1,10 @@
+name: fixture
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Changed files
+        uses: tj-actions/changed-files@v35
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
