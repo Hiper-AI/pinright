@@ -56,6 +56,18 @@ function load<T extends { arm: string; model?: string }>(kind: 'agents' | 'docs'
 // One row per benchmark, model and agent arm: means over runs with a 95% interval that resamples
 // tasks, the same bootstrap as the other metrics. Read from each run's transcript (bench/tokens.ts).
 const tokenRows: Cell[][] = [];
+// Per-task means of each run's tokens and MCP text, kept so the other arms can be paired with docs-only.
+const taskMeans = new Map<string, Map<string, [number, number]>>();
+/**
+ * Share of tokens (or MCP text) an arm used less than docs-only on the same tasks: 1 - mean(arm) / mean(docs-only)
+ * over per-task means, with a 95% interval from the bootstrap that resamples tasks and keeps each task's pair.
+ */
+function savedVsDocsOnly(base: Map<string, [number, number]> | undefined, mine: Map<string, [number, number]>, i: 0 | 1): Cell[] {
+  if (!base || base === mine) return [null, null, null];
+  const pairs = [...mine].filter(([task]) => base.has(task)).map(([task, v]) => [[base.get(task)![i], v[i]]]);
+  const share = (xs: number[][]) => 100 * (1 - mean(xs.map((x) => x[1])) / mean(xs.map((x) => x[0])));
+  return [share(pairs.flat()), ...bootstrap(pairs, share)];
+}
 const runTokens = (dir: string, arm: string, r: { task: string; rep: number }) => readTokens(join(armDir(dir, arm), `${r.task}-r${r.rep}`));
 function tokenRow(benchmark: string, model: string, stamp: string, arm: string, rs: { task: string; rep: number }[], dir: string) {
   const ts = rs.map((r) => ({ task: r.task, t: runTokens(dir, arm, r) })).filter((x): x is { task: string; t: RunTokens } => Boolean(x.t));
@@ -65,12 +77,20 @@ function tokenRow(benchmark: string, model: string, stamp: string, arm: string, 
     return [mean(ts.map((x) => f(x.t))), ...bootstrap([...byTask.values()], mean)];
   };
   const k = (n: number) => n / 1000;
+  const means = new Map<string, [number, number]>();
+  for (const task of new Set(ts.map((x) => x.task))) {
+    const xs = ts.filter((x) => x.task === task).map((x) => x.t);
+    means.set(task, [mean(xs.map((t) => t.total)), mean(xs.map((t) => t.mcpResultChars))]);
+  }
+  taskMeans.set(`${benchmark}|${model}|${arm}`, means);
+  const base = taskMeans.get(`${benchmark}|${model}|docs-only`);
   tokenRows.push([
     benchmark, modelName(model), model, stamp, arm, LABEL[arm], rs.length, ts.length,
     ...stat((t) => k(t.total)), ...stat((t) => k(t.input + t.cacheCreation)), k(mean(ts.map((x) => x.t.cacheRead))), ...stat((t) => k(t.output)),
     ...stat((t) => t.mcpResultChars / 1000),
     mean(ts.map((x) => x.t.getDocs)), sum(ts.map((x) => x.t.getDocs)), sum(ts.map((x) => x.t.getDocsNoVersion)),
     ts.filter((x) => x.t.firstTool === 'check-packages').length, ts.filter((x) => x.t.firstTool === 'get-docs').length,
+    ...(!arm.startsWith('pinright') ? [null, null, null, null, null, null] : [...savedVsDocsOnly(base, means, 0), ...savedVsDocsOnly(base, means, 1)]),
   ]);
 }
 const tokensOf = (dir: string, arm: string, r: { task: string; rep: number }) => {
@@ -171,6 +191,7 @@ csv('tokens_by_model_arm.csv', [
   ...ci('ktokens_total_per_run'), ...ci('ktokens_fresh_input_per_run'), 'ktokens_cache_read_per_run', ...ci('ktokens_output_per_run'),
   ...ci('mcp_result_kchars_per_run'),
   'get_docs_calls_per_run', 'get_docs_calls', 'get_docs_calls_without_version', 'runs_first_call_check_packages', 'runs_first_call_get_docs',
+  ...ci('tokens_saved_vs_docs_only_pct'), ...ci('mcp_text_saved_vs_docs_only_pct'),
 ], tokenRows);
 
 // ---------------------------------------------------------------- retrieval probes

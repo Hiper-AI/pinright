@@ -96,6 +96,8 @@ small helper call). Means are per run; intervals resample tasks with the same se
 | mcp_result_kchars_per_run, _ci95_lo, _ci95_hi | thousands of characters the MCP tools returned (docs, verdicts, find-library) |
 | get_docs_calls_per_run, get_docs_calls, get_docs_calls_without_version | `get-docs` calls, and those that named no version (no `version` argument, no `@version` in the id) |
 | runs_first_call_check_packages, runs_first_call_get_docs | runs whose first tool call was `check-packages` / `get-docs` |
+| tokens_saved_vs_docs_only_pct, _ci95_lo, _ci95_hi | pinright arms only: 1 - mean(arm) / mean(docs-only) of total tokens over the per-task means, paired by task; the interval resamples tasks and keeps each task's pair |
+| mcp_text_saved_vs_docs_only_pct, _ci95_lo, _ci95_hi | the same for the MCP tool text |
 
 ### probes.csv
 
