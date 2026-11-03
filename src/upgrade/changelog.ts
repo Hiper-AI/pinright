@@ -226,7 +226,10 @@ export function extractItems(section: VersionSection, source: string, url: strin
         continue;
       }
       if (UNDERLINE.test(line)) continue;
-      if (/^\s{0,3}([-*+]|\d+[.)])\s+/.test(line)) {
+      // A nested list belongs to its parent bullet: "Remove the following dependencies:" over "  - `graphql`"
+      // is one entry, and "`graphql`" alone reads as a change of its own.
+      const nested = last === 'bullet' && bullet.length > 0 && /^\s{2,}([-*+]|\d+[.)])\s+/.test(line);
+      if (!nested && /^\s{0,3}([-*+]|\d+[.)])\s+/.test(line)) {
         flushBullet();
         bullet.push(line.replace(/^\s{0,3}([-*+]|\d+[.)])\s+/, ''));
         last = 'bullet';

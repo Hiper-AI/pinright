@@ -85,7 +85,28 @@ function memberNames(body: string): string[] {
   return [...names];
 }
 
-const DECL = /^(export\s+)?(declare\s+)?(default\s+)?(abstract\s+)?(async\s+)?(function|class|interface|type|const|let|var|enum|namespace|module)\s+([A-Za-z_$][\w$]*)/;
+/**
+ * Members of a const typed with one object literal: `declare const graphql: { link(url: Path): GraphQLLink; }`
+ * has `link` and nothing else. Undefined when the type is named, intersected or indexed, since its members
+ * are then not all spelled out here.
+ */
+export function literalMembers(stmt: string): string[] | undefined {
+  const head = stmt.match(/^(?:export\s+)?(?:declare\s+)?(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*:\s*\{/);
+  if (!head) return undefined;
+  const open = head[0].length - 1;
+  let depth = 0;
+  for (let i = open; i < stmt.length; i++) {
+    if (stmt[i] === '{') depth++;
+    else if (stmt[i] === '}' && --depth === 0) {
+      if (!/^\s*;?\s*$/.test(stmt.slice(i + 1))) return undefined;
+      const names = memberNames(stmt.slice(open + 1, i));
+      return names.some((n) => n.startsWith('[')) ? undefined : names;
+    }
+  }
+  return undefined;
+}
+
+const DECL =/^(export\s+)?(declare\s+)?(default\s+)?(abstract\s+)?(async\s+)?(function|class|interface|type|const|let|var|enum|namespace|module)\s+([A-Za-z_$][\w$]*)/;
 
 export interface ParsedDts {
   /** Declarations by name, exported or not (an "export { a }" list may expose them later). */
@@ -163,7 +184,8 @@ export function parseDts(src: string): ParsedDts {
       prev.exported ||= exported;
       continue;
     }
-    res.decls.set(name, { kind, signature, members: block && kind !== 'namespace' ? memberNames(body ?? '') : undefined, exported, body });
+    const members = block && kind !== 'namespace' ? memberNames(body ?? '') : kind === 'const' ? literalMembers(stmt) : undefined;
+    res.decls.set(name, { kind, signature, members, exported, body });
   }
   return res;
 }
@@ -204,6 +226,8 @@ export function diffExports(before: ExportMap, after: ExportMap): ApiDiff {
     if (a.members && b.members) {
       const gone = a.members.filter((m) => !b.members?.includes(m));
       if (gone.length || a.kind !== b.kind) changed.push({ name, kind: b.kind, before: a.signature, after: b.signature, removedMembers: gone });
+      // A const's signature is its whole type: a member whose type changed is still a change.
+      else if (a.kind === 'const' && a.signature !== b.signature) changed.push({ name, kind: b.kind, before: a.signature, after: b.signature });
       continue;
     }
     if (a.signature !== b.signature) changed.push({ name, kind: b.kind, before: a.signature, after: b.signature });
@@ -387,6 +411,24 @@ export async function apiSurface(name: string, version: string): Promise<ApiSurf
 
 export interface EntryDiff extends ApiDiff {
   entry: string;
+  /** Exports gone from this entry that another entry now has (msw 3's `graphql`, now in msw/graphql). */
+  moved?: { name: string; kind: ExportKind; to: string; removedMembers?: string[] }[];
+}
+
+/** Removed exports that another entry of `to` gained: moved, not gone, with the members they lost on the way. */
+function movedExports(entry: string, d: ApiDiff, before: ExportMap, from: ApiSurface, to: ApiSurface): EntryDiff['moved'] {
+  const moved: NonNullable<EntryDiff['moved']> = [];
+  for (const r of d.removed) {
+    // Every entry has its own default export: the same name there says nothing about where this one went.
+    if (r.name === 'default' || r.name === 'export=') continue;
+    const dest = [...to.entries.entries()].find(([e, exp]) => e !== entry && exp.has(r.name) && !from.entries.get(e)?.has(r.name));
+    if (!dest) continue;
+    const a = before.get(r.name);
+    const b = dest[1].get(r.name);
+    const gone = a?.members && b?.members ? a.members.filter((m) => !b.members?.includes(m)) : [];
+    moved.push({ name: r.name, kind: b?.kind === 'unknown' ? r.kind : (b?.kind ?? r.kind), to: dest[0], ...(gone.length ? { removedMembers: gone } : {}) });
+  }
+  return moved;
 }
 
 /**
@@ -409,7 +451,9 @@ export function diffSurfaces(from: ApiSurface, to: ApiSurface): { diffs: EntryDi
       continue;
     }
     const d = diffExports(before, after);
-    if (d.removed.length || d.changed.length || d.added.length) diffs.push({ entry, ...d });
+    const moved = movedExports(entry, d, before, from, to) ?? [];
+    if (moved.length) d.removed = d.removed.filter((r) => !moved.some((m) => m.name === r.name));
+    if (d.removed.length || d.changed.length || d.added.length || moved.length) diffs.push({ entry, ...d, ...(moved.length ? { moved } : {}) });
   }
   const addedEntries = [...to.entries.keys()].filter((e) => !from.entries.has(e));
   return { diffs, removedEntries, addedEntries, skipped };

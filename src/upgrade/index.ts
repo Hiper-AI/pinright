@@ -122,9 +122,16 @@ export function formatApiDiff(d: { diffs: EntryDiff[]; removedEntries: string[];
   for (const e of diffs) {
     const root = e.entry === '.';
     const where = root ? 'root' : e.entry;
-    lines.push(`${where}: ${e.removed.length} exports removed, ${e.changed.length} changed, ${e.added.length} added.`);
-    const removed = [...e.removed].sort((a, b) => Number(hit(b.name)) - Number(hit(a.name)));
+    lines.push(`${where}: ${e.removed.length} exports removed, ${e.moved?.length ? `${e.moved.length} moved, ` : ''}${e.changed.length} changed, ${e.added.length} added.`);
     const maxRemoved = root ? 40 : 15;
+    // Moved exports by destination; one that also lost members gets its own line: fixing the import does not fix its calls.
+    const plain = new Map<string, string[]>();
+    for (const m of [...(e.moved ?? [])].sort((a, b) => Number(hit(b.name)) - Number(hit(a.name)))) {
+      if (m.removedMembers?.length) lines.push(`- BREAKING: moved to ${m.to}: ${m.name} (${m.kind}); members removed: ${m.removedMembers.slice(0, 12).join(', ')}${m.removedMembers.length > 12 ? ', ...' : ''}`);
+      else plain.set(m.to, [...(plain.get(m.to) ?? []), `${m.name} (${m.kind})`]);
+    }
+    for (const [dest, names] of plain) lines.push(`- BREAKING: moved to ${dest}: ${names.slice(0, maxRemoved).join(', ')}${names.length > maxRemoved ? `, +${names.length - maxRemoved} more` : ''}`);
+    const removed = [...e.removed].sort((a, b) => Number(hit(b.name)) - Number(hit(a.name)));
     if (removed.length) {
       const shown = removed.slice(0, maxRemoved).map((r) => `${r.name} (${r.kind})`);
       lines.push(`- BREAKING: removed: ${shown.join(', ')}${removed.length > maxRemoved ? `, +${removed.length - maxRemoved} more` : ''}`);

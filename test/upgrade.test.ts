@@ -2,9 +2,11 @@
  * upgrade-guide, offline: version ranges, changelog parsing and classification,
  * the .d.ts export diff, and the size of what the agent gets back.
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { classify, dedupeItems, extractItems, parseChangelog, sectionsInRange, type ChangeItem } from '../src/upgrade/changelog.js';
-import { diffExports, ownExports, parseDts, splitTopLevel, typeEntries } from '../src/upgrade/dts.js';
+import { diffExports, diffSurfaces, ownExports, parseDts, splitTopLevel, typeEntries, type ExportMap } from '../src/upgrade/dts.js';
 import { cleanMdx, formatApiDiff, formatItems, guideToc, rankItems } from '../src/upgrade/index.js';
 import { announcementLink, changelogPathRelevant, guideScore, htmlToMarkdown, majorMarkers } from '../src/upgrade/sources.js';
 import { compareVersions, crossesLine, inUpgradeRange, majorsInRange, resolveVersionSpec, toSemver, versionFromTag, versionInHeading } from '../src/upgrade/versions.js';
@@ -130,6 +132,12 @@ describe('changelog sections', () => {
     expect(classify('Revert "Remove `foo`"')).toBe('other');
   });
 
+  it('keeps a nested list with its parent bullet (msw v3.0.0 "Remove the following dependencies:")', () => {
+    const body = '### Features\n\n- Support GraphQL v17.0.\n- Remove the following dependencies:\n  - `graphql`\n  - `path-to-regexp`\n- Adds a Vite plugin for MSW (#2781).';
+    const items = extractItems({ version: '3.0.0', title: 'v3.0.0', body }, 'GitHub release v3.0.0', 'u');
+    expect(items.map((i) => i.text)).toEqual(['Support GraphQL v17.0.', 'Remove the following dependencies:\n - `graphql`\n - `path-to-regexp`', 'Adds a Vite plugin for MSW (#2781).']);
+  });
+
   it('dedupes the same entry seen in the changelog and the release notes', () => {
     const a: ChangeItem = { category: 'breaking', version: '2.0.0', text: 'Removed `oldFn` [#12](https://x)\n  * detail', source: 'CHANGELOG.md', url: 'u' };
     const b: ChangeItem = { ...a, text: 'Removed `oldFn` #12', source: 'GitHub release v2.0.0' };
@@ -198,6 +206,44 @@ export { Internal as Engine };
     expect([...typeEntries({ exports: { '.': { types: './index.d.cts' }, './v3': { types: './v3/index.d.cts' }, './package.json': './package.json' } }, files).entries()])
       .toEqual([['.', 'index.d.cts'], ['./v3', 'v3/index.d.cts']]);
     expect([...typeEntries({ types: 'index.d.ts' }, files).keys()]).toEqual(['.', './server']);
+  });
+
+  // msw 2.12 -> 3.0: `graphql` left the root for msw/graphql and kept only `link`. The diff listed it as
+  // "removed: graphql (const)" next to "New entry points: ./graphql", and never said query() was gone.
+  const fixture = (f: string) => readFileSync(join(import.meta.dirname, 'fixtures', 'msw', f), 'utf8');
+
+  it('reads the members of a const typed with an object literal, not of one typed by name', () => {
+    const p = parseDts(fixture('core-graphql-2.12.0.d.ts.txt'));
+    expect(p.decls.get('graphql')?.members).toEqual(['link', 'query', 'mutation', 'operation']);
+    expect(parseDts(fixture('graphql-3.0.3.d.ts.txt')).decls.get('graphql')?.members).toEqual(['link']);
+    expect(parseDts('export declare const a: Api;').decls.get('a')?.members).toBeUndefined();
+    expect(parseDts('export declare const b: { x: 1 } & Extra;').decls.get('b')?.members).toBeUndefined();
+    expect(parseDts('export declare const c: { [k: string]: number };').decls.get('c')?.members).toBeUndefined();
+  });
+
+  it('a const that keeps its members but changes a type is still a changed signature', () => {
+    const d = diffExports(ownExports(parseDts('export declare const o: { a: string; };')), ownExports(parseDts('export declare const o: { a: number; b: 1; };')));
+    expect(d.changed).toEqual([{ name: 'o', kind: 'const', before: 'const o:{a:string;}', after: 'const o:{a:number;b:1;}' }]);
+  });
+
+  it('an export that moved to a new entry point is reported as moved, with the members it lost', () => {
+    const before = ownExports(parseDts(`${fixture('core-graphql-2.12.0.d.ts.txt')}\nexport declare const VERSION: string;`));
+    const after = ownExports(parseDts(fixture('graphql-3.0.3.d.ts.txt')));
+    const surface = (entries: [string, ExportMap][]) => ({ entries: new Map(entries), incomplete: new Set<string>() });
+    const d = diffSurfaces(surface([['.', before]]), surface([['.', new Map([...before].filter(([k]) => k === 'VERSION'))], ['./graphql', after]]));
+    const root = d.diffs.find((e) => e.entry === '.');
+    expect(root?.removed.map((r) => r.name)).not.toContain('graphql');
+    expect(root?.moved).toEqual([
+      { name: 'GraphQLRequestHandler', kind: 'type', to: './graphql' },
+      { name: 'GraphQLResponseResolver', kind: 'type', to: './graphql' },
+      { name: 'graphql', kind: 'const', to: './graphql', removedMembers: ['query', 'mutation', 'operation'] },
+    ]);
+    // TypedDocumentNode is in neither entry at 3.0.3: removed, not moved.
+    expect(root?.removed.map((r) => r.name)).toEqual(['TypedDocumentNode']);
+    const text = formatApiDiff(d, 4000, 'graphql handler');
+    expect(text).toContain('root: 1 exports removed, 3 moved, 0 changed, 0 added.');
+    expect(text).toContain('- BREAKING: moved to ./graphql: graphql (const); members removed: query, mutation, operation');
+    expect(text).toContain('- BREAKING: moved to ./graphql: GraphQLRequestHandler (type), GraphQLResponseResolver (type)');
   });
 });
 
