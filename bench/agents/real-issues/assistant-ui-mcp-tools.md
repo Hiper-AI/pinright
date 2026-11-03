@@ -1,0 +1,1 @@
+How to do to tool call updates to UI from a backend using MCP? Invocation of tools are determined by LLM, I can intercept the call and return something in the midst of chat messages response but in all examples, it's based on route.ts

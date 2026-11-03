@@ -2,7 +2,10 @@
  * Turns one or more runs/<stamp>/scores.json (one per model) into the generated part
  * of bench/AGENTS.md (between the "generated" markers; hand-written text around it is kept).
  *
- *   npx tsx bench/agents/report.ts <stamp> [<stamp> ...]
+ * All stamps must use the same task set (config.json `set`, v6 when absent). --out writes
+ * another file instead (e.g. bench/AGENTS-real-issues.md for the real-issues set).
+ *
+ *   npx tsx bench/agents/report.ts <stamp> [<stamp> ...] [--out bench/AGENTS.md]
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -10,19 +13,25 @@ import { canonicalScores } from '../legacy.js';
 import { f1, f2, f3, pct, spread, withCi } from '../stats.js';
 import { agreement, armMetrics, armsOf, isAgentArm, label, modelName } from './metrics.js';
 import type { RunScore } from './score.js';
-import { TASKS } from './tasks.js';
+import { DEFAULT_SET, setOfRun, taskSet } from './sets.js';
 
-const stamps = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-if (!stamps.length) throw new Error('usage: report.ts <stamp> [<stamp> ...]');
+const argv = process.argv.slice(2);
+const outOpt = argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : undefined;
+const stamps = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--out');
+if (!stamps.length) throw new Error('usage: report.ts <stamp> [<stamp> ...] [--out file]');
 const root = resolve(import.meta.dirname, '..', '..');
 
-interface Run { stamp: string; scores: RunScore[]; config: { model: string; reps: number }; model: string }
+interface Run { stamp: string; scores: RunScore[]; config: { model: string; reps: number }; model: string; set: string }
 const runs: Run[] = stamps.map((stamp) => {
   const runDir = join(root, 'bench', 'agents', 'runs', stamp);
   const scores: RunScore[] = canonicalScores(JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8')));
   const config = JSON.parse(readFileSync(join(runDir, 'config.json'), 'utf8'));
-  return { stamp, scores, config, model: scores.find((s) => s.model)?.model ?? config.model };
+  return { stamp, scores, config, model: scores.find((s) => s.model)?.model ?? config.model, set: setOfRun(runDir) };
 });
+const sets = [...new Set(runs.map((r) => r.set))];
+if (sets.length > 1) throw new Error(`the stamps mix task sets (${sets.join(', ')}); report one set at a time`);
+const SET = sets[0];
+const TASKS = taskSet(SET);
 
 const L: string[] = [];
 const row = (cells: string[]) => L.push(`| ${cells.join(' | ')} |`);
@@ -132,18 +141,21 @@ if (ag.diffs.length) {
 L.push('');
 
 L.push('## Reproduce', '', '```bash', 'npm ci && npm run build');
+// Runs of a non-default set name the set and the arms they ran; v6 lines stay as they were.
+const setFlags = (r: Run) => (SET === DEFAULT_SET ? '' : ` --set ${SET} --arms ${armsOf(r.scores.map((s) => s.arm)).filter(isAgentArm).join(',')}`);
 for (const r of runs) {
-  L.push(`GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model ${r.config.model} --reps ${r.config.reps} --concurrency 3 --stamp ${r.stamp}`);
-  if (r.scores.some((s) => s.arm === 'docs-only')) {
+  L.push(`GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model ${r.config.model} --reps ${r.config.reps} --concurrency 3 --stamp ${r.stamp}${setFlags(r)}`);
+  if (SET === DEFAULT_SET && r.scores.some((s) => s.arm === 'docs-only')) {
     L.push(`GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model ${r.config.model} --reps ${r.config.reps} --concurrency 3 --stamp ${r.stamp} --arms docs-only --resume`);
   }
-  L.push(`npx tsx bench/agents/make-latest.ts ${r.stamp} && npx tsx bench/agents/score.ts ${r.stamp} --concurrency 3`);
+  const latest = r.scores.some((s) => s.arm === 'latest') ? `npx tsx bench/agents/make-latest.ts ${r.stamp} && ` : '';
+  L.push(`${SET === DEFAULT_SET ? `npx tsx bench/agents/make-latest.ts ${r.stamp} && ` : latest}npx tsx bench/agents/score.ts ${r.stamp} --concurrency 3`);
 }
-L.push(`npx tsx bench/agents/report.ts ${stamps.join(' ')}`, '```', '');
+L.push(`npx tsx bench/agents/report.ts ${stamps.join(' ')}${outOpt ? ` --out ${outOpt}` : ''}`, '```', '');
 
 const START = '<!-- generated:start -->';
 const END = '<!-- generated:end -->';
-const file = join(root, 'bench', 'AGENTS.md');
+const file = resolve(root, outOpt ?? join('bench', 'AGENTS.md'));
 const prev = existsSync(file) ? readFileSync(file, 'utf8') : '';
 const i = prev.indexOf(START);
 const j = prev.indexOf(END);

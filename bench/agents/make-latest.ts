@@ -7,11 +7,12 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { TASKS } from './tasks.js';
+import { tasksOfRun } from './sets.js';
 
 const stamp = process.argv[2];
 if (!stamp) throw new Error('usage: make-latest.ts <stamp>');
 const runDir = join(resolve(import.meta.dirname, '..', '..'), 'bench', 'agents', 'runs', stamp);
+const TASKS = tasksOfRun(runDir);
 
 for (const task of TASKS) {
   const src = join(runDir, 'no-docs', `${task.id}-r1`, 'work');

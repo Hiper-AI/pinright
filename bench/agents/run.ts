@@ -9,12 +9,16 @@
  * difference is the MCP server. Any other MCP server can be added as an arm with
  * --mcp-arm name=mcp.json (a Claude Code MCP config). Transcripts land in bench/agents/runs/<stamp>/.
  *
- *   npx tsx bench/agents/run.ts [--model sonnet] [--reps 2] [--concurrency 4] [--only id1,id2] [--arms a,b]
+ * --set picks the task set (sets.ts): v6 (default, the tasks we wrote) or real-issues
+ * (taken from public GitHub issues). The set is recorded in config.json for score.ts and report.ts.
+ *
+ *   npx tsx bench/agents/run.ts [--model sonnet] [--reps 2] [--concurrency 4] [--only id1,id2] [--arms a,b] [--set v6|real-issues]
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { extraArms, planJobs, runJobs } from './harness.js';
-import { DOCS_HINT, TASKS } from './tasks.js';
+import { DEFAULT_SET, setOfRun, taskSet } from './sets.js';
+import { DOCS_HINT } from './tasks.js';
 
 const args = process.argv.slice(2);
 const opt = (name: string, def: string) => {
@@ -31,6 +35,10 @@ const resume = args.includes('--resume');
 
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
+const priorSet = existsSync(join(runDir, 'config.json')) ? setOfRun(runDir) : undefined;
+const set = opt('set', (resume && priorSet) || DEFAULT_SET);
+if (resume && priorSet && priorSet !== set) throw new Error(`--set ${set} does not match the set of run ${stamp} (${priorSet})`);
+const TASKS = taskSet(set);
 
 const cli = join(root, 'dist', 'cli.js');
 const pinrightServer = { pinright: { command: 'node', args: [cli] } };
@@ -56,7 +64,7 @@ const tasks = TASKS.filter((t) => !only.length || only.includes(t.id));
 const jobs = planJobs(tasks, armsOpt, reps, { runDir, resume, suffix: DOCS_HINT });
 
 mkdirSync(runDir, { recursive: true });
-if (!resume) writeFileSync(join(runDir, 'config.json'), JSON.stringify({ model, reps, arms: armsOpt, tasks: only.length ? only : TASKS.map((t) => t.id), startedAt: new Date().toISOString() }, null, 2));
+if (!resume) writeFileSync(join(runDir, 'config.json'), JSON.stringify({ model, set, reps, arms: armsOpt, tasks: only.length ? only : TASKS.map((t) => t.id), startedAt: new Date().toISOString() }, null, 2));
 await runJobs(jobs, {
   runDir,
   model,

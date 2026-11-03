@@ -23,7 +23,8 @@ import { parseFile } from '../../src/tree/lockfiles.js';
 import { type BuildScore, npmBuild, pypiBuild, run } from './buildcheck.js';
 import { armDir as findArmDir, canonicalArm, canonicalScores, HOOK_BLOCKED } from '../legacy.js';
 import { ARMS, armsOf } from './metrics.js';
-import { TASKS } from './tasks.js';
+import { tasksOfRun } from './sets.js';
+import type { AgentTask } from './tasks.js';
 
 const args = process.argv.slice(2);
 const stamp = args[0];
@@ -35,6 +36,8 @@ const onlyTasks = (args[args.indexOf('--only') + 1] ?? '').split(',').filter((s)
 const onlyArms = (args[args.indexOf('--arms') + 1] ?? '').split(',').filter((s) => args.includes('--arms') && s);
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
+/** The run's task set (config.json), so a real-issues run is scored against its own tasks. */
+const TASKS = tasksOfRun(runDir);
 export { ARMS };
 const DAY = 86_400_000;
 
@@ -233,7 +236,7 @@ function readTranscript(dir: string) {
   return { ok: res?.subtype === 'success', costUsd: res?.total_cost_usd, turns: res?.num_turns, durationMs: res?.duration_ms, mcpCalls, hookBlocks, model: init?.model };
 }
 
-interface Job { arm: string; name: string; task: (typeof TASKS)[number]; rep: number; dir: string }
+interface Job { arm: string; name: string; task: AgentTask; rep: number; dir: string }
 const jobs: Job[] = [];
 // Every arm that has a directory in the run: the built-in ones plus any --mcp-arm the run was given.
 const present = existsSync(runDir) ? readdirSync(runDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name) : [];

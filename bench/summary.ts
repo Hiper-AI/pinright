@@ -75,20 +75,24 @@ if (docs.length) {
 }
 
 L.push('### API-equivalent cost of the runs (USD at list price, from the transcripts)', '');
-head(['Model', 'Agent benchmark', 'Docs benchmark', 'Total', 'Runs']);
+// Without docs stamps (e.g. the real-issues set) the docs and total columns are left out.
+const withDocs = docs.length > 0;
+head(withDocs ? ['Model', 'Agent benchmark', 'Docs benchmark', 'Total', 'Runs'] : ['Model', 'Agent benchmark', 'Runs']);
 const models = [...new Set([...agents, ...docs].map((r) => r.model))];
 for (const model of models) {
   const a = agents.filter((r) => r.model === model).flatMap((r) => r.scores);
   const d = docs.filter((r) => r.model === model).flatMap((r) => r.scores);
   const ca = sum(a.map((s) => s.costUsd ?? 0));
   const cd = sum(d.map((s) => s.costUsd ?? 0));
-  row([modelName(model), f2(ca), f2(cd), f2(ca + cd), String(a.filter((s) => s.arm !== 'latest').length + d.length)]);
+  const n = String(a.filter((s) => s.arm !== 'latest').length + d.length);
+  row(withDocs ? [modelName(model), f2(ca), f2(cd), f2(ca + cd), n] : [modelName(model), f2(ca), n]);
 }
 const allA = agents.flatMap((r) => r.scores);
 const allD = docs.flatMap((r) => r.scores);
 const ta = sum(allA.map((s) => s.costUsd ?? 0));
 const td = sum(allD.map((s) => s.costUsd ?? 0));
-row(['**All**', f2(ta), f2(td), `**${f2(ta + td)}**`, String(allA.filter((s) => s.arm !== 'latest').length + allD.length)]);
+const nAll = String(allA.filter((s) => s.arm !== 'latest').length + allD.length);
+row(withDocs ? ['**All**', f2(ta), f2(td), `**${f2(ta + td)}**`, nAll] : ['**All**', `**${f2(ta)}**`, nAll]);
 L.push('');
 
 const ag = agreement(allA);

@@ -1,0 +1,1 @@
+Hi, thanks for this great framework. I just came across this recently and I'm curious if it will be capable of implementing deep research like Grok deep research or OpenAI deep research. I think it'd be awesome to have an example like this

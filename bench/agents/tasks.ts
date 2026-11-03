@@ -9,10 +9,10 @@ export interface AgentTask {
   prompt: string;
 }
 
-const NPM_RULES =
+export const NPM_RULES =
   'Write a package.json with EXACT pinned versions (no ^ or ~) for every dependency, plus the source file(s). ' +
   'Do not run any command. Keep the code short.';
-const PY_RULES =
+export const PY_RULES =
   'Write a requirements.txt with EXACT pinned versions (name==version) for every dependency, plus the source file(s). ' +
   'Do not run any command. Keep the code short.';
 
