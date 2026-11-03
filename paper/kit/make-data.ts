@@ -1,11 +1,11 @@
 /**
- * Regenerates the benchmark CSVs of the paper kit from the raw v6 runs.
+ * Regenerates the benchmark CSVs of the paper kit from the raw runs (default: v7).
  *
- *   npx tsx paper/kit/make-data.ts [--bench <dir>]
+ *   npx tsx paper/kit/make-data.ts [--bench <dir>] [--agents <stamps>] [--docs <stamps>] [--probes <dir>] [--out <dir>]
  *
  * `--bench` is the `bench/` directory that holds `agents/runs/<stamp>` and `docs/runs/<stamp>`
  * (gitignored; default: this repository's `bench/`). The numbers go through the same helpers
- * as bench/AGENTS.md, bench/DOCS.md and bench/RESULTS-v6.md (armMetrics, docsArmMetrics, the
+ * as bench/AGENTS.md, bench/DOCS.md and bench/RESULTS-v7.md (armMetrics, docsArmMetrics, the
  * seeded cluster bootstrap), so the CSVs match those reports to the last digit.
  *
  * Writes paper/kit/data/{agents_by_model_arm,agents_by_task,docs_by_model_arm,docs_by_task,
@@ -27,9 +27,9 @@ const root = resolve(import.meta.dirname, '..', '..');
 const bench = resolve(opt('bench') ?? join(root, 'bench'));
 const out = resolve(opt('out') ?? join(import.meta.dirname, 'data'));
 
-// --agents and --docs pick other runs (comma-separated stamps), e.g. a rerun on the release code.
-const AGENT_STAMPS = (opt('agents') ?? 'v6-sonnet-2026-11-01,v6-haiku-2026-11-01,v6-opus-2026-11-01').split(',');
-const DOCS_STAMPS = (opt('docs') ?? 'docs-v6-sonnet-2026-11-01,docs-v6-haiku-2026-11-01,docs-v6-opus-2026-11-01').split(',');
+// --agents and --docs pick other runs (comma-separated stamps); the defaults are v7, on the 1.0.0 code.
+const AGENT_STAMPS = (opt('agents') ?? 'v7-sonnet-2026-11-02,v7-haiku-2026-11-02,v7-opus-2026-11-02').split(',');
+const DOCS_STAMPS = (opt('docs') ?? 'docs-v7-sonnet-2026-11-02,docs-v7-haiku-2026-11-02,docs-v7-opus-2026-11-02').split(',');
 const AGENT_ARMS = ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
 const DOCS_ARMS = ['no-docs', 'docs-only', 'pinright'];
 

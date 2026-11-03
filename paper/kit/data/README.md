@@ -23,7 +23,7 @@ The v6 runs (`v6-*-2026-11-01`, on `b2fcfe2`) are summarized in `bench/RESULTS-v
 ## Generated from the raw runs
 
 `npx tsx paper/kit/make-data.ts --agents <stamps> --docs <stamps> --probes <dir>` rebuilds these six
-files (the defaults are the v6 stamps and `bench/docs/runs/probes-v6`; `--bench <dir>` points at
+files (the defaults are the v7 stamps and `bench/docs/runs/probes-v6`; `--bench <dir>` points at
 another `bench/` directory). The command for v7 is in `bench/RESULTS-v7.md`, "Reproduce". The script
 uses the same helpers as `bench/AGENTS.md`, `bench/DOCS.md` and `bench/RESULTS-v7.md` (`armMetrics`, `docsArmMetrics`, and
 the seeded cluster bootstrap in `bench/stats.ts`: 2,000 resamples of tasks, seed 20261101), so the
