@@ -1,0 +1,24 @@
+node v24.20.0, Microsoft Windows [Version 10.0.26200.9711], cpus 16
+
+| case | mode | p50 ms | p95 ms | decision |
+|---|---|---|---|---|
+| --version (startup) | cold | 270 | 335 | text |
+| --version (startup) | warm | 374 | 430 | text |
+| npm test (non-install) | cold | 381 | 433 | allow (silent) |
+| npm test (non-install) | warm | 220 | 238 | allow (silent) |
+| npm i express | cold | 3629 | 4112 | allow (silent) |
+| npm i express | warm | 573 | 609 | allow (silent) |
+| requirements.txt, 15 pins | cold | 7509 | 15751 | deny |
+| requirements.txt, 15 pins | warm | 1192 | 1241 | deny |
+| package.json, 30 deps | cold | 16585 | 19571 | deny |
+| package.json, 30 deps | warm | 2796 | 3303 | deny |
+| workflow, 3 actions | cold | 2182 | 2595 | allow+notes |
+| workflow, 3 actions | warm | 661 | 875 | allow+notes |
+
+5 runs per cell, GITHUB_TOKEN unset, node v24.20.0, win32
+| tool | cold ms | warm ms | answer |
+|---|---|---|---|
+| check-packages, 10 | 6544 | 780 | 681 chars |
+| check-packages, 40 | 17744 | 1343 | 3310 chars; did not answer: api.npmjs.org (HTTP 429) |
+| get-docs express routing | 4235 | 280 | 8879 chars |
+| check-manifest, package-lock.json | 3287 | 98 | 932 chars |

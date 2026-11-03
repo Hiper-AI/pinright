@@ -578,7 +578,7 @@ commands, not agent sessions; README lines, the closest to what agents copy, run
 
 ### 5.6 Latency
 
-Measured with `scripts/latency.ts` (5 runs per cell, Windows, Node 24, live services):
+Measured with `scripts/latency.ts` (5 runs per cell, Windows 11, Node 24, live services, 2026-11-01):
 
 | Case | Budget | p50 / p95 |
 |---|---|---|
@@ -590,6 +590,47 @@ Measured with `scripts/latency.ts` (5 runs per cell, Windows, Node 24, live serv
 
 The 15-line requirements file on a cold cache exceeds its 5 s budget at p95. The hook checks only the
 lines a write adds or changes, so later edits cost what the changed lines cost.
+
+**Linux.** We ran the same script on 2026-11-02 in a Linux container on a Windows host: Debian 12
+(`node:24-bookworm-slim`), Node 24.22.2, Docker Desktop 29.7.2 on WSL2 (kernel 6.6), AMD Ryzen 7
+5700G with 16 threads and 63 GB of RAM, 5 runs per cell, no `GITHUB_TOKEN`. pinright came from the
+`npm pack` tarball of the release branch. This is weaker evidence than a Linux machine: the
+container shares the Windows host, and another benchmark was running on that host at the time. We
+could not reach the Linux CI VM (`hiperai-ci-linux`) from the session, so it has no numbers yet. To
+separate the OS from that day's load, we re-ran the Windows script on the same host in the same
+hour (Node 24.20.0):
+
+| Case | Budget | Linux container p50 / p95 | Windows, same session p50 / p95 |
+|---|---|---|---|
+| Node alone (`node -e 0`, 7 runs) | n/a | 48 ms median | not re-measured |
+| Command that installs nothing (`npm test`), warm / cold | under 150 ms above Node's start | 109 / 113 ms; 126 / 156 ms | 220 / 238 ms; 381 / 433 ms |
+| One install, warm / cold | under 1 s / under 5 s | 554 / 687 ms; 2.1 / 2.8 s | 573 / 609 ms; 3.6 / 4.1 s |
+| 15-line `requirements.txt`, warm / cold | 1 s / 5 s | 405 / 501 ms; 4.7 / 6.5 s | 1.2 / 1.2 s; 7.5 / 15.8 s |
+| `package.json` with 30 new deps, warm / cold | 1.5 s / the 45 s deadline | 2.5 / 3.0 s; 9.7 / 12.3 s | 2.8 / 3.3 s; 16.6 / 19.6 s |
+| Workflow with 3 `uses:` lines, warm / cold | 1 s / 5 s | 367 / 449 ms; 2.3 / 2.4 s | 661 / 875 ms; 2.2 / 2.6 s |
+
+The container was faster in most cells. It was slower at the warm-install p95 (687 against 609 ms)
+and the cold-workflow p50 (2.3 against 2.2 s). The Windows re-run came out slower than the
+2026-11-01 table above in most cells, so that day's host load counts as much as the OS. Two budgets
+fail in both columns: the cold requirements file at p95, and the warm 30-dependency manifest (2.5 to
+3.3 s against 1.5 s), which the 2026-11-01 run met. The Windows re-run also misses the 1 s budget
+for the warm requirements file (1.2 s). We have no macOS numbers. The Mac would have to be a GitHub-hosted runner: Actions has
+not started GitHub-hosted jobs for the organization since 2026-10-22 (billing), and running the
+script there needs a new workflow in the repository.
+
+The MCP tools, measured with `scripts/mcp-latency.ts` through the stdio server (one cold call with an
+empty cache, then one warm call; the first of three runs in the container, the only run on Windows):
+
+| Tool call | Linux container cold / warm | Windows, same session cold / warm |
+|---|---|---|
+| `check-packages`, 10 npm packages | 4.8 s / 598 ms | 6.5 s / 780 ms |
+| `check-packages`, 40 npm packages | 7.1 s / 979 ms | 17.7 s / 1.3 s (npm downloads API answered 429) |
+| `get-docs` for Express routing | 4.6 s / 287 ms | 4.2 s / 280 ms |
+| `check-manifest` on pinright's `package-lock.json` | 3.6 s / 72 ms | 3.3 s / 98 ms |
+
+Across the three container runs, cold calls ranged from 2.5 to 8.3 s. The second and third runs hit
+HTTP 429 from npm's downloads API, so their cold numbers include partial answers. Each cell is a
+single call: treat the MCP numbers as an order of magnitude, not a distribution.
 
 ## 6. Threats to validity
 

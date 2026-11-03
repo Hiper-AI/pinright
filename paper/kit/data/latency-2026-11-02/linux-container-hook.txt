@@ -1,0 +1,25 @@
+== env
+node v24.22.2, npm 11.19.1, Linux 6.6.114.1-microsoft-standard-WSL2 x86_64
+os: Debian GNU/Linux 12 (bookworm)
+cpus: 16
+pinright 1.0.0
+== node -e 0 (7 runs, ms)
+36 39 50 48 63 47 54 
+== latency.ts
+
+| case | mode | p50 ms | p95 ms | decision |
+|---|---|---|---|---|
+| --version (startup) | cold | 96 | 125 | text |
+| --version (startup) | warm | 134 | 139 | text |
+| npm test (non-install) | cold | 126 | 156 | allow (silent) |
+| npm test (non-install) | warm | 109 | 113 | allow (silent) |
+| npm i express | cold | 2127 | 2777 | allow (silent) |
+| npm i express | warm | 554 | 687 | allow (silent) |
+| requirements.txt, 15 pins | cold | 4692 | 6511 | deny |
+| requirements.txt, 15 pins | warm | 405 | 501 | deny |
+| package.json, 30 deps | cold | 9707 | 12253 | deny |
+| package.json, 30 deps | warm | 2450 | 2982 | deny |
+| workflow, 3 actions | cold | 2284 | 2382 | allow+notes |
+| workflow, 3 actions | warm | 367 | 449 | allow+notes |
+
+5 runs per cell, GITHUB_TOKEN unset, node v24.22.2, linux

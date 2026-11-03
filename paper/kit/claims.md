@@ -147,6 +147,11 @@ list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 | SSRF guard: https only, 3 redirects, 10 MB cap | `src/safeFetch.ts`; SECURITY.md |
 | OpenSSF Scorecard workflow | `.github/workflows/scorecard.yml` |
 | Latency figures | `docs/hook.md` "Latency" (`scripts/latency.ts`); `latency.csv`. Measured once on Windows; no raw log committed |
+| Hook latency on Linux (report 5.6): `npm test` 109 / 113 ms warm, one install 554 / 687 ms warm and 2.1 / 2.8 s cold, 30-dep `package.json` 2.5 / 3.0 s warm and 9.7 / 12.3 s cold (p50 / p95, 5 runs) | `data/latency-2026-11-02/linux-container-hook.txt`. Linux container (Debian 12, Node 24.22.2) on Docker Desktop / WSL2 on a Windows host, 2026-11-02, host also running another benchmark. Not a Linux machine; the CI VM was not reachable |
+| Same-session Windows re-run (report 5.6), slower than the 2026-11-01 table in most cells | `data/latency-2026-11-02/windows-same-session.txt`, Windows 11, Node 24.20.0, same host and hour as the container |
+| Warm 30-dep manifest misses its 1.5 s budget on 2026-11-02 (2.5 to 3.3 s) | same two logs; the 2026-11-01 Windows run met it (1.2 / 1.5 s) |
+| MCP tool latency (report 5.6): e.g. `check-packages` of 10 npm packages 4.8 s cold / 598 ms warm on Linux, 6.5 s / 780 ms on Windows | `data/latency-2026-11-02/linux-container-mcp.txt` (run 1 of 3), `windows-same-session.txt`; one call per cell; runs 2 and 3 and the Windows 40-package call hit HTTP 429 from api.npmjs.org |
+| No macOS latency | GitHub-hosted jobs in the org fail to start since 2026-10-22 ("recent account payments have failed", annotation on secureai-copilot job, 2026-10-27); a macOS run would also need a new workflow in the repo. Not measured |
 | GitHub API request counts in `docs/cli.md` "GitHub rate limit" (1 request for 8 packages, etc.) | that page only; measured 2026-10-29 by hand, no committed log. Not used in the kit |
 
 ## 8. Claims we checked and left out

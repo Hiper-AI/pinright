@@ -101,3 +101,17 @@ These have no raw data in the repository beyond the result file named.
 
 The public-command corpus itself (25,077 entries from 180 repositories) stays outside the repository;
 `bench/fp/collect.ts` rebuilds it from GitHub.
+
+## Raw logs
+
+`latency-2026-11-02/` holds the raw output behind the Linux and same-session Windows tables of the
+report's section 5.6. These are text logs, not CSV.
+
+| File | What |
+|---|---|
+| linux-container-hook.txt | `scripts/latency.ts --runs=5` in `node:24-bookworm-slim` (Node 24.22.2) on Docker Desktop 29.7.2, WSL2, Windows host (Ryzen 7 5700G, 16 threads, 63 GB) |
+| linux-container-mcp.txt | three back-to-back runs of `scripts/mcp-latency.ts` in the same image; the report uses run 1 |
+| windows-same-session.txt | both scripts on the Windows 11 host itself (Node 24.20.0), the same hour |
+| run.sh | the container driver: installs the `npm pack` tarball of the release branch in a scratch dir and runs the two scripts, bundled to plain ESM with esbuild so the container needs no `tsx` |
+
+`GITHUB_TOKEN` was unset in all three. Another benchmark was running on the host at the time.

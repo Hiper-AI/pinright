@@ -1,0 +1,28 @@
+== env
+node v24.22.2, npm 11.19.1, Linux 6.6.114.1-microsoft-standard-WSL2 x86_64
+os: Debian GNU/Linux 12 (bookworm)
+cpus: 16
+pinright 1.0.0
+== node -e 0 (7 runs, ms)
+92 96 83 78 120 91 110 
+== mcp-latency.ts run 1
+| tool | cold ms | warm ms | answer |
+|---|---|---|---|
+| check-packages, 10 | 4809 | 598 | 686 chars |
+| check-packages, 40 | 7106 | 979 | 3167 chars |
+| get-docs express routing | 4631 | 287 | 8879 chars |
+| check-manifest, package-lock.json | 3576 | 72 | 902 chars |
+== mcp-latency.ts run 2
+| tool | cold ms | warm ms | answer |
+|---|---|---|---|
+| check-packages, 10 | 4030 | 853 | 834 chars; did not answer: api.npmjs.org (HTTP 429) |
+| check-packages, 40 | 8336 | 2906 | 3347 chars; did not answer: api.npmjs.org (HTTP 429) |
+| get-docs express routing | 2535 | 468 | 9043 chars; did not answer: api.npmjs.org (HTTP 429) |
+| check-manifest, package-lock.json | 4105 | 71 | 902 chars |
+== mcp-latency.ts run 3
+| tool | cold ms | warm ms | answer |
+|---|---|---|---|
+| check-packages, 10 | 4532 | 416 | 834 chars; did not answer: api.npmjs.org (HTTP 429) |
+| check-packages, 40 | 6514 | 2055 | 3347 chars; did not answer: api.npmjs.org (HTTP 429) |
+| get-docs express routing | 4211 | 226 | 8879 chars |
+| check-manifest, package-lock.json | 4164 | 87 | 902 chars |
