@@ -2027,3 +2027,100 @@ ul.small li + li {
     min-height: 44px;
   }
 }
+
+/* Why pinright: the three-column comparison and the efficiency charts */
+
+.vs {
+  min-width: 620px;
+}
+
+/* On a phone each row becomes a block: the measure, then one labeled line per arm. */
+@media (max-width: 680px) {
+  .vs {
+    min-width: 0;
+  }
+
+  .vs thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .vs tr {
+    display: block;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .vs th[scope="row"],
+  .vs td {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 12px;
+    padding: 3px 0;
+    border: 0;
+  }
+
+  .vs th[scope="row"] {
+    display: block;
+    padding-bottom: 6px;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .vs td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 400;
+  }
+}
+
+.vs th[scope="col"] {
+  width: 24%;
+}
+
+.vs th[scope="col"]:first-child {
+  width: 28%;
+}
+
+.vs td {
+  color: var(--ink-2);
+}
+
+.vs .vs-key {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+thead .vs-key {
+  border-bottom-color: var(--ink);
+}
+
+.chart-legend-gap {
+  margin-top: 48px;
+}
+
+@media (min-width: 900px) {
+  .charts-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.chart-gap {
+  margin-top: 56px;
+}
+
+.sub-head {
+  max-width: 720px;
+  margin-top: 56px;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.sub-head + .prose {
+  margin-top: 12px;
+  color: var(--ink-2);
+}

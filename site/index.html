@@ -78,6 +78,73 @@
         </div>
       </section>
 
+      <section class="section" id="why" aria-labelledby="why-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Why pinright</p>
+            <h2 id="why-title">Docs plus a verdict, in fewer tokens than docs alone</h2>
+            <p>Docs MCP servers return documentation for a library. They do not check the version the agent pins, and they do not see the install. To measure that kind of server we ran pinright's own server with its security layer off: docs for the version asked, no verdict. It is not another product.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="vs">
+              <caption>Benchmark v7, Claude Code with Sonnet 5.5, Haiku 5.5 and Opus 5.5, 2 runs per cell. Each cell is the range over the three models.</caption>
+              <thead>
+                <tr><th scope="col"><span class="visually-hidden">Measure</span></th><th scope="col">No docs</th><th scope="col">Docs-only context server</th><th scope="col" class="vs-key">pinright</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Direct dependencies pinned with a known advisory</th><td data-label="No docs">40% to 42%</td><td data-label="Docs-only context server">0% to 2%</td><td class="vs-key" data-label="pinright">0%</td></tr>
+                <tr><th scope="row">Whole-tree alerts per project</th><td data-label="No docs">29.8 to 31.9</td><td data-label="Docs-only context server">0.3 to 3.5</td><td class="vs-key" data-label="pinright">0.3</td></tr>
+                <tr><th scope="row">Docs tasks that used the current API</th><td data-label="No docs">9 to 14 of 16</td><td data-label="Docs-only context server">15 or 16 of 16</td><td class="vs-key" data-label="pinright">16 of 16</td></tr>
+                <tr><th scope="row">Tokens per agent task</th><td data-label="No docs">15k to 21k</td><td data-label="Docs-only context server">56k to 94k</td><td class="vs-key" data-label="pinright">42k to 74k</td></tr>
+                <tr><th scope="row">Tokens per docs task</th><td data-label="No docs">17k to 23k</td><td data-label="Docs-only context server">94k to 135k</td><td class="vs-key" data-label="pinright">63k to 95k</td></tr>
+                <tr><th scope="row">Agent turns per agent task</th><td data-label="No docs">4.0 to 4.3</td><td data-label="Docs-only context server">9.3 to 11.1</td><td class="vs-key" data-label="pinright">5.9 to 7.5</td></tr>
+                <tr><th scope="row">Verdict on the version the agent pins</th><td data-label="No docs">No</td><td data-label="Docs-only context server">No</td><td class="vs-key" data-label="pinright">Advisories, malware, lookalikes, versions that do not exist</td></tr>
+                <tr><th scope="row">Check when the install runs</th><td data-label="No docs">No</td><td data-label="Docs-only context server">No</td><td class="vs-key" data-label="pinright">Pre-install hook in 6 clients</td></tr>
+                <tr><th scope="row">Whole-tree lockfile audit</th><td data-label="No docs">No</td><td data-label="Docs-only context server">No</td><td class="vs-key" data-label="pinright">check-manifest, SARIF, GitHub Action</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <ul class="chart-legend chart-legend-gap" aria-label="Chart key">
+            <li>Docs-only context server (pinright, security layer off)</li>
+            <li class="key">pinright MCP server</li>
+            <li class="ci">95% interval, resampling tasks</li>
+          </ul>
+          <div class="charts charts-2">
+            <figure class="chart-card">
+              <h3>Tokens per run, agent tasks</h3>
+              <p class="chart-sub">12 tasks, 24 runs per model. 21% to 26% fewer with pinright.</p>
+              <!-- @include chart-home-tokens-agents.html -->
+            </figure>
+            <figure class="chart-card">
+              <h3>Tokens per run, docs tasks</h3>
+              <p class="chart-sub">8 tasks, 16 runs per model. 26% to 33% fewer with pinright.</p>
+              <!-- @include chart-home-tokens-docs.html -->
+            </figure>
+          </div>
+          <details class="table-toggle">
+            <summary>Show the token numbers as a table</summary>
+            <div class="table-wrap">
+              <table class="results">
+                <caption class="visually-hidden">Tokens per run in thousands, docs-only context server against pinright, with 95% intervals</caption>
+                <thead><tr><th scope="col"></th><th scope="col">Sonnet 5.5</th><th scope="col">Opus 5.5</th><th scope="col">Haiku 5.5</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">Agent tasks, docs-only</th><td>55.6k [47.2, 63.5]</td><td>73.3k [58.8, 88.5]</td><td>93.8k [73.5, 114.8]</td></tr>
+                  <tr><th scope="row">Agent tasks, pinright</th><td>42.2k [37.4, 46.8]</td><td>54.6k [45.2, 65.0]</td><td>74.2k [61.8, 87.8]</td></tr>
+                  <tr><th scope="row">Fewer with pinright, paired by task</th><td>24% [14, 34]</td><td>26% [11, 37]</td><td>21% [6, 33]</td></tr>
+                  <tr><th scope="row">Docs tasks, docs-only</th><td>94.0k [63.8, 125.1]</td><td>113.2k [78.8, 152.6]</td><td>135.1k [95.7, 179.9]</td></tr>
+                  <tr><th scope="row">Docs tasks, pinright</th><td>62.9k [52.4, 76.7]</td><td>83.9k [67.1, 98.9]</td><td>95.0k [77.2, 113.3]</td></tr>
+                  <tr><th scope="row">Fewer with pinright, paired by task</th><td>33% [13, 45]</td><td>26% [2, 43]</td><td>30% [4, 46]</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+          <p class="qualifier">With docs only, the agent looked each version up by reading that package's docs: 5.2 to 5.7 get-docs calls per agent task, most of them with no version. With pinright it asked check-packages for the whole list first and read docs 0.7 to 1.7 times per task. Tokens count everything the model processed, cache reads included. No tools at all used fewer tokens than either arm. Between docs-only and pinright the alert intervals overlap, and with a shell every arm ended at the same 6 alerts, so pinright made no measurable difference to the pins there.</p>
+          <div class="ctas">
+            <a class="btn btn-ghost" href="/evidence/#efficiency">Efficiency, per model</a>
+          </div>
+        </div>
+      </section>
+
       <section class="section" aria-labelledby="prompts-title">
         <div class="wrap">
           <div class="section-head">

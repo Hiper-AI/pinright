@@ -26,6 +26,7 @@
             <li><a href="#pins">Vulnerable pins</a></li>
             <li><a href="#ablation">Docs-only ablation</a></li>
             <li><a href="#docs">Docs benchmark</a></li>
+            <li><a href="#efficiency">Efficiency</a></li>
             <li><a href="#shell">With a shell</a></li>
             <li><a href="#hook">Hook false positives</a></li>
             <li><a href="#latency">Latency</a></li>
@@ -140,7 +141,58 @@
         </div>
       </section>
 
-      <section class="section soft" id="shell" aria-labelledby="shell-title">
+      <section class="section soft" id="efficiency" aria-labelledby="efficiency-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="efficiency-title">21% to 33% fewer tokens than a docs-only server</h2>
+            <p>Docs MCP servers return documentation for a library; they do not check the version the agent pins, and they do not see the install. The docs-only arm stands in for them: pinright's own server with its security layer off, serving docs for the version asked and no verdict. It is not another product. Against it, the full server used 21% to 26% fewer tokens per run on the agent tasks and 26% to 33% fewer on the docs tasks, and 3.1 to 4.3 fewer turns. No tools at all used the fewest tokens of the three arms, so pinright costs more than nothing.</p>
+          </div>
+          <ul class="chart-legend" aria-label="Chart key">
+            <li>No docs, or docs-only context server</li>
+            <li class="key">pinright MCP server</li>
+            <li class="ci">95% interval, resampling tasks</li>
+          </ul>
+          <figure class="chart-card">
+            <div class="chart-panels">
+              <!-- @include chart-ev-tokens-agents.html -->
+            </div>
+            <figcaption><strong>Tokens per run, agent benchmark.</strong> Everything the model processed in a run (uncached input, cache reads and writes, output), from the usage record Claude Code prices the run from. 12 tasks x 2 runs per arm and model. Same scale in the three panels and in the docs chart below.</figcaption>
+          </figure>
+          <figure class="chart-card chart-gap">
+            <div class="chart-panels">
+              <!-- @include chart-ev-tokens-docs.html -->
+            </div>
+            <figcaption><strong>Tokens per run, docs benchmark.</strong> 8 tasks x 2 runs per arm and model.</figcaption>
+          </figure>
+          <div class="table-wrap chart-gap">
+            <table>
+              <caption>Docs-only context server to pinright, means per run. "Fewer" pairs the two arms task by task; brackets are 95% intervals that resample tasks.</caption>
+              <thead>
+                <tr><th scope="col">Benchmark, model</th><th scope="col" class="num">Tokens (k)</th><th scope="col" class="num">Fewer with pinright</th><th scope="col" class="num">MCP text (k chars)</th><th scope="col" class="num">get-docs calls</th><th scope="col" class="num">Turns</th><th scope="col" class="num">Cost (USD, list price)</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Agent, Sonnet 5.5</th><td class="num">55.6 to 42.2</td><td class="num">24% [14, 34]</td><td class="num">24.8 to 5.3</td><td class="num">5.2 to 0.7</td><td class="num">9.3 to 5.9</td><td class="num">0.088 to 0.050</td></tr>
+                <tr><th scope="row">Agent, Haiku 5.5</th><td class="num">93.8 to 74.2</td><td class="num">21% [6, 33]</td><td class="num">45.3 to 17.2</td><td class="num">5.7 to 1.7</td><td class="num">11.1 to 7.5</td><td class="num">0.008 to 0.005</td></tr>
+                <tr><th scope="row">Agent, Opus 5.5</th><td class="num">73.3 to 54.6</td><td class="num">26% [11, 37]</td><td class="num">32.9 to 10.4</td><td class="num">5.7 to 1.3</td><td class="num">9.9 to 6.8</td><td class="num">0.212 to 0.126</td></tr>
+                <tr><th scope="row">Docs, Sonnet 5.5</th><td class="num">94.0 to 62.9</td><td class="num">33% [13, 45]</td><td class="num">35.0 to 20.2</td><td class="num">5.4 to 1.6</td><td class="num">11.7 to 8.1</td><td class="num">0.120 to 0.084</td></tr>
+                <tr><th scope="row">Docs, Haiku 5.5</th><td class="num">135.1 to 95.0</td><td class="num">30% [4, 46]</td><td class="num">46.9 to 26.1</td><td class="num">4.5 to 2.0</td><td class="num">13.4 to 9.1</td><td class="num">0.010 to 0.007</td></tr>
+                <tr><th scope="row">Docs, Opus 5.5</th><td class="num">113.2 to 83.9</td><td class="num">26% [2, 43]</td><td class="num">38.6 to 23.7</td><td class="num">6.4 to 1.9</td><td class="num">12.4 to 9.3</td><td class="num">0.263 to 0.195</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3 class="sub-head">Why pinright reads less</h3>
+          <p class="prose">The transcripts show two ways to find a version. With docs only, the agent used get-docs as its version lookup: in the agent benchmark it called it once per package, before writing any file. 345 of those 398 calls named no version, so they returned the latest release's docs, and 299 put "version" or "latest" in the query. One Sonnet run opens with "I'll check the libraries' current versions in the docs first." With pinright, all 72 agent runs opened with check-packages on the whole dependency list, 0.5k to 0.7k characters per call, which returns the version to pin. The agent then called get-docs 0.7 to 1.7 times per run, with a version in 86 of 87 calls. The full server's instructions ask for that order; the docs-only server has no check-packages, and every prompt asks the agent to check the libraries before choosing versions.</p>
+          <figure class="chart-card chart-gap">
+            <div class="chart-panels">
+              <!-- @include chart-ev-mcptext.html -->
+            </div>
+            <figcaption><strong>MCP tool text per run, agent benchmark.</strong> Thousands of characters the docs and verdict tools returned to the agent: docs, verdicts and find-library answers.</figcaption>
+          </figure>
+          <p class="qualifier">The per-arm token intervals overlap in five of the six model and benchmark pairs; the paired intervals, which compare the same tasks, stay above zero in all six. Cache reads are most of each run's input and cost less than fresh input, so tokens and cost do not move in proportion. Data: tokens_by_model_arm.csv, from bench/tokens.ts.</p>
+        </div>
+      </section>
+
+      <section class="section" id="shell" aria-labelledby="shell-title">
         <div class="wrap">
           <div class="section-head">
             <h2 id="shell-title">With a shell, every arm ended at the same 6 alerts</h2>
@@ -161,7 +213,7 @@
         </div>
       </section>
 
-      <section class="section" id="hook" aria-labelledby="hook-title">
+      <section class="section soft" id="hook" aria-labelledby="hook-title">
         <div class="wrap">
           <div class="section-head">
             <h2 id="hook-title">The hook blocked or asked on 1.46% of 25,077 public commands</h2>
@@ -178,7 +230,7 @@
         </div>
       </section>
 
-      <section class="section soft" id="latency" aria-labelledby="latency-title">
+      <section class="section" id="latency" aria-labelledby="latency-title">
         <div class="wrap">
           <div class="section-head">
             <h2 id="latency-title">Latency</h2>
@@ -203,7 +255,7 @@
         </div>
       </section>
 
-      <section class="section" id="caveats" aria-labelledby="caveats-title">
+      <section class="section soft" id="caveats" aria-labelledby="caveats-title">
         <div class="wrap split">
           <div>
             <h2 id="caveats-title">Caveats</h2>
@@ -222,7 +274,7 @@
         </div>
       </section>
 
-      <section class="section soft" id="data" aria-labelledby="data-title">
+      <section class="section" id="data" aria-labelledby="data-title">
         <div class="wrap split">
           <div>
             <h2 id="data-title">Data and report</h2>
