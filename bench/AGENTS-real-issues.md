@@ -9,18 +9,18 @@ Runs: `real-issues-sonnet` (Sonnet 5.5, 2 repetition(s)), `real-issues-opus` (Op
 |---|---|---|---|---|
 | Runs with a manifest | 24 / 24 | 24 / 24 | 23 / 24 | 12 / 12 |
 | Direct dependencies pinned | 107 | 106 | 99 | 56 |
-| Direct deps with >= 1 advisory | 24 (26%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| Direct deps with CVSS >= 7 | 18 (20%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| Pinned version or package does not exist | 15 | 0 | 0 | 0 |
+| Direct deps with >= 1 advisory | 28 (27%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Direct deps with CVSS >= 7 | 21 (20%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Pinned version or package does not exist | 2 | 0 | 0 | 0 |
 | Manifests that fail to resolve | 1 | 0 | 1 | 0 |
-| Dependabot-style alerts, whole tree (sum) | 504 | 114 | 58 | 56 |
-| Alerts per project (mean [95% CI]) | 21.9 [10.5, 33.7] | 4.8 [0.0, 14.2] | 2.6 [0.0, 8.9] | 4.7 [0.0, 14.0] |
-| Projects with 0 alerts | 6 / 23 | 20 / 24 | 19 / 22 | 11 / 12 |
+| Dependabot-style alerts, whole tree (sum) | 562 | 114 | 58 | 56 |
+| Alerts per project (mean [95% CI]) | 24.4 [11.4, 38.3] | 4.8 [0.0, 14.2] | 2.6 [0.0, 8.9] | 4.7 [0.0, 14.0] |
+| Projects with 0 alerts | 5 / 23 | 20 / 24 | 19 / 22 | 11 / 12 |
 | Critical + high alerts (npm trees) | 169 | 0 | 0 | 0 |
-| Projects that install | 22 / 24 | 24 / 24 | 22 / 23 | n/a |
-| Projects that build / import cleanly | 9 / 24 | 18 / 24 | 14 / 23 | n/a |
-| Median age of pinned version (days) | 577 | 21 | 20 | 20 |
-| Direct deps on the registry default | 1% | 61% | 69% | 100% |
+| Projects that install | 23 / 24 | 24 / 24 | 22 / 23 | n/a |
+| Projects that build / import cleanly | 10 / 24 | 18 / 24 | 14 / 23 | n/a |
+| Median age of pinned version (days) | 572 | 22 | 20 | 20 |
+| Direct deps on the registry default | 2% | 61% | 69% | 100% |
 | API-equivalent cost per run (USD, list price, mean) | 0.040 | 0.071 | 0.080 | n/a |
 | API-equivalent cost, all runs of the arm (USD, list price) | 0.96 | 1.72 | 1.93 | n/a |
 | Turns per run (mean) | 4.1 | 7.0 | 7.1 | n/a |
@@ -39,12 +39,12 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 | mastra-deep-research | npm | 19.5 (19.0-20.0) | 0.0 xx | 0.0 xx | 0.0 |
 | assistant-ui-mcp-tools | npm | 51.0 xx | 0.0 | 0.0 xx | 0.0 |
 | next-gh-pages | npm | 39.5 (38.0-41.0) | 0.0 | 0.0 (1 no manifest) | 0.0 |
-| openapi-fetch-next | npm | 44.5 (44.0-45.0) xx | 1.0 xx | 1.0 xx | 0.0 |
+| openapi-fetch-next | npm | 44.5 (44.0-45.0) x | 1.0 xx | 1.0 xx | 0.0 |
 | mcp-remote-oauth | pypi | 6.5 (6.0-7.0) xx | 0.0 | 0.0 | 0.0 |
 | kittentts-streaming | pypi | 0.0 | 0.0 | 0.0 | 0.0 |
 | openevolve-symreg | pypi | 0.0 | 0.0 | 0.0 | 0.0 |
 | pydantic-ai-deep-research | pypi | 6.0 xx | 0.0 | 0.0 | 0.0 |
-| stirrup-gdpval | pypi | 29.0 (0.0-58.0) xx | 56.0 | 56.0 (1 unresolved) x | 56.0 |
+| stirrup-gdpval | pypi | 58.0 xx | 56.0 | 56.0 (1 unresolved) x | 56.0 |
 | livekit-ultravox | pypi | 1.0 (1 unresolved) xx | 0.0 | 0.0 | 0.0 |
 
 ### Runs without a manifest or that do not build, Sonnet 5.5
@@ -59,7 +59,6 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 - mcp-hono r2: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "server.ts" failed: `server.ts(10,3): error TS2589: Type instantiation is excessively deep and possibly infinite.`
 - mcp-remote-oauth r1: import check failed: `from mcp.server.auth.provider import ( AccessToken, AuthorizationCode, AuthorizationParams, RefreshToken, construct_redirect_uri, ) -> ImportError: cannot import name 'eval_type_ba`
 - mcp-remote-oauth r2: import check failed: `from mcp.server.auth.provider import AccessToken, TokenVerifier -> ImportError: cannot import name 'eval_type_backport' from 'pydantic._internal._typing_extra'`
-- openapi-fetch-next r1: install failed: `npm warn deprecated next@15.0.3: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.`
 - openapi-fetch-next r2: npm run build failed: `⨯ page.tsx doesn't have a root layout. To fix this error, make sure every page has a root layout.`
 - proton-drive-example r1: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\index.ts" failed: `src/index.ts(19,8): error TS2305: Module '"@protontech/drive-sdk"' has no exported member 'SRPModule'.`
 - pydantic-ai-deep-research r1: import check failed: `from pydantic_ai import Agent -> ModuleNotFoundError: No module named 'opentelemetry._events'`
@@ -73,7 +72,7 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 - mastra-deep-research r2: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\index.ts" failed: `src/index.ts(16,34): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try 'npm i --save-dev @types/node'.`
 - openapi-fetch-next r1: npm run build failed: `> Build error occurred`
 - openapi-fetch-next r2: npm run build failed: `> Build error occurred`
-- proton-drive-example r1: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\crypto.ts" "src\index.ts" failed: `../../../../../Juan Mandelbaum/AppData/Local/Temp/sctx-build-jsHXpZ/node_modules/@protontech/crypto/src/constants.ts(2,52): error TS5097: An import path can only end with a '.ts' e`
+- proton-drive-example r1: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\crypto.ts" "src\index.ts" failed: `../../../../../Juan Mandelbaum/AppData/Local/Temp/sctx-build-7fYB8l/node_modules/@protontech/crypto/src/constants.ts(2,52): error TS5097: An import path can only end with a '.ts' e`
 - proton-drive-example r2: import check failed: `Error [ERR_MODULE_NOT_FOUND]: Cannot find module ' imported from`
 
 **pinright MCP + hook**: 
@@ -86,7 +85,7 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 - openapi-fetch-next r1: npm run build failed: `> Build error occurred`
 - openapi-fetch-next r2: npm run build failed: `> Build error occurred`
 - proton-drive-example r1: import check failed: `Error [ERR_MODULE_NOT_FOUND]: Cannot find module ' imported from`
-- proton-drive-example r2: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "index.ts" failed: `../../../../../Juan Mandelbaum/AppData/Local/Temp/sctx-build-i6568k/node_modules/@protontech/crypto/src/constants.ts(2,52): error TS5097: An import path can only end with a '.ts' e`
+- proton-drive-example r2: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "index.ts" failed: `../../../../../Juan Mandelbaum/AppData/Local/Temp/sctx-build-sdz3yn/node_modules/@protontech/crypto/src/constants.ts(2,52): error TS5097: An import path can only end with a '.ts' e`
 - stirrup-gdpval r2: install failed: `× No solution found when resolving dependencies:`
 
 ### Vulnerable or non-existent direct pins, Sonnet 5.5
@@ -96,19 +95,19 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 - ai@4.3.16 (1 advisories, CVSS 3.7; default 7.0.162) x2
 - next@15.3.3 (36 advisories, CVSS 10; default 16.4.4) x2
 - zod@3.25.67 (1 advisories, CVSS 7.5; default 4.6.7) x2
-- kittentts@@ (does not exist) x2
-- stirrup@0.1.0 (does not exist) x2
-- datasets@4.0.0 (does not exist) x2
+- datasets@4.0.0 (2 advisories, CVSS 6.5; default 5.1.0) x2
 - python-dotenv@1.1.0 (2 advisories, CVSS 6.6; default 1.2.4)
 - livekit-plugins-openai@1.0.0 (does not exist)
 - livekit-plugins-silero@1.0.0 (does not exist)
 - python-dotenv@1.0.1 (2 advisories, CVSS 6.6; default 1.2.4)
 - zod@3.24.2 (1 advisories, CVSS 7.5; default 4.6.7)
-- @types/node@22.15.0 (does not exist)
-- tsx@4.19.2 (does not exist)
-- @hono/node-server@1.14.2 (3 advisories; default 2.1.6)
+- @hono/node-server@1.14.2 (3 advisories, CVSS 7.5; default 2.1.6)
 - @modelcontextprotocol/sdk@1.12.0 (8 advisories, CVSS 7.5; default 1.32.2)
-- ... 18 more
+- hono@4.7.10 (43 advisories, CVSS 8.2; default 4.13.16)
+- zod@3.24.4 (1 advisories, CVSS 7.5; default 4.6.7)
+- @hono/node-server@1.14.1 (3 advisories, CVSS 7.5; default 2.1.6)
+- @modelcontextprotocol/sdk@1.10.2 (7 advisories, CVSS 7.5; default 1.32.2)
+- ... 11 more
 
 **pinright MCP**: none
 
@@ -122,9 +121,9 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 |---|---|---|---|---|
 | Runs with a manifest | 24 / 24 | 24 / 24 | 24 / 24 | 12 / 12 |
 | Direct dependencies pinned | 121 | 118 | 123 | 63 |
-| Direct deps with >= 1 advisory | 30 (26%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| Direct deps with CVSS >= 7 | 22 (19%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| Pinned version or package does not exist | 5 | 0 | 0 | 0 |
+| Direct deps with >= 1 advisory | 30 (25%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Direct deps with CVSS >= 7 | 22 (18%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Pinned version or package does not exist | 0 | 0 | 0 | 0 |
 | Manifests that fail to resolve | 0 | 0 | 2 | 0 |
 | Dependabot-style alerts, whole tree (sum) | 600 | 116 | 3 | 57 |
 | Alerts per project (mean [95% CI]) | 25.0 [12.5, 38.3] | 4.8 [0.0, 14.3] | 0.1 [0.0, 0.3] | 4.8 [0.0, 14.2] |
@@ -133,7 +132,7 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 | Projects that install | 24 / 24 | 24 / 24 | 22 / 24 | n/a |
 | Projects that build / import cleanly | 15 / 24 | 19 / 24 | 18 / 24 | n/a |
 | Median age of pinned version (days) | 539 | 21 | 21 | 20 |
-| Direct deps on the registry default | 0% | 67% | 68% | 100% |
+| Direct deps on the registry default | 2% | 67% | 68% | 100% |
 | API-equivalent cost per run (USD, list price, mean) | 0.156 | 0.299 | 0.319 | n/a |
 | API-equivalent cost, all runs of the arm (USD, list price) | 3.73 | 7.18 | 7.66 | n/a |
 | Turns per run (mean) | 5.0 | 9.9 | 10.2 | n/a |
@@ -164,7 +163,7 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 
 **No docs**: 
 
-- assistant-ui-mcp-tools r1: npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "server\index.ts" "server\mcp-server.ts" "src\main.tsx" "vite.config.ts" failed: `server/index.ts(4,21): error TS7016: Could not find a declaration file for module 'express'. 'C:/Users/Juan Mandelbaum/AppData/Local/Temp/sctx-build-dMW1ko/node_modules/express/ind`
+- assistant-ui-mcp-tools r1: npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "server\index.ts" "server\mcp-server.ts" "src\main.tsx" "vite.config.ts" failed: `server/index.ts(4,21): error TS7016: Could not find a declaration file for module 'express'. 'C:/Users/Juan Mandelbaum/AppData/Local/Temp/sctx-build-MaeF0o/node_modules/express/ind`
 - assistant-ui-mcp-tools r2: npm run build failed: `Failed to compile.`
 - livekit-ultravox r1: import check failed: `from livekit.plugins import deepgram, openai, silero -> ModuleNotFoundError: No module named 'httpx'`
 - mcp-hono r1: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\app.ts" "src\node.ts" failed: `src/app.ts(11,3): error TS2589: Type instantiation is excessively deep and possibly infinite.`
@@ -187,7 +186,7 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 - mastra-deep-research r1: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\index.ts" failed: `src/index.ts(7,15): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try 'npm i --save-dev @types/node'.`
 - mastra-deep-research r2: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\index.ts" failed: `src/index.ts(8,17): error TS2351: This expression is not constructable.`
 - proton-drive-example r1: npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\auth.ts" "src\drive.ts" "src\main.ts" failed: `src/auth.ts(3,41): error TS2591: Cannot find name 'node:crypto'. Do you need to install type definitions for node? Try 'npm i --save-dev @types/node' and then add 'node' to the typ`
-- proton-drive-example r2: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\main.ts" "src\proton.ts" failed: `../../../../../Juan Mandelbaum/AppData/Local/Temp/sctx-build-qQBwtR/node_modules/@protontech/crypto/src/constants.ts(2,52): error TS5097: An import path can only end with a '.ts' e`
+- proton-drive-example r2: npx tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop "src\main.ts" "src\proton.ts" failed: `../../../../../Juan Mandelbaum/AppData/Local/Temp/sctx-build-buXvae/node_modules/@protontech/crypto/src/constants.ts(2,52): error TS5097: An import path can only end with a '.ts' e`
 - stirrup-gdpval r1: install failed: `× No solution found when resolving dependencies:`
 - stirrup-gdpval r2: install failed: `× No solution found when resolving dependencies:`
 
@@ -199,10 +198,8 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 - @modelcontextprotocol/sdk@1.17.0 (8 advisories, CVSS 7.5; default 1.32.2) x2
 - zod@3.25.76 (1 advisories, CVSS 7.5; default 4.6.7) x2
 - ai@4.3.16 (1 advisories, CVSS 3.7; default 7.0.162) x2
-- kittentts@@ (does not exist) x2
 - zod@3.24.2 (1 advisories, CVSS 7.5; default 4.6.7) x2
 - @hono/node-server@1.14.1 (3 advisories, CVSS 7.5; default 2.1.6) x2
-- fetch-to-node@2.1.0 (does not exist) x2
 - hono@4.7.10 (43 advisories, CVSS 8.2; default 4.13.16) x2
 - mcp@1.12.4 (10 advisories, CVSS 7.5; default 2.3.0) x2
 - pydantic-ai-slim@1.0.0 (6 advisories, CVSS 8.6; default 2.64.0) x2
@@ -210,7 +207,9 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 - python-dotenv@1.0.1 (2 advisories, CVSS 6.6; default 1.2.4)
 - aiohttp@3.11.18 (74 advisories, CVSS 9.1; default 3.14.5)
 - python-dotenv@1.1.0 (2 advisories, CVSS 6.6; default 1.2.4)
-- ... 7 more
+- @modelcontextprotocol/sdk@1.12.0 (8 advisories, CVSS 7.5; default 1.32.2)
+- zod@3.24.4 (1 advisories, CVSS 7.5; default 4.6.7)
+- ... 4 more
 
 **pinright MCP**: none
 
@@ -336,14 +335,8 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 
 |  | Lockfiles | Alerts (audit tool) | Alerts (pinright) | Vulnerable packages, mean Jaccard | Identical sets |
 |---|---|---|---|---|---|
-| npm (npm audit) | 120 | 1119 | 1199 | 1.00 | 120 |
-| PyPI (pip-audit) | 116 | 979 | 1069 | 0.99 | 115 |
-
-Packages flagged by one side only (times seen):
-
-- only pinright: pillow x1
-- only pinright: fsspec x1
-- only pinright: datasets x1
+| npm (npm audit) | 125 | 1207 | 1287 | 1.00 | 125 |
+| PyPI (pip-audit) | 120 | 1113 | 1147 | 1.00 | 120 |
 
 ## Reproduce
 

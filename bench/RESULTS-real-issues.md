@@ -9,17 +9,18 @@ Run on 2026-11-02 and 2026-11-03 with Claude Code 2.1.308 in headless mode, driv
 Opus 5.5 and Haiku 5.5, against pinright at commit `8efc4f0` (the 1.0.0 release code; only `bench/`
 differs on this branch). Three arms, two repetitions: no docs, the pinright MCP server, and the MCP
 server plus the pre-install hook. 216 agent runs, all of which finished. Per-model details, per-task
-tables and every failed build: [AGENTS-real-issues.md](AGENTS-real-issues.md).
+tables and every failed build: [AGENTS-real-issues.md](AGENTS-real-issues.md). Rescored on
+2026-11-03 with the v7 scorer fixes (see caveats).
 
-**Headline.** Without docs, 26% to 29% of the direct dependencies each model pinned carried a known
-advisory, and the projects totaled 504 to 600 whole-tree alerts per model. With
+**Headline.** Without docs, 25% to 29% of the direct dependencies each model pinned carried a known
+advisory, and the projects totaled 514 to 600 whole-tree alerts per model. With
 the pinright MCP server, no model pinned a direct dependency with an advisory, and each model's 24
 projects totaled 114 to 116 alerts. 112 of those come from one task, `stirrup-gdpval`, where the
 current `stirrup` release (0.2.1) pulls `moviepy` 2.2.1, which caps `pillow` below 12.0, and the
 fixes for the 56 `pillow` 11.3.0 alerts shipped in 13.0.0 (see caveats); the no-pin reference has
 the same 56 alerts there. On the other 11 tasks
 the MCP arm totaled 2 to 4 alerts per model, against 375 to 484 without docs. The MCP arm also built
-more projects: 54 of 72 against 33 of 72 without docs, most failures in both arms being incomplete
+more projects: 54 of 72 against 34 of 72 without docs, most failures in both arms being incomplete
 projects (no root layout in a Next.js app, `process` used without `@types/node`). With 12 tasks and
 two repetitions the intervals are wide, and on the full set the no-docs and MCP intervals of alerts
 per project overlap for every model, because `stirrup-gdpval` adds 56 alerts to each MCP project of
@@ -107,11 +108,11 @@ Claude Code's API-equivalent at list price (`total_cost_usd`); the runs used a C
 
 | Model | Arm | Reps | Alerts, whole tree (sum) | Alerts per project, mean [95% CI] | Projects with 0 alerts | Direct deps with advisories | Critical + high (npm) | Builds | API-equivalent cost / run (USD, list price) | Turns | Duration (s) | MCP calls |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Sonnet 5.5 | No docs | 2 | 504 | 21.9 [10.5, 33.7] | 6 / 23 | 24 / 92 (26%) | 169 | 9 / 24 | 0.040 | 4.1 | 19.3 | 0.0 |
+| Sonnet 5.5 | No docs | 2 | 562 | 24.4 [11.4, 38.3] | 5 / 23 | 28 / 105 (27%) | 169 | 10 / 24 | 0.040 | 4.1 | 19.3 | 0.0 |
 | Sonnet 5.5 | pinright MCP | 2 | 114 | 4.8 [0.0, 14.2] | 20 / 24 | 0 / 106 (0%) | 0 | 18 / 24 | 0.071 | 7.0 | 30.7 | 2.6 |
 | Sonnet 5.5 | pinright MCP + hook | 2 | 58 | 2.6 [0.0, 8.9] | 19 / 22 | 0 / 99 (0%) | 0 | 14 / 23 | 0.080 | 7.1 | 40.5 | 2.7 |
 | Sonnet 5.5 | No pin (reference) | 1 | 56 | 4.7 [0.0, 14.0] | 11 / 12 | 0 / 56 (0%) | 0 | n/a | n/a | n/a | n/a | n/a |
-| Opus 5.5 | No docs | 2 | 600 | 25.0 [12.5, 38.3] | 5 / 24 | 30 / 116 (26%) | 173 | 15 / 24 | 0.156 | 5.0 | 51.0 | 0.0 |
+| Opus 5.5 | No docs | 2 | 600 | 25.0 [12.5, 38.3] | 5 / 24 | 30 / 121 (25%) | 173 | 15 / 24 | 0.156 | 5.0 | 51.0 | 0.0 |
 | Opus 5.5 | pinright MCP | 2 | 116 | 4.8 [0.0, 14.3] | 18 / 24 | 0 / 118 (0%) | 2 | 19 / 24 | 0.299 | 9.9 | 78.1 | 4.4 |
 | Opus 5.5 | pinright MCP + hook | 2 | 3 | 0.1 [0.0, 0.3] | 19 / 22 | 0 / 123 (0%) | 1 | 18 / 24 | 0.319 | 10.2 | 87.9 | 4.8 |
 | Opus 5.5 | No pin (reference) | 1 | 57 | 4.8 [0.0, 14.2] | 10 / 12 | 0 / 63 (0%) | 0 | n/a | n/a | n/a | n/a | n/a |
@@ -135,10 +136,8 @@ Claude Code's API-equivalent at list price (`total_cost_usd`); the runs used a C
 
 |  | Lockfiles | Alerts (audit tool) | Alerts (pinright) | Vulnerable packages, mean Jaccard | Identical sets |
 |---|---|---|---|---|---|
-| npm (npm audit) | 120 | 1119 | 1199 | 1.00 | 120 / 120 |
-| PyPI (pip-audit) | 116 | 979 | 1069 | 0.99 | 115 / 116 |
-
-Flagged by one side only: only pinright: pillow (1); only pinright: fsspec (1); only pinright: datasets (1).
+| npm (npm audit) | 125 | 1207 | 1287 | 1.00 | 125 / 125 |
+| PyPI (pip-audit) | 120 | 1113 | 1147 | 1.00 | 120 / 120 |
 
 <!-- generated:end -->
 
@@ -160,7 +159,7 @@ and, for Opus, one per run in `mastra-deep-research`; the no-pin reference has t
 ## How this set differs from v6
 
 - **The no-docs baseline is lower.** No docs averaged 22 to 25 alerts per project here, against 30
-  to 33 in v6 (30 to 32 in v7), and 26% to 29% of its direct pins carried an advisory, against 40% to
+  to 33 in v6 (30 to 32 in v7), and 25% to 29% of its direct pins carried an advisory, against 40% to
   42% in both. Three
   of the twelve issue tasks (`kittentts-streaming`, `openevolve-symreg`, `livekit-ultravox` for
   two models) came out clean or nearly clean without docs.
@@ -188,6 +187,23 @@ and, for Opus, one per run in `mastra-deep-research`; the no-pin reference has t
   the direct pins, `npm audit` and `pip-audit` (OSV and the GitHub Advisory Database) for the whole
   tree. A later rescore of the same manifests will count different alerts as advisories are
   published and fixed.
+- **Rescored with the v7 scorer fixes.** The first scoring pass read a failed deps.dev lookup as a
+  version that does not exist and an empty `pip-audit` answer as a clean tree, both only in no-docs
+  runs. The rescore (2026-11-03, `score.ts` retrying both, and reading the version of a
+  `name @ <wheel URL>` requirement from the file name) moved only Sonnet's no-docs arm: 504 to 562
+  alerts (one `stirrup-gdpval` audit had come back empty), 24 of 92 to 28 of 105 direct pins with an
+  advisory (`hono` 4.7.10, `zod` 3.24.4 and others had scored as nonexistent), and 9 to 10 builds.
+  Opus and Haiku kept every count; their direct-pin denominators grew where a lookup had failed
+  (Opus 30 of 116 to 30 of 121). The MCP arms did not change. Nonexistent pins went from 15, 5 and
+  1 to 2, 0 and 1 (Sonnet, Opus, Haiku); the remaining three are real misses on PyPI.
+- **The job folders sat inside the repository.** Until the agent wrote a dependency file,
+  pinright's project detection walked up from its folder to the repository's own `package-lock.json`
+  and reported those versions as installed (`typescript` 5.9.3, `@types/node` 22.20.5, `zod` 4.6.7,
+  `hono` 4.13.14). This hit 8 to 10 of 24 runs per model in each MCP arm, all npm; in nearly all of
+  them the agent pinned one of those versions. None carries an advisory, so the direct-pin and alert
+  columns are not inflated by it; `typescript` 5.9.3 and `@types/node` 22.20.5 are older than the
+  registry default, which lowers the "registry default" share. Fixed after this run (see
+  [RESULTS-v7.md](RESULTS-v7.md), Caveats).
 - **Small n.** 12 tasks, 2 repetitions, one harness. Six npm tasks and six PyPI tasks cannot stand
   for all of either ecosystem.
 - **The rule involved our judgment.** We read the first search results before writing I1 to I3,

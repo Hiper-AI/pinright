@@ -638,7 +638,7 @@ Ultravox agent. Same harness as 5.1 (Write and Read only), on `8efc4f0`, three a
 
 | Model | Arm | Alerts (sum) | Alerts per project [95% CI] | Direct deps with advisory | Builds |
 |---|---|---|---|---|---|
-| Sonnet | No docs | 504 | 21.9 [10.5, 33.7] | 24/92 (26%) | 9/24 |
+| Sonnet | No docs | 562 | 24.4 [11.4, 38.3] | 28/105 (27%) | 10/24 |
 | Sonnet | MCP | 114 | 4.8 [0.0, 14.2] | 0/106 | 18/24 |
 | Sonnet | MCP + hook | 58 | 2.6 [0.0, 8.9] | 0/99 | 14/23 |
 | Sonnet | No pin (reference) | 56 | 4.7 [0.0, 14.0] | 0/56 | n/a |
@@ -646,12 +646,12 @@ Ultravox agent. Same harness as 5.1 (Write and Read only), on `8efc4f0`, three a
 | Haiku | MCP | 114 | 4.8 [0.0, 14.2] | 0/103 | 17/24 |
 | Haiku | MCP + hook | 56 | 2.4 [0.0, 8.0] | 0/102 | 14/24 |
 | Haiku | No pin (reference) | 70 | 5.8 [0.0, 17.4] | 0/45 | n/a |
-| Opus | No docs | 600 | 25.0 [12.5, 38.3] | 30/116 (26%) | 15/24 |
+| Opus | No docs | 600 | 25.0 [12.5, 38.3] | 30/121 (25%) | 15/24 |
 | Opus | MCP | 116 | 4.8 [0.0, 14.3] | 0/118 | 19/24 |
 | Opus | MCP + hook | 3 | 0.1 [0.0, 0.3] | 0/123 | 18/24 |
 | Opus | No pin (reference) | 57 | 4.8 [0.0, 14.2] | 0/63 | n/a |
 
-Without docs, 26% to 29% of direct pins carried an advisory, lower than the 40% to 42% on our tasks,
+Without docs, 25% to 29% of direct pins carried an advisory, lower than the 40% to 42% on our tasks,
 and three issue tasks came out clean or nearly clean. With the MCP server no model pinned a direct
 dependency with an advisory. **One task dominates the sums.** In `stirrup-gdpval` the current
 `stirrup` release (0.2.1) pulls `moviepy` 2.2.1, which caps `pillow` below 12.0, and the fixes for the
@@ -662,8 +662,9 @@ to pin `pillow==13.0.0` next to `stirrup`, which does not resolve, so those mani
 alert columns: read the low MCP + hook sums with that in mind. Builds failed often in every arm,
 mostly from incomplete projects (no root layout, `process` without `@types/node`).
 
-We scored this set before the two scorer fixes of 5.1. Its run data shows those misses only in no-docs
-runs, so its no-docs counts are low, if anything. With 12 tasks the no-docs and MCP intervals of
+The table is the rescore with the two scorer fixes of 5.1. They moved only Sonnet's no-docs arm (504 to
+562 alerts, 24 of 92 to 28 of 105 vulnerable direct pins, 9 to 10 builds); the MCP arms did not
+change. With 12 tasks the no-docs and MCP intervals of
 alerts per project overlap for every model.
 
 ### 5.6 Docs benchmark: what the agent writes
@@ -955,9 +956,20 @@ single call: treat the MCP numbers as an order of magnitude, not a distribution.
     lost (msw 3's `graphql`, Section 5.7).
   - `c813289`: `get-docs` says when a question names a member that the object's type definitions no
     longer declare (`graphql.query` on msw 3).
+  - `b60f689`: project detection no longer adopts a parent folder whose `.gitignore` ignores the
+    agent's folder, or the home directory from below it; the benchmark runs host jobs in the OS temp
+    directory.
 - **The scorer had two silent failures**, fixed during v7: a failed deps.dev lookup counted as a
   version that does not exist, and an empty `pip-audit` answer as a clean tree. We rescored the 34
   affected runs; the main change is 2 vulnerable direct pins in Sonnet's docs-only arm instead of 0.
+- **The job folders sat inside the pinright repository.** Until an agent wrote a dependency file,
+  project detection walked up from its folder to the repository's own `package-lock.json` and
+  reported those versions as installed (`express` 5.3.0, `typescript` 5.9.3, `js-yaml` 4.3.2): in
+  95 of the 216 v7 agent runs with an MCP server, 71 of the 96 docs runs with one, and the npm runs
+  of the real-issues MCP arms. None of those versions carries an advisory, and no docs run that got
+  one missed the task's major or its current API. It may have helped the docs-only arm: in its 6
+  `xml-yaml-parser` runs the agent pinned the leaked `js-yaml` 4.3.2, where the no-docs agent pinned
+  4.1.0 with 5 advisories. Fixed in `b60f689` (below).
 - **The direct-dependency share is scored through pinright's own deps.dev client.** Only the
   whole-tree alerts from `npm audit` and `pip-audit` are an outside measure (Section 5.1).
 - **The no-pin reference ties with pinright.** On these new projects, installing with no version lands

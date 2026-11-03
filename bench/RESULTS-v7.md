@@ -170,11 +170,10 @@ benchmark: 16.3k to 8.0k (Sonnet), 26.7k to 14.5k (Haiku), 19.2k to 9.8k (Opus).
   released on 2026-08-01 or later, so the models cannot know them. Without docs the agent wrote the new
   API in 2 of 48 runs; with pinright in 46 of 48, and with the docs-only ablation in 45 of 48.
 - **Tasks from public GitHub issues** ([RESULTS-real-issues.md](RESULTS-real-issues.md)). 12 tasks we
-  did not write, picked by a fixed search rule, on the same release code. Without docs, 26% to 29% of
-  direct dependencies carried an advisory and the projects totaled 504 to 600 alerts per model; with
+  did not write, picked by a fixed search rule, on the same release code. Without docs, 25% to 29% of
+  direct dependencies carried an advisory and the projects totaled 514 to 600 alerts per model; with
   the MCP server, 0 direct dependencies and 114 to 116 alerts, 112 of them from one task whose current
-  upstream release pulls a capped `pillow`. That set was scored before the two scorer fixes below; its
-  run data shows the same misses only in no-docs runs, so its no-docs counts are low, not high.
+  upstream release pulls a capped `pillow`. Scored with the two scorer fixes below.
 - **Shell arm** ([RESULTS-shell.md](RESULTS-shell.md)). The same 12 tasks with Bash, each job in a
   disposable Linux container, with a real install and a build check: 216 runs over three models and
   three arms (no docs, hook only, MCP and hook). Without the MCP server the agents looked versions up
@@ -211,6 +210,19 @@ benchmark: 16.3k to 8.0k (Sonnet), 26.7k to 14.5k (Haiku), 19.2k to 9.8k (Opus).
   keep failing; we rescored the affected runs. That moved Sonnet docs-only from 0 to 2 vulnerable
   direct deps and Haiku no-docs from 701 to 715 alerts; the 8 other empty audits stayed at 0 alerts.
   v6 had 6 empty PyPI audits of the same kind, all in arms where check-manifest also found 0.
+- **The job folders sat inside this repository.** Each agent worked in `bench/*/runs/<stamp>/...`,
+  and until it wrote a dependency file, pinright's project detection walked up to the repository's own
+  `package-lock.json` and reported its versions as installed in the project (`express` 5.3.0,
+  `typescript` 5.9.3, `@types/node` 22.20.5, `zod` 4.6.7, `js-yaml` 4.3.2). It happened in 95 of the
+  216 agent runs with an MCP server (10 to 12 of 24 per arm and model) and in 71 of the 96 docs runs
+  with one (11 or 12 of 16); the arms without an MCP server were not affected. No version from that
+  lockfile carries an advisory, and every docs run that got one still pinned the task's major and
+  wrote the current API (in `eslint10-flat` it was `eslint` 9.39.5, and every run pinned 10). One
+  effect we cannot rule out favors the docs-only arm: in all 6 docs-only `xml-yaml-parser` runs the
+  agent pinned the leaked `js-yaml` 4.3.2, where the no-docs agent pinned 4.1.0 with 5 advisories,
+  so docs-only may have scored better there than it would have alone. The verdict arms recommend a
+  clean version either way. Fixed after v7: the harness runs host jobs in the OS temp directory, and
+  project detection no longer adopts a parent whose `.gitignore` ignores the folder.
 - **The hook changed after v7.** Two commits on the release branch after the run (`6837139`,
   `699770d`) fix false positives in the hook's shell command reader (`src/hook/command.ts`), found in
   the real-session replay. The hook arms ran without them. Agents here have no shell, so the hook read

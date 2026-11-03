@@ -88,7 +88,7 @@ One vendor's models, tasks we wrote, no shell, two days of advisory data, small 
 with a shell, the agents looked versions up with `npm view` or `pip index` before pinning, and every
 arm ended at the same 6 alerts per model: there pinright made no measurable difference to the pins.
 On APIs released after August 2026, 2 of 48 runs got the current API without docs, 45 of 48 with docs
-only and 46 of 48 with pinright. On 12 tasks taken from public GitHub issues, 26% to 29% of direct
+only and 46 of 48 with pinright. On 12 tasks taken from public GitHub issues, 25% to 29% of direct
 pins carried an advisory without docs and none with pinright. The hook blocked or asked on 1.46% of 25,077 public commands and
 misread 10 of 154,402 tool calls from a month of our own agent sessions.
 [Per-model tables](https://github.com/Hiper-AI/pinright/blob/main/docs/benchmark.md#efficiency-tokens-turns-and-cost-against-a-docs-only-server) ·
