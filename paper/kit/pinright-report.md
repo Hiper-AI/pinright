@@ -4,9 +4,9 @@
 
 Technical report, version 1.0.0, 2026-11-03. Code: <https://github.com/Hiper-AI/pinright> (MIT). Site:
 <https://pinright.dev>. This report has not been peer reviewed. It describes pinright 1.0.0. The
-benchmarks ran on 2026-11-01 against a pre-release commit (`b2fcfe2`) plus a benchmark-only ablation
-flag; 28 files under `src/` changed between that commit and 1.0.0, from the second security review
-and the false-positive replay (Section 6). Section 5 lists every run.
+agent and docs benchmarks (run v7) ran on 2026-11-02 and 2026-11-03 against commit `8efc4f0`, whose
+`src/` is the 1.0.0 release. An earlier run, v6, used a pre-release commit and is kept in
+`bench/RESULTS-v6.md`. Section 5 lists every run.
 
 ## Abstract
 
@@ -14,20 +14,20 @@ Coding agents pick dependency versions from what their model saw in training, an
 often carry advisories published since. We measured this with Claude Code driving three models
 (Sonnet 5.5, Haiku 5.5, Opus 5.5) on 12 tasks we wrote (8 npm, 4 PyPI), two runs each, scored with
 `npm audit` and `pip-audit`. Without tools, 40% to 42% of the direct dependencies each model pinned
-had a known advisory, and projects averaged 30 to 33 whole-tree alerts. We built pinright, an
+had a known advisory, and projects averaged 30 to 32 whole-tree alerts. We built pinright, an
 MIT-licensed MCP server, CLI, pre-install hook and GitHub Action that gives the agent a verdict on
 each dependency (OSV and deps.dev advisories, malware records, lookalike names, registry existence,
 supply-chain signals) and docs taken from the package at the version it will install. An ablation
 shows where the gain comes from. pinright with its security layer off, which documents the
-registry's latest release, already cut alerts to 48, 21 and 6 over 24 projects per model: steering
+registry's latest release, already cut alerts to 84, 63 and 6 over 24 projects per model: steering
 the agent to current versions removes most of the exposure. The full server brought each model to 6
 alerts and 0 vulnerable direct pins; the 6 come from one nuxt dependency with no fixed release, which
-an unpinned install also gets. The hook alone, for agents that never call the tool, left 10 to 14.
+an unpinned install also gets. The hook alone, for agents that never call the tool, left 14 per model.
 With pinright's docs, all three models wrote the current API of eight recently changed libraries in
-16 of 16 runs, against 10 to 13 without docs. Replaying 25,077 public commands through the hook as
-released, 1.46% were blocked or asked about. These results come from one vendor's models, one day of
-advisory data, tasks we wrote, two repetitions whose intervals overlap between the pinright arms,
-and a pre-release build of the code.
+16 of 16 runs, against 9 to 14 without docs. Replaying 25,077 public commands through the hook as
+released, 1.46% were blocked or asked about. These results come from one vendor's models, two days of
+advisory data, tasks we wrote, and two repetitions whose intervals overlap between the pinright
+arms.
 
 ## 1. Problem
 
@@ -39,11 +39,11 @@ cutoff and over-represents versions that stayed popular for a long time, so the 
 release from a year or two before the model shipped. Many of those releases have advisories
 published since.
 
-Our v6 agent benchmark (Section 5.1) measured the effect for three models. With no tools attached,
-each model pinned 157 direct dependencies over 24 projects, and 63 to 66 of them (40% to 42%) had at
-least one advisory in OSV. The median pinned version was 583 to 747 days old. Examples from the
+Our v7 agent benchmark (Section 5.1) measured the effect for three models. With no tools attached,
+each model pinned 157 to 164 direct dependencies over 24 projects, and 63 to 66 of them (40% to 42%) had at
+least one advisory in OSV. The median pinned version was 607 to 717 days old. Examples from the
 transcripts: `axios@1.7.9` (33 advisories), `pillow@11.0.0` (86), `pyjwt@2.10.1` (32),
-`next@15.5.4` (35). The resolved trees produced 711 to 794 alerts per model, 164 to 190 of them
+`next@15.1.6` (36). The resolved trees produced 715 to 766 alerts per model, 164 to 178 of them
 critical or high in the npm projects. Four of 72 projects came out clean.
 
 The package choices were fine. The same packages installed without a version (the *no pin*
@@ -55,13 +55,13 @@ release, which have no fixed version yet.
 If the versions are the problem, any tool that moves the agent to current releases should help, and
 our ablation (Section 5.2) shows that it does. pinright with its security layer switched off
 documents the registry's latest release when asked without a version. Agents using it asked for the
-latest release package by package and pinned it, and whole-tree alerts fell by 94% to 99% from the
+latest release package by package and pinned it, and whole-tree alerts fell by 89% to 99% from the
 no-docs arm.
 
 That leaves cases a docs tool does not handle. An agent has reasons to pin an older version: a peer
 range (`next-auth` 4 wants `next` 15), an existing lockfile, a pre-release it read about. Without a
 verdict it cannot tell a vulnerable old release from a clean one, and in our runs Sonnet pinned
-`next@15.5.4` (35 advisories) and Haiku a `next-auth` beta with advisories. A docs tool also says
+`next@15.5.0` (32 advisories) and Haiku `next-auth` betas with advisories. A docs tool also says
 nothing about lookalike names, packages that do not exist, or malware, and it helps only when the
 agent calls it. pinright adds those pieces: a verdict on the version being pinned, a fix on the same
 release line, refusal of malicious, lookalike and nonexistent names, and a hook that runs whether or
@@ -85,7 +85,7 @@ pinright combines pieces that exist separately.
   recommended version or docs to the agent. Our threat model recommends running one next to pinright.
 - **Package hallucination.** Spracklen et al. ("We Have a Package for You!", USENIX Security 2025)
   measured code-generating models inventing package names that attackers can register. pinright's
-  lookalike and registry-existence checks target that pattern. In the v6 runs no arm pinned a package
+  lookalike and registry-existence checks target that pattern. In the v7 runs no arm pinned a package
   or version that does not exist.
 - **Provenance.** npm provenance attestations (Sigstore) tie a tarball to the workflow that built it.
   pinright reads them as a signal and publishes its own releases with them.
@@ -411,30 +411,34 @@ should be read as "pinright did what it says", not as an outside check. Each pro
 build`, `tsc --noEmit` or an import check; for Python, executing every top-level import). Intervals
 are 95% cluster-bootstrap intervals that resample tasks (2,000 resamples, fixed seed).
 
-**Results** (runs `v6-sonnet-2026-11-01`, `v6-haiku-2026-11-01`, `v6-opus-2026-11-01`):
+**Results** (runs `v7-sonnet-2026-11-02`, `v7-haiku-2026-11-02`, `v7-opus-2026-11-02`, on the 1.0.0
+code):
 
 | Model | Arm | Alerts (sum) | Alerts per project [95% CI] | 0-alert projects | Direct deps with advisory [95% CI] | Crit + high (npm) | Builds | Cost per run (USD) | Turns | MCP calls |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sonnet | No docs | 794 | 33.1 [21.4, 44.7] | 0/24 | 66/157, 42% [30, 52] | 190 | 24/24 | 0.034 | 4.0 | 0 |
-| Sonnet | docs-only | 48 | 2.0 [0.0, 5.8] | 21/24 | 1/120, 1% [0, 3] | 23 | 24/24 | 0.087 | 8.9 | 5.0 |
-| Sonnet | MCP | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/130 | 0 | 23/24 | 0.051 | 6.0 | 2.0 |
-| Sonnet | Hook only | 14 | 0.6 [0.0, 1.5] | 19/23 | 0/154 | 4 | 23/23 | 0.046 | 5.7 | 0 |
-| Sonnet | MCP + hook | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/132 | 0 | 23/24 | 0.048 | 6.0 | 2.1 |
-| Haiku | No docs | 711 | 29.6 [17.8, 41.9] | 2/24 | 63/157, 40% [30, 48] | 173 | 23/24 | 0.003 | 4.2 | 0 |
-| Haiku | docs-only | 21 | 0.9 [0.0, 2.3] | 20/24 | 2/127, 2% [0, 5] | 11 | 23/24 | 0.009 | 10.0 | 6.1 |
-| Haiku | MCP | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/134 | 0 | 22/24 | 0.005 | 7.0 | 2.9 |
-| Haiku | Hook only | 10 | 0.4 [0.0, 1.2] | 20/23 | 0/149 | 2 | 22/23 | 0.004 | 5.7 | 0 |
-| Haiku | MCP + hook | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/121 | 0 | 24/24 | 0.005 | 6.8 | 2.7 |
-| Opus | No docs | 718 | 29.9 [17.9, 43.0] | 2/24 | 65/157, 41% [32, 52] | 164 | 24/24 | 0.080 | 4.0 | 0 |
-| Opus | docs-only | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/126 | 0 | 24/24 | 0.204 | 9.5 | 5.5 |
-| Opus | MCP | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/135 | 0 | 24/24 | 0.130 | 6.5 | 2.3 |
-| Opus | Hook only | 14 | 0.6 [0.0, 1.4] | 20/24 | 0/157 | 4 | 24/24 | 0.101 | 5.4 | 0 |
-| Opus | MCP + hook | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/149 | 0 | 24/24 | 0.125 | 6.8 | 2.6 |
+| Sonnet | No docs | 766 | 31.9 [20.3, 44.7] | 0/24 | 66/164, 40% [29, 50] | 178 | 24/24 | 0.033 | 4.1 | 0 |
+| Sonnet | docs-only | 84 | 3.5 [0.0, 10.0] | 20/24 | 2/125, 2% [0, 6] | 42 | 24/24 | 0.088 | 9.3 | 5.3 |
+| Sonnet | MCP | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/131 | 0 | 23/24 | 0.050 | 5.9 | 1.9 |
+| Sonnet | Hook only | 14 | 0.6 [0.0, 1.4] | 20/24 | 0/160 | 4 | 24/24 | 0.044 | 5.5 | 0 |
+| Sonnet | MCP + hook | 6 | 0.3 [0.0, 0.8] | 21/23 | 0/122 | 0 | 22/23 | 0.045 | 5.8 | 1.8 |
+| Haiku | No docs | 715 | 29.8 [17.8, 43.5] | 2/24 | 63/157, 40% [30, 49] | 164 | 24/24 | 0.003 | 4.3 | 0 |
+| Haiku | docs-only | 63 | 2.6 [0.0, 7.6] | 20/24 | 3/142, 2% [0, 7] | 33 | 22/24 | 0.008 | 11.1 | 7.0 |
+| Haiku | MCP | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/137 | 0 | 23/24 | 0.006 | 7.5 | 3.4 |
+| Haiku | Hook only | 14 | 0.6 [0.0, 1.5] | 19/23 | 0/148 | 4 | 23/23 | 0.004 | 5.7 | 0 |
+| Haiku | MCP + hook | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/123 | 0 | 23/24 | 0.005 | 7.6 | 3.3 |
+| Opus | No docs | 732 | 30.5 [18.0, 43.5] | 2/24 | 66/159, 42% [32, 50] | 170 | 24/24 | 0.074 | 4.0 | 0 |
+| Opus | docs-only | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/126 | 0 | 24/24 | 0.212 | 9.9 | 5.7 |
+| Opus | MCP | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/154 | 0 | 24/24 | 0.126 | 6.8 | 2.5 |
+| Opus | Hook only | 14 | 0.6 [0.0, 1.4] | 20/24 | 0/156 | 4 | 24/24 | 0.097 | 5.5 | 0 |
+| Opus | MCP + hook | 6 | 0.3 [0.0, 0.8] | 22/24 | 0/149 | 0 | 24/24 | 0.116 | 6.6 | 2.5 |
 | all | No pin (reference) | 3 per model | 0.3 [0.0, 0.8] | 11/12 | 0 | 0 | n/a | n/a | n/a | n/a |
 
 Cost is the API-equivalent at list price that Claude Code reports per transcript; the runs used a
-subscription, so nobody paid it. Runs without a manifest (the model wrote files to a mangled path)
-count in no alert column: one hook-only run each for Sonnet and Haiku.
+subscription, so nobody paid it. Runs without a manifest count in no alert column: Sonnet MCP + hook
+(the model wrote its file to a mangled path) and Haiku hook only (it wrote no `requirements.txt`),
+one run each. We rescored 34 runs after two scorer fixes: a failed deps.dev lookup had counted as a
+version that does not exist, and an empty `pip-audit` answer as a clean tree (`bench/AGENTS.md`,
+"Scoring fixes"). The table holds the rescored values.
 
 ![Figure 3. Whole-tree alerts per project by arm and model.](figures/fig-a-alerts-per-project.png)
 
@@ -449,19 +453,26 @@ no version at all lands at the same 0.3 as pinright. pinright's contribution is 
 and that the pin lands on a clean version instead of the one the model remembers. The hook-only arm adds 4 alerts (2 high) per next-auth run: the hook let `next` 15.5.28 through,
 the clean release on the 15.x line the agent chose, and that release pulls a `postcss` that only
 Next 16 clears. pinright notes the pull but keeps the same-line rule. The MCP arms avoid it because
-`check-packages` recommends Next 16 up front. Hook-only pins were older (median 333 to 397 days
-against 32 to 35 in the MCP arms): a blocked pin moves to the newest clean release on its own line.
+`check-packages` recommends Next 16 up front. Hook-only pins were older (median 391 to 398 days
+against 34 to 39 in the MCP arms): a blocked pin moves to the newest clean release on its own line.
 
-**Builds.** In the three pinright arms, 5 of the 214 runs that wrote a manifest did not build. Sonnet's next-auth run 1 in both MCP
-arms: pinright recommended Next 16.4.3 and the agent wrote `next-auth` 4 middleware code that Next 16
-rejects, without calling `get-docs` or `upgrade-guide`. A Haiku MCP run wrote a route that imports
-names its own `auth.ts` does not export. Haiku's mcp-server-ts task failed once in four arms (no
-docs, docs-only, MCP, hook only) because the agent wrote `"build": "tsc"` without a `tsconfig.json`.
+**Builds.** In the three pinright arms, 4 of the 214 runs that wrote a manifest did not build.
+Sonnet's next-auth run 2 in both MCP arms: pinright recommended Next 16.4.3 and the agent wrote
+`next-auth` 4 middleware code that Next 16 rejects, without calling `get-docs` or `upgrade-guide`.
+Haiku's mcp-server-ts run 2 in both MCP arms: the agent wrote `"build": "tsc"` without a
+`tsconfig.json`. Every hook-only run with a manifest built.
 
 **Agreement with the reference scanners.** On the same 394 lockfiles, `check-manifest` flagged the
-same vulnerable packages as `npm audit` (262 lockfiles, mean Jaccard 0.96, 235 identical sets) and
-`pip-audit` (132 lockfiles, Jaccard 1.00). The only differences: `nuxt` and `@nuxt/nitro-server`,
-which pinright flagged and `npm audit` did not, 27 times each.
+same vulnerable packages as `npm audit` (264 lockfiles, mean Jaccard 0.96, 236 identical sets) and
+`pip-audit` (130 lockfiles, Jaccard 1.00, all identical). The differences: `nuxt` and
+`@nuxt/nitro-server`, which pinright flagged and `npm audit` did not, 27 times each, and one `multer`
+we did not diagnose.
+
+**Against v6.** v6 ran the same tasks on 2026-11-01 at the pre-release commit `b2fcfe2`; 28 files
+under `src/` changed before 1.0.0. The pinright MCP arms stayed at 6 alerts and 0 vulnerable direct
+pins for every model. No docs moved from 33.1, 29.6 and 29.9 alerts per project to 31.9, 29.8 and
+30.5. docs-only moved most, from 2.0 and 0.9 to 3.5 and 2.6 for Sonnet and Haiku, because one
+next-auth choice per model decides it (Section 5.2).
 
 ### 5.2 The docs-only ablation
 
@@ -471,18 +482,21 @@ no answer carries a security notice, verdict or recommended version. Docs conten
 fencing are the same code. The arm isolates what version-accurate docs do without the verdict.
 
 Steering alone did most of the work. Agents asked for each package's latest release and pinned it:
-90% to 94% of direct dependencies sat on the registry default, against 8% to 13% without docs, and
-whole-tree alerts fell from 794 to 48 (Sonnet), 711 to 21 (Haiku) and 718 to 6 (Opus). The security
-layer removed the rest: 48 to 6 for Sonnet and 21 to 6 for Haiku. Opus reached 6 without it, so for
-Opus on these tasks the verdict added nothing we could measure.
+85% to 93% of direct dependencies sat on the registry default, against 10% to 11% without docs, and
+whole-tree alerts fell from 766 to 84 (Sonnet), 715 to 63 (Haiku) and 732 to 6 (Opus). The security
+layer removed the rest: 84 to 6 for Sonnet and 63 to 6 for Haiku. Opus reached 6 without it, so for
+Opus on these tasks the verdict added nothing we could measure. With two repetitions the docs-only
+and MCP intervals overlap for every model (alerts per project: Sonnet [0.0, 10.0] against
+[0.0, 0.8], Haiku [0.0, 7.6] against [0.0, 0.8]), so the gap is an observation, not a measured
+difference.
 
-The failures in this arm are version choices with no verdict to correct them. Sonnet pinned `next`
-15.5.4 to stay inside `next-auth` 4's peer range; `find-library` showed 16.4.3 as latest, and nothing
-said 15.5.4 had 35 advisories (42 alerts, 23 critical or high, in one run). Haiku pinned `next-auth`
-5.0.0-beta.31, a beta with advisories, in both runs (7 alerts each). The arm also cost more than the
-full server: 8.9 to 10.0 turns and 5.0 to 6.1 MCP calls per run against 6.0 to 7.0 and 2.0 to 2.9,
-and 1.6 to 1.8 times the cost per run, because without `check-packages` the agents asked for
-"latest" one package at a time.
+The failures in this arm are version choices with no verdict to correct them, all in the next-auth
+task. Sonnet pinned `next` 15.5.0 in both runs; nothing said it had 32 advisories (39 alerts per run,
+21 critical or high). Haiku pinned `next` 15.5.4 with `next-auth` 5.0.0-beta.25 in one run (50
+alerts) and `next-auth` 5.0.0-beta.31 in the other (7 alerts); both betas carry advisories. The arm
+also cost more than the full server: 9.3 to 11.1 turns and 5.3 to 7.0 MCP calls per run against 5.9
+to 7.5 and 1.9 to 3.4, and 1.5 to 1.8 times the cost per run, because without `check-packages` the
+agents asked for "latest" one package at a time.
 
 Every task here starts from an empty directory, which favors "pin the latest". We did not measure
 existing projects, where the agent has to keep a major or a lockfile and a "latest" answer no longer
@@ -497,19 +511,23 @@ Pydantic 2 and LangChain 1 (`create_agent`). The prompt names the major but neve
 
 **Scoring.** We wrote checks from each library's migration guide and verified them against the
 published type definitions. A run is *current* when it installs, builds, passes a runtime smoke test
-(six tasks have one), pins the asked major, uses every required new API and no removed or deprecated
+(seven tasks have one), pins the asked major, uses every required new API and no removed or deprecated
 one. A self-test scores a reference solution per task (must pass) and the previous major's version of
 it (must fail).
 
+Runs `docs-v7-{sonnet,haiku,opus}-2026-11-02`, on the 1.0.0 code:
+
 | Model | Arm | Current API [95% CI] | Works | Deprecated API used | Cost per run (USD) | Turns |
 |---|---|---|---|---|---|---|
-| Sonnet | No docs | 13/16, 81% [56, 100] | 15/16 | 2 | 0.044 | 5.3 |
-| Sonnet | docs-only | 15/16, 94% [81, 100] | 16/16 | 0 | 0.117 | 11.4 |
-| Sonnet | pinright | 16/16 | 16/16 | 0 | 0.081 | 8.2 |
-| Haiku | No docs | 10/16, 63% [25, 88] | 12/16 | 4 | 0.004 | 5.3 |
-| Haiku | pinright | 16/16 | 16/16 | 0 | 0.008 | 9.4 |
-| Opus | No docs | 12/16, 75% [50, 100] | 14/16 | 2 | 0.103 | 5.4 |
-| Opus | pinright | 16/16 | 16/16 | 0 | 0.203 | 9.4 |
+| Sonnet | No docs | 13/16, 81% [56, 100] | 13/16 | 2 | 0.044 | 5.3 |
+| Sonnet | docs-only | 16/16 | 16/16 | 0 | 0.120 | 11.7 |
+| Sonnet | pinright | 16/16 | 16/16 | 0 | 0.084 | 8.1 |
+| Haiku | No docs | 9/16, 56% [25, 88] | 9/16 | 3 | 0.004 | 5.6 |
+| Haiku | docs-only | 15/16, 94% [81, 100] | 15/16 | 0 | 0.010 | 13.4 |
+| Haiku | pinright | 16/16 | 16/16 | 0 | 0.007 | 9.1 |
+| Opus | No docs | 14/16, 88% [63, 100] | 16/16 | 2 | 0.099 | 5.4 |
+| Opus | docs-only | 16/16 | 16/16 | 0 | 0.263 | 12.4 |
+| Opus | pinright | 16/16 | 16/16 | 0 | 0.195 | 9.3 |
 
 ![Figure 4. Docs benchmark: runs that wrote the current API.](figures/fig-c-docs-current-api.png)
 
@@ -517,23 +535,31 @@ it (must fail).
 
 Two libraries explain most of the gap. AI SDK 7 (released 2026-06-25) reads as newer than what the
 models saw, although no cutoff dates are published: without docs, all six runs wrote AI SDK 5/6 code
-(`system:`, `stepCountIs`) that still compiles through deprecated aliases. On LangChain 1, five of six
-no-docs runs pinned an early 1.x `langchain` (1.0.x or 1.2.0) that does not import against the
-`langgraph` the resolver installs; pinright pinned 1.4.7 in every run. That failure is about the
-version chosen, which `check-packages` fixes, more than about the docs. Haiku also used the
-deprecated `tseslint.config()` in both ESLint runs. The models already knew Next 16, Tailwind 4,
-Zod 4, Express 5 and Pydantic 2, so on those tasks this benchmark cannot separate docs from no docs.
+(`system:`, `stepCountIs`) that still compiles through deprecated aliases; four of those runs also
+failed to install or build. On LangChain 1, three of six no-docs runs (Sonnet once, Haiku twice)
+pinned an early 1.x `langchain` (1.0.3 or 1.2.0) that does not import against the `langgraph` the
+resolver installs; pinright pinned 1.4.7 in every run. That failure is about the version chosen,
+which `check-packages` fixes, more than about the docs. Haiku also used the deprecated
+`tseslint.config()` in both ESLint runs, next to a `typescript-eslint` that crashes ESLint 10, and
+lost one Pydantic run to a set of pins `uv` could not resolve. The models already knew Next 16,
+Tailwind 4, Zod 4 and Express 5, so on those tasks this benchmark cannot separate docs from no docs.
 The no-docs intervals for Sonnet and Opus overlap 16 of 16; only Haiku's does not. The `[100%, 100%]`
 interval in Table 3 is what a task bootstrap returns when every run passes; a Wilson interval for
-16 of 16 is [81%, 100%]. The docs-only arm (Sonnet) lost one AI SDK run that kept `system:` although the answer
-opened with the rename hint. pinright roughly doubled the cost per run with every model.
+16 of 16 is [81%, 100%]. The docs-only arm, which v7 ran on all three models, lost one Haiku AI SDK
+run that failed to build. pinright roughly doubled the cost per run with every model. In v6, on the
+pre-release commit, no docs scored 13, 10 and 12 of 16 and pinright 16 of 16 on every model.
+
+A second set of eight tasks uses APIs first released on 2026-08-01 or later, newer than the models
+(`bench/RESULTS-post-cutoff.md`). There the agents wrote the new API in 2 of 48 runs without docs,
+46 of 48 with pinright and 45 of 48 with the docs-only arm.
 
 ### 5.4 Retrieval probes: the docs pipeline without an agent
 
 To measure the docs pipeline apart from the model, we send it questions and check the answer for
 strings of the current API. We wrote each held-out set and scored it before changing code, tuned only
 on sets we looked at, and scored the untouched sets once at the start and once at the end of a round.
-On 2026-11-01 we reran every probe on a cold cache and got the end-of-round scores.
+On 2026-11-01 we reran every probe on a cold cache, on the release candidate `b2fcfe2`, and got the
+end-of-round scores. We did not rerun the probes on the release code with v7.
 
 | Set | Questions | Libraries | Role | Before | Release candidate |
 |---|---|---|---|---|---|
@@ -575,6 +601,15 @@ the 361 entries still blocked or asked, most are by design: packages, paths or v
 templating an agent never types, and 32 are known advisories (true positives, such as
 `npm install -g pnpm@8` with 26 advisories in a public workflow). The corpus is CI and README
 commands, not agent sessions; README lines, the closest to what agents copy, run at 0.61%.
+
+**Real agent sessions.** We also replayed the Claude Code transcripts of one month of the
+maintainers' own work (2026-10-02 to 2026-11-02): 156,977 tool calls, 154,402 cases after removing
+duplicates, against `release` at `8efc4f0` and again after two fixes it prompted. The hook asked or
+blocked on 0.46% of the calls both times. We read every flagged case: after the fixes, 52 were true
+positives, 79 asks by design (a manifest changed by `sed -i` or `cp`, a name in a variable), and 10
+false positives, 0.006% of the cases (22 before the fixes). Another 568 were replay artifacts from
+folders deleted since the session. One user and one month: another team's sessions will repeat other
+commands (`bench/fp/RESULTS.md`, "Real agent sessions").
 
 ### 5.6 Latency
 
@@ -646,28 +681,31 @@ single call: treat the MCP numbers as an order of magnitude, not a distribution.
 - **The ablation is ours.** docs-only is pinright with its security layer off. It shows what
   version-accurate docs that report the current release do; other docs sources may behave
   differently, and we did not test any.
-- **One day of advisory data.** Scores depend on OSV and deps.dev on 2026-11-01. The no-docs numbers
-  grow as advisories land, and pinright's picks can become vulnerable later.
+- **Two days of advisory data.** Scores depend on OSV and deps.dev when each run was scored,
+  2026-11-02 and 2026-11-03. The no-docs numbers grow as advisories land, and pinright's picks can
+  become vulnerable later.
 - **Shared data source.** pinright and the reference scanners read OSV-derived data. The benchmark
   shows that pinright's choices hold up against those scanners, not that the advisory data is
   complete.
 - **Agents without a shell.** Runs had only Read and Write, so the hook saw manifest writes, not
   install commands. Its command reader is covered by unit tests and the public-command replay, not by
   the agent benchmark.
-- **The models knew most new APIs.** Without docs they wrote the current API for five of eight docs
-  tasks; the docs benchmark separates arms mainly on AI SDK 7, LangChain 1 and, for Haiku, ESLint 10.
-  docs-only ran on the docs benchmark for Sonnet only.
+- **The models knew most new APIs.** Without docs they wrote the current API for four to seven of
+  eight docs tasks; the docs benchmark separates arms mainly on AI SDK 7, LangChain 1 and, for
+  Haiku, ESLint 10 and Pydantic 2. The post-cutoff set (Section 5.3) addresses this.
 - **Probes measure markers.** A probe passes when expected strings appear, which says nothing about
   the surrounding text.
-- **The false-positive corpus is not agent traffic.** CI scripts use more variables and private
-  indexes than an agent in a working copy, so the "by design" asks are over-represented; the replay
-  judges each command alone.
+- **The public false-positive corpus is not agent traffic.** CI scripts use more variables and
+  private indexes than an agent in a working copy, so the "by design" asks are over-represented; the
+  replay judges each command alone. The real-session replay covers one user's month.
 - **Injection held-out sets are small** (50 attacks over three sets) and written by the team that
   wrote the rules.
-- **The benchmarked build is not the released build.** The runs used commit `b2fcfe2`; 1.0.0 changed
-  28 files under `src/` after it (hook readers, `verdict.ts`, `typosquat.ts`, the tree audit). Those
-  changes tighten what the hook reads and none changes how a version is chosen, but the numbers have
-  not been re-measured on the release.
+- **The hook changed after the run.** Two commits after v7 (`6837139`, `699770d`) fix false
+  positives in the hook's shell command reader. Agents in the benchmark have no shell, so the hook read
+  only their manifest writes. The retrieval probes ran on the release candidate `b2fcfe2`.
+- **The scorer had two silent failures**, fixed during v7: a failed deps.dev lookup counted as a
+  version that does not exist, and an empty `pip-audit` answer as a clean tree. We rescored the 34
+  affected runs; the main change is 2 vulnerable direct pins in Sonnet's docs-only arm instead of 0.
 - **The direct-dependency share is scored through pinright's own deps.dev client.** Only the
   whole-tree alerts from `npm audit` and `pip-audit` are an outside measure (Section 5.1).
 - **The no-pin reference ties with pinright.** On these new projects, installing with no version lands
@@ -676,8 +714,8 @@ single call: treat the MCP numbers as an order of magnitude, not a distribution.
   use them ..."), in every arm. Sessions without that line may call the tools less often.
 - **The false-positive corpus is also the tuning corpus.** The 13 root causes were fixed on the same
   25,077 entries the rate is measured on; there is no held-out set.
-- **The concordance score counts clean-against-clean as agreement.** 183 of 262 npm lockfiles and
-  108 of 132 PyPI lockfiles are clean on both sides; the 27 that differ are nuxt projects, where
+- **The concordance score counts clean-against-clean as agreement.** 183 of 264 npm lockfiles and
+  106 of 130 PyPI lockfiles are clean on both sides; 27 of the 28 that differ are nuxt projects, where
   pinright also flags `nuxt` and `@nuxt/nitro-server` for the vulnerable packages they pull.
 
 ## 7. Limitations and future work
@@ -692,8 +730,9 @@ single call: treat the MCP numbers as an order of magnitude, not a distribution.
 - No dependency graphs for Go, RubyGems and NuGet; `setup.py`, conda and `*.csproj` are not parsed by
   the hook.
 - With OSV down, the single-package path relies on deps.dev, which lags by hours.
-- Benchmarks: other vendors' agents, more repetitions, tasks drawn from existing repositories, and a
-  docs benchmark with APIs newer than every model under test.
+- Benchmarks: other vendors' agents, more repetitions, and tasks drawn from existing repositories.
+  The post-cutoff docs set and the tasks from public GitHub issues (`bench/RESULTS-real-issues.md`)
+  are first steps.
 
 ## 8. Availability and reproduction
 
@@ -702,8 +741,9 @@ single call: treat the MCP numbers as an order of magnitude, not a distribution.
 - Unit tests at 1.0.0: 983 pass, 10 skipped on Windows (POSIX-only symlink and FIFO tests, which run
   in the Linux CI).
 - Data behind every table and figure: the aggregate CSVs in `paper/kit/data/`. The raw agent
-  transcripts and scored projects are not published; `npx tsx paper/kit/make-data.ts --bench <dir>`
-  rebuilds the CSVs from a run directory, and `npx tsx paper/kit/make-figures.ts` draws the figures.
+  transcripts and scored projects are not published; `npx tsx paper/kit/make-data.ts --agents
+  <stamps> --docs <stamps>` rebuilds the CSVs from the run directories, and
+  `npx tsx paper/kit/make-figures.ts` draws the figures.
 - To run it: Node 20.9+, the `claude` CLI (2.1.308 here) on an account with the three models, `uv`
   and `uvx`, and a `GITHUB_TOKEN`. A new run reads live advisory data and will differ. Another docs
   server plugs in with `--mcp-arm name=mcp.json`.
@@ -712,21 +752,21 @@ single call: treat the MCP numbers as an order of magnitude, not a distribution.
 npm ci && npm run build
 npm test
 # agent benchmark, per model (claude-sonnet-5-5, claude-haiku-5-5, claude-opus-5-5)
-GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp v6-sonnet-2026-11-01
-GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp v6-sonnet-2026-11-01 --arms docs-only --resume
-npx tsx bench/agents/make-latest.ts v6-sonnet-2026-11-01 && npx tsx bench/agents/score.ts v6-sonnet-2026-11-01 --concurrency 3
-# docs benchmark, per model (docs-only for Sonnet)
-GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v6-sonnet-2026-11-01
-npx tsx bench/docs/score.ts docs-v6-sonnet-2026-11-01 --concurrency 2
+GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp v7-sonnet-2026-11-02
+npx tsx bench/agents/make-latest.ts v7-sonnet-2026-11-02 && npx tsx bench/agents/score.ts v7-sonnet-2026-11-02 --concurrency 3
+# docs benchmark, per model
+GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v7-sonnet-2026-11-02
+GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v7-sonnet-2026-11-02 --arms docs-only --resume
+npx tsx bench/docs/score.ts docs-v7-sonnet-2026-11-02 --concurrency 2
 # summaries, probes, false positives, injection, latency
-npx tsx bench/summary.ts --agents v6-sonnet-2026-11-01,v6-haiku-2026-11-01,v6-opus-2026-11-01 --docs docs-v6-sonnet-2026-11-01,docs-v6-haiku-2026-11-01,docs-v6-opus-2026-11-01
+npx tsx bench/summary.ts --agents v7-sonnet-2026-11-02,v7-haiku-2026-11-02,v7-opus-2026-11-02 --docs docs-v7-sonnet-2026-11-02,docs-v7-haiku-2026-11-02,docs-v7-opus-2026-11-02
 GITHUB_TOKEN=... npx tsx bench/docs/retrieval.ts && GITHUB_TOKEN=... npx tsx bench/docs/probe-heldout.ts --set all
 GITHUB_TOKEN=... npx tsx bench/fp/collect.ts <dir> && npx tsx bench/fp/replay.ts <dir> --decide 800
 npx tsx bench/injection/run.ts && npx tsx scripts/latency.ts
 ```
 
-The agent benchmarks need Claude Code and an Anthropic account. Over 472 runs the transcripts report
-USD 31.34 of API-equivalent cost at list price. Results move with the live advisory data and the
+The agent benchmarks need Claude Code and an Anthropic account. Over the 504 runs of v7 the
+transcripts report USD 35.10 of API-equivalent cost at list price. Results move with the live advisory data and the
 services' latency.
 
 ## References
