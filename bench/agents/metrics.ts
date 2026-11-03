@@ -46,6 +46,18 @@ export const LABEL: Record<string, string> = {
   latest: 'No pin (reference)',
 };
 
+/** Report order for the built-in arms; extra arms (--mcp-arm) follow in name order. */
+export const ARMS = ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
+
+/** The arms present in a run, built-in ones first in report order, then any extra arm by name. */
+export function armsOf(present: Iterable<string>): string[] {
+  const set = new Set(present);
+  return [...ARMS.filter((a) => set.has(a)), ...[...set].filter((a) => !ARMS.includes(a)).sort()];
+}
+
+/** Column label of an arm: the known label, or the name an extra arm was given on the command line. */
+export const label = (arm: string) => LABEL[arm] ?? arm;
+
 /** "claude-sonnet-5-5" -> "Sonnet 5.5". */
 export const modelName = (id: string) => {
   const m = id.match(/claude-([a-z]+)-(\d+)-(\d+)/);

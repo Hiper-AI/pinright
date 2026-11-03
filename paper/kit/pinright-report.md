@@ -1,11 +1,12 @@
 # pinright: version-accurate library docs and a supply-chain verdict for coding agents
 
-**&lt;Authors&gt;**, Hiper AI
+**Hiper AI** (opensource@hiperai.com)
 
 Technical report, version 1.0.0, 2026-11-03. Code: <https://github.com/Hiper-AI/pinright> (MIT). Site:
-<https://pinright.dev>. This report has not been peer reviewed. It describes pinright 1.0.0 as of the
-release candidate (branch `lanzamiento`, commit `99027f5`). The benchmarks ran on 2026-11-01 against
-commit `b2fcfe2` plus a benchmark-only ablation flag; Section 5 lists every run.
+<https://pinright.dev>. This report has not been peer reviewed. It describes pinright 1.0.0. The
+benchmarks ran on 2026-11-01 against a pre-release commit (`b2fcfe2`) plus a benchmark-only ablation
+flag; 28 files under `src/` changed between that commit and 1.0.0, from the second security review
+and the false-positive replay (Section 6). Section 5 lists every run.
 
 ## Abstract
 
@@ -23,9 +24,10 @@ the agent to current versions removes most of the exposure. The full server brou
 alerts and 0 vulnerable direct pins; the 6 come from one nuxt dependency with no fixed release, which
 an unpinned install also gets. The hook alone, for agents that never call the tool, left 10 to 14.
 With pinright's docs, all three models wrote the current API of eight recently changed libraries in
-16 of 16 runs, against 10 to 13 without docs. Replaying 25,077 public commands through the hook,
-1.44% were blocked or asked about. These results come from one vendor's models, one day of advisory
-data and tasks we wrote.
+16 of 16 runs, against 10 to 13 without docs. Replaying 25,077 public commands through the hook as
+released, 1.46% were blocked or asked about. These results come from one vendor's models, one day of
+advisory data, tasks we wrote, two repetitions whose intervals overlap between the pinright arms,
+and a pre-release build of the code.
 
 ## 1. Problem
 
@@ -401,8 +403,11 @@ its security layer off (Section 5.2); the full pinright MCP server; the pinright
 model ran every task twice per arm: 24 runs per arm and model, 360 agent runs in all.
 
 **Scoring.** Each manifest is resolved (`npm install --package-lock-only`, `uv pip compile`) and
-audited with `npm audit` or `pip-audit`, which share no code or data path with pinright and read the
-advisory data Dependabot alerts on. Each project is then installed for real and built (`npm run
+audited with `npm audit` or `pip-audit`, which share no code with pinright and read the advisory data
+Dependabot alerts on; these whole-tree alerts are the independent measure. The share of direct
+dependencies with an advisory is counted with deps.dev's advisory keys through pinright's own
+client, the same source pinright picks versions from, so a 0% there follows from the design and
+should be read as "pinright did what it says", not as an outside check. Each project is then installed for real and built (`npm run
 build`, `tsc --noEmit` or an import check; for Python, executing every top-level import). Intervals
 are 95% cluster-bootstrap intervals that resample tasks (2,000 resamples, fixed seed).
 
@@ -439,7 +444,9 @@ the no-docs arm.*
 **What remains.** The 6 alerts in every MCP and MCP + hook arm come from the nuxt task: `nuxt` 4.6.3,
 the registry default and the version pinright recommends, pulls `deepmerge`, `glob` and `minimatch`
 versions with advisories and no fixed release, 3 alerts per run, which the no-pin reference gets
-too. The hook-only arm adds 4 alerts (2 high) per next-auth run: the hook let `next` 15.5.28 through,
+too. That reference matters for reading the table: on a new project, installing every package with
+no version at all lands at the same 0.3 as pinright. pinright's contribution is that the agent pins,
+and that the pin lands on a clean version instead of the one the model remembers. The hook-only arm adds 4 alerts (2 high) per next-auth run: the hook let `next` 15.5.28 through,
 the clean release on the 15.x line the agent chose, and that release pulls a `postcss` that only
 Next 16 clears. pinright notes the pull but keeps the same-line rule. The MCP arms avoid it because
 `check-packages` recommends Next 16 up front. Hook-only pins were older (median 333 to 397 days
@@ -508,13 +515,17 @@ it (must fail).
 
 *Figure 4. Share of runs current, by model and arm, with 95% intervals.*
 
-Two libraries explain most of the gap. AI SDK 7 (released 2026-06-25) is newer than the models: without
-docs, all six runs wrote AI SDK 5/6 code (`system:`, `stepCountIs`) that still compiles through
-deprecated aliases. On LangChain 1, five of six no-docs runs pinned an early 1.x `langchain` that does
-not import against the `langgraph` the resolver installs; pinright pinned 1.4.7 in every run. Haiku
-also used the deprecated `tseslint.config()` in both ESLint runs. The models already knew Next 16,
-Tailwind 4, Zod 4, Express 5 and Pydantic 2, so on those tasks this benchmark cannot separate docs
-from no docs. The docs-only arm (Sonnet) lost one AI SDK run that kept `system:` although the answer
+Two libraries explain most of the gap. AI SDK 7 (released 2026-06-25) reads as newer than what the
+models saw, although no cutoff dates are published: without docs, all six runs wrote AI SDK 5/6 code
+(`system:`, `stepCountIs`) that still compiles through deprecated aliases. On LangChain 1, five of six
+no-docs runs pinned an early 1.x `langchain` (1.0.x or 1.2.0) that does not import against the
+`langgraph` the resolver installs; pinright pinned 1.4.7 in every run. That failure is about the
+version chosen, which `check-packages` fixes, more than about the docs. Haiku also used the
+deprecated `tseslint.config()` in both ESLint runs. The models already knew Next 16, Tailwind 4,
+Zod 4, Express 5 and Pydantic 2, so on those tasks this benchmark cannot separate docs from no docs.
+The no-docs intervals for Sonnet and Opus overlap 16 of 16; only Haiku's does not. The `[100%, 100%]`
+interval in Table 3 is what a task bootstrap returns when every run passes; a Wilson interval for
+16 of 16 is [81%, 100%]. The docs-only arm (Sonnet) lost one AI SDK run that kept `system:` although the answer
 opened with the rename hint. pinright roughly doubled the cost per run with every model.
 
 ### 5.4 Retrieval probes: the docs pipeline without an agent
@@ -612,6 +623,21 @@ lines a write adds or changes, so later edits cost what the changed lines cost.
   judges each command alone.
 - **Injection held-out sets are small** (50 attacks over three sets) and written by the team that
   wrote the rules.
+- **The benchmarked build is not the released build.** The runs used commit `b2fcfe2`; 1.0.0 changed
+  28 files under `src/` after it (hook readers, `verdict.ts`, `typosquat.ts`, the tree audit). Those
+  changes tighten what the hook reads and none changes how a version is chosen, but the numbers have
+  not been re-measured on the release.
+- **The direct-dependency share is scored through pinright's own deps.dev client.** Only the
+  whole-tree alerts from `npm audit` and `pip-audit` are an outside measure (Section 5.1).
+- **The no-pin reference ties with pinright.** On these new projects, installing with no version lands
+  at the same 0.3 alerts per project. pinright's effect is on the pins agents write.
+- **Every prompt asks the agent to use its docs tools** ("If you have documentation tools available,
+  use them ..."), in every arm. Sessions without that line may call the tools less often.
+- **The false-positive corpus is also the tuning corpus.** The 13 root causes were fixed on the same
+  25,077 entries the rate is measured on; there is no held-out set.
+- **The concordance score counts clean-against-clean as agreement.** 183 of 262 npm lockfiles and
+  108 of 132 PyPI lockfiles are clean on both sides; the 27 that differ are nuxt projects, where
+  pinright also flags `nuxt` and `@nuxt/nitro-server` for the vulnerable packages they pull.
 
 ## 7. Limitations and future work
 
@@ -634,8 +660,12 @@ lines a write adds or changes, so later edits cost what the changed lines cost.
 - License: MIT. Install in the project to protect: `npx pinright init`; setup check: `npx pinright doctor`.
 - Unit tests at the release candidate: 962 pass, 9 skipped (POSIX-only and privileged symlink tests on
   Windows).
-- Data behind every table and figure: `paper/kit/data/*.csv`, regenerated from the raw runs with
-  `npx tsx paper/kit/make-data.ts --bench <dir>`; figures with `npx tsx paper/kit/make-figures.ts`.
+- Data behind every table and figure: the aggregate CSVs in `paper/kit/data/`. The raw agent
+  transcripts and scored projects are not published; `npx tsx paper/kit/make-data.ts --bench <dir>`
+  rebuilds the CSVs from a run directory, and `npx tsx paper/kit/make-figures.ts` draws the figures.
+- To run it: Node 20.9+, the `claude` CLI (2.1.308 here) on an account with the three models, `uv`
+  and `uvx`, and a `GITHUB_TOKEN`. A new run reads live advisory data and will differ. Another docs
+  server plugs in with `--mcp-arm name=mcp.json`.
 
 ```bash
 npm ci && npm run build

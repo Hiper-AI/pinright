@@ -70,11 +70,11 @@ release, which still pulls a vulnerable `postcss`.
 
 On a second benchmark of eight tasks that need a library's newest major (Next.js 16, AI SDK 7, Zod 4
 and others), all three models used the current API in 16 of 16 runs with pinright, against 13, 10 and
-12 of 16 without. Most of that gap is AI SDK 7, released after the models' training. Cost per run
+12 of 16 without. Most of that gap is AI SDK 7 and LangChain 1; the models already knew five of the eight APIs. Cost per run
 roughly doubled.
 
 The hook has to stay out of the way. We replayed 25,077 commands from the CI files, scripts and
-READMEs of 180 public repositories through it. It blocked or asked about 1.44% of them, most on
+READMEs of 180 public repositories through it. It blocked or asked about 1.46% of them, most on
 purpose (a version in a variable, a git source, another registry) and 32 because of real advisories.
 A command that installs nothing costs about 120 ms.
 
@@ -103,5 +103,5 @@ npx pinright init
 ```
 
 `init` wires the MCP server and the hook into the agents it finds. Restart your agent, and
-`npx pinright doctor` shows what is wired. Code, benchmarks, raw-data CSVs and reproduction scripts
+`npx pinright doctor` shows what is wired. Code, benchmarks, aggregate CSVs and reproduction scripts
 are at [github.com/Hiper-AI/pinright](https://github.com/Hiper-AI/pinright).

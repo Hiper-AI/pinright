@@ -47,9 +47,9 @@ Things we would like feedback on, because we know they are weak:
 - The hook reads commands statically. `python -c "subprocess.run(['pip', ...])"` and `curl | sh` get
   past it. `docs/HOOK-THREAT-MODEL.md` lists the 57 vectors we tried; the second security review
   lists the reader gaps still open.
-- False positives. On 25,077 public CI, script and README commands it blocked or asked about 1.44%,
+- False positives. On 25,077 public CI, script and README commands it blocked or asked about 1.46%,
   mostly on purpose. If it blocks something it should not, please open an issue.
 - Our numbers come from one model vendor, one day of advisory data and tasks we wrote.
 
 MIT licensed, no telemetry, no account. `npx pinright init` in a project sets it up. The technical
-report, raw-data CSVs and benchmark scripts are in the repo.
+report, the aggregate CSVs and the benchmark scripts are in the repo; the raw transcripts are not.

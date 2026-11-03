@@ -21,7 +21,8 @@ import { getAdvisory, getPackage, getVersion } from '../../src/advisories/depsde
 import { auditTree } from '../../src/tree/audit.js';
 import { parseFile } from '../../src/tree/lockfiles.js';
 import { type BuildScore, npmBuild, pypiBuild, run } from './buildcheck.js';
-import { armDir as findArmDir, canonicalScores, HOOK_BLOCKED } from '../legacy.js';
+import { armDir as findArmDir, canonicalArm, canonicalScores, HOOK_BLOCKED } from '../legacy.js';
+import { ARMS, armsOf } from './metrics.js';
 import { TASKS } from './tasks.js';
 
 const args = process.argv.slice(2);
@@ -34,7 +35,7 @@ const onlyTasks = (args[args.indexOf('--only') + 1] ?? '').split(',').filter((s)
 const onlyArms = (args[args.indexOf('--arms') + 1] ?? '').split(',').filter((s) => args.includes('--arms') && s);
 const root = resolve(import.meta.dirname, '..', '..');
 const runDir = join(root, 'bench', 'agents', 'runs', stamp);
-export const ARMS = ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
+export { ARMS };
 const DAY = 86_400_000;
 
 interface Dep { name: string; spec: string; version: string; exact: boolean }
@@ -234,7 +235,9 @@ function readTranscript(dir: string) {
 
 interface Job { arm: string; name: string; task: (typeof TASKS)[number]; rep: number; dir: string }
 const jobs: Job[] = [];
-for (const arm of ARMS) {
+// Every arm that has a directory in the run: the built-in ones plus any --mcp-arm the run was given.
+const present = existsSync(runDir) ? readdirSync(runDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name) : [];
+for (const arm of armsOf([...ARMS, ...present.map(canonicalArm)])) {
   const armDir = findArmDir(runDir, arm);
   if (!existsSync(armDir)) continue;
   for (const name of readdirSync(armDir).sort()) {

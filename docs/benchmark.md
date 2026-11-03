@@ -53,8 +53,10 @@ APIs. Report and per-task diagnosis in [bench/DOCS.md](../bench/DOCS.md):
 | No docs | 13 / 16 | 10 / 16 | 12 / 16 |
 | pinright | 16 / 16 | 16 / 16 | 16 / 16 |
 
-Without docs every model wrote AI SDK 5/6 code for AI SDK 7, and most LangChain runs pinned a 1.0.x
-that fails to import. Without an agent, pinright's docs answer 24 of 25 questions on these tasks and
+Without docs every model wrote AI SDK 5/6 code for AI SDK 7, and most LangChain runs pinned an early
+1.x (1.0.x or 1.2.0) that fails to import, a version problem more than a docs problem. The models
+already knew five of the eight APIs, so the gap rests on the other three, and the no-docs intervals
+for Sonnet and Opus overlap 16 of 16. Without an agent, pinright's docs answer 24 of 25 questions on these tasks and
 133 of 154 held-out questions over 56 other libraries with the current API.
 
 ## Hook: how often does it get in the way?
@@ -83,13 +85,17 @@ The prompt-injection scanner has its own measurements on real docs and an advers
   tomorrow.
 - Agents had only Write and Read, no shell, so the hook saw manifest writes and no install commands.
 
-These numbers are not a guarantee. The full list of caveats is in
-[bench/RESULTS-v6.md](../bench/RESULTS-v6.md#caveats).
+These numbers are not a promise. The run used a pre-release commit; 28 files under `src/` changed
+before 1.0.0, mostly in the hook and the verdict. The share of direct dependencies with an advisory
+is counted through pinright's own deps.dev client; the whole-tree alerts from `npm audit` and
+`pip-audit` are the independent measure, and installing with no version at all gets the same 0.3.
+The full list of caveats is in [bench/RESULTS-v6.md](../bench/RESULTS-v6.md#caveats).
 
 ## Reproduce
 
-The commands for every run, model and report are in
-[bench/RESULTS-v6.md](../bench/RESULTS-v6.md#reproduce). The agent harness lives in
+The commands for every run, model and report, and what you need installed, are in
+[bench/RESULTS-v6.md](../bench/RESULTS-v6.md#reproduce). The raw transcripts are not published; only
+the aggregate CSVs are. The agent harness lives in
 [bench/agents/](../bench/agents/) (`npm run bench:agents`), the docs harness in
 [bench/docs/](../bench/docs/) and the hook replay in [bench/fp/](../bench/fp/). The figures and the
 CSVs behind the report regenerate with `npx tsx paper/kit/make-data.ts --bench <bench dir>` and

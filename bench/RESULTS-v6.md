@@ -1,7 +1,11 @@
 # pinright benchmark v6: results across three models
 
-Run on 2026-11-01 against the release candidate (`lanzamiento` at `b2fcfe2`, plus a benchmark-only
-ablation flag). Claude Code 2.1.308 in headless mode, driving Sonnet 5.5, Haiku 5.5 and Opus 5.5.
+Run on 2026-11-01 against the pre-release commit `b2fcfe2`, plus a benchmark-only ablation flag.
+Claude Code 2.1.308 in headless mode, driving Sonnet 5.5, Haiku 5.5 and Opus 5.5. **The code under
+test is not the 1.0.0 code**: 28 files under `src/` changed between that commit and the release
+(the hook readers, `verdict.ts`, `typosquat.ts`, the tree audit), from the second security review
+and the false-positive replay. Those changes tighten what the hook reads; none changes how a version
+is chosen. A re-run on the release tag is planned, not done.
 Details, per-task tables and failure diagnoses: [AGENTS.md](AGENTS.md) (what the agent pins) and
 [DOCS.md](DOCS.md) (what the agent writes).
 
@@ -11,8 +15,11 @@ pinned a direct dependency with an advisory, and each model's 24 projects totale
 upstream package with no fix (nuxt's dependencies; the no-pin reference has the same ones). With
 pinright's docs, every model wrote the current API of eight recently changed libraries in 16 of 16 runs,
 against 10 to 13 of 16 without docs. The docs-only ablation (pinright with its security layer off) cut
-alerts by 94% to 99% from no docs, but Sonnet and Haiku still pinned vulnerable `next` and `next-auth`
-versions in it: the verdict, not the docs, closes that gap.
+alerts by 94% to 99% from no docs. In three of its 48 Sonnet and Haiku runs the agent still pinned a
+vulnerable `next` or `next-auth`, which the verdict arms never did; with two repetitions the intervals
+of docs-only and MCP overlap for every model, so this is an observation, not a measured difference.
+The no-pin reference (the same packages installed with no version) also lands at 0.3: on a new
+project, pinright matters because agents pin, and it keeps the pin on a clean version.
 
 ## Headline tables
 
@@ -80,6 +87,18 @@ Flagged by one side only: only pinright: @nuxt/nitro-server (27); only pinright:
 
 <!-- generated:end -->
 
+**Reading the tables.** "Direct deps with advisories" is counted with deps.dev's advisory keys through
+pinright's own deps.dev client, so the 0% in the pinright arms follows from how pinright picks a
+version; the whole-tree alert columns come from `npm audit` and `pip-audit`, which do not share that
+path, and are the independent measure. The docs benchmark's `[100%, 100%]` is what a task bootstrap
+gives when every run passes, not certainty: a Wilson interval for 16 of 16 is [81%, 100%]. In the
+concordance table the mean Jaccard counts a clean-against-clean pair as 1: of the 262 npm lockfiles,
+183 are clean on both sides, 52 agree on a non-empty set, and the 27 that differ are the nuxt
+projects, where pinright also flags `nuxt` and `@nuxt/nitro-server` themselves (their current
+release pulls the vulnerable `deepmerge`, `glob` and `minimatch`, so pinright reports the package
+that carries them, while `npm audit` reports only the three). Of the 132 PyPI lockfiles, 108 are
+clean on both sides and 24 agree on a non-empty set.
+
 **Arms.** No docs: nothing attached. docs-only (pinright with the security layer off): the same server
 with `PINRIGHT_ABLATION=docs-only`, which registers only `find-library` and `get-docs`, documents the
 registry's latest version when asked without one, and shows no security notice, verdict or recommended
@@ -130,8 +149,27 @@ set C 33/45). Identical to the scores recorded at the end of the third docs roun
   It shows what version-accurate docs do alone; other docs sources may behave differently.
 - **Build checks are partial.** "Builds" means install plus build, type-check or import check. Only the
   docs benchmark runs smoke tests, and the AI SDK task has none.
+- **Every prompt asks the agent to use its docs tools.** Each task ends with "If you have
+  documentation tools available, use them to check the libraries before choosing versions" (agent
+  benchmark) or "... the current API of each library before writing code" (docs benchmark), in every
+  arm. A session without that line may call the tools less often; the hook does not depend on it.
+- **The direct-dependency share is not independent of pinright.** It is scored with deps.dev through
+  pinright's own client. The whole-tree alerts from `npm audit` and `pip-audit` are.
+- **The false-positive corpus is also the tuning corpus.** The 13 root causes were found and fixed on
+  the same 25,077 entries the 1.46% is measured on; there is no held-out set, and 32 of the entries
+  counted as "blocked or asked" are true positives.
+- **No model cutoff dates.** Anthropic does not publish training cutoffs for these models, so "newer
+  than the models" is an inference from the no-docs runs, not a fact about training data.
 
 ## Reproduce
+
+You need: Node 20.9+, the `claude` CLI (we used 2.1.308) logged in to an account that can run the
+three models, `uv` and `uvx` on PATH (the PyPI tasks resolve with `uv pip compile` and audit with
+`pip-audit`), `npm`, and a `GITHUB_TOKEN` for the docs pipeline's rate limit. The agent transcripts
+and scored projects are not in the repository; a new run reads live advisory data and will not
+reproduce these numbers exactly. To compare another docs server, pass `--mcp-arm name=mcp.json` to
+either `run.ts` (a Claude Code MCP config); `score.ts`, `report.ts` and `summary.ts` pick the extra
+arm up by its directory name.
 
 ```bash
 npm ci && npm run build
@@ -141,6 +179,7 @@ GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model claude-sonnet-5-5 --reps 2 
 npx tsx bench/agents/make-latest.ts v6-sonnet-2026-11-01 && npx tsx bench/agents/score.ts v6-sonnet-2026-11-01
 # docs benchmark, per model; docs-only for Sonnet
 GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v6-sonnet-2026-11-01
+GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v6-sonnet-2026-11-01 --arms docs-only --resume
 npx tsx bench/docs/score.ts docs-v6-sonnet-2026-11-01
 # reports
 npx tsx bench/agents/report.ts v6-sonnet-2026-11-01 v6-haiku-2026-11-01 v6-opus-2026-11-01

@@ -8,14 +8,13 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { canonicalScores } from '../legacy.js';
 import { f1, f2, f3, pct, spread, withCi } from '../stats.js';
-import { agreement, armMetrics, isAgentArm, LABEL, modelName } from './metrics.js';
+import { agreement, armMetrics, armsOf, isAgentArm, label, modelName } from './metrics.js';
 import type { RunScore } from './score.js';
 import { TASKS } from './tasks.js';
 
 const stamps = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 if (!stamps.length) throw new Error('usage: report.ts <stamp> [<stamp> ...]');
 const root = resolve(import.meta.dirname, '..', '..');
-const ARMS = ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
 
 interface Run { stamp: string; scores: RunScore[]; config: { model: string; reps: number }; model: string }
 const runs: Run[] = stamps.map((stamp) => {
@@ -42,11 +41,11 @@ L.push(
 for (const run of runs) {
   const { scores } = run;
   const name = modelName(run.model);
-  const arms = ARMS.filter((a) => scores.some((s) => s.arm === a));
+  const arms = armsOf(scores.map((s) => s.arm));
   const M = Object.fromEntries(arms.map((a) => [a, armMetrics(scores.filter((s) => s.arm === a))]));
   type Mx = (typeof M)[string];
   L.push(`## ${name} (\`${run.model}\`, run \`${run.stamp}\`, ${run.config.reps} repetition(s))`, '');
-  head(['Metric', ...arms.map((a) => LABEL[a])]);
+  head(['Metric', ...arms.map((a) => label(a))]);
   const metric = (label: string, f: (m: Mx, arm: string) => string) => row([label, ...arms.map((a) => f(M[a], a))]);
   const agentOnly = (f: (m: Mx) => string) => (m: Mx, a: string) => (isAgentArm(a) ? f(m) : 'n/a');
   metric('Runs with a manifest', (m) => `${m.withManifest} / ${m.runs}`);
@@ -72,7 +71,7 @@ for (const run of runs) {
   L.push('');
 
   L.push(`### Whole-tree alerts per task, ${name}`, '', 'Mean over repetitions, (min-max) when they differ; x = did not build.', '');
-  head(['Task', 'Ecosystem', ...arms.map((a) => LABEL[a])]);
+  head(['Task', 'Ecosystem', ...arms.map((a) => label(a))]);
   for (const t of TASKS) {
     const cells = arms.map((a) => {
       const rs = scores.filter((s) => s.arm === a && s.task === t.id);
@@ -92,7 +91,7 @@ for (const run of runs) {
   for (const a of arms.filter(isAgentArm)) {
     const noManifest = scores.filter((s) => s.arm === a && !s.deps.length);
     const bad = scores.filter((s) => s.arm === a && s.build && s.build.step !== 'none' && (!s.build.installed || !s.build.built));
-    L.push(`**${LABEL[a]}**: ${bad.length || noManifest.length ? '' : 'none'}`, '');
+    L.push(`**${label(a)}**: ${bad.length || noManifest.length ? '' : 'none'}`, '');
     for (const s of noManifest) L.push(`- ${s.task} r${s.rep}: no manifest written (agent ${s.ok ? 'finished' : 'did not finish'}, ${s.turns ?? '?'} turns)`);
     for (const s of bad) {
       const b = s.build!;
@@ -112,7 +111,7 @@ for (const run of runs) {
         if (key) bad.set(key, (bad.get(key) ?? 0) + 1);
       }
     }
-    L.push(`**${LABEL[a]}**: ${bad.size ? '' : 'none'}`, '');
+    L.push(`**${label(a)}**: ${bad.size ? '' : 'none'}`, '');
     const list = [...bad.entries()].sort((x, y) => y[1] - x[1]);
     for (const [k, n] of list.slice(0, 15)) L.push(`- ${k}${n > 1 ? ` x${n}` : ''}`);
     if (list.length > 15) L.push(`- ... ${list.length - 15} more`);

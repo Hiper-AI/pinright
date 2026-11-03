@@ -7,7 +7,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { agreement, armMetrics, LABEL, modelName } from './agents/metrics.js';
+import { agreement, armMetrics, armsOf, label, modelName } from './agents/metrics.js';
 import type { RunScore } from './agents/score.js';
 import { docsArmMetrics } from './docs/metrics.js';
 import type { DocsRunScore } from './docs/score.js';
@@ -40,13 +40,13 @@ const head = (cells: string[]) => {
 L.push('### Agent security benchmark (12 tasks; whole-tree alerts from npm audit / pip-audit)', '');
 head(['Model', 'Arm', 'Reps', 'Alerts, whole tree (sum)', 'Alerts per project, mean [95% CI]', 'Projects with 0 alerts', 'Direct deps with advisories', 'Critical + high (npm)', 'Builds', 'API-equivalent cost / run (USD, list price)', 'Turns', 'Duration (s)', 'MCP calls']);
 for (const run of agents) {
-  for (const arm of ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook', 'latest']) {
+  for (const arm of armsOf(run.scores.map((s) => s.arm))) {
     const rs = run.scores.filter((s) => s.arm === arm);
     if (!rs.length) continue;
     const m = armMetrics(rs);
     const agent = arm !== 'latest';
     row([
-      modelName(run.model), LABEL[arm], agent ? String(run.reps) : '1', String(m.alertsSum), withCi(m.alertsMean, m.alertsCi), `${m.zeroAlert} / ${m.resolved}`,
+      modelName(run.model), label(arm), agent ? String(run.reps) : '1', String(m.alertsSum), withCi(m.alertsMean, m.alertsCi), `${m.zeroAlert} / ${m.resolved}`,
       `${m.vulnDeps} / ${m.realDeps} (${pct(m.vulnDeps, m.realDeps)})`, String(m.critHigh),
       agent ? `${m.built} / ${m.conclusive}` : 'n/a', agent ? f3(m.costMean) : 'n/a', agent ? f1(m.turns) : 'n/a', agent ? f1(m.durationS) : 'n/a', agent ? f1(m.mcpCalls) : 'n/a',
     ]);
@@ -58,12 +58,14 @@ if (docs.length) {
   L.push('### Docs benchmark (8 tasks whose library changed API in its current major)', '');
   head(['Model', 'Arm', 'Reps', 'Current API, runs [95% CI of the rate]', 'Works (install + build + smoke)', 'Deprecated API used', 'API-equivalent cost / run (USD, list price)', 'Turns', 'Duration (s)', 'MCP calls']);
   for (const run of docs) {
-    for (const arm of ['no-docs', 'docs-only', 'pinright']) {
+    const DOCS_ARMS = ['no-docs', 'docs-only', 'pinright'];
+    const present = new Set(run.scores.map((s) => s.arm));
+    for (const arm of [...DOCS_ARMS.filter((a) => present.has(a)), ...[...present].filter((a) => !DOCS_ARMS.includes(a)).sort()]) {
       const rs = run.scores.filter((s) => s.arm === arm);
       if (!rs.length) continue;
       const m = docsArmMetrics(rs);
       row([
-        modelName(run.model), LABEL[arm], String(run.reps),
+        modelName(run.model), arm === 'pinright' ? 'pinright MCP' : label(arm), String(run.reps),
         `${m.current} / ${m.runs} (${pct(m.current, m.runs)} [${pct(m.currentCi[0], 1)}, ${pct(m.currentCi[1], 1)}])`,
         `${m.works} / ${m.runs}`, String(m.deprecated), f3(m.costMean), f1(m.turns), f1(m.durationS), f1(m.mcpCalls),
       ]);

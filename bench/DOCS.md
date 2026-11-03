@@ -7,8 +7,8 @@ check it for the current API, for APIs the major removed and for deprecated ones
 
 Short version (run v6, 2026-11-01, three models): with pinright the agent wrote the current API in 16
 of 16 runs with each of Sonnet 5.5, Haiku 5.5 and Opus 5.5; without docs, in 13, 10 and 12 of 16.
-Two libraries explain most of the gap. AI SDK 7 (released 2026-06-25) is newer than the models, and
-without docs every model wrote AI SDK 5/6 code. LangChain 1 broke on version pins: agents pinned an
+Two libraries explain most of the gap. AI SDK 7 (released 2026-06-25) reads as newer than what the
+models saw (no cutoff dates are published), and without docs every model wrote AI SDK 5/6 code. LangChain 1 broke on version pins: agents pinned an
 early 1.0.x `langchain` that does not import against the `langgraph` the resolver installs. The models
 already know Next 16, Tailwind 4, Zod 4, Express 5 and Pydantic 2, so on those tasks the agent runs
 cannot tell good docs from bad ones. The [retrieval probe](#retrieval-probe-pinrights-docs-without-the-agent)

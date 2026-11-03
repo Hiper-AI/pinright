@@ -17,9 +17,9 @@ The full verdict took every model to 6 (one upstream with no fix) and 0 vulnerab
 ```
 
 ```
-The hook covers agents that never ask: it reads installs and manifest writes first. On 25,077 public commands it blocked or asked 1.44%, mostly on purpose.
+The hook covers agents that never ask: it reads installs and manifest writes first. On 25,077 public commands it blocked or asked 1.46%, mostly on purpose.
 
-One vendor, one day of advisory data, tasks we wrote. Report and raw data: github.com/Hiper-AI/pinright
+One vendor, one day of advisory data, tasks we wrote. Report and data: github.com/Hiper-AI/pinright
 ```
 
 ## X, español (hilo de 3)

@@ -44,7 +44,7 @@ is an engineer explaining what they measured.
 | 2 | ~30 to 0.3 | whole-tree alerts per project, no tools vs the pinright MCP server (0.3 = the same as installing with no version) | `data/agents_by_model_arm.csv` (`alerts_per_project_mean`), figure a |
 | 3 | 48 / 21 / 6 to 6 / 6 / 6 | alerts over 24 projects per model, docs for the latest release only vs the full verdict (Sonnet / Haiku / Opus) | same CSV, `docs-only` and `pinright` rows |
 | 4 | 16 of 16 | docs-benchmark runs that wrote the current API with pinright, for each model (10 to 13 of 16 without) | `data/docs_by_model_arm.csv`, figure c |
-| 5 | 1.44% | of 25,077 public commands the hook blocked or asked about, mostly on purpose | `data/fp_by_source.csv`, figure e |
+| 5 | 1.46% | of 25,077 public commands the hook blocked or asked about, mostly on purpose | `data/fp_by_source.csv`, figure e |
 
 Each number needs its qualifier on the same surface: "Claude Code, three models, 12 tasks we wrote,
 2026-11-01". Never show number 1 or 2 without number 3 nearby, because the honest story is that

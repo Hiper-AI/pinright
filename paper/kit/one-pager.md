@@ -37,7 +37,7 @@ definitions, the Python API from the wheel), its repository at the release tag, 
 **Measured cost.** About 2 to 4 more agent turns per run, and 1.5 to 2 times the API-equivalent cost of a
 run without tools. The hook adds about 120 ms to a command that installs nothing, about 360 ms to an
 install with a warm cache. On 25,077 public commands from 180 repositories, it blocked or asked about
-1.44%, most of them on purpose (versions in variables, git sources, other registries).
+1.46%, most of them on purpose (versions in variables, git sources, other registries).
 
 **What it does not do.** It reads commands; it does not sandbox anything. A script that calls `pip`
 itself, `curl | sh` or an obfuscated command gets past the hook. Its prompt-injection detector caught
@@ -45,7 +45,7 @@ itself, `curl | sh` or an obfuscated command gets past the hook. Its prompt-inje
 proxy registry and a sandbox. pinright knows published advisories only.
 
 **How far to trust the numbers.** One model vendor, one day of advisory data (2026-11-01), two
-repetitions, tasks we wrote. Every number, the raw-data CSVs and the scripts that regenerate them are
+repetitions, tasks we wrote. Every number, the aggregate CSVs and the scripts that draw the figures from them are
 in the repository.
 
 Code: github.com/Hiper-AI/pinright · Site: pinright.dev · Technical report: `paper/kit/pinright-report.pdf`

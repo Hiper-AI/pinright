@@ -112,6 +112,25 @@ list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 | "caught 20% to 40%" | 3/15 = 20%, 6/15 = 40% (5/20 = 25%) | same |
 | Unit tests: 962 pass, 9 skipped | `npm test` on `feat/paperkit` (base `99027f5`), 2026-11-01 |
 
+## 6b. Caveats added in the launch review (2026-11-02)
+
+| Claim | Value | Source |
+|---|---|---|
+| The benchmark ran on a pre-release commit; 28 files under `src/` changed before 1.0.0 | `git diff --stat b2fcfe2 release -- src`: 28 files, +1033/-143 (hook readers, `verdict.ts`, `typosquat.ts`, `tree/audit.ts`) | the release branch |
+| "Direct deps with advisories" is scored through pinright's own deps.dev client | `bench/agents/score.ts` imports `src/advisories/depsdev.js`; `metrics.ts` `vulnDeps` | code |
+| The no-pin reference also gets 0.3 alerts per project | `latest` rows in `agents_by_model_arm.csv` | CSV |
+| docs-only vs MCP intervals overlap for every model | Sonnet [0.0, 5.8] vs [0.0, 0.8]; Haiku [0.0, 2.3] vs [0.0, 0.8]; Opus [0.0, 0.8] vs [0.0, 0.8] | `bench/RESULTS-v6.md`, agent table |
+| "three of its 48 Sonnet and Haiku runs" in docs-only pinned a vulnerable next or next-auth | Sonnet `next@15.5.4` x1, Haiku `next-auth@5.0.0-beta.31` x2 | `bench/AGENTS.md`, "Failure diagnoses" |
+| Docs benchmark: no-docs intervals for Sonnet and Opus overlap 16 of 16 | 81% [56, 100], 75% [50, 100]; Haiku 63% [25, 88] | `docs_by_model_arm.csv` |
+| Wilson interval for 16 of 16 | [81%, 100%] (z = 1.96) | computed |
+| The models already knew five of the eight docs APIs | Next 16, Tailwind 4, Zod 4, Express 5, Pydantic 2 | `bench/DOCS.md` |
+| LangChain no-docs failures are version pins (1.0.x or 1.2.0), not API | `bench/DOCS.md`, "Where the runs fail" | same |
+| Concordance: 183 of 262 npm and 108 of 132 PyPI lockfiles are clean on both sides; 27 npm differ (nuxt) | counted from `scores.json` of the three v6 runs (`tree.auditNames` vs `tree.pinright.vulnerableNames`) | run data (not committed) |
+| Every prompt carries the docs hint, in every arm | `bench/agents/tasks.ts` `DOCS_HINT`; `bench/docs/tasks.ts` `DOCS_HINT` | code |
+| The false-positive corpus is the tuning corpus (no held-out set) | `bench/fp/RESULTS.md`, "False positives found and fixed" | same |
+| No published cutoff dates for the models | Anthropic's model pages give none; "newer than the models" is an inference | external |
+| Public rate for the hook: 1.46% (release), not 1.44% (pre-review-2) | row above, section 5; the copy now uses 1.46% everywhere | this file |
+
 ## 7. Design facts (report 2, 3; README; landing)
 
 | Claim | Source |
@@ -139,3 +158,7 @@ list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 - Nothing in the kit names or compares to a third-party docs service, and no claim uses
   "certified", "compliant", "guarantee" or "100%" as a promise (the docs benchmark's "100%" appears
   only as a measured rate, 16 of 16).
+- "Raw data" was replaced by "aggregate CSVs" everywhere: the agent transcripts and scored projects
+  are not committed (`bench/agents/runs/` and `bench/docs/runs/` are gitignored).
+- `paper/kit/pinright-report.pdf` is gitignored (`paper/.gitignore`). The README links the Markdown
+  report; the site serves the PDF from its own build; the GitHub Release should carry it as an asset.

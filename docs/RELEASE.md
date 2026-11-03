@@ -34,8 +34,11 @@ change to `release.yml`. The placeholder holds a `package.json` and a README, no
 
 ### Monday (the day before)
 
-- [ ] Everything for 1.0.0 is on `main`: the `lanzamiento` work, `feat/kit` (this kit, with the
-      1.0.0 bump), the benchmark update and the technical report link. `main` CI is green:
+- [ ] Everything for 1.0.0 is on `main`: the `release` branch (one commit, "pinright 1.0.0", with
+      the launch README and the site) replaces `main` with a force push, and the old branches that
+      name third-party docs services in their history (`feat/action`, `feat/docs-bench`,
+      `feat/github-token`, `feat/injection`, `feat/pendientes`, `feat/ssrf`, `feat/supplychain`,
+      `integracion`) are deleted from `origin` before the repository goes public. `main` CI is green:
       `test (node 20)`, `test (node 22)`, `test (node 24)`, `self-audit`, `package contents`. The
       release guard refuses a tag that is not on `origin/main`.
 - [ ] A self-hosted runner with label `hiperai-ci` is registered for this repository (VM
@@ -50,9 +53,11 @@ change to `release.yml`. The placeholder holds a `package.json` and a README, no
       `gh label create false-positive -R Hiper-AI/pinright -c D93F0B -d "Blocked or flagged when it should not be"`,
       then `false-negative` (B60205) and `docs-answer` (0E8A16) the same way. `bug` and
       `enhancement` exist by default.
-- [ ] The landing page (`hiperai.com/pinright`, website branch `feat/pinright`) is reviewed and
-      ready to deploy, and `pinright.dev` is registered with a 301 to it (Cloudflare: a Redirect
-      Rule for `pinright.dev/*` and `www.pinright.dev/*` to `https://hiperai.com/pinright`).
+- [ ] The site in `site/` builds clean (`cd site && npm ci && npm run build`) and is ready for
+      Cloudflare Pages (project `pinright-site`, Direct Upload of `site/dist`). Until the deploy,
+      `pinright.dev` keeps its 301 to `https://hiperai.com/pinright`; the deploy replaces the
+      redirect rule and the Access bypass app stays. The product page on hiperai.com (website
+      branch `feat/pinright`) links to the site.
 
 ### 1. Final check from a clean clone of `main` (about 10 minutes)
 
@@ -221,13 +226,15 @@ package), then Glama, then the rest.
 
 ### 10. Landing page and pinright.dev
 
-Deploy the website branch with the `/pinright` page through the site's normal process. Then check
-the domain before you link it anywhere (Git Bash):
+Build `site/` and upload `site/dist` to Cloudflare Pages (`npx wrangler pages deploy dist
+--project-name pinright-site` from `site/`), then point the `pinright.dev` DNS at the Pages project
+and delete the 301 redirect rule. Check the domain before you link it anywhere (Git Bash):
 
 ```bash
-curl -sI https://pinright.dev | grep -iE '^(HTTP|location)'       # 301, location: https://hiperai.com/pinright
-curl -sI https://www.pinright.dev | grep -iE '^(HTTP|location)'
-curl -s -o /dev/null -w '%{http_code}\n' https://hiperai.com/pinright   # 200
+curl -sI https://pinright.dev | grep -iE '^(HTTP|location)'       # 200, no location header
+curl -sI https://www.pinright.dev | grep -iE '^(HTTP|location)'   # 301 to https://pinright.dev/
+curl -s -o /dev/null -w '%{http_code}\n' https://pinright.dev/llms.txt     # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://pinright.dev/report.pdf   # 200
 ```
 
 Open `https://pinright.dev` in a private window too: the certificate must be valid and the page
