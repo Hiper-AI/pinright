@@ -15,8 +15,8 @@ Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,next-auth-middleware,npm,1,true,8,2,2,0,
 Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,next-auth-middleware,npm,2,true,8,2,2,0,true,52,8,19,52,true,true,npm run build,false,0.052,9,19.117,0,0
 Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,nuxt-app,npm,1,true,3,1,1,0,true,26,3,7,26,true,true,npm run build,false,0.0227,4,8.213,0,0
 Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,nuxt-app,npm,2,true,3,1,1,0,true,45,4,16,46,true,true,npm run build,false,0.0279,6,10.986,0,0
-Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,pandas-pipeline,pypi,1,true,9,2,1,2,true,60,,,62,true,true,import check,false,0.0279,3,11.365,0,0
-Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,pandas-pipeline,pypi,2,true,9,2,1,2,true,60,,,62,true,true,import check,false,0.0363,4,16.318,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,pandas-pipeline,pypi,1,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0279,3,11.365,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,pandas-pipeline,pypi,2,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0363,4,16.318,0,0
 Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,upload-sharp-s3,npm,1,true,4,2,1,0,true,28,1,14,28,true,true,import check,false,0.0311,3,12.339,0,0
 Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,upload-sharp-s3,npm,2,true,4,2,1,0,true,20,1,13,20,true,true,import check,false,0.0302,3,13.008,0,0
 Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,vite-react-spa,npm,1,true,6,1,0,0,true,25,0,9,25,true,true,npm run build,false,0.0365,5,12.99,0,0
@@ -35,8 +35,8 @@ Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,langchain-rag,pypi,1,true,7,0,0,0,true
 Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,langchain-rag,pypi,2,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.1332,8,24.105,5,0
 Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0626,8,22.1,4,0
 Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0625,8,19.946,4,0
-Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,next-auth-middleware,npm,1,true,4,0,0,1,true,39,4,17,39,true,true,npm run build,false,0.1073,12,55.491,4,0
-Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,next-auth-middleware,npm,2,true,4,0,0,1,true,39,4,17,39,true,true,npm run build,false,0.1071,13,56.097,6,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,next-auth-middleware,npm,1,true,4,1,1,0,true,39,4,17,39,true,true,npm run build,false,0.1073,12,55.491,4,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,next-auth-middleware,npm,2,true,4,1,1,0,true,39,4,17,39,true,true,npm run build,false,0.1071,13,56.097,6,0
 Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0829,10,54.886,5,0
 Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0476,6,24.59,2,0
 Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1366,11,46.105,8,0
@@ -87,8 +87,8 @@ Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,next-auth-middleware,npm,1,true,8,0,0,
 Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,next-auth-middleware,npm,2,true,4,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.0907,15,45.735,0,1
 Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.037,6,32.025,0,1
 Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,nuxt-app,npm,2,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0355,6,26.662,0,1
-Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,pandas-pipeline,pypi,1,true,9,0,0,2,true,0,,,0,true,true,import check,false,0.0401,5,28.253,0,1
-Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,pandas-pipeline,pypi,2,true,9,0,0,2,true,0,,,0,true,true,import check,false,0.038,5,22.168,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0401,5,28.253,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,pandas-pipeline,pypi,2,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.038,5,22.168,0,1
 Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0436,4,21.898,0,1
 Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.037,4,24.736,0,1
 Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.048,6,29.258,0,1

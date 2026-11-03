@@ -94,12 +94,25 @@ function readManifest(work: string, eco: 'npm' | 'pypi'): Dep[] | undefined {
     });
 }
 
+async function versionWithRetry(eco: 'npm' | 'pypi', name: string, version: string) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await getVersion(eco, name, version);
+    } catch (err) {
+      if (attempt >= 3) throw new Error(`deps.dev lookup of ${name}@${version} failed 3 times: ${(err as Error).message}`);
+      await new Promise((r) => setTimeout(r, 2000 * attempt));
+    }
+  }
+}
+
 async function scoreDep(eco: 'npm' | 'pypi', d: Dep): Promise<DepScore> {
   const pkg = await getPackage(eco, d.name).catch(() => undefined);
   if (!pkg) return { ...d, exists: 'no-package', advisories: [], deprecated: false };
   const def = pkg.versions.find((v) => v.isDefault);
   if (d.version === 'latest' || d.version === '') d = { ...d, version: def?.versionKey.version ?? '' };
-  const v = d.version ? await getVersion(eco, d.name, d.version).catch(() => undefined) : undefined;
+  // getVersion returns undefined on a 404 and throws on anything else: retry those, or a timeout
+  // under load scores a real version as one that does not exist (v7: next 15.5.0, pytz 2024.2).
+  const v = d.version ? await versionWithRetry(eco, d.name, d.version) : undefined;
   if (!v) return { ...d, exists: 'no-version', advisories: [], deprecated: false, latest: def?.versionKey.version };
   const ids = (v.advisoryKeys ?? []).map((a) => a.id);
   let maxCvss: number | undefined;
