@@ -5,3 +5,4 @@ public/kit/
 public/report.pdf
 public/llms.txt
 public/llms-full.txt
+partials/chart-*.html

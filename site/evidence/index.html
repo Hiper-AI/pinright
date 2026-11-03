@@ -57,12 +57,16 @@
             <h2 id="alerts-title">About 30 alerts per project without docs, 0.3 with pinright</h2>
             <p>Without tools, projects averaged 29.6 to 33.1 whole-tree alerts. With the pinright MCP server every model averaged 0.3, the same as installing the packages with no version. That 0.3 is nuxt's: its current release pulls <code>deepmerge</code>, <code>glob</code> and <code>minimatch</code> versions with advisories and no fix yet.</p>
           </div>
-          <figure class="fig">
-            <div class="fig-frame">
-              <img class="only-light" src="/kit/fig-a-alerts-per-project.svg" width="1240" height="600" loading="lazy" decoding="async" alt="Bar chart of mean whole-tree alerts per project for three models and six arms, with 95% intervals. Without tools: 33.1 (Sonnet), 29.6 (Haiku), 29.9 (Opus). pinright with its security layer off: 2.0, 0.9, 0.3. pinright MCP server and MCP plus hook: 0.3 for every model. Hook only: 0.6, 0.4, 0.6. Packages installed without a version: 0.3. A second panel repeats the data without the no-tools arm on a scale of 0 to 6.">
-              <img class="only-dark" src="/kit/fig-a-alerts-per-project-dark.svg" width="1240" height="600" loading="lazy" decoding="async" alt="Bar chart of mean whole-tree alerts per project for three models and six arms, with 95% intervals. Without tools: 33.1 (Sonnet), 29.6 (Haiku), 29.9 (Opus). pinright with its security layer off: 2.0, 0.9, 0.3. pinright MCP server and MCP plus hook: 0.3 for every model. Hook only: 0.6, 0.4, 0.6. Packages installed without a version: 0.3. A second panel repeats the data without the no-tools arm on a scale of 0 to 6.">
+          <ul class="chart-legend" aria-label="Chart key">
+            <li>Without pinright, verdict off, or no pin</li>
+            <li class="key">With pinright</li>
+            <li class="ci">95% interval, resampling tasks</li>
+          </ul>
+          <figure class="chart-card">
+            <div class="chart-panels">
+              <!-- @include chart-ev-alerts.html -->
             </div>
-            <figcaption><strong>Whole-tree alerts per project.</strong> Mean npm audit / pip-audit alerts per generated project, 12 tasks x 2 runs per arm and model. Whiskers: 95% cluster-bootstrap intervals that resample tasks. Right panel: the same data without the no-docs arm, on a 0 to 6 scale.</figcaption>
+            <figcaption><strong>Whole-tree alerts per project.</strong> Mean npm audit / pip-audit alerts per generated project, 12 tasks x 2 runs per arm and model (No pin: 1 run per task). Whiskers: 95% cluster-bootstrap intervals that resample tasks. Same scale in the three panels.</figcaption>
           </figure>
         </div>
       </section>
@@ -73,10 +77,14 @@
             <h2 id="pins-title">40% to 42% of direct pins had a known advisory, 0% with pinright</h2>
             <p>Sonnet pinned 66 of 157 direct dependencies with an advisory, Haiku 63 of 157, Opus 65 of 157. Examples: <code>axios@1.7.9</code>, <code>pillow@11.0.0</code>, <code>pyjwt@2.10.1</code>. No arm pinned a package or version that does not exist.</p>
           </div>
-          <figure class="fig">
-            <div class="fig-frame">
-              <img class="only-light" src="/kit/fig-b-direct-deps-with-advisories.svg" width="1040" height="560" loading="lazy" decoding="async" alt="Bar chart of the share of pinned direct dependencies with a known advisory. Without tools: 42% for Sonnet, 40% for Haiku, 41% for Opus. pinright with its security layer off: 1%, 2%, 0%. Every pinright arm and the unpinned reference: 0%.">
-              <img class="only-dark" src="/kit/fig-b-direct-deps-with-advisories-dark.svg" width="1040" height="560" loading="lazy" decoding="async" alt="Bar chart of the share of pinned direct dependencies with a known advisory. Without tools: 42% for Sonnet, 40% for Haiku, 41% for Opus. pinright with its security layer off: 1%, 2%, 0%. Every pinright arm and the unpinned reference: 0%.">
+          <ul class="chart-legend" aria-label="Chart key">
+            <li>Without pinright, verdict off, or no pin</li>
+            <li class="key">With pinright</li>
+            <li class="ci">95% interval, resampling tasks</li>
+          </ul>
+          <figure class="chart-card">
+            <div class="chart-panels">
+              <!-- @include chart-ev-pins.html -->
             </div>
             <figcaption><strong>Direct dependencies pinned with a known advisory.</strong> At least one deps.dev advisory on 2026-11-01, with 95% cluster-bootstrap intervals. deps.dev is also the source pinright reads, so the 0% in its arms follows from how it picks versions. The whole-tree alerts above come from npm audit and pip-audit, which do not share that path.</figcaption>
           </figure>
@@ -116,12 +124,16 @@
             <h2 id="docs-title">16 of 16 runs wrote the current API, against 10 to 13 without docs</h2>
             <p>Eight tasks that only come out right with a library's current major: Next.js 16, Tailwind CSS 4, Zod 4, AI SDK 7, Express 5, ESLint 10, Pydantic 2 and LangChain 1. A run counts when it installs, builds, passes a smoke test, pins the asked major and uses no removed or deprecated API. Without docs, every model wrote AI SDK 5/6 code for AI SDK 7, and most LangChain runs pinned an early 1.x whose imports fail. The models already knew five of the eight APIs, so the gap rests on the other three. The no-docs intervals for Sonnet and Opus overlap 16 of 16; Haiku's does not.</p>
           </div>
-          <figure class="fig">
-            <div class="fig-frame">
-              <img class="only-light" src="/kit/fig-c-docs-current-api.svg" width="1000" height="540" loading="lazy" decoding="async" alt="Bar chart of docs-benchmark runs that wrote the current API of eight recently changed libraries. Without docs: 13 of 16 (Sonnet), 10 of 16 (Haiku), 12 of 16 (Opus). pinright with its security layer off, Sonnet only: 15 of 16. pinright: 16 of 16 for every model.">
-              <img class="only-dark" src="/kit/fig-c-docs-current-api-dark.svg" width="1000" height="540" loading="lazy" decoding="async" alt="Bar chart of docs-benchmark runs that wrote the current API of eight recently changed libraries. Without docs: 13 of 16 (Sonnet), 10 of 16 (Haiku), 12 of 16 (Opus). pinright with its security layer off, Sonnet only: 15 of 16. pinright: 16 of 16 for every model.">
+          <ul class="chart-legend" aria-label="Chart key">
+            <li>Without pinright, verdict off, or no pin</li>
+            <li class="key">With pinright</li>
+            <li class="ci">95% interval, resampling tasks</li>
+          </ul>
+          <figure class="chart-card">
+            <div class="chart-panels">
+              <!-- @include chart-ev-docs.html -->
             </div>
-            <figcaption><strong>Docs benchmark.</strong> 16 runs per arm and model; whiskers are 95% intervals. "16 of 16" is a measured result on these tasks, not an accuracy rate.</figcaption>
+            <figcaption><strong>Docs benchmark.</strong> 16 runs per arm and model; whiskers are 95% intervals. Docs only ran for Sonnet. "16 of 16" is a measured result on these tasks, not an accuracy rate.</figcaption>
           </figure>
           <p class="qualifier">Without an agent, pinright's docs answered 25 of 28 and 33 of 45 questions in two held-out sets nobody tuned on, over libraries outside the benchmark. A probe checks for strings of the current API, not for a correct answer.</p>
         </div>
@@ -133,12 +145,13 @@
             <h2 id="hook-title">The hook blocked or asked on 1.46% of 25,077 public commands</h2>
             <p>We ran 25,077 commands and manifest writes from 180 public repositories (CI steps, package.json scripts, README lines, Dockerfiles, Makefiles) through the real hook. The 1.0.0 release blocked or asked about 1.46%, and denied 0.13%. Most of those ask on purpose: a version in a variable, a git source, another package index. 32 were true positives, such as <code>npm install -g pnpm@8</code> with 26 advisories in a public workflow. The 13 root causes we fixed were found on this same corpus, so there is no held-out set yet; agent sessions, not CI files, are the next corpus.</p>
           </div>
-          <figure class="fig">
-            <div class="fig-frame">
-              <img class="only-light" src="/kit/fig-e-hook-false-positives.svg" width="1040" height="544" loading="lazy" decoding="async" alt="Horizontal bar chart of the share of public commands the hook blocked or asked about, before and after fixes, by source. package.json scripts 0.27% to 0.06%. README lines 0.98% to 0.61%. Makefile targets 5.34% to 0.42%. GitHub Actions steps 2.29% to 1.54%. Dockerfiles 4.78% to 4.36%. Manifest writes 7.60% to 2.61%.">
-              <img class="only-dark" src="/kit/fig-e-hook-false-positives-dark.svg" width="1040" height="544" loading="lazy" decoding="async" alt="Horizontal bar chart of the share of public commands the hook blocked or asked about, before and after fixes, by source. package.json scripts 0.27% to 0.06%. README lines 0.98% to 0.61%. Makefile targets 5.34% to 0.42%. GitHub Actions steps 2.29% to 1.54%. Dockerfiles 4.78% to 4.36%. Manifest writes 7.60% to 2.61%.">
-            </div>
-            <figcaption><strong>Hook false-positive rate by source.</strong> Gray: the release candidate; blue: after the fixes this replay prompted (2.22% to 1.44% over all entries). Two fixes from the second security review ask on purpose, which puts the release at 1.46%. The corpus is CI and README commands, not agent sessions.</figcaption>
+          <ul class="chart-legend" aria-label="Chart key">
+            <li>Release candidate</li>
+            <li class="key">After the fixes this replay prompted</li>
+          </ul>
+          <figure class="chart-card chart-wide">
+            <!-- @include chart-ev-fp.html -->
+            <figcaption><strong>Hook false-positive rate by source.</strong> 2.22% to 1.44% over all entries. Two fixes from the second security review ask on purpose, which puts the release at 1.46%. The corpus is CI and README commands, not agent sessions.</figcaption>
           </figure>
         </div>
       </section>
@@ -149,13 +162,22 @@
             <h2 id="latency-title">Latency</h2>
             <p>The hook runs before every shell command. A command that installs nothing took 121 ms at the median; one install took 358 ms with a warm cache and 2.4 s cold. With the MCP server, runs took about 2 to 4 more agent turns and 1.5 to 2 times the API-equivalent cost of a run without tools.</p>
           </div>
-          <figure class="fig">
-            <div class="fig-frame">
-              <img class="only-light" src="/kit/fig-f-hook-latency.svg" width="1040" height="446" loading="lazy" decoding="async" alt="Horizontal bar chart of hook latency on a log scale with budget markers. A command that installs nothing: 121 ms median, 177 ms at p95, within its budget. One install with a warm cache: 358 and 372 ms, under 1 second. One install with a cold cache: 2.4 and 3.7 seconds, under 5 seconds.">
-              <img class="only-dark" src="/kit/fig-f-hook-latency-dark.svg" width="1040" height="446" loading="lazy" decoding="async" alt="Horizontal bar chart of hook latency on a log scale with budget markers. A command that installs nothing: 121 ms median, 177 ms at p95, within its budget. One install with a warm cache: 358 and 372 ms, under 1 second. One install with a cold cache: 2.4 and 3.7 seconds, under 5 seconds.">
-            </div>
-            <figcaption><strong>Hook latency.</strong> p50 bars, p95 whiskers, 5 runs per case, Windows, Node 24, live services; the dashed tick is the budget. Measured once, on one machine.</figcaption>
-          </figure>
+          <div class="table-wrap">
+            <table>
+              <caption>Hook latency, 5 runs per case, Windows, Node 24, live services. Measured once, on one machine.</caption>
+              <thead><tr><th scope="col">Case</th><th scope="col">Cache</th><th scope="col" class="num">p50</th><th scope="col" class="num">p95</th><th scope="col" class="num">Budget</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Command that installs nothing (npm test)</th><td>n/a</td><td class="num">121 ms</td><td class="num">177 ms</td><td class="num">238 ms</td></tr>
+                <tr><th scope="row">One install (npm i express)</th><td>warm</td><td class="num">358 ms</td><td class="num">372 ms</td><td class="num">1 s</td></tr>
+                <tr><th scope="row">One install</th><td>cold</td><td class="num">2.4 s</td><td class="num">3.7 s</td><td class="num">5 s</td></tr>
+                <tr><th scope="row">15-line requirements.txt</th><td>warm</td><td class="num">1.0 s</td><td class="num">1.5 s</td><td class="num">1 s</td></tr>
+                <tr><th scope="row">15-line requirements.txt</th><td>cold</td><td class="num">4.6 s</td><td class="num">5.6 s</td><td class="num">5 s</td></tr>
+                <tr><th scope="row">package.json with 30 new dependencies</th><td>warm</td><td class="num">1.2 s</td><td class="num">1.5 s</td><td class="num">1.5 s</td></tr>
+                <tr><th scope="row">package.json with 30 new dependencies</th><td>cold</td><td class="num">10.9 s</td><td class="num">15.2 s</td><td class="num">45 s</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="chart-note">The budget for a command that installs nothing is Node's own start (88 ms) plus 150 ms. A cold 15-line requirements file goes over its p95 budget.</p>
         </div>
       </section>
 

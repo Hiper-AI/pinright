@@ -36,6 +36,9 @@ console.log(`prepare-assets: ${count} figures copied to public/kit/`);
 // /llms.txt and /llms-full.txt for agents, built from the README and docs (scripts/llms.mjs).
 await import('./llms.mjs');
 
+// Inline SVG charts of the benchmark, drawn from paper/kit/data (scripts/charts.mjs).
+await import('./charts.mjs');
+
 const report = path.join(kit, 'pinright-report.pdf');
 const target = path.join(site, 'public', 'report.pdf');
 if (fs.existsSync(report)) {
