@@ -140,9 +140,9 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 | Direct deps with CVSS >= 7 | 37 (24%) | 3 (2%) | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
 | Pinned version or package does not exist | 0 | 0 | 0 | 0 | 0 | 0 |
 | Manifests that fail to resolve | 0 | 0 | 0 | 0 | 0 | 0 |
-| Dependabot-style alerts, whole tree (sum) | 701 | 63 | 6 | 14 | 6 | 3 |
-| Alerts per project (mean [95% CI]) | 29.2 [17.1, 42.2] | 2.6 [0.0, 7.6] | 0.3 [0.0, 0.8] | 0.6 [0.0, 1.5] | 0.3 [0.0, 0.8] | 0.3 [0.0, 0.8] |
-| Projects with 0 alerts | 3 / 24 | 20 / 24 | 22 / 24 | 19 / 23 | 22 / 24 | 11 / 12 |
+| Dependabot-style alerts, whole tree (sum) | 715 | 63 | 6 | 14 | 6 | 3 |
+| Alerts per project (mean [95% CI]) | 29.8 [17.8, 43.5] | 2.6 [0.0, 7.6] | 0.3 [0.0, 0.8] | 0.6 [0.0, 1.5] | 0.3 [0.0, 0.8] | 0.3 [0.0, 0.8] |
+| Projects with 0 alerts | 2 / 24 | 20 / 24 | 22 / 24 | 19 / 23 | 22 / 24 | 11 / 12 |
 | Critical + high alerts (npm trees) | 164 | 33 | 0 | 4 | 0 | 0 |
 | Projects that install | 24 / 24 | 24 / 24 | 24 / 24 | 23 / 23 | 24 / 24 | n/a |
 | Projects that build / import cleanly | 24 / 24 | 22 / 24 | 23 / 24 | 23 / 23 | 23 / 24 | n/a |
@@ -170,7 +170,7 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 | mcp-server-ts | npm | 9.0 | 0.0 x | 0.0 x | 0.0 | 0.0 x | 0.0 |
 | nuxt-app | npm | 26.0 (25.0-27.0) | 3.0 | 3.0 | 3.0 | 3.0 | 3.0 |
 | fastapi-jwt | pypi | 34.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-| flask-proxy | pypi | 7.0 (0.0-14.0) | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| flask-proxy | pypi | 14.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | langchain-rag | pypi | 77.0 | 0.0 | 0.0 | 0.0 (1 no manifest) | 0.0 | 0.0 |
 | pandas-pipeline | pypi | 60.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 
@@ -209,12 +209,12 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 - pyjwt@2.10.1 (32 advisories, CVSS 9.1; default 2.15.1) x2
 - python-multipart@0.0.20 (14 advisories, CVSS 8.6; default 0.0.33) x2
 - starlette@0.46.2 (14 advisories, CVSS 7.5; default 1.10.0) x2
-- werkzeug@3.1.3 (8 advisories, CVSS 5.3; default 3.1.9) x2
-- requests@2.32.5 (2 advisories, CVSS 5.5; default 2.34.2) x2
-- urllib3@2.5.0 (12 advisories, CVSS 7.5; default 2.8.0) x2
-- certifi@2025.8.3 (2 advisories; default 2026.10.23) x2
 - langchain@0.3.27 (4 advisories, CVSS 7.1; default 1.4.8) x2
 - langchain-openai@0.3.28 (2 advisories, CVSS 3.1; default 1.7.3) x2
+- pypdf@5.9.0 (115 advisories, CVSS 6.5; default 6.21.4) x2
+- zod@3.25.76 (1 advisories, CVSS 7.5; default 4.6.7) x2
+- next-auth@5.0.0-beta.25 (5 advisories, CVSS 7.5; default 4.24.15) x2
+- urllib3@2.2.3 (16 advisories, CVSS 7.5; default 2.8.0) x2
 - ... 22 more
 
 **docs-only (pinright with the security layer off)**: 
@@ -331,18 +331,12 @@ Mean over repetitions, (min-max) when they differ; x = did not build.
 |  | Lockfiles | Alerts (audit tool) | Alerts (pinright) | Vulnerable packages, mean Jaccard | Identical sets |
 |---|---|---|---|---|---|
 | npm (npm audit) | 264 | 1333 | 1411 | 0.96 | 236 |
-| PyPI (pip-audit) | 130 | 1106 | 1144 | 0.99 | 129 |
+| PyPI (pip-audit) | 130 | 1120 | 1144 | 1.00 | 130 |
 
 Packages flagged by one side only (times seen):
 
 - only pinright: @nuxt/nitro-server x27
 - only pinright: nuxt x27
-- only pinright: certifi x1
-- only pinright: urllib3 x1
-- only pinright: werkzeug x1
-- only pinright: idna x1
-- only pinright: requests x1
-- only pinright: flask x1
 - only pinright: multer x1
 
 ## Reproduce
@@ -371,8 +365,8 @@ We read the transcripts and rebuilt each failing project by hand.
 MCP + hook arms come from the nuxt task. `nuxt` 4.6.3, the registry default and the version pinright
 recommends, pulls `deepmerge`, `glob` and `minimatch` versions with advisories and no fixed release:
 3 alerts per run. The no-pin reference gets the same 3. On these lockfiles pinright's `check-manifest`
-also lists `nuxt` and `@nuxt/nitro-server`, which `npm audit` does not (27 times each). Seven other
-packages differ once each (see the agreement table); we did not diagnose those.
+also lists `nuxt` and `@nuxt/nitro-server`, which `npm audit` does not (27 times each). The one other
+difference is `multer` in one Haiku no-docs upload-sharp-s3 lockfile; we did not diagnose it.
 
 **Hook only: `next` 15.5.28 and `postcss`.** In the next-auth task the hook let `next` 15.5.28
 through, the clean release on the 15.x line the agent chose, in all 6 hook-only next-auth runs. It
@@ -402,10 +396,13 @@ a time (5.3 to 7.0 MCP calls per run against 1.9 to 3.4).
 run directory (the model dropped a path separator, as in v5 and v6). Haiku hook-only langchain r1
 wrote `rag.py` and no `requirements.txt`. Both count as runs without a manifest.
 
-**Scoring fix.** The first scoring pass of v7 marked `next` 15.5.0, `pytz` 2024.2 and `tzdata` 2024.2
-as versions that do not exist: a deps.dev lookup failed and the scorer read the error as a missing
-version. `score.ts` now retries those errors, and the affected Sonnet runs were rescored. The only
-change in the results: Sonnet docs-only counts 2 direct deps with an advisory instead of 0.
+**Scoring fixes.** The first scoring pass of v7 had two silent failures, both now caught by
+`score.ts`. It marked `next` 15.5.0, `pytz` 2024.2 and `tzdata` 2024.2 as versions that do not exist:
+a deps.dev lookup failed and the scorer read the error as a missing version. And `pip-audit` printed
+nothing for one Haiku no-docs flask-proxy project, which scored as a clean tree of 0 packages. We
+rescored the affected runs (Sonnet next-auth and pandas in three arms, Haiku no-docs flask-proxy).
+What changed: Sonnet docs-only counts 2 direct deps with an advisory instead of 0, Sonnet no-docs
+counts 66 of 164 instead of 66 of 160, and Haiku no-docs gains 14 alerts (701 to 715).
 
 ## What changed since v6
 
@@ -417,7 +414,7 @@ moved little:
 | Model | No docs, alerts per project (v6 to v7) | pinright MCP | MCP + hook | docs-only | hook only |
 |---|---|---|---|---|---|
 | Sonnet 5.5 | 33.1 to 31.9 | 0.25 to 0.25 | 0.25 to 0.26 | 2.0 to 3.5 | 0.61 to 0.58 |
-| Haiku 5.5 | 29.6 to 29.2 | 0.25 to 0.25 | 0.25 to 0.25 | 0.88 to 2.6 | 0.43 to 0.61 |
+| Haiku 5.5 | 29.6 to 29.8 | 0.25 to 0.25 | 0.25 to 0.25 | 0.88 to 2.6 | 0.43 to 0.61 |
 | Opus 5.5 | 29.9 to 30.5 | 0.25 to 0.25 | 0.25 to 0.25 | 0.25 to 0.25 | 0.58 to 0.58 |
 
 The two pinright MCP arms stayed at 0 direct dependencies with an advisory on every model. The

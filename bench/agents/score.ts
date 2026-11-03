@@ -196,9 +196,15 @@ async function pypiTree(work: string): Promise<TreeScore> {
       const line = c.err.split('\n').find((l) => /No solution|not found|Because|error/i.test(l)) ?? 'compile failed';
       return { resolved: false, error: line.trim().slice(0, 160) };
     }
-    const a = await run('uvx pip-audit -r requirements.txt --no-deps --disable-pip --format json --progress-spinner off', tmp, 600_000);
-    const j = JSON.parse(a.out || '{}');
-    const deps: any[] = j.dependencies ?? [];
+    // A pip-audit run that prints nothing (v7: one Haiku flask-proxy project) used to score as a clean
+    // tree of 0 packages. The compiled file is never empty here, so retry once and then report the failure.
+    const audit = async () => {
+      const a = await run('uvx pip-audit -r requirements.txt --no-deps --disable-pip --format json --progress-spinner off', tmp, 600_000);
+      return (JSON.parse(a.out || '{}').dependencies ?? []) as any[];
+    };
+    let deps = await audit();
+    if (!deps.length) deps = await audit();
+    if (!deps.length) return { resolved: false, error: 'pip-audit returned no packages' };
     let alerts = 0;
     const names: string[] = [];
     for (const d of deps) {

@@ -137,7 +137,7 @@ Haiku 5.5,v7-haiku-2026-11-02,no-docs,express-jwt-api,npm,1,true,5,0,0,0,true,0,
 Haiku 5.5,v7-haiku-2026-11-02,no-docs,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0023,5,13.199,0,0
 Haiku 5.5,v7-haiku-2026-11-02,no-docs,fastapi-jwt,pypi,1,true,16,7,4,0,true,34,,,35,true,true,import check,false,0.0039,3,20.578,0,0
 Haiku 5.5,v7-haiku-2026-11-02,no-docs,fastapi-jwt,pypi,2,true,16,7,4,0,true,34,,,35,true,true,import check,false,0.0041,3,22.509,0,0
-Haiku 5.5,v7-haiku-2026-11-02,no-docs,flask-proxy,pypi,1,true,14,7,1,0,true,0,,,15,true,true,import check,false,0.0027,4,13.686,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,flask-proxy,pypi,1,true,14,7,1,0,true,14,,,15,true,true,import check,false,0.0027,4,13.686,0,0
 Haiku 5.5,v7-haiku-2026-11-02,no-docs,flask-proxy,pypi,2,true,15,7,1,0,true,14,,,15,true,true,import check,false,0.0027,4,15.501,0,0
 Haiku 5.5,v7-haiku-2026-11-02,no-docs,langchain-rag,pypi,1,true,6,4,2,0,true,77,,,77,true,true,import check,false,0.0035,3,19.197,0,0
 Haiku 5.5,v7-haiku-2026-11-02,no-docs,langchain-rag,pypi,2,true,6,4,2,0,true,77,,,77,true,true,import check,false,0.0033,3,18.067,0,0
