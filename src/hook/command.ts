@@ -166,7 +166,8 @@ function simple(c: SimpleCommand, piped: SimpleCommand | undefined, ctx: Ctx, de
   const glued = words.length >= 2 ? /^\$(\w+)=(.*)$/.exec(words[0]) : null;
   if (glued) words = [`$${glued[1]}`, '=', ...(glued[2] ? [glued[2]] : []), ...words.slice(1)];
   if (words.length >= 3 && /^\$(env:)?\w+$/i.test(words[0]) && words[1] === '=') {
-    if (words.length > 3 && !/^\$env:/i.test(words[0])) words = words.slice(2);
+    // Only when the right side starts with a bare command name: a here-string or an expression stays a value.
+    if (words.length > 3 && !/^\$env:/i.test(words[0]) && /^[A-Za-z_.][\w.\\/:-]*$/.test(words[2])) words = words.slice(2);
     else {
       env.push([words[0].replace(/^\$(env:)?/i, ''), words.slice(2).join(' ')]);
       words = [];

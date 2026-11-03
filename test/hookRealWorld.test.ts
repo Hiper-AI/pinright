@@ -368,6 +368,11 @@ describe('real sessions: PowerShell assignments', () => {
     expect(cmd('$ok = $false; $pm = "npm"; & $pm install lodash@4.17.20')).toEqual(['npm:lodash 4.17.20']);
     expect(cmd('$env:NPM_CONFIG_REGISTRY = "https://registry.example.test"; npm i left-pad')).toContain('?npm');
   });
+  it('a here-string or an expression on the right side is a value, not a program', () => {
+    expect(cmd("$t = @'\nNOTE some-task | [feat][area] | priority: normal\n## Goal\nShow the thing\n'@\n$t | Out-File note.md")).toEqual([]);
+    expect(cmd("$t = @'\nfilter with $gte here\n'@ add x")).toEqual([]);
+    expect(cmd('$n = $i + 1; $s = $a + " install"')).toEqual([]);
+  });
 });
 
 describe('real sessions: Set-Content parameters', () => {
