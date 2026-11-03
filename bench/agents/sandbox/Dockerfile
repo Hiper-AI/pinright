@@ -24,7 +24,7 @@ COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci --no-audit --no-fund
 COPY src ./src
 COPY bench ./bench
-RUN npm run build && chmod +x bench/agents/sandbox/run-job.sh
+RUN npm run build && chmod +x bench/agents/sandbox/run-job.sh bench/agents/sandbox/copy-out.sh
 
 # The agent runs as an unprivileged user with a home that exists only in the container.
 RUN useradd --create-home --shell /bin/bash agent && mkdir -p /work /job && chown agent:agent /work /job

@@ -13,9 +13,5 @@ fi
 cd /work
 claude "$@"
 code=$?
-tar -C /work \
-  --exclude='node_modules' --exclude='.venv' --exclude='venv' --exclude='env' --exclude='__pycache__' \
-  --exclude='site-packages' --exclude='.next' --exclude='.nuxt' --exclude='.output' --exclude='.cache' \
-  --exclude='dist' --exclude='build' \
-  -cf - . | tar -C /job/work -xmf - --no-same-owner --no-same-permissions --no-overwrite-dir
+/opt/pinright/bench/agents/sandbox/copy-out.sh
 exit $code

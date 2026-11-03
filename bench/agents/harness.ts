@@ -162,18 +162,20 @@ function runOne(job: Job, o: HarnessOptions): Promise<number> {
     }
     child.stdout.pipe(out);
     child.stderr.pipe(err);
-    // In the sandbox, stop the agent's CLI (not the container) so run-job.sh still copies the
-    // project out; the container itself is killed a minute later if it is still up.
+    // In the sandbox, copy the project out first (the agent's CLI may not answer a signal),
+    // then stop the CLI, and kill the container a minute later if it is still up.
     const timers: NodeJS.Timeout[] = [];
     const stopAgent = () => {
-      spawnSync('docker', ['exec', name, 'pkill', '-TERM', '-f', 'claude-code'], { windowsHide: true });
+      spawnSync('docker', ['exec', name, '/opt/pinright/bench/agents/sandbox/copy-out.sh'], { windowsHide: true, timeout: 120_000 });
+      spawnSync('docker', ['exec', name, 'pkill', '-TERM', '-x', 'claude'], { windowsHide: true });
       timers.push(setTimeout(() => {
         spawnSync('docker', ['kill', name], { windowsHide: true });
         child.kill();
       }, 60_000));
     };
     if (o.sandbox) {
-      // The CLI has been seen to stay up for minutes after its final result; give it a grace period.
+      // The CLI stays up after its final result while a background shell the agent started is
+      // still running (seen: a `while ...; do sleep 5; done` wait loop); give it a grace period.
       let seenResult = false;
       child.stdout.on('data', (c: Buffer) => {
         if (seenResult || !c.toString('utf8').includes('"type":"result"')) return;
