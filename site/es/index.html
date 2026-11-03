@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <title>pinright · Documentación de la versión exacta y control de dependencias para agentes de programación</title>
+    <meta name="description" content="pinright le da a tu agente de programación la documentación de cada biblioteca para la versión que instala y revisa cada dependencia que agrega en busca de avisos de seguridad conocidos, malware y nombres parecidos, antes de que corra la instalación. Servidor MCP, CLI, hook de preinstalación y GitHub Action. Código abierto, MIT.">
+    <link rel="canonical" href="https://pinright.dev/es/">
+    <meta property="og:url" content="https://pinright.dev/es/">
+    <meta property="og:title" content="pinright · Documentación de la versión exacta y control de dependencias para agentes de programación">
+    <meta property="og:description" content="En nuestro benchmark, de 40% a 42% de las dependencias directas que tres modelos de Claude fijaron por su cuenta tenían un aviso de seguridad conocido. Con pinright, 0%; la documentación de la versión actual por sí sola llegó a 0% a 2%. Código abierto, MIT, corre en tu máquina.">
+    <meta name="twitter:title" content="pinright · Documentación de la versión exacta y control de dependencias para agentes de programación">
+    <meta name="twitter:description" content="La documentación de la versión que instala tu agente y un veredicto sobre cada dependencia que agrega. Servidor MCP, CLI, hook de preinstalación, GitHub Action. MIT.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html /es/ -->
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="wrap">
+          <div class="hero-copy">
+            <ul class="badges" aria-label="Versión">
+              <li>MIT</li>
+              <li>Código abierto</li>
+            </ul>
+            <h1 id="hero-title">Tu agente de programación fija versiones de memoria. <span class="wm">pinright</span> las revisa antes.</h1>
+            <p class="lead">Documentación de cada biblioteca para la versión exacta que instala tu agente, y un veredicto sobre cada dependencia que agrega: avisos de seguridad conocidos, registros de malware, nombres parecidos y paquetes que no existen.</p>
+          </div>
+          <div class="install-block">
+            <div class="install-pair">
+              <div>
+                <p class="install-label"><strong>Tu equipo, o para probarlo.</strong> Escribe archivos del proyecto que subes al repositorio.</p>
+                <div class="cmd">
+                  <pre><code><span class="p">$ </span>npx -y pinright init</code></pre>
+                  <button class="copy" type="button" data-copy aria-label="Copiar: npx -y pinright init"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                  <span class="copy-status visually-hidden" role="status"></span>
+                </div>
+              </div>
+              <div>
+                <p class="install-label"><strong>Solo tú, en cada proyecto.</strong> Instalación global, configuración de usuario.</p>
+                <div class="cmd">
+                  <pre><code><span class="p">$ </span>npm i -g pinright &amp;&amp; pinright init --user</code></pre>
+                  <button class="copy" type="button" data-copy aria-label="Copiar: npm i -g pinright &amp;&amp; pinright init --user"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                  <span class="copy-status visually-hidden" role="status"></span>
+                </div>
+              </div>
+            </div>
+            <div class="ctas">
+              <a class="btn btn-primary" href="/es/install/">Guía de instalación</a>
+              <a class="btn btn-ghost" href="https://cursor.com/en/install-mcp?name=pinright&amp;config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInBpbnJpZ2h0Il19"><!-- @include icon-cursor.html -->Agregar a Cursor</a>
+              <a class="btn btn-ghost" href="https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522pinright%2522%252C%2522type%2522%253A%2522stdio%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522-y%2522%252C%2522pinright%2522%255D%257D"><!-- @include icon-vscode.html -->Instalar en VS Code</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright"><!-- @include icon-github.html -->GitHub</a>
+            </div>
+            <p class="req">Node 20.9 o posterior. Sin cuenta, sin clave, sin telemetría. Los botones de Cursor y VS Code agregan solo el servidor MCP; ejecuta <code>init</code> en el proyecto para tener el hook. 16 clientes, seis con hook.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="problem" aria-labelledby="problem-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">El problema</p>
+            <h2 id="problem-title">Los agentes sacan las versiones de memoria, o de herramientas de documentación que no las revisan</h2>
+            <p>Cuando un agente escribe un manifiesto, la versión sale de sus datos de entrenamiento, que suelen ir años detrás del registro, o de un servidor MCP de documentación, que devuelve docs y no contrasta la versión con los avisos de seguridad. Ninguno de los dos mira la versión que fija el agente.</p>
+          </div>
+          <ul class="cards cards-3">
+            <li class="card">
+              <span class="n">De memoria</span>
+              <h3>40% a 42% de las versiones fijadas tenían un aviso</h3>
+              <p>Tres modelos de Claude sin herramientas, 12 tareas: unas 30 alertas en todo el árbol por proyecto, con versiones como <code>axios@1.7.9</code> (33 avisos) y <code>pillow@11.0.0</code> (86).</p>
+            </li>
+            <li class="card">
+              <span class="n">Desde un servidor MCP de docs</span>
+              <h3>Docs actuales, y aun así versiones vulnerables</h3>
+              <p>La documentación de la versión actual bajó las alertas a 0,3 a 3,5 por proyecto. En 4 de 72 ejecuciones el agente igual fijó un next o next-auth vulnerable, como <code>next@15.5.0</code> con 32 avisos.</p>
+            </li>
+            <li class="card">
+              <span class="n">Con pinright</span>
+              <h3>0% de las versiones fijadas tenían un aviso</h3>
+              <p>Cada dependencia recibe un veredicto antes de que el agente la fije, con un arreglo en la misma línea de versiones, y el hook revisa la instalación misma. Las 0,3 alertas que quedan por proyecto vienen de nuxt, que no tiene arreglo publicado.</p>
+            </li>
+          </ul>
+          <p class="qualifier">Medimos el caso del servidor MCP de docs con el propio servidor de pinright, con la capa de seguridad apagada; no es otro producto. Con una shell, los agentes buscaron las versiones por su cuenta y todos los brazos terminaron en las mismas 6 alertas. El método y las salvedades están en la <a href="/es/evidence/">página de evidencia</a>.</p>
+        </div>
+      </section>
+
+      <section class="story" id="story" aria-labelledby="story-title" data-story>
+        <div class="story-stage">
+          <div class="wrap story-in">
+            <p class="eyebrow story-eyebrow">Una instalación, de principio a fin</p>
+            <h2 id="story-title" class="visually-hidden">Qué hace pinright cuando tu agente instala un paquete</h2>
+            <figure class="term story-term" aria-label="Una sesión de Claude Code con el hook de pinright, salida en inglés">
+              <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><span>Claude Code · proyecto nuevo · hook de pinright</span></div>
+              <pre><code><span class="run">● Bash</span>  npm install <span class="cut" data-cut="pin">lodash@4.17.20</span>
+
+  <span class="bad">pinright <span class="cut" data-cut="block">blocked</span> this dependency change:</span>
+  - lodash@4.17.20 (npm) has <span class="cut cut-bad" data-cut="adv">5 known advisories</span> (CVE-2021-23337,
+    CVE-2026-4800, CVE-2020-28500, HIGH). Use 4.x release <span class="cut cut-good" data-cut="fix">4.18.1</span>
+
+<span class="run">● pinright</span>  <span class="cut" data-cut="docs">get-docs</span> { libraryId: "npm:lodash@4.18.1" }
+  <span class="dim">These docs are for 4.18.1, the version to move to.</span></code></pre>
+            </figure>
+            <p class="story-sentence">Tu agente ejecutó npm install <span class="slot" data-slot="pin"><span class="brace">{</span><span class="chip">lodash@4.17.20</span><span class="brace">}</span></span>, una versión de memoria con <span class="slot" data-slot="adv"><span class="brace">{</span><span class="chip chip-bad">5 avisos conocidos</span><span class="brace">}</span></span>. El hook de pinright la <span class="slot" data-slot="block"><span class="brace">{</span><span class="chip">bloqueó</span><span class="brace">}</span></span> antes de que se ejecutara y propuso <span class="slot" data-slot="fix"><span class="brace">{</span><span class="chip chip-good">4.18.1</span><span class="brace">}</span></span> en la misma línea de versiones. Después, <span class="slot" data-slot="docs"><span class="brace">{</span><span class="chip">get-docs</span><span class="brace">}</span></span> sirvió la documentación de esa versión.</p>
+            <p class="story-caption">El texto del hook es la salida real de <code>pinright hook claude</code> del 2026-11-01, en inglés.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="why" aria-labelledby="why-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Por qué pinright</p>
+            <h2 id="why-title">Docs más un veredicto, con menos tokens que solo docs</h2>
+            <p>Los servidores MCP de documentación devuelven la documentación de una biblioteca. No revisan la versión que fija el agente y no ven la instalación. Para medir ese tipo de servidor ejecutamos el propio servidor de pinright con su capa de seguridad apagada: documentación de la versión pedida, sin veredicto. No es otro producto.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="vs">
+              <caption>Benchmark v7, Claude Code con Sonnet 5.5, Haiku 5.5 y Opus 5.5, 2 ejecuciones por celda. Cada celda es el rango entre los tres modelos.</caption>
+              <thead>
+                <tr><th scope="col"><span class="visually-hidden">Medida</span></th><th scope="col">Sin docs</th><th scope="col">Servidor de contexto solo docs</th><th scope="col" class="vs-key">pinright</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Dependencias directas fijadas con un aviso de seguridad conocido</th><td data-label="Sin docs">40% a 42%</td><td data-label="Servidor de contexto solo docs">0% a 2%</td><td class="vs-key" data-label="pinright">0%</td></tr>
+                <tr><th scope="row">Alertas en todo el árbol por proyecto</th><td data-label="Sin docs">29,8 a 31,9</td><td data-label="Servidor de contexto solo docs">0,3 a 3,5</td><td class="vs-key" data-label="pinright">0,3</td></tr>
+                <tr><th scope="row">Tareas de docs que usaron la API actual</th><td data-label="Sin docs">9 a 14 de 16</td><td data-label="Servidor de contexto solo docs">15 o 16 de 16</td><td class="vs-key" data-label="pinright">16 de 16</td></tr>
+                <tr><th scope="row">Tokens por tarea de agente</th><td data-label="Sin docs">15k a 21k</td><td data-label="Servidor de contexto solo docs">56k a 94k</td><td class="vs-key" data-label="pinright">42k a 74k</td></tr>
+                <tr><th scope="row">Tokens por tarea de docs</th><td data-label="Sin docs">17k a 23k</td><td data-label="Servidor de contexto solo docs">94k a 135k</td><td class="vs-key" data-label="pinright">63k a 95k</td></tr>
+                <tr><th scope="row">Turnos del agente por tarea de agente</th><td data-label="Sin docs">4,0 a 4,3</td><td data-label="Servidor de contexto solo docs">9,3 a 11,1</td><td class="vs-key" data-label="pinright">5,9 a 7,5</td></tr>
+                <tr><th scope="row">Veredicto sobre la versión que fija el agente</th><td data-label="Sin docs">No</td><td data-label="Servidor de contexto solo docs">No</td><td class="vs-key" data-label="pinright">Avisos de seguridad, malware, nombres parecidos, versiones que no existen</td></tr>
+                <tr><th scope="row">Revisión cuando corre la instalación</th><td data-label="Sin docs">No</td><td data-label="Servidor de contexto solo docs">No</td><td class="vs-key" data-label="pinright">Hook de preinstalación en 6 clientes</td></tr>
+                <tr><th scope="row">Auditoría de lockfiles en todo el árbol</th><td data-label="Sin docs">No</td><td data-label="Servidor de contexto solo docs">No</td><td class="vs-key" data-label="pinright">check-manifest, SARIF, GitHub Action</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <ul class="chart-legend chart-legend-gap" aria-label="Leyenda del gráfico">
+            <li>Servidor de contexto solo docs (pinright, capa de seguridad apagada)</li>
+            <li class="key">Servidor MCP de pinright</li>
+            <li class="ci">Intervalo del 95%, remuestreando tareas</li>
+          </ul>
+          <div class="charts charts-2">
+            <figure class="chart-card">
+              <h3>Tokens por ejecución, tareas de agente</h3>
+              <p class="chart-sub">12 tareas, 24 ejecuciones por modelo. 21% a 26% menos con pinright.</p>
+              <!-- @include chart-home-tokens-agents.html -->
+            </figure>
+            <figure class="chart-card">
+              <h3>Tokens por ejecución, tareas de docs</h3>
+              <p class="chart-sub">8 tareas, 16 ejecuciones por modelo. 26% a 33% menos con pinright.</p>
+              <!-- @include chart-home-tokens-docs.html -->
+            </figure>
+          </div>
+          <details class="table-toggle">
+            <summary>Ver los números de tokens en una tabla</summary>
+            <div class="table-wrap">
+              <table class="results">
+                <caption class="visually-hidden">Tokens por ejecución en miles, servidor de contexto solo docs contra pinright, con intervalos del 95%</caption>
+                <thead><tr><th scope="col"></th><th scope="col">Sonnet 5.5</th><th scope="col">Opus 5.5</th><th scope="col">Haiku 5.5</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">Tareas de agente, solo docs</th><td>55,6k [47,2; 63,5]</td><td>73,3k [58,8; 88,5]</td><td>93,8k [73,5; 114,8]</td></tr>
+                  <tr><th scope="row">Tareas de agente, pinright</th><td>42,2k [37,4; 46,8]</td><td>54,6k [45,2; 65,0]</td><td>74,2k [61,8; 87,8]</td></tr>
+                  <tr><th scope="row">Menos con pinright, emparejado por tarea</th><td>24% [14; 34]</td><td>26% [11; 37]</td><td>21% [6; 33]</td></tr>
+                  <tr><th scope="row">Tareas de docs, solo docs</th><td>94,0k [63,8; 125,1]</td><td>113,2k [78,8; 152,6]</td><td>135,1k [95,7; 179,9]</td></tr>
+                  <tr><th scope="row">Tareas de docs, pinright</th><td>62,9k [52,4; 76,7]</td><td>83,9k [67,1; 98,9]</td><td>95,0k [77,2; 113,3]</td></tr>
+                  <tr><th scope="row">Menos con pinright, emparejado por tarea</th><td>33% [13; 45]</td><td>26% [2; 43]</td><td>30% [4; 46]</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+          <p class="qualifier">Con solo docs, el agente buscó cada versión leyendo la documentación de ese paquete: de 5,2 a 5,7 llamadas a get-docs por tarea de agente, la mayoría sin versión. Con pinright, primero le pidió a check-packages la lista completa y leyó documentación de 0,7 a 1,7 veces por tarea. Los tokens cuentan todo lo que procesó el modelo, lecturas de caché incluidas. Sin ninguna herramienta, el agente usó menos tokens que con cualquiera de los dos brazos. Entre solo docs y pinright los intervalos de alertas se superponen, y con una shell todos los brazos terminaron en las mismas 6 alertas, así que ahí pinright no cambió las versiones fijadas de forma medible.</p>
+          <div class="ctas">
+            <a class="btn btn-ghost" href="/es/evidence/#efficiency">Eficiencia, por modelo</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="evidence" aria-labelledby="evidence-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Benchmark v7 · 2026-11-02</p>
+            <h2 id="evidence-title">Qué medimos</h2>
+            <p>Sobre el código de la 1.0.0, Claude Code con Sonnet 5.5, Opus 5.5 y Haiku 5.5 escribió 12 proyectos que piden versiones fijadas, 2 ejecuciones por celda. Auditamos cada uno con npm audit o pip-audit, que no comparten código con pinright.</p>
+          </div>
+          <dl class="stats">
+            <div class="stat">
+              <dt>~30<span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span>0,3</dt>
+              <dd>alertas en todo el árbol por proyecto, sin docs frente a pinright, medidas con npm audit y pip-audit.</dd>
+              <dd>0,3 es lo que da instalar sin versión: dependencias de nuxt que todavía no tienen arreglo.</dd>
+            </div>
+            <div class="stat">
+              <dt>~41%<span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span>0%</dt>
+              <dd>de las dependencias directas fijadas con un aviso de seguridad conocido, 40% a 42% según el modelo.</dd>
+              <dd>Contadas con deps.dev, la fuente que lee pinright. Las alertas son la medida independiente.</dd>
+            </div>
+            <div class="stat">
+              <dt>16 de 16</dt>
+              <dd>ejecuciones de docs que escribieron la API actual, en cada modelo. 9 a 14 de 16 sin docs.</dd>
+            </div>
+            <div class="stat">
+              <dt>1,46%</dt>
+              <dd>de 25.077 comandos públicos en los que el hook bloqueó o preguntó, la mayoría a propósito.</dd>
+              <dd>Rechazados de plano: 0,13%. En un mes de nuestras propias sesiones de agentes, 10 lecturas erróneas en 154.402 llamadas a herramientas.</dd>
+            </div>
+          </dl>
+          <ul class="chart-legend" aria-label="Leyenda del gráfico">
+            <li>Sin pinright, o con su veredicto apagado</li>
+            <li class="key">Con pinright</li>
+          </ul>
+          <div class="charts">
+            <figure class="chart-card">
+              <h3>Alertas en todo el árbol por proyecto</h3>
+              <p class="chart-sub">Promedio de alertas de npm audit y pip-audit</p>
+              <!-- @include chart-home-alerts.html -->
+            </figure>
+            <figure class="chart-card">
+              <h3>Dependencias directas con un aviso</h3>
+              <p class="chart-sub">Proporción de dependencias directas fijadas</p>
+              <!-- @include chart-home-pins.html -->
+            </figure>
+            <figure class="chart-card">
+              <h3>Ejecuciones de docs con la API actual</h3>
+              <p class="chart-sub">De 16 ejecuciones por modelo</p>
+              <!-- @include chart-home-docs.html -->
+            </figure>
+          </div>
+          <details class="table-toggle">
+            <summary>Ver los números en una tabla</summary>
+            <div class="table-wrap">
+              <table class="results">
+                <caption class="visually-hidden">Benchmark v7 por modelo: sin docs contra el servidor MCP de pinright</caption>
+                <thead><tr><th scope="col"></th><th scope="col">Sonnet 5.5</th><th scope="col">Opus 5.5</th><th scope="col">Haiku 5.5</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">Alertas en todo el árbol por proyecto</th><td>31,9 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 0,3</td><td>30,5 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 0,3</td><td>29,8 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 0,3</td></tr>
+                  <tr><th scope="row">Solo docs, veredicto apagado</th><td>3,5</td><td>0,3</td><td>2,6</td></tr>
+                  <tr><th scope="row">Dependencias directas fijadas con un aviso de seguridad conocido</th><td>40% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 0%</td><td>42% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 0%</td><td>40% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 0%</td></tr>
+                  <tr><th scope="row">Tareas de docs que usaron la API actual</th><td>13 de 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 16 de 16</td><td>14 de 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 16 de 16</td><td>9 de 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> a </span> 16 de 16</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+          <p class="qualifier">Claude Code, 12 tareas que escribimos nosotros, 2 ejecuciones por brazo, datos de avisos de dos días, agentes sin shell, solo proyectos nuevos. La documentación actual por sí sola quita la mayoría de las alertas; los intervalos de los brazos de pinright se superponen entre sí, y las ejecuciones usaron el código de la 1.0.0. Con una shell, los agentes buscaron las versiones por su cuenta y todos los brazos terminaron en las mismas 6 alertas. Cada número conserva su salvedad en la página de evidencia.</p>
+          <div class="ctas">
+            <a class="btn btn-primary" href="/es/evidence/">Método, ablación y salvedades</a>
+            <a class="btn btn-ghost" href="/report.pdf" hreflang="en">Informe técnico (PDF, en inglés)</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="sees-title">
+        <div class="wrap split">
+          <div>
+            <p class="eyebrow">Lo que ve el agente</p>
+            <h2 id="sees-title">La documentación de la versión a la que hay que moverse, con el veredicto arriba</h2>
+            <p>Cuando el agente pide la documentación de una versión vulnerable, get-docs nombra el arreglo en la misma línea, documenta esa versión y encierra el texto de terceros en un delimitador para que el agente lo trate como datos.</p>
+            <p class="muted small">La respuesta de get-docs es el ejemplo de docs/how-it-works.md, recortado. La herramienta responde en inglés.</p>
+          </div>
+          <div class="stack">
+            <figure class="term" aria-label="Respuesta de get-docs para una versión vulnerable">
+              <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><span>MCP · get-docs</span></div>
+              <pre><code><span class="run">get-docs { libraryId: "npm:next@15.1.0", query: "protect routes with middleware" }</span>
+
+<span class="bad">SECURITY NOTICE: next (npm)@15.1.0 has 36 known advisories.</span>
+  - GHSA-f82v-jwr5-mffw (CVE-2025-29927) [CRITICAL]: Authorization Bypass in Next.js Middleware fixed in 13.5.9, 14.2.25, 15.2.3
+  - ...
+Recommended within 15.x: <span class="good">15.5.28</span> (same release line, no API break expected). Upgrade: npm install next@15.5.28
+Newest safe overall: 16.4.3 (a different major: read its migration guide before switching).
+These docs are for 15.5.28, the version to move to, not 15.1.0.
+
+<span class="dim">&lt;untrusted-data id="9f3c21ab" source="next.js/docs/01-app/02-guides/authentication.mdx@v15.5.28"&gt;
+...
+&lt;/untrusted-data id="9f3c21ab"&gt;</span></code></pre>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="pieces-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Cómo funciona</p>
+            <h2 id="pieces-title">Un paquete de npm, cuatro formas de usarlo</h2>
+          </div>
+          <ul class="cards">
+            <li class="card">
+              <span class="n">01 · Docs</span>
+              <h3>Documentación de la versión que fijas</h3>
+              <p>README, documentación y definiciones de tipos publicadas en esa versión, el repositorio en su tag de release y el llms.txt del proyecto. Sin un servicio de índice en el medio.</p>
+            </li>
+            <li class="card">
+              <span class="n">02 · Veredicto</span>
+              <h3>Un veredicto por dependencia</h3>
+              <p>Avisos de seguridad de OSV y deps.dev, registros de malware, paquetes deprecados, nombres parecidos y nombres que no existen. El arreglo se queda en tu línea de versiones cuando hay uno.</p>
+            </li>
+            <li class="card">
+              <span class="n">03 · Hook</span>
+              <h3>Un hook de preinstalación</h3>
+              <p>Revisa instalaciones y escrituras de manifiestos antes de que se ejecuten, en Claude Code, Cursor, VS Code, Codex, Gemini CLI y Windsurf.</p>
+            </li>
+            <li class="card">
+              <span class="n">04 · CI</span>
+              <h3>Una GitHub Action</h3>
+              <p>Auditoría de lockfiles y workflows en todo el árbol, con SARIF para code scanning y anotaciones en el pull request.</p>
+            </li>
+          </ul>
+          <p class="qualifier">También hay una CLI para personas: <code>pinright check npm axios@1.7.9</code>, <code>pinright audit .</code>, <code>pinright upgrade</code>, <code>pinright doctor</code>. Ecosistemas: npm, PyPI, Cargo, Go, RubyGems, NuGet, Maven y Gradle, Composer, GitHub Actions.</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="privacy-title">
+        <div class="wrap split">
+          <div>
+            <p class="eyebrow">Privacidad</p>
+            <h2 id="privacy-title">Corre en tu máquina</h2>
+          </div>
+          <div>
+            <ul class="checks">
+              <li>Sin cuenta, sin clave, sin telemetría.</li>
+              <li>Sin scripts de instalación: instalarlo no ejecuta código.</li>
+              <li>Envía nombres y versiones de paquetes a servicios públicos (deps.dev, OSV, registros, jsDelivr, GitHub). Nunca tu código fuente, tus archivos ni tu entorno.</li>
+              <li>Es una barrera de protección y no aísla procesos: lee comandos y archivos, y no contiene lo que haga un paquete permitido.</li>
+            </ul>
+            <p class="small"><a href="/es/security/">Qué se envía y adónde, y el modelo de amenazas</a></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="oss-title">
+        <div class="wrap split">
+          <div>
+            <p class="eyebrow">Código abierto</p>
+            <h2 id="oss-title">Licencia MIT, en GitHub</h2>
+            <p>El reporte más útil que puedes enviar es un falso positivo: un comando que el hook frenó y que debió dejar pasar.</p>
+          </div>
+          <div>
+            <div class="ctas">
+              <a class="btn btn-primary" href="https://github.com/Hiper-AI/pinright">pinright en GitHub</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/issues/new?template=false-positive.yml">Reportar un falso positivo</a>
+            </div>
+            <ul class="small">
+              <li><a href="https://github.com/Hiper-AI/pinright/blob/main/CONTRIBUTING.md">Guía para contribuir</a></li>
+              <li><a href="https://github.com/Hiper-AI/pinright/security/advisories/new">Reportar una vulnerabilidad en privado</a></li>
+              <li>Contacto: <a href="mailto:opensource@hiperai.com">opensource@hiperai.com</a></li>
+              <li>Hecho por <a href="https://hiperai.com">Hiper AI</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

@@ -424,6 +424,7 @@ pre {
 
 .theme-toggle {
   display: inline-grid;
+  flex: none;
   place-items: center;
   width: 34px;
   height: 34px;
@@ -439,6 +440,47 @@ pre {
 .theme-toggle:hover {
   color: var(--ink);
   border-color: var(--line-strong);
+}
+
+/* Language switcher: the current language, then a link to this page in the other one. */
+.lang {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 34px;
+  margin-right: -14px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.lang-cur,
+.lang-alt {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.lang-cur {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.lang-alt {
+  transition: color 0.15s ease;
+}
+
+.lang-alt:hover {
+  color: var(--ink);
 }
 
 .ic {
@@ -479,6 +521,53 @@ pre {
   }
 
   .nav li:nth-child(n + 4) {
+    display: none;
+  }
+
+  .brand {
+    flex: none;
+  }
+
+  /* On a phone the switcher keeps only the link to the other language. */
+  .lang {
+    margin-right: 0;
+    padding: 0;
+  }
+
+  .lang-cur {
+    display: none;
+  }
+
+  .lang-alt {
+    min-width: 32px;
+    height: 32px;
+  }
+}
+
+/* With the switcher and the theme toggle, a phone header fits the logo and two links; the rest
+   are in the footer. Narrower than 380px the logo and gaps shrink, and below 340px one link stays. */
+@media (max-width: 440px) {
+  .nav li:nth-child(n + 3) {
+    display: none;
+  }
+
+  .brand .lockup {
+    height: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .header-in {
+    gap: 6px;
+  }
+
+  .brand .lockup {
+    height: 18px;
+  }
+}
+
+@media (max-width: 340px) {
+  .nav li:nth-child(n + 2) {
     display: none;
   }
 }
@@ -1208,7 +1297,10 @@ main {
 
 /* Tables */
 
+/* position: relative keeps the visually hidden spans in the cells inside the scroll box; without
+   it they are placed against the page and widen it on a phone when the table scrolls. */
 .table-wrap {
+  position: relative;
   overflow-x: auto;
 }
 
@@ -1674,6 +1766,7 @@ ul.small li + li {
   .site-header,
   .site-footer,
   .theme-toggle,
+  .lang,
   .copy {
     display: none;
   }

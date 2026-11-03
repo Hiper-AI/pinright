@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <title>Evidencia · pinright</title>
+    <meta name="description" content="El benchmark v7 de pinright: tres modelos en Claude Code, alertas en todo el árbol por proyecto, la ablación de solo docs, el benchmark de docs, los falsos positivos del hook y la latencia, con método y salvedades.">
+    <link rel="canonical" href="https://pinright.dev/es/evidence/">
+    <meta property="og:url" content="https://pinright.dev/es/evidence/">
+    <meta property="og:title" content="Evidencia · pinright">
+    <meta property="og:description" content="Tres modelos, 12 tareas, auditadas con npm audit y pip-audit: unas 30 alertas por proyecto sin docs, 0,3 con pinright. Ablación de solo docs, método y salvedades.">
+    <meta name="twitter:title" content="Evidencia · pinright">
+    <meta name="twitter:description" content="Benchmark v7: alertas por proyecto, versiones vulnerables fijadas, la ablación de solo docs, el benchmark de docs y los falsos positivos del hook.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html /es/evidence/ -->
+    <main id="main">
+      <header class="page-head">
+        <div class="wrap">
+          <p class="eyebrow">Evidencia · benchmark v7 · 2026-11-02</p>
+          <h1>Qué medimos y cuánto confiar en ello</h1>
+          <p class="lead">Cada número de esta página sale de los CSV agregados del repositorio, de los que salen también las figuras. No publicamos las transcripciones crudas de los agentes; una ejecución nueva usa datos de avisos en vivo y va a dar otros números. Los límites están al lado de los resultados.</p>
+          <ul class="toc" aria-label="En esta página">
+            <li><a href="#method">Método</a></li>
+            <li><a href="#alerts">Alertas por proyecto</a></li>
+            <li><a href="#pins">Versiones vulnerables</a></li>
+            <li><a href="#ablation">Ablación de solo docs</a></li>
+            <li><a href="#docs">Benchmark de docs</a></li>
+            <li><a href="#efficiency">Eficiencia</a></li>
+            <li><a href="#shell">Con una shell</a></li>
+            <li><a href="#hook">Falsos positivos del hook</a></li>
+            <li><a href="#latency">Latencia</a></li>
+            <li><a href="#caveats">Salvedades</a></li>
+            <li><a href="#data">Datos</a></li>
+          </ul>
+        </div>
+      </header>
+
+      <section class="section" id="method" aria-labelledby="method-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="method-title">Método</h2>
+          </div>
+          <div>
+            <ul>
+              <li>Claude Code 2.1.308 en modo headless, con Sonnet 5.5, Haiku 5.5 y Opus 5.5.</li>
+              <li>12 tareas de programación que escribimos nosotros (8 de npm, 4 de PyPI) y que piden versiones fijadas. 2 ejecuciones por brazo y modelo.</li>
+              <li>Brazos: sin docs; solo docs (pinright con su veredicto apagado); servidor MCP de pinright; solo hook; MCP más hook. Una referencia sin versión instala los mismos paquetes sin fijar versión.</li>
+              <li>Auditamos cada proyecto con <code>npm audit</code> o <code>pip-audit</code>, que no comparten código con pinright, y después lo instalamos y compilamos.</li>
+              <li>360 ejecuciones de agente más 144 ejecuciones de docs, USD 35,10 en total a precio de lista de la API, sobre el código de la 1.0.0.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft" id="alerts" aria-labelledby="alerts-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="alerts-title">Unas 30 alertas por proyecto sin docs, 0,3 con pinright</h2>
+            <p>Sin herramientas, los proyectos promediaron de 29,8 a 31,9 alertas en todo el árbol. Con el servidor MCP de pinright cada modelo promedió 0,3, lo mismo que instalar los paquetes sin versión. Ese 0,3 es de nuxt: su versión actual trae versiones de <code>deepmerge</code>, <code>glob</code> y <code>minimatch</code> con avisos y todavía sin arreglo.</p>
+          </div>
+          <ul class="chart-legend" aria-label="Leyenda del gráfico">
+            <li>Sin pinright, con el veredicto apagado o sin versión</li>
+            <li class="key">Con pinright</li>
+            <li class="ci">Intervalo del 95%, remuestreando tareas</li>
+          </ul>
+          <figure class="chart-card">
+            <div class="chart-panels">
+              <!-- @include chart-ev-alerts.html -->
+            </div>
+            <figcaption><strong>Alertas en todo el árbol por proyecto.</strong> Promedio de alertas de npm audit / pip-audit por proyecto generado, 12 tareas x 2 ejecuciones por brazo y modelo (Sin versión: 1 ejecución por tarea). Bigotes: intervalos del 95% por bootstrap de clústeres que remuestrean tareas. Misma escala en los tres paneles.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section" id="pins" aria-labelledby="pins-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="pins-title">40% a 42% de las versiones directas fijadas tenían un aviso de seguridad conocido, 0% con pinright</h2>
+            <p>Sonnet fijó 66 de 164 dependencias directas con un aviso, Haiku 63 de 157 y Opus 66 de 159. Ejemplos: <code>axios@1.7.9</code>, <code>pillow@11.0.0</code>, <code>pyjwt@2.10.1</code>. Ningún brazo fijó un paquete o una versión que no exista.</p>
+          </div>
+          <ul class="chart-legend" aria-label="Leyenda del gráfico">
+            <li>Sin pinright, con el veredicto apagado o sin versión</li>
+            <li class="key">Con pinright</li>
+            <li class="ci">Intervalo del 95%, remuestreando tareas</li>
+          </ul>
+          <figure class="chart-card">
+            <div class="chart-panels">
+              <!-- @include chart-ev-pins.html -->
+            </div>
+            <figcaption><strong>Dependencias directas fijadas con un aviso de seguridad conocido.</strong> Al menos un aviso de deps.dev cuando se puntuaron las ejecuciones (2026-11-02 y 2026-11-03), con intervalos del 95% por bootstrap de clústeres. deps.dev es también la fuente que lee pinright, así que el 0% de sus brazos sale de cómo elige versiones. Las alertas en todo el árbol de arriba vienen de npm audit y pip-audit, que no comparten ese camino.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section soft" id="ablation" aria-labelledby="ablation-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="ablation-title">La documentación actual hace la mayor parte del trabajo. El veredicto hace el resto.</h2>
+            <p>El brazo de solo docs es el propio servidor de pinright con el veredicto apagado, que documenta la última versión de cada paquete. Llevar al agente hacia versiones actuales de esa forma redujo las alertas de 89% a 99%. Sin el veredicto, Sonnet fijó un <code>next@15.5.0</code> vulnerable en sus dos ejecuciones de next-auth y Haiku una beta de <code>next-auth</code> con avisos en las dos suyas, y las ejecuciones necesitaron más turnos y costaron de 1,5x a 1,8x más que con el servidor completo.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <caption>Alertas en todo el árbol, suma de 24 proyectos (dependencias directas con un aviso)</caption>
+              <thead>
+                <tr><th scope="col">Brazo</th><th scope="col" class="num">Sonnet 5.5</th><th scope="col" class="num">Haiku 5.5</th><th scope="col" class="num">Opus 5.5</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Sin docs</th><td class="num">766 (40%)</td><td class="num">715 (40%)</td><td class="num">732 (42%)</td></tr>
+                <tr><th scope="row">Solo docs (veredicto apagado)</th><td class="num">84 (2%)</td><td class="num">63 (2%)</td><td class="num">6 (0%)</td></tr>
+                <tr class="hl"><th scope="row">pinright MCP</th><td class="num">6 (0%)</td><td class="num">6 (0%)</td><td class="num">6 (0%)</td></tr>
+                <tr><th scope="row">pinright solo hook</th><td class="num">14 (0%)</td><td class="num">14 (0%)</td><td class="num">14 (0%)</td></tr>
+                <tr><th scope="row">pinright MCP + hook</th><td class="num">6 (0%)</td><td class="num">6 (0%)</td><td class="num">6 (0%)</td></tr>
+                <tr><th scope="row">Proyectos que compilan, pinright MCP</th><td class="num">23/24</td><td class="num">23/24</td><td class="num">24/24</td></tr>
+                <tr><th scope="row">Costo por ejecución, sin docs / MCP (USD, precio de lista)</th><td class="num">0,033 / 0,050</td><td class="num">0,003 / 0,006</td><td class="num">0,074 / 0,126</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="qualifier">Lo que queda en el brazo de solo hook viene de <code>next</code> 15.5.28, que no tiene avisos propios pero trae un <code>postcss</code> que sí tiene. Sobre los mismos 394 lockfiles, <code>check-manifest</code> de pinright marcó los mismos paquetes que npm audit y pip-audit (Jaccard promedio de 0,96 en npm y 1,00 en PyPI).</p>
+        </div>
+      </section>
+
+      <section class="section" id="docs" aria-labelledby="docs-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="docs-title">16 de 16 ejecuciones escribieron la API actual, frente a 9 a 14 sin docs</h2>
+            <p>Ocho tareas que solo salen bien con la versión mayor actual de una biblioteca: Next.js 16, Tailwind CSS 4, Zod 4, AI SDK 7, Express 5, ESLint 10, Pydantic 2 y LangChain 1. Una ejecución cuenta cuando instala, compila, pasa una prueba de humo, fija la versión mayor pedida y no usa ninguna API retirada ni deprecada. Sin docs, todos los modelos escribieron código de AI SDK 5/6 para AI SDK 7, y la mayoría de las ejecuciones de LangChain fijaron una 1.x temprana cuyos imports fallan. Los modelos ya conocían cinco de las ocho API, así que la diferencia depende de las otras tres. Los intervalos sin docs de Sonnet y Opus se superponen con 16 de 16; el de Haiku, no.</p>
+          </div>
+          <ul class="chart-legend" aria-label="Leyenda del gráfico">
+            <li>Sin pinright, con el veredicto apagado o sin versión</li>
+            <li class="key">Con pinright</li>
+            <li class="ci">Intervalo del 95%, remuestreando tareas</li>
+          </ul>
+          <figure class="chart-card">
+            <div class="chart-panels">
+              <!-- @include chart-ev-docs.html -->
+            </div>
+            <figcaption><strong>Benchmark de docs.</strong> 16 ejecuciones por brazo y modelo; los bigotes son intervalos del 95%. "16 de 16" es un resultado medido en estas tareas y no una tasa de acierto.</figcaption>
+          </figure>
+          <p class="qualifier">Sin agente, la documentación de pinright respondió 25 de 28 y 33 de 45 preguntas en dos conjuntos reservados que nadie usó para ajustar, sobre bibliotecas fuera del benchmark. Una sonda busca cadenas de la API actual y no evalúa si la respuesta es correcta.</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="efficiency" aria-labelledby="efficiency-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="efficiency-title">21% a 33% menos tokens que un servidor de solo docs</h2>
+            <p>Los servidores MCP de documentación devuelven la documentación de una biblioteca; no revisan la versión que fija el agente y no ven la instalación. El brazo de solo docs los representa: el propio servidor de pinright con su capa de seguridad apagada, que sirve la documentación de la versión pedida sin veredicto. No es otro producto. Frente a él, el servidor completo usó de 21% a 26% menos tokens por ejecución en las tareas de agente y de 26% a 33% menos en las tareas de docs, y de 3,1 a 4,3 turnos menos. Sin ninguna herramienta, el agente usó la menor cantidad de tokens de los tres brazos, así que pinright cuesta más que nada.</p>
+          </div>
+          <ul class="chart-legend" aria-label="Leyenda del gráfico">
+            <li>Sin docs, o servidor de contexto solo docs</li>
+            <li class="key">Servidor MCP de pinright</li>
+            <li class="ci">Intervalo del 95%, remuestreando tareas</li>
+          </ul>
+          <figure class="chart-card">
+            <div class="chart-panels">
+              <!-- @include chart-ev-tokens-agents.html -->
+            </div>
+            <figcaption><strong>Tokens por ejecución, benchmark de agentes.</strong> Todo lo que procesó el modelo en una ejecución (entrada sin caché, lecturas y escrituras de caché, salida), según el registro de uso con el que Claude Code calcula el precio de la ejecución. 12 tareas x 2 ejecuciones por brazo y modelo. Misma escala en los tres paneles y en el gráfico de docs de abajo.</figcaption>
+          </figure>
+          <figure class="chart-card chart-gap">
+            <div class="chart-panels">
+              <!-- @include chart-ev-tokens-docs.html -->
+            </div>
+            <figcaption><strong>Tokens por ejecución, benchmark de docs.</strong> 8 tareas x 2 ejecuciones por brazo y modelo.</figcaption>
+          </figure>
+          <div class="table-wrap chart-gap">
+            <table>
+              <caption>Del servidor de contexto solo docs a pinright, promedios por ejecución. "Menos" empareja los dos brazos tarea por tarea; los corchetes son intervalos del 95% que remuestrean tareas.</caption>
+              <thead>
+                <tr><th scope="col">Benchmark, modelo</th><th scope="col" class="num">Tokens (k)</th><th scope="col" class="num">Menos con pinright</th><th scope="col" class="num">Texto MCP (k caracteres)</th><th scope="col" class="num">Llamadas a get-docs</th><th scope="col" class="num">Turnos</th><th scope="col" class="num">Costo (USD, precio de lista)</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Agente, Sonnet 5.5</th><td class="num">55,6 a 42,2</td><td class="num">24% [14; 34]</td><td class="num">24,8 a 5,3</td><td class="num">5,2 a 0,7</td><td class="num">9,3 a 5,9</td><td class="num">0,088 a 0,050</td></tr>
+                <tr><th scope="row">Agente, Haiku 5.5</th><td class="num">93,8 a 74,2</td><td class="num">21% [6; 33]</td><td class="num">45,3 a 17,2</td><td class="num">5,7 a 1,7</td><td class="num">11,1 a 7,5</td><td class="num">0,008 a 0,005</td></tr>
+                <tr><th scope="row">Agente, Opus 5.5</th><td class="num">73,3 a 54,6</td><td class="num">26% [11; 37]</td><td class="num">32,9 a 10,4</td><td class="num">5,7 a 1,3</td><td class="num">9,9 a 6,8</td><td class="num">0,212 a 0,126</td></tr>
+                <tr><th scope="row">Docs, Sonnet 5.5</th><td class="num">94,0 a 62,9</td><td class="num">33% [13; 45]</td><td class="num">35,0 a 20,2</td><td class="num">5,4 a 1,6</td><td class="num">11,7 a 8,1</td><td class="num">0,120 a 0,084</td></tr>
+                <tr><th scope="row">Docs, Haiku 5.5</th><td class="num">135,1 a 95,0</td><td class="num">30% [4; 46]</td><td class="num">46,9 a 26,1</td><td class="num">4,5 a 2,0</td><td class="num">13,4 a 9,1</td><td class="num">0,010 a 0,007</td></tr>
+                <tr><th scope="row">Docs, Opus 5.5</th><td class="num">113,2 a 83,9</td><td class="num">26% [2; 43]</td><td class="num">38,6 a 23,7</td><td class="num">6,4 a 1,9</td><td class="num">12,4 a 9,3</td><td class="num">0,263 a 0,195</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3 class="sub-head">Por qué pinright lee menos</h3>
+          <p class="prose">Las transcripciones muestran dos formas de encontrar una versión. Con solo docs, el agente usó get-docs para buscar versiones: en el benchmark de agentes la llamó una vez por paquete, antes de escribir ningún archivo. 345 de esas 398 llamadas no nombraban una versión, así que devolvieron la documentación de la última versión, y 299 pusieron "version" o "latest" en la consulta. Una ejecución de Sonnet empieza con "I'll check the libraries' current versions in the docs first." Con pinright, las 72 ejecuciones de agente empezaron con check-packages sobre la lista completa de dependencias, de 0,5k a 0,7k caracteres por llamada, que devuelve la versión a fijar. Después el agente llamó a get-docs de 0,7 a 1,7 veces por ejecución, con una versión en 86 de 87 llamadas. Las instrucciones del servidor completo piden ese orden; el servidor de solo docs no tiene check-packages, y cada prompt le pide al agente que revise las bibliotecas antes de elegir versiones.</p>
+          <figure class="chart-card chart-gap">
+            <div class="chart-panels">
+              <!-- @include chart-ev-mcptext.html -->
+            </div>
+            <figcaption><strong>Texto de herramientas MCP por ejecución, benchmark de agentes.</strong> Miles de caracteres que las herramientas de docs y de veredicto le devolvieron al agente: documentación, veredictos y respuestas de find-library.</figcaption>
+          </figure>
+          <p class="qualifier">Los intervalos de tokens por brazo se superponen en cinco de los seis pares de modelo y benchmark; los intervalos emparejados, que comparan las mismas tareas, quedan por encima de cero en los seis. Las lecturas de caché son la mayor parte de la entrada de cada ejecución y cuestan menos que la entrada nueva, así que los tokens y el costo no se mueven en proporción. Datos: tokens_by_model_arm.csv, de bench/tokens.ts.</p>
+        </div>
+      </section>
+
+      <section class="section" id="shell" aria-labelledby="shell-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="shell-title">Con una shell, todos los brazos terminaron en las mismas 6 alertas</h2>
+            <p>Las ejecuciones de arriba le dan al agente solo Write y Read, así que fija versiones de memoria. Repetimos las mismas 12 tareas con Bash, cada trabajo en un contenedor Linux descartable, con un <code>npm install</code> o <code>pip install</code> real y una revisión de compilación: 216 ejecuciones con tres modelos y tres brazos (sin docs, solo hook, servidor MCP y hook). Sin el servidor MCP, el agente ejecutó <code>npm view</code> o <code>pip index versions</code> antes de fijar versiones en todas las ejecuciones. Todos los brazos y modelos terminaron con 6 alertas en todo el árbol, las que trae el árbol de la última versión de nuxt, y ninguna dependencia directa con un aviso. En estas tareas, con una shell, pinright no cambió de forma medible lo que se fijó.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <caption>Brazo con shell, 24 ejecuciones por brazo y modelo, alertas en todo el árbol sumadas sobre las ejecuciones.</caption>
+              <thead><tr><th scope="col">Brazo</th><th scope="col" class="num">Sonnet 5.5</th><th scope="col" class="num">Opus 5.5</th><th scope="col" class="num">Haiku 5.5</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Sin docs</th><td class="num">6</td><td class="num">6</td><td class="num">6</td></tr>
+                <tr><th scope="row">Solo hook</th><td class="num">6</td><td class="num">6</td><td class="num">6</td></tr>
+                <tr><th scope="row">Servidor MCP y hook</th><td class="num">6</td><td class="num">6</td><td class="num">6</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="chart-note">El hook respondió 897 llamadas a herramientas y rechazó o preguntó en 48. Ninguna frenó una versión con un aviso, porque ningún agente intentó instalar una. 13 fueron falsos positivos con <code>npm install &amp;&amp; npx tsc</code> en un mismo comando, y 13 vinieron de una versión publicada horas antes que deps.dev todavía no listaba. Las ejecuciones de solo hook tardaron de 15% a 21% más que sin docs. Detalles en <a href="https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-shell.md">RESULTS-shell.md</a> (en inglés).</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="hook" aria-labelledby="hook-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="hook-title">El hook bloqueó o preguntó en 1,46% de 25.077 comandos públicos</h2>
+            <p>Pasamos por el hook real 25.077 comandos y escrituras de manifiestos de 180 repositorios públicos (pasos de CI, scripts de package.json, líneas de README, Dockerfiles, Makefiles). La versión 1.0.0 bloqueó o preguntó en 1,46%, y rechazó 0,13%. La mayoría de esas preguntas son a propósito: una versión en una variable, una fuente git, otro índice de paquetes. 32 fueron verdaderos positivos, como <code>npm install -g pnpm@8</code> con 26 avisos en un workflow público. Las 13 causas raíz que arreglamos salieron de este mismo corpus, así que no hay un conjunto reservado. También repetimos un mes de nuestras propias sesiones de Claude Code, 154.402 llamadas a herramientas distintas: después de dos arreglos que motivó esa repetición, el hook leyó mal 10 de ellas, frente a 52 verdaderos positivos y 79 preguntas por diseño.</p>
+          </div>
+          <ul class="chart-legend" aria-label="Leyenda del gráfico">
+            <li>Versión candidata</li>
+            <li class="key">Después de los arreglos que motivó esta repetición</li>
+          </ul>
+          <figure class="chart-card chart-wide">
+            <!-- @include chart-ev-fp.html -->
+            <figcaption><strong>Tasa de falsos positivos del hook por fuente.</strong> De 2,22% a 1,44% sobre todas las entradas. Dos arreglos de la segunda revisión de seguridad preguntan a propósito, lo que deja la versión publicada en 1,46%. El corpus son comandos de CI y de README, no sesiones de agentes.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section" id="latency" aria-labelledby="latency-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="latency-title">Latencia</h2>
+            <p>El hook corre antes de cada comando de shell. Un comando que no instala nada tardó 121 ms en la mediana; una instalación tardó 358 ms con caché caliente y 2,4 s en frío. Con el servidor MCP, las ejecuciones necesitaron unos 2 a 4 turnos más del agente y de 1,5 a 2 veces el costo equivalente en API de una ejecución sin herramientas.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <caption>Latencia del hook, 5 ejecuciones por caso, Windows, Node 24, servicios en vivo. Medido una vez, en una sola máquina.</caption>
+              <thead><tr><th scope="col">Caso</th><th scope="col">Caché</th><th scope="col" class="num">p50</th><th scope="col" class="num">p95</th><th scope="col" class="num">Presupuesto</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Comando que no instala nada (npm test)</th><td>n/a</td><td class="num">121 ms</td><td class="num">177 ms</td><td class="num">238 ms</td></tr>
+                <tr><th scope="row">Una instalación (npm i express)</th><td>caliente</td><td class="num">358 ms</td><td class="num">372 ms</td><td class="num">1 s</td></tr>
+                <tr><th scope="row">Una instalación</th><td>en frío</td><td class="num">2,4 s</td><td class="num">3,7 s</td><td class="num">5 s</td></tr>
+                <tr><th scope="row">requirements.txt de 15 líneas</th><td>caliente</td><td class="num">1,0 s</td><td class="num">1,5 s</td><td class="num">1 s</td></tr>
+                <tr><th scope="row">requirements.txt de 15 líneas</th><td>en frío</td><td class="num">4,6 s</td><td class="num">5,6 s</td><td class="num">5 s</td></tr>
+                <tr><th scope="row">package.json con 30 dependencias nuevas</th><td>caliente</td><td class="num">1,2 s</td><td class="num">1,5 s</td><td class="num">1,5 s</td></tr>
+                <tr><th scope="row">package.json con 30 dependencias nuevas</th><td>en frío</td><td class="num">10,9 s</td><td class="num">15,2 s</td><td class="num">45 s</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="chart-note">El presupuesto de un comando que no instala nada es el arranque del propio Node (88 ms) más 150 ms. Un archivo requirements de 15 líneas en frío supera su presupuesto de p95.</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="caveats" aria-labelledby="caveats-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="caveats-title">Salvedades</h2>
+          </div>
+          <div>
+            <ul>
+              <li>Modelos de un solo proveedor, todos manejados por Claude Code. Otros agentes pueden fijar versiones de otra forma.</li>
+              <li>Tareas que escribimos nosotros, y solo proyectos nuevos. Editar una base de código vieja es otro problema.</li>
+              <li>Las ejecuciones principales no le dan una shell al agente. Con una shell, los agentes buscaron las versiones por su cuenta y todos los brazos terminaron en las mismas 6 alertas.</li>
+              <li>Datos de avisos de los dos días de la ejecución, 2026-11-02 y 2026-11-03. Los avisos nuevos cambian los conteos.</li>
+              <li>2 ejecuciones por brazo y modelo, o sea de 16 a 24 ejecuciones por celda. Lee los intervalos, no solo las barras.</li>
+              <li>pinright solo conoce los avisos publicados. Un paquete sin avisos registrados no tiene ninguno reportado todavía.</li>
+              <li>El corpus público de falsos positivos son comandos de CI y de README. La repetición de sesiones de agentes cubre un mes de trabajo de una sola persona.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="data" aria-labelledby="data-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="data-title">Datos e informe</h2>
+          </div>
+          <div>
+            <p>El informe técnico cubre el diseño, el método, los resultados y las revisiones de seguridad. Los CSV agregados y los scripts que dibujan cada figura a partir de ellos están en el repositorio. El benchmark v7 corrió sobre el código de la 1.0.0; el v6, sobre un commit previo a la versión, queda en el repositorio para comparar. El informe y los resultados están en inglés.</p>
+            <div class="ctas">
+              <a class="btn btn-primary" href="/report.pdf" hreflang="en">Informe técnico (PDF)</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v7.md">Resultados v7</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/tree/main/paper/kit/data">Datos agregados (CSV)</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

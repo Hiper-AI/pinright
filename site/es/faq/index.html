@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <title>Preguntas frecuentes · pinright</title>
+    <meta name="description" content="¿pinright sube código? ¿Qué ecosistemas cubre? ¿Qué pasa si un registro no responde? Cómo se relaciona con Dependabot y npm audit, velocidad, formas de saltarse el hook, costo y licencia.">
+    <link rel="canonical" href="https://pinright.dev/es/faq/">
+    <meta property="og:url" content="https://pinright.dev/es/faq/">
+    <meta property="og:title" content="Preguntas frecuentes · pinright">
+    <meta property="og:description" content="Respuestas cortas y honestas sobre privacidad, cobertura, caídas, velocidad, formas de saltarse el hook y costo.">
+    <meta name="twitter:title" content="Preguntas frecuentes · pinright">
+    <meta name="twitter:description" content="Respuestas cortas y honestas sobre privacidad, cobertura, caídas, velocidad, formas de saltarse el hook y costo.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html /es/faq/ -->
+    <main id="main">
+      <header class="page-head">
+        <div class="wrap">
+          <p class="eyebrow">Preguntas frecuentes</p>
+          <h1>Lo que los desarrolladores preguntan primero</h1>
+        </div>
+      </header>
+      <section class="section" aria-label="Preguntas y respuestas">
+        <div class="wrap faq">
+          <details id="upload" open>
+            <summary>¿Sube mi código?</summary>
+            <div class="answer">
+              <p>No. pinright envía nombres y versiones de paquetes a servicios públicos (deps.dev, OSV, los registros, jsDelivr, GitHub), nunca tu código fuente, el contenido de tus archivos ni tu entorno. El nombre de un paquete privado que revisas sí llega a esos servicios. Sin telemetría, sin cuenta. <a href="/es/security/#network">Qué va adónde</a></p>
+            </div>
+          </details>
+          <details id="ecosystems">
+            <summary>¿Qué ecosistemas cubre?</summary>
+            <div class="answer">
+              <p>Veredictos y auditorías: npm, PyPI, Cargo, Go, RubyGems, NuGet, Maven y Gradle, Composer y GitHub Actions. El hook lee comandos de instalación de la mayoría y escrituras de manifiestos de todos menos RubyGems y NuGet. La documentación de la versión exacta cubre paquetes de npm y PyPI y repositorios de GitHub.</p>
+            </div>
+          </details>
+          <details id="down">
+            <summary>¿Qué pasa si un registro o una base de datos de avisos no responde?</summary>
+            <div class="answer">
+              <p>pinright dice ok solo cuando respondieron deps.dev y OSV. Si no, el veredicto es <code>unknown</code> y nombra el host. El <code>.pinright.json</code> inicial que escribe <code>init</code> hace que el hook te pregunte; sin archivo de política, permite el cambio y le avisa al agente que no se pudo verificar. Una revisión que pasa de 45 segundos le pregunta a una persona. Las respuestas quedan en caché 24 horas, la documentación 7 días.</p>
+            </div>
+          </details>
+          <details id="dependabot">
+            <summary>¿En qué se diferencia de Dependabot o npm audit?</summary>
+            <div class="answer">
+              <p>Esas herramientas informan sobre dependencias que ya están en tu lockfile o tu repositorio. pinright actúa antes, mientras el agente elige la versión: nombra una versión sin avisos en la línea que usas, le da al agente la documentación de esa versión, y el hook revisa la instalación antes de que se ejecute. También revisa nombres parecidos, registros de malware y paquetes que no existen. Para CI, <code>pinright audit</code> y la Action auditan todo el árbol; sobre 394 lockfiles del benchmark marcaron los mismos paquetes que npm audit y pip-audit. Úsalos juntos.</p>
+            </div>
+          </details>
+          <details id="slow">
+            <summary>¿Hace más lento a mi agente?</summary>
+            <div class="answer">
+              <p>Un poco. El hook tardó 121 ms en la mediana con un comando que no instala nada, 358 ms con una instalación y caché caliente, y 2,4 s en frío. En el benchmark, las ejecuciones con el servidor MCP necesitaron unos 2 a 4 turnos más y de 1,5 a 2 veces el costo equivalente en API de una ejecución sin herramientas. Una instalación global arranca más rápido que npx; mira la sección <a href="https://github.com/Hiper-AI/pinright#latency">Latency</a> del README (en inglés).</p>
+            </div>
+          </details>
+          <details id="bypass">
+            <summary>¿Se puede saltar el hook?</summary>
+            <div class="answer">
+              <p>Sí. Lee comandos y no aísla procesos. El código que llama a <code>pip</code> desde dentro de un programa, <code>curl … | sh</code>, la ofuscación fuerte y las herramientas a las que el hook no está conectado pasan sin revisión. Lo que no puede leer pregunta por defecto. Mantén un registro proxy y ejecuta los agentes en un sandbox. <a href="/es/security/#hook">El modelo de amenazas en breve</a></p>
+            </div>
+          </details>
+          <details id="unknown">
+            <summary>¿"ok" quiere decir que un paquete está limpio?</summary>
+            <div class="answer">
+              <p>Quiere decir que no hay ningún aviso ni registro de malware publicado para esa versión, y que el nombre no parece un error de tipeo de uno popular. pinright solo conoce los avisos publicados. Para ataques muy nuevos suma señales de cadena de suministro, y el hook bloquea dos patrones: un paquete de menos de 14 días que ejecuta scripts de instalación, y una versión que agrega scripts de instalación y viene de alguien que nunca publicó las versiones anteriores.</p>
+            </div>
+          </details>
+          <details id="false-positive">
+            <summary>El hook bloqueó algo que no debía. ¿Y ahora?</summary>
+            <div class="answer">
+              <p>Agrega el nombre a <code>"allow"</code> en <code>.pinright.json</code> para dejarlo pasar, y <a href="https://github.com/Hiper-AI/pinright/issues/new?template=false-positive.yml">reporta el falso positivo</a> con el comando exacto y la salida de <code>pinright doctor --json</code>. Es el reporte que más valoramos.</p>
+            </div>
+          </details>
+          <details id="cost">
+            <summary>¿Cuánto cuesta?</summary>
+            <div class="answer">
+              <p>Nada. Sin cuenta, sin clave, sin plan de pago. Los datos vienen de servicios públicos. El único costo son los turnos extra del agente que se describen arriba.</p>
+            </div>
+          </details>
+          <details id="license">
+            <summary>¿Qué licencia tiene?</summary>
+            <div class="answer">
+              <p>MIT, de <a href="https://hiperai.com">Hiper AI</a>. Las contribuciones son bienvenidas; empieza por <a href="https://github.com/Hiper-AI/pinright/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>. Preguntas: <a href="mailto:opensource@hiperai.com">opensource@hiperai.com</a>.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

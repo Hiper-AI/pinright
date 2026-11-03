@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <title>Instalar · pinright</title>
+    <meta name="description" content="Configura pinright en Claude Code, Cursor, VS Code, Codex, Gemini CLI, Windsurf y diez clientes solo MCP, agrega la GitHub Action y comparte una política de equipo en .pinright.json.">
+    <link rel="canonical" href="https://pinright.dev/es/install/">
+    <meta property="og:url" content="https://pinright.dev/es/install/">
+    <meta property="og:title" content="Instalar · pinright">
+    <meta property="og:description" content="Un comando por cliente, una GitHub Action para CI y un archivo de política para el equipo.">
+    <meta name="twitter:title" content="Instalar · pinright">
+    <meta name="twitter:description" content="Un comando por cliente, una GitHub Action para CI y un archivo de política para el equipo.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html /es/install/ -->
+    <main id="main">
+      <header class="page-head">
+        <div class="wrap">
+          <p class="eyebrow">Instalar</p>
+          <h1>Un comando y después reinicia el agente</h1>
+          <p class="lead"><code>init</code> agrega el servidor MCP, el hook en los clientes que tienen hooks y un <code>.pinright.json</code> inicial. Solo edita la entrada de pinright y antes hace una copia de respaldo de cada archivo.</p>
+          <ul class="toc" aria-label="En esta página">
+            <li><a href="#quick">Inicio rápido</a></li>
+            <li><a href="#clients">Clientes</a></li>
+            <li><a href="#manual">Configuración manual</a></li>
+            <li><a href="#action">GitHub Action</a></li>
+            <li><a href="#policy">Política de equipo</a></li>
+            <li><a href="#cli">CLI</a></li>
+          </ul>
+        </div>
+      </header>
+
+      <section class="section" id="quick" aria-labelledby="quick-title">
+        <div class="wrap">
+          <h2 id="quick-title">Inicio rápido</h2>
+          <div class="clients">
+            <div class="client">
+              <h3>Solo tú, en cada proyecto</h3>
+              <p class="small muted">Instala pinright una vez y escribe tu configuración de usuario. El agente arranca el binario instalado, que es más rápido que npx.</p>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npm i -g pinright
+<span class="c"># o cursor, codex, gemini, vscode, windsurf</span>
+<span class="p">$ </span>pinright init claude --user
+<span class="c"># opcional: qué responde y qué está conectado</span>
+<span class="p">$ </span>pinright doctor</code></pre>
+                <button class="copy" type="button" data-copy="npm i -g pinright&#10;pinright init claude --user" aria-label="Copiar los comandos de la instalación global"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+            </div>
+            <div class="client">
+              <h3>Tu equipo, en el repositorio</h3>
+              <p class="small muted">Escribe archivos del proyecto que arrancan pinright con npx. Súbelos al repositorio y cada persona del equipo que tenga Node recibe la misma configuración.</p>
+              <div class="cmd">
+                <pre><code><span class="c"># los clientes que este proyecto ya usa</span>
+<span class="p">$ </span>npx -y pinright init</code></pre>
+                <button class="copy" type="button" data-copy="npx -y pinright init" aria-label="Copiar: npx -y pinright init"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+            </div>
+          </div>
+          <div class="note accent">
+            <p>Elige una opción por proyecto. Si un proyecto sube su propio hook, un hook de usuario con otro comando correría a su lado, así que <code>init --user</code> deja el hook afuera en ese caso y explica por qué. <code>--print</code> muestra lo que escribiría <code>init</code> y no escribe nada.</p>
+          </div>
+          <p class="small muted">Node 20.9 o posterior. No hace falta ninguna clave; un <code>GITHUB_TOKEN</code> en el entorno del agente ayuda con monorepos grandes y con las guías de actualización.</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="clients" aria-labelledby="clients-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="clients-title">Clientes con hook</h2>
+            <p>Estos seis reciben el servidor MCP y el hook de preinstalación. Nombra el cliente para configurar solo ese.</p>
+          </div>
+          <div class="clients">
+            <article class="client">
+              <h3>Claude Code <span class="tag">MCP + hook</span></h3>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npx -y pinright init claude</code></pre>
+                <button class="copy" type="button" data-copy aria-label="Copiar: npx -y pinright init claude"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+              <dl>
+                <dt>Servidor</dt><dd><code>.mcp.json</code> · usuario <code>~/.claude.json</code></dd>
+                <dt>Hook</dt><dd><code>PreToolUse</code> en <code>.claude/settings.json</code></dd>
+                <dt>Después</dt><dd>Aprueba el servidor de <code>.mcp.json</code> una vez.</dd>
+              </dl>
+            </article>
+            <article class="client">
+              <h3>Cursor <span class="tag">MCP + hook</span></h3>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npx -y pinright init cursor</code></pre>
+                <button class="copy" type="button" data-copy aria-label="Copiar: npx -y pinright init cursor"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+              <dl>
+                <dt>Servidor</dt><dd><code>.cursor/mcp.json</code></dd>
+                <dt>Hook</dt><dd><code>beforeShellExecution</code>, <code>preToolUse</code> en <code>.cursor/hooks.json</code></dd>
+              </dl>
+            </article>
+            <article class="client">
+              <h3>VS Code (GitHub Copilot) <span class="tag">MCP + hook</span></h3>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npx -y pinright init vscode</code></pre>
+                <button class="copy" type="button" data-copy aria-label="Copiar: npx -y pinright init vscode"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+              <dl>
+                <dt>Servidor</dt><dd><code>.vscode/mcp.json</code></dd>
+                <dt>Hook</dt><dd><code>.github/hooks/pinright.json</code> (preview)</dd>
+                <dt>Después</dt><dd>Para sesiones locales del agente, activa <code>chat.useHooks</code>.</dd>
+              </dl>
+            </article>
+            <article class="client">
+              <h3>OpenAI Codex <span class="tag">MCP + hook</span></h3>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npx -y pinright init codex</code></pre>
+                <button class="copy" type="button" data-copy aria-label="Copiar: npx -y pinright init codex"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+              <dl>
+                <dt>Servidor</dt><dd><code>.codex/config.toml</code></dd>
+                <dt>Hook</dt><dd><code>PreToolUse</code> en Bash y <code>apply_patch</code></dd>
+                <dt>Después</dt><dd>Marca el proyecto como de confianza y revisa el hook en <code>/hooks</code>.</dd>
+              </dl>
+            </article>
+            <article class="client">
+              <h3>Gemini CLI <span class="tag">MCP + hook</span></h3>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npx -y pinright init gemini</code></pre>
+                <button class="copy" type="button" data-copy aria-label="Copiar: npx -y pinright init gemini"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+              <dl>
+                <dt>Servidor</dt><dd><code>.gemini/settings.json</code></dd>
+                <dt>Hook</dt><dd><code>BeforeTool</code> en el mismo archivo</dd>
+                <dt>Después</dt><dd>Gemini CLI pregunta una vez antes de ejecutar un hook de proyecto nuevo.</dd>
+              </dl>
+            </article>
+            <article class="client">
+              <h3>Windsurf <span class="tag">MCP + hook</span></h3>
+              <div class="cmd">
+                <pre><code><span class="p">$ </span>npx -y pinright init windsurf</code></pre>
+                <button class="copy" type="button" data-copy aria-label="Copiar: npx -y pinright init windsurf"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+                <span class="copy-status visually-hidden" role="status"></span>
+              </div>
+              <dl>
+                <dt>Servidor</dt><dd>Solo configuración de usuario (Windsurf no tiene archivo MCP de proyecto)</dd>
+                <dt>Hook</dt><dd><code>pre_run_command</code>, <code>pre_write_code</code></dd>
+                <dt>Después</dt><dd>Reinicia Windsurf y actualiza la lista de MCP.</dd>
+              </dl>
+            </article>
+          </div>
+          <div class="note">
+            <p><strong>Clientes solo MCP:</strong> Claude Desktop, Zed, JetBrains Junie, JetBrains AI Assistant, Cline, Roo Code, Continue, Amp, opencode y Kiro reciben el servidor MCP con <code>init &lt;cliente&gt;</code>. No tienen hook de pinright, así que el agente recibe el veredicto cuando lo pide, y la GitHub Action detecta lo que pase. <a href="https://github.com/Hiper-AI/pinright#clients">Configuración de cada cliente (en inglés)</a></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="manual" aria-labelledby="manual-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="manual-title">Configuración manual</h2>
+            <p>Solo el servidor MCP, si prefieres editar el archivo tú. Ejecuta <code>init</code> para tener el hook.</p>
+            <p class="small muted">En Windows nativo, un cliente que no puede arrancar <code>npx</code> directamente funciona con <code>cmd</code> como comando y <code>["/c", "npx", "-y", "pinright"]</code> como argumentos.</p>
+          </div>
+          <div class="stack">
+            <pre class="code" aria-label="JSON de mcpServers para Claude Code, Cursor, Gemini CLI, Windsurf y otros"><code>// .mcp.json, .cursor/mcp.json, .gemini/settings.json, ...
+{
+  "mcpServers": {
+    "pinright": { "command": "npx", "args": ["-y", "pinright"] }
+  }
+}</code></pre>
+            <pre class="code" aria-label="mcp.json de VS Code"><code>// .vscode/mcp.json
+{
+  "servers": {
+    "pinright": { "type": "stdio", "command": "npx", "args": ["-y", "pinright"] }
+  }
+}</code></pre>
+            <pre class="code" aria-label="config.toml de Codex"><code># .codex/config.toml
+[mcp_servers.pinright]
+command = "npx"
+args = ["-y", "pinright"]</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft" id="action" aria-labelledby="action-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="action-title">GitHub Action</h2>
+            <p>Ejecuta <code>pinright audit</code> sobre lockfiles y workflows, escribe un resumen del job, anota el pull request y sube SARIF a code scanning. No instala nada desde npm.</p>
+            <p class="small muted">En los pull requests lee <code>.pinright.json</code> del commit base, así un PR no puede relajar sus propias revisiones. Repositorios privados sin GitHub Code Security: usa <code>upload-sarif: false</code>.</p>
+          </div>
+          <div class="cmd">
+            <pre><code>name: dependencies
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 6 * * 1'   # aparecen avisos nuevos sin ningún commit
+
+permissions:
+  contents: read
+
+jobs:
+  pinright:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload-sarif
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Hiper-AI/pinright@&lt;commit SHA&gt; # fija la versión que revisaste
+        with:
+          fail-on: high</code></pre>
+            <button class="copy" type="button" data-copy aria-label="Copiar el workflow"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+            <span class="copy-status visually-hidden" role="status"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="policy" aria-labelledby="policy-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="policy-title">Política de equipo: <code>.pinright.json</code></h2>
+            <p>Súbelo a la raíz del proyecto y cada desarrollador, agente y ejecución de CI aplica las mismas reglas. Todas las claves son opcionales. Las variables de entorno tienen prioridad sobre el archivo.</p>
+            <p class="small muted">Un archivo que no se puede leer rechaza todo cambio de dependencias hasta que alguien lo arregle. Un cambio en la política siempre le pregunta a una persona.</p>
+          </div>
+          <div class="cmd">
+            <pre><code>{
+  "allow": ["@acme/*"],              // los paquetes privados no se revisan
+  "deny": [
+    "left-pad",
+    { "name": "request", "ecosystem": "npm", "reason": "unmaintained; use undici" }
+  ],
+  "licenses": {
+    "deny": ["AGPL-*", "SSPL-*"],
+    "allow": ["MIT", "Apache-2.0", "BSD-*", "ISC"]
+  },
+  "severityThreshold": "high",       // low | moderate | high | critical
+  "cooldownDays": 7,                 // edad mínima de una versión recomendada
+  "cooldown": "enforce",             // warn | enforce
+  "noFix": "severity",               // severity | allow | ask | deny
+  "onError": "ask",                  // allow | ask | deny
+  "unverifiable": "ask",             // fuentes git/URL, otros registros
+  "actionsPin": "warn"               // off | warn | enforce
+}</code></pre>
+            <button class="copy" type="button" data-copy aria-label="Copiar el ejemplo de política"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span class="copy-label">Copiar</span></button>
+            <span class="copy-status visually-hidden" role="status"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft" id="cli" aria-labelledby="cli-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="cli-title">CLI</h2>
+            <p>El mismo veredicto que recibe el agente, para personas y scripts. El código de salida 1 indica hallazgos.</p>
+          </div>
+          <pre class="code"><code>pinright check npm axios@1.7.9            # sale con 1 si no está ok
+pinright audit . --fail-on=high           # todo el árbol, para CI
+pinright audit . --sarif pinright.sarif   # SARIF 2.1.0
+pinright upgrade npm zod 3.25.76 4.6.7    # qué cambia entre dos versiones
+pinright audit .github/workflows          # Actions: avisos y fijado por SHA
+pinright doctor                           # revisa la configuración</code></pre>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <title>Privacidad y seguridad · pinright</title>
+    <meta name="description" content="pinright corre en tu máquina, sin telemetría. Qué envía a cada servicio público, qué frena el hook de preinstalación y qué no, y las dos revisiones de seguridad de la 1.0.0.">
+    <link rel="canonical" href="https://pinright.dev/es/security/">
+    <meta property="og:url" content="https://pinright.dev/es/security/">
+    <meta property="og:title" content="Privacidad y seguridad · pinright">
+    <meta property="og:description" content="Corre en tu máquina, sin telemetría. Qué se envía y adónde, el modelo de amenazas del hook y dos revisiones de seguridad.">
+    <meta name="twitter:title" content="Privacidad y seguridad · pinright">
+    <meta name="twitter:description" content="Corre en tu máquina, sin telemetría. Qué se envía y adónde, el modelo de amenazas del hook y dos revisiones de seguridad.">
+    <!-- @include head.html -->
+  </head>
+  <body>
+    <!-- @include header.html /es/security/ -->
+    <main id="main">
+      <header class="page-head">
+        <div class="wrap">
+          <p class="eyebrow">Privacidad y seguridad</p>
+          <h1>Corre en tu máquina y te dice qué envía</h1>
+          <p class="lead">pinright es un proceso local que habla con tu agente por stdio. Sin cuenta, sin telemetría. Esta página resume <a href="https://github.com/Hiper-AI/pinright/blob/main/SECURITY.md">SECURITY.md</a> y el <a href="https://github.com/Hiper-AI/pinright/blob/main/docs/HOOK-THREAT-MODEL.md">modelo de amenazas del hook</a>, los dos en inglés.</p>
+          <ul class="toc" aria-label="En esta página">
+            <li><a href="#local">En tu máquina</a></li>
+            <li><a href="#network">Red</a></li>
+            <li><a href="#hook">Modelo de amenazas del hook</a></li>
+            <li><a href="#injection">Inyección de prompts</a></li>
+            <li><a href="#reviews">Revisiones de seguridad</a></li>
+            <li><a href="#report">Reportar una vulnerabilidad</a></li>
+          </ul>
+        </div>
+      </header>
+
+      <section class="section" id="local" aria-labelledby="local-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="local-title">En tu máquina</h2>
+          </div>
+          <div>
+            <ul class="checks">
+              <li>Sin scripts <code>preinstall</code>, <code>install</code> ni <code>postinstall</code>. Instalarlo no ejecuta código.</li>
+              <li>Cuatro dependencias de ejecución, fijadas en versiones exactas. Las versiones se publican desde GitHub Actions con npm provenance.</li>
+              <li>Nunca ejecuta lo que descarga. Los archivos comprimidos, los README y la documentación se procesan como texto y le llegan al agente como datos.</li>
+              <li>Lee los archivos de dependencias de tu proyecto y solo escribe en su directorio de caché y, cuando ejecutas <code>init</code>, en los archivos de configuración del agente que nombra.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section soft" id="network" aria-labelledby="network-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="network-title">Qué envía y a quién</h2>
+            <p>Cada solicitud va de tu máquina a un servicio público, por el paquete que consultaste. pinright nunca envía tu código fuente, el contenido de tus archivos ni tu entorno. Los nombres que revisas sí llegan a esos servicios, y eso incluye el nombre de un paquete privado.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th scope="col">Servicio</th><th scope="col">Qué recibe</th><th scope="col">Cuándo</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row"><code>api.deps.dev</code>, <code>api.osv.dev</code></th><td>ecosistema, nombre del paquete, versión</td><td>en cada revisión</td></tr>
+                <tr><th scope="row">Registros: npm, PyPI, pypistats, crates.io, RubyGems, Packagist</th><td>nombre del paquete, versión</td><td>revisiones, señales de riesgo, documentación</td></tr>
+                <tr><th scope="row"><code>cdn.jsdelivr.net</code>, <code>data.jsdelivr.com</code></th><td>nombre del paquete, versión, ruta del archivo</td><td>documentación del paquete publicado</td></tr>
+                <tr><th scope="row"><code>api.github.com</code>, <code>raw.githubusercontent.com</code></th><td>repositorio, tag, ruta del archivo</td><td>documentación del repositorio, guías de actualización, auditoría de Actions</td></tr>
+                <tr><th scope="row">El sitio de documentación del propio paquete</th><td>una solicitud de <code>/llms.txt</code> y de las páginas que lista</td><td>cuando los metadatos del paquete nombran un sitio</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="qualifier">La única credencial, un <code>GITHUB_TOKEN</code> opcional, va solo a <code>api.github.com</code>. Las URL que vienen de los metadatos de un paquete pasan por un filtro: solo https, ninguna dirección privada, de loopback ni de metadatos de la nube (se vuelve a revisar después del DNS y en cada una de 3 redirecciones como máximo), y un tope de 10 MB para el cuerpo.</p>
+        </div>
+      </section>
+
+      <section class="section" id="hook" aria-labelledby="hook-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="hook-title">El hook es una barrera de protección y no aísla procesos</h2>
+            <p>Lee líneas de comando y contenidos de archivos antes de que corra la herramienta. Ayuda a un agente honesto que se equivoca y frena a uno que una inyección de prompts convence de instalar algo. No vigila el proceso ni la red.</p>
+          </div>
+          <div class="split even">
+            <div>
+              <h3>Lo que frena o consulta</h3>
+              <ul class="checks">
+                <li>Las instalaciones que puede leer, a través de <code>bash -c</code>, <code>eval</code>, <code>$(…)</code>, <code>cmd /c</code>, <code>powershell -Command</code>, <code>sudo</code>, <code>xargs</code> y scripts ejecutados por nombre.</li>
+                <li>Las escrituras en manifiestos y workflows: solo cuentan las dependencias nuevas o cambiadas.</li>
+                <li>Lo que no puede leer (un nombre en una variable, una fuente git o URL, otro registro) pregunta por defecto.</li>
+                <li>Los cambios en <code>.pinright.json</code> o en la entrada del propio hook siempre pasan por una persona.</li>
+                <li>Más de 40 dependencias en un mismo cambio hacen que pregunte, así el relleno no puede esconder una mala.</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Lo que se le escapa</h3>
+              <ul class="checks crosses">
+                <li>Código que instala desde dentro de un programa: <code>python -c "subprocess.run(['pip', ...])"</code>.</li>
+                <li>Scripts remotos como <code>curl … | sh</code>: los registra pero no los lee.</li>
+                <li>Ofuscación más allá de lo que resuelve un lector de shell, y variables definidas en una llamada a herramienta anterior.</li>
+                <li>Herramientas a las que el hook no está conectado, y todo lo que pase después de que dijo que sí: una persona que escribe <code>npm install</code>, un job de CI.</li>
+                <li>Lo que hace un paquete permitido después de instalarse.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="note accent">
+            <p>El modelo de amenazas lista 57 vectores para saltarse el hook, cada uno reproducido en <code>test/hookBypass.test.ts</code>. Combina el hook con un registro proxy, <code>npm ci</code> o <code>pip install --require-hashes</code> en CI, y un sandbox para el agente sin credenciales de larga duración.</p>
+          </div>
+          <p class="small muted">Cuando deps.dev u OSV no responden, el veredicto es <code>unknown</code> y no ok. El <code>.pinright.json</code> inicial hace que en ese caso te pregunte; sin archivo de política, el hook permite el cambio y le avisa al agente que no se pudo verificar.</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="injection" aria-labelledby="injection-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="injection-title">Inyección de prompts en el texto de los paquetes</h2>
+          </div>
+          <div>
+            <p>pinright pone frente a tu agente texto escrito por los autores de los paquetes. Quita los caracteres ocultos y el markup, descarta los pasajes que le dan órdenes al agente y envuelve cada bloque de terceros en un delimitador <code>&lt;untrusted-data&gt;</code> con un id aleatorio.</p>
+            <p>El detector compara formulaciones. Con frases de ataque escritas después de congelar sus reglas, detectó de 20% a 40%. Úsalo como alarma; el delimitador depende de que el agente lo respete.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="reviews" aria-labelledby="reviews-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="reviews-title">Dos revisiones de seguridad antes de la 1.0.0</h2>
+            <p>Las dos las hicieron sesiones separadas de agentes de IA que no escribieron el código revisado, y el autor comprobó cada hallazgo. Los atacantes modelados: un repositorio que abres, quien publica un paquete, un usuario local en una máquina compartida y, para el hook, el propio agente.</p>
+          </div>
+          <dl class="stats">
+            <div class="stat">
+              <dt>11 hallazgos</dt>
+              <dd>Ronda 1, 2026-10-29: 5 altos, 5 medios, 1 bajo, todos arreglados. 759 literales de regex cronometrados con unas 900 entradas.</dd>
+            </div>
+            <div class="stat">
+              <dt>13 hallazgos</dt>
+              <dd>Ronda 2, 2026-11-01, sobre la versión candidata: 1 alto, 9 medios, 3 bajos, todos arreglados. Unos 120 casos de red team sobre el hook.</dd>
+            </div>
+          </dl>
+          <p class="qualifier">Los puntos abiertos después de las dos rondas, como el runner de releases autoalojado y los huecos del lector del hook, están en <a href="https://github.com/Hiper-AI/pinright/blob/main/docs/SECURITY-REVIEW.md">docs/SECURITY-REVIEW.md</a>.</p>
+        </div>
+      </section>
+
+      <section class="section soft" id="report" aria-labelledby="report-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="report-title">Reportar una vulnerabilidad</h2>
+          </div>
+          <div>
+            <p>Repórtala en privado a través de GitHub, no en un issue público. Incluye la versión (<code>pinright --version</code>), el comando o la llamada a herramienta y lo que esperabas. Buscamos confirmar la recepción en 3 días hábiles y darte el crédito en el aviso, salvo que nos pidas que no.</p>
+            <div class="ctas">
+              <a class="btn btn-primary" href="https://github.com/Hiper-AI/pinright/security/advisories/new">Reportar en privado en GitHub</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/blob/main/SECURITY.md">SECURITY.md</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- @include footer.html -->
+  </body>
+</html>

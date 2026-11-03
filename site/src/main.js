@@ -1,7 +1,10 @@
-// The site's script: the theme toggle and the copy buttons, plus the scroll story, the footer and the header.
+// The site's script: the theme toggle and the copy buttons, plus the scroll story, the footer, the
+// header and the language switcher. Visible and announced strings come from i18n.js.
 import './story.js';
 import './footer.js';
 import './header.js';
+import './lang.js';
+import { t } from './i18n.js';
 
 const KEY = 'pinright-theme';
 const ORDER = ['system', 'light', 'dark'];
@@ -28,7 +31,7 @@ function apply(theme) {
   const next = ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length];
   for (const button of document.querySelectorAll('[data-theme-toggle]')) {
     button.dataset.state = theme;
-    button.setAttribute('aria-label', `Color theme: ${theme}. Switch to ${next}.`);
+    button.setAttribute('aria-label', t.themeLabel(t.theme[theme], t.theme[next]));
   }
 }
 
@@ -70,14 +73,14 @@ for (const button of document.querySelectorAll('[data-copy]')) {
       .trim();
     try {
       await writeClipboard(text);
-      if (label) label.textContent = 'Copied';
-      if (status) status.textContent = 'Copied to the clipboard';
+      if (label) label.textContent = t.copied;
+      if (status) status.textContent = t.copiedStatus;
       window.setTimeout(() => {
-        if (label) label.textContent = 'Copy';
+        if (label) label.textContent = t.copy;
         if (status) status.textContent = '';
       }, 1800);
     } catch {
-      if (status) status.textContent = 'Copy failed. Select the text and copy it by hand.';
+      if (status) status.textContent = t.copyFailed;
     }
   });
 }

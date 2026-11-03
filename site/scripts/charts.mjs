@@ -14,6 +14,11 @@
  *   partials/chart-ev-tokens-{agents,docs}.html    evidence: tokens per run, three arms per model
  *   partials/chart-ev-mcptext.html    evidence: MCP tool text per run, docs only vs pinright
  *
+ * Every chart is drawn twice: in English (chart-x.html) and in Spanish (chart-x.es.html, which the
+ * include plugin picks for pages under es/). The words live in LANGS below; the numbers come from
+ * the CSVs in both, so the two languages cannot drift. Spanish writes a decimal comma (0,3), the
+ * percent sign with no space (40%) and "16 de 16" (see "Spanish" in site/README.md).
+ *
  * Each bar carries a <title> (the browser tooltip) and every chart a text alternative; the tables
  * on the same pages hold the numbers too. The files are generated, so they are gitignored.
  */
@@ -52,16 +57,103 @@ function readCsv(name) {
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const num = (s) => (s === '' || s == null ? null : Number(s));
-const r1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
 
 const MODELS = ['Sonnet 5.5', 'Opus 5.5', 'Haiku 5.5'];
-const ARM = {
-  'no-docs': { label: 'No docs', key: false },
-  'docs-only': { label: 'Docs only', key: false },
-  pinright: { label: 'pinright MCP', key: true },
-  'hook-only': { label: 'Hook only', key: true },
-  'pinright+hook': { label: 'MCP + hook', key: true },
-  latest: { label: 'No pin', key: false },
+const KEY_ARMS = new Set(['pinright', 'hook-only', 'pinright+hook']);
+
+/** Words and number format per language. Model names, tool names and units stay as they are. */
+const LANGS = {
+  en: {
+    suffix: '',
+    dec: (s) => s,
+    arm: { 'no-docs': 'No docs', 'docs-only': 'Docs only', pinright: 'pinright MCP', 'hook-only': 'Hook only', 'pinright+hook': 'MCP + hook', latest: 'No pin' },
+    source: {},
+    alertsTip: (m, a, v, lo, hi, n) => `${m}, ${a}: ${v} whole-tree alerts per project (95% interval ${lo} to ${hi}, ${n} projects)`,
+    pinsTip: (m, a, k, n, p, lo, hi) => `${m}, ${a}: ${k} of ${n} direct dependencies with a known advisory (${p}%, 95% interval ${lo}% to ${hi}%)`,
+    docsText: (v, n) => `${v} of ${n}`,
+    docsTip: (m, a, v, n) => `${m}, ${a}: ${v} of ${n} runs wrote the current API`,
+    tokensWhat: { tokens: 'tokens per run', text: 'characters of MCP tool text per run' },
+    where: { agents: 'agent tasks', docs: 'docs tasks' },
+    tokensTip: (m, a, where, v, what, lo, hi, n, saved) =>
+      `${m}, ${a}, ${where}: ${v} ${what} (95% interval ${lo} to ${hi}, ${n} runs)${saved != null ? `; ${saved}% less than docs only on the same tasks` : ''}`,
+    fpBefore: 'Before fixes',
+    fpAfter: 'After fixes',
+    fpTip: (src, p, when, n) => `${src}: ${p}% blocked or asked ${when} the fixes (${n} entries)`,
+    fpWhen: { before: 'before', after: 'after' },
+    t: {
+      homeAlerts: 'Whole-tree alerts per project',
+      homeAlertsDesc: 'Mean npm audit and pip-audit alerts per generated project, by model: no docs, docs only (pinright with its verdict off), and the pinright MCP server plus hook. ',
+      homePins: 'Direct dependencies pinned with a known advisory',
+      homePinsDesc: 'Share of direct dependencies the agent pinned with at least one deps.dev advisory, by model. ',
+      homeDocs: 'Docs tasks that used the current API',
+      homeDocsDesc: 'Docs benchmark runs, out of 16 per model, that installed, built, passed a smoke test and used the current API. ',
+      tokensAgents: 'Tokens per run, agent tasks',
+      tokensDocs: 'Tokens per run, docs tasks',
+      homeTokensAgentsDesc: 'Mean tokens the model processed per run on the 12 agent tasks, docs only (pinright with its security layer off) against the pinright MCP server, with 95% intervals. ',
+      homeTokensDocsDesc: 'Mean tokens the model processed per run on the 8 docs tasks, docs only against the pinright MCP server, with 95% intervals. ',
+      evAlerts: 'Whole-tree alerts per project',
+      evAlertsDesc: 'Mean whole-tree alerts per project for every arm with 95% intervals. ',
+      evPins: 'Direct dependencies with a known advisory',
+      evPinsDesc: 'Share of pinned direct dependencies with a known advisory for every arm with 95% intervals. ',
+      evDocs: 'Docs runs that wrote the current API',
+      evDocsDesc: 'Docs benchmark runs out of 16 that wrote the current API, with 95% intervals. ',
+      evTokensAgentsDesc: 'Mean tokens per run on the 12 agent tasks for no docs, docs only and the pinright MCP server, with 95% intervals. ',
+      evTokensDocsDesc: 'Mean tokens per run on the 8 docs tasks for no docs, docs only and the pinright MCP server, with 95% intervals. ',
+      evText: 'MCP tool text per run, agent tasks',
+      evTextDesc: 'Thousands of characters the MCP tools returned per run on the 12 agent tasks, docs only against the pinright MCP server, with 95% intervals. ',
+      fp: 'Hook blocked or asked, by source',
+      fpDesc: 'Share of public commands and manifest writes the hook blocked or asked about, before and after the fixes this replay prompted, by source. ',
+    },
+  },
+  es: {
+    suffix: '.es',
+    dec: (s) => s.replace('.', ','),
+    arm: { 'no-docs': 'Sin docs', 'docs-only': 'Solo docs', pinright: 'pinright MCP', 'hook-only': 'Solo hook', 'pinright+hook': 'MCP + hook', latest: 'Sin versión' },
+    source: {
+      'package.json scripts': 'Scripts de package.json',
+      'README / CONTRIBUTING lines': 'Líneas de README / CONTRIBUTING',
+      'Makefile / justfile targets': 'Objetivos de Makefile / justfile',
+      'GitHub Actions run: steps': 'Pasos run: de GitHub Actions',
+      'Dockerfile RUN': 'RUN de Dockerfile',
+      'Manifest writes': 'Escrituras de manifiestos',
+    },
+    alertsTip: (m, a, v, lo, hi, n) => `${m}, ${a}: ${v} alertas en todo el árbol por proyecto (intervalo del 95%: ${lo} a ${hi}, ${n} proyectos)`,
+    pinsTip: (m, a, k, n, p, lo, hi) => `${m}, ${a}: ${k} de ${n} dependencias directas con un aviso de seguridad conocido (${p}%, intervalo del 95%: ${lo}% a ${hi}%)`,
+    docsText: (v, n) => `${v} de ${n}`,
+    docsTip: (m, a, v, n) => `${m}, ${a}: ${v} de ${n} ejecuciones escribieron la API actual`,
+    tokensWhat: { tokens: 'tokens por ejecución', text: 'caracteres de texto de herramientas MCP por ejecución' },
+    where: { agents: 'tareas de agente', docs: 'tareas de docs' },
+    tokensTip: (m, a, where, v, what, lo, hi, n, saved) =>
+      `${m}, ${a}, ${where}: ${v} ${what} (intervalo del 95%: ${lo} a ${hi}, ${n} ejecuciones)${saved != null ? `; ${saved}% menos que solo docs en las mismas tareas` : ''}`,
+    fpBefore: 'Sin arreglos',
+    fpAfter: 'Con arreglos',
+    fpTip: (src, p, when, n) => `${src}: ${p}% bloqueado o con pregunta ${when} los arreglos (${n} entradas)`,
+    fpWhen: { before: 'antes de', after: 'después de' },
+    t: {
+      homeAlerts: 'Alertas en todo el árbol por proyecto',
+      homeAlertsDesc: 'Promedio de alertas de npm audit y pip-audit por proyecto generado, por modelo: sin docs, solo docs (pinright con su veredicto apagado) y el servidor MCP de pinright con el hook. ',
+      homePins: 'Dependencias directas fijadas con un aviso de seguridad conocido',
+      homePinsDesc: 'Proporción de dependencias directas que el agente fijó con al menos un aviso de seguridad de deps.dev, por modelo. ',
+      homeDocs: 'Tareas de docs que usaron la API actual',
+      homeDocsDesc: 'Ejecuciones del benchmark de docs, de 16 por modelo, que instalaron, compilaron, pasaron una prueba de humo y usaron la API actual. ',
+      tokensAgents: 'Tokens por ejecución, tareas de agente',
+      tokensDocs: 'Tokens por ejecución, tareas de docs',
+      homeTokensAgentsDesc: 'Promedio de tokens que el modelo procesó por ejecución en las 12 tareas de agente, solo docs (pinright con su capa de seguridad apagada) contra el servidor MCP de pinright, con intervalos del 95%. ',
+      homeTokensDocsDesc: 'Promedio de tokens que el modelo procesó por ejecución en las 8 tareas de docs, solo docs contra el servidor MCP de pinright, con intervalos del 95%. ',
+      evAlerts: 'Alertas en todo el árbol por proyecto',
+      evAlertsDesc: 'Promedio de alertas en todo el árbol por proyecto para cada brazo, con intervalos del 95%. ',
+      evPins: 'Dependencias directas con un aviso de seguridad conocido',
+      evPinsDesc: 'Proporción de dependencias directas fijadas con un aviso de seguridad conocido para cada brazo, con intervalos del 95%. ',
+      evDocs: 'Ejecuciones de docs que escribieron la API actual',
+      evDocsDesc: 'Ejecuciones del benchmark de docs, de 16, que escribieron la API actual, con intervalos del 95%. ',
+      evTokensAgentsDesc: 'Promedio de tokens por ejecución en las 12 tareas de agente para sin docs, solo docs y el servidor MCP de pinright, con intervalos del 95%. ',
+      evTokensDocsDesc: 'Promedio de tokens por ejecución en las 8 tareas de docs para sin docs, solo docs y el servidor MCP de pinright, con intervalos del 95%. ',
+      evText: 'Texto de herramientas MCP por ejecución, tareas de agente',
+      evTextDesc: 'Miles de caracteres que devolvieron las herramientas MCP por ejecución en las 12 tareas de agente, solo docs contra el servidor MCP de pinright, con intervalos del 95%. ',
+      fp: 'El hook bloqueó o preguntó, por fuente',
+      fpDesc: 'Proporción de comandos públicos y escrituras de manifiestos que el hook bloqueó o sobre los que preguntó, antes y después de los arreglos que motivó esta repetición, por fuente. ',
+    },
+  },
 };
 
 let uid = 0;
@@ -119,161 +211,168 @@ function bars({ title, desc, rows, max, width = 340, labelW = 92, valueW = 60, w
 
 const agents = readCsv('agents_by_model_arm.csv');
 const docs = readCsv('docs_by_model_arm.csv');
-const pick = (rows, model, arm) => rows.find((r) => r.model === model && r.arm === arm);
-
-function agentRows(arms, metric) {
-  const rows = [];
-  for (const model of MODELS) {
-    for (const arm of arms) {
-      const r = pick(agents, model, arm);
-      if (!r) continue;
-      if (metric === 'alerts') {
-        const v = num(r.alerts_per_project_mean);
-        const lo = num(r.alerts_per_project_ci95_lo);
-        const hi = num(r.alerts_per_project_ci95_hi);
-        rows.push({ group: model, label: ARM[arm].label, value: v, lo, hi, text: r1(v), key: ARM[arm].key,
-          tip: `${model}, ${ARM[arm].label}: ${r1(v)} whole-tree alerts per project (95% interval ${r1(lo)} to ${r1(hi)}, ${r.projects_resolved} projects)` });
-      } else {
-        const v = num(r.direct_deps_with_advisory_pct);
-        const lo = num(r.direct_deps_with_advisory_pct_ci95_lo);
-        const hi = num(r.direct_deps_with_advisory_pct_ci95_hi);
-        rows.push({ group: model, label: ARM[arm].label, value: v, lo, hi, text: `${Math.round(v)}%`, key: ARM[arm].key,
-          tip: `${model}, ${ARM[arm].label}: ${r.direct_deps_with_advisory} of ${r.direct_deps} direct dependencies with a known advisory (${Math.round(v)}%, 95% interval ${Math.round(lo)}% to ${Math.round(hi)}%)` });
-      }
-    }
-  }
-  return rows;
-}
-
-function docsRows(arms) {
-  const rows = [];
-  for (const model of MODELS) {
-    for (const arm of arms) {
-      const r = pick(docs, model, arm);
-      if (!r) continue;
-      const v = num(r.current_api_runs);
-      const n = num(r.runs);
-      rows.push({ group: model, label: ARM[arm].label, value: v, lo: (num(r.current_api_pct_ci95_lo) / 100) * n, hi: (num(r.current_api_pct_ci95_hi) / 100) * n,
-        text: `${v} of ${n}`, key: ARM[arm].key, tip: `${model}, ${ARM[arm].label}: ${v} of ${n} runs wrote the current API` });
-    }
-  }
-  return rows;
-}
-
 const tokens = readCsv('tokens_by_model_arm.csv');
-const k1 = (n) => `${r1(n)}k`;
-
-/** Tokens per run (metric 'tokens') or MCP tool text per run ('text'), in thousands, from tokens_by_model_arm.csv. */
-function tokenRows(benchmark, arms, metric) {
-  const col = metric === 'tokens' ? 'ktokens_total_per_run' : 'mcp_result_kchars_per_run';
-  const what = metric === 'tokens' ? 'tokens per run' : 'characters of MCP tool text per run';
-  const where = benchmark === 'agents' ? 'agent tasks' : 'docs tasks';
-  const rows = [];
-  for (const model of MODELS) {
-    for (const arm of arms) {
-      const r = tokens.find((x) => x.benchmark === benchmark && x.model === model && x.arm === arm);
-      if (!r) continue;
-      const v = num(r[col]);
-      const lo = num(r[`${col}_ci95_lo`]);
-      const hi = num(r[`${col}_ci95_hi`]);
-      const saved = metric === 'tokens' ? num(r.tokens_saved_vs_docs_only_pct) : num(r.mcp_text_saved_vs_docs_only_pct);
-      rows.push({ group: model, label: ARM[arm].label, value: v, lo, hi, text: k1(v), key: ARM[arm].key,
-        tip: `${model}, ${ARM[arm].label}, ${where}: ${k1(v)} ${what} (95% interval ${k1(lo)} to ${k1(hi)}, ${r.runs} runs)${saved != null ? `; ${Math.round(saved)}% less than docs only on the same tasks` : ''}` });
-    }
-  }
-  return rows;
-}
+const fpSources = readCsv('fp_by_source.csv').filter((r) => !r.source.startsWith('All sources'));
+const pick = (rows, model, arm) => rows.find((r) => r.model === model && r.arm === arm);
 
 const maxOf = (rows, whiskers) => Math.max(...rows.map((r) => (whiskers && r.hi != null ? r.hi : r.value)));
 const niceMax = (m) => { const step = m > 20 ? 10 : m > 5 ? 2 : 1; return Math.ceil(m / step) * step; };
 const tickSet = (max, step, fmt) => Array.from({ length: Math.floor(max / step) + 1 }, (_, i) => ({ v: i * step, label: fmt(i * step) }));
 
-/** One panel per model, all on the same scale, for the evidence page. */
-function perModel(rowsAll, { title, desc, max, ticks, width = 340 }) {
-  return MODELS.map((model) => {
-    const rows = rowsAll.filter((r) => r.group === model).map((r) => ({ ...r, group: model }));
-    return `<div class="chart-panel">${bars({ title: `${title}, ${model}`, desc, rows, max, width, labelW: 96, valueW: 46, whiskers: true, ticks })}</div>`;
-  }).join('\n');
-}
+/** Every chart partial in one language: { 'chart-home-alerts.html': '<svg…>', … }. */
+function chartsFor(L) {
+  const r1 = (n) => L.dec((Math.round(n * 10) / 10).toFixed(1));
+  const k1 = (n) => `${r1(n)}k`;
+  const armOf = (arm) => ({ label: L.arm[arm], key: KEY_ARMS.has(arm) });
 
-const files = {};
-
-// Home: the three arms a reader needs, no intervals (the evidence page has them).
-const homeArms = ['no-docs', 'docs-only', 'pinright+hook'];
-{
-  const rows = agentRows(homeArms, 'alerts');
-  files['chart-home-alerts.html'] = bars({ title: 'Whole-tree alerts per project', rows, max: maxOf(rows),
-    desc: 'Mean npm audit and pip-audit alerts per generated project, by model: no docs, docs only (pinright with its verdict off), and the pinright MCP server plus hook. ' + rows.map((r) => r.tip).join('. ') });
-}
-{
-  const rows = agentRows(homeArms, 'pins');
-  files['chart-home-pins.html'] = bars({ title: 'Direct dependencies pinned with a known advisory', rows, max: maxOf(rows),
-    desc: 'Share of direct dependencies the agent pinned with at least one deps.dev advisory, by model. ' + rows.map((r) => r.tip).join('. ') });
-}
-{
-  const rows = docsRows(['no-docs', 'pinright']);
-  files['chart-home-docs.html'] = bars({ title: 'Docs tasks that used the current API', rows, max: 16,
-    desc: 'Docs benchmark runs, out of 16 per model, that installed, built, passed a smoke test and used the current API. ' + rows.map((r) => r.tip).join('. ') });
-}
-
-// Home, efficiency: docs only against pinright, tokens per run with intervals, one chart per benchmark on one scale.
-{
-  const agentsRows = tokenRows('agents', ['docs-only', 'pinright'], 'tokens');
-  const docsRowsT = tokenRows('docs', ['docs-only', 'pinright'], 'tokens');
-  const max = niceMax(Math.max(maxOf(agentsRows, true), maxOf(docsRowsT, true)));
-  const ticks = tickSet(max, 50, (v) => (v ? `${v}k` : '0'));
-  files['chart-home-tokens-agents.html'] = bars({ title: 'Tokens per run, agent tasks', rows: agentsRows, max, width: 420, whiskers: true, ticks,
-    desc: 'Mean tokens the model processed per run on the 12 agent tasks, docs only (pinright with its security layer off) against the pinright MCP server, with 95% intervals. ' + agentsRows.map((r) => r.tip).join('. ') });
-  files['chart-home-tokens-docs.html'] = bars({ title: 'Tokens per run, docs tasks', rows: docsRowsT, max, width: 420, whiskers: true, ticks,
-    desc: 'Mean tokens the model processed per run on the 8 docs tasks, docs only against the pinright MCP server, with 95% intervals. ' + docsRowsT.map((r) => r.tip).join('. ') });
-}
-
-// Evidence: every arm, with 95% cluster-bootstrap intervals, one panel per model on a shared scale.
-const allArms = ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
-{
-  const rows = agentRows(allArms, 'alerts');
-  const max = niceMax(maxOf(rows, true));
-  files['chart-ev-alerts.html'] = perModel(rows, { title: 'Whole-tree alerts per project', max, ticks: tickSet(max, 10, String),
-    desc: 'Mean whole-tree alerts per project for every arm with 95% intervals. ' + rows.map((r) => r.tip).join('. ') });
-}
-{
-  const rows = agentRows(allArms, 'pins');
-  const max = niceMax(maxOf(rows, true));
-  files['chart-ev-pins.html'] = perModel(rows, { title: 'Direct dependencies with a known advisory', max, ticks: tickSet(max, 20, (v) => `${v}%`),
-    desc: 'Share of pinned direct dependencies with a known advisory for every arm with 95% intervals. ' + rows.map((r) => r.tip).join('. ') });
-}
-{
-  const rows = docsRows(['no-docs', 'docs-only', 'pinright']);
-  files['chart-ev-docs.html'] = perModel(rows, { title: 'Docs runs that wrote the current API', max: 16, ticks: tickSet(16, 4, String),
-    desc: 'Docs benchmark runs out of 16 that wrote the current API, with 95% intervals. ' + rows.map((r) => r.tip).join('. ') });
-}
-{
-  const effArms = ['no-docs', 'docs-only', 'pinright'];
-  const a = tokenRows('agents', effArms, 'tokens');
-  const d = tokenRows('docs', effArms, 'tokens');
-  const max = niceMax(Math.max(maxOf(a, true), maxOf(d, true)));
-  const ticks = tickSet(max, 50, (v) => (v ? `${v}k` : '0'));
-  files['chart-ev-tokens-agents.html'] = perModel(a, { title: 'Tokens per run, agent tasks', max, ticks,
-    desc: 'Mean tokens per run on the 12 agent tasks for no docs, docs only and the pinright MCP server, with 95% intervals. ' + a.map((r) => r.tip).join('. ') });
-  files['chart-ev-tokens-docs.html'] = perModel(d, { title: 'Tokens per run, docs tasks', max, ticks,
-    desc: 'Mean tokens per run on the 8 docs tasks for no docs, docs only and the pinright MCP server, with 95% intervals. ' + d.map((r) => r.tip).join('. ') });
-  const t = tokenRows('agents', ['docs-only', 'pinright'], 'text');
-  const tmax = niceMax(maxOf(t, true));
-  files['chart-ev-mcptext.html'] = perModel(t, { title: 'MCP tool text per run, agent tasks', max: tmax, ticks: tickSet(tmax, 20, (v) => (v ? `${v}k` : '0')),
-    desc: 'Thousands of characters the MCP tools returned per run on the 12 agent tasks, docs only against the pinright MCP server, with 95% intervals. ' + t.map((r) => r.tip).join('. ') });
-}
-{
-  const fp = readCsv('fp_by_source.csv').filter((r) => !r.source.startsWith('All sources'));
-  const rows = [];
-  for (const r of fp) {
-    const before = num(r.blocked_or_asked_pct_baseline);
-    const after = num(r.blocked_or_asked_pct_after_fixes);
-    rows.push({ group: r.source, label: 'Before fixes', value: before, text: `${before.toFixed(2)}%`, key: false, tip: `${r.source}: ${before.toFixed(2)}% blocked or asked before the fixes (${r.entries} entries)` });
-    rows.push({ group: r.source, label: 'After fixes', value: after, text: `${after.toFixed(2)}%`, key: true, tip: `${r.source}: ${after.toFixed(2)}% blocked or asked after the fixes (${r.entries} entries)` });
+  function agentRows(arms, metric) {
+    const rows = [];
+    for (const model of MODELS) {
+      for (const arm of arms) {
+        const r = pick(agents, model, arm);
+        if (!r) continue;
+        const A = armOf(arm);
+        if (metric === 'alerts') {
+          const v = num(r.alerts_per_project_mean);
+          const lo = num(r.alerts_per_project_ci95_lo);
+          const hi = num(r.alerts_per_project_ci95_hi);
+          rows.push({ group: model, label: A.label, value: v, lo, hi, text: r1(v), key: A.key,
+            tip: L.alertsTip(model, A.label, r1(v), r1(lo), r1(hi), r.projects_resolved) });
+        } else {
+          const v = num(r.direct_deps_with_advisory_pct);
+          const lo = num(r.direct_deps_with_advisory_pct_ci95_lo);
+          const hi = num(r.direct_deps_with_advisory_pct_ci95_hi);
+          rows.push({ group: model, label: A.label, value: v, lo, hi, text: `${Math.round(v)}%`, key: A.key,
+            tip: L.pinsTip(model, A.label, r.direct_deps_with_advisory, r.direct_deps, Math.round(v), Math.round(lo), Math.round(hi)) });
+        }
+      }
+    }
+    return rows;
   }
-  files['chart-ev-fp.html'] = bars({ title: 'Hook blocked or asked, by source', rows, max: 8, width: 560, labelW: 112, valueW: 60, ticks: tickSet(8, 2, (v) => `${v}%`),
-    desc: 'Share of public commands and manifest writes the hook blocked or asked about, before and after the fixes this replay prompted, by source. ' + rows.map((r) => r.tip).join('. ') });
+
+  function docsRows(arms) {
+    const rows = [];
+    for (const model of MODELS) {
+      for (const arm of arms) {
+        const r = pick(docs, model, arm);
+        if (!r) continue;
+        const A = armOf(arm);
+        const v = num(r.current_api_runs);
+        const n = num(r.runs);
+        rows.push({ group: model, label: A.label, value: v, lo: (num(r.current_api_pct_ci95_lo) / 100) * n, hi: (num(r.current_api_pct_ci95_hi) / 100) * n,
+          text: L.docsText(v, n), key: A.key, tip: L.docsTip(model, A.label, v, n) });
+      }
+    }
+    return rows;
+  }
+
+  /** Tokens per run (metric 'tokens') or MCP tool text per run ('text'), in thousands, from tokens_by_model_arm.csv. */
+  function tokenRows(benchmark, arms, metric) {
+    const col = metric === 'tokens' ? 'ktokens_total_per_run' : 'mcp_result_kchars_per_run';
+    const rows = [];
+    for (const model of MODELS) {
+      for (const arm of arms) {
+        const r = tokens.find((x) => x.benchmark === benchmark && x.model === model && x.arm === arm);
+        if (!r) continue;
+        const A = armOf(arm);
+        const v = num(r[col]);
+        const lo = num(r[`${col}_ci95_lo`]);
+        const hi = num(r[`${col}_ci95_hi`]);
+        const saved = metric === 'tokens' ? num(r.tokens_saved_vs_docs_only_pct) : num(r.mcp_text_saved_vs_docs_only_pct);
+        rows.push({ group: model, label: A.label, value: v, lo, hi, text: k1(v), key: A.key,
+          tip: L.tokensTip(model, A.label, L.where[benchmark], k1(v), L.tokensWhat[metric], k1(lo), k1(hi), r.runs, saved != null ? Math.round(saved) : null) });
+      }
+    }
+    return rows;
+  }
+
+  /** One panel per model, all on the same scale, for the evidence page. */
+  function perModel(rowsAll, { title, desc, max, ticks, width = 340 }) {
+    return MODELS.map((model) => {
+      const rows = rowsAll.filter((r) => r.group === model).map((r) => ({ ...r, group: model }));
+      return `<div class="chart-panel">${bars({ title: `${title}, ${model}`, desc, rows, max, width, labelW: 96, valueW: 46, whiskers: true, ticks })}</div>`;
+    }).join('\n');
+  }
+
+  const T = L.t;
+  const tips = (rows) => rows.map((r) => r.tip).join('. ');
+  const files = {};
+
+  // Home: the three arms a reader needs, no intervals (the evidence page has them).
+  const homeArms = ['no-docs', 'docs-only', 'pinright+hook'];
+  {
+    const rows = agentRows(homeArms, 'alerts');
+    files['chart-home-alerts.html'] = bars({ title: T.homeAlerts, rows, max: maxOf(rows), desc: T.homeAlertsDesc + tips(rows) });
+  }
+  {
+    const rows = agentRows(homeArms, 'pins');
+    files['chart-home-pins.html'] = bars({ title: T.homePins, rows, max: maxOf(rows), desc: T.homePinsDesc + tips(rows) });
+  }
+  {
+    const rows = docsRows(['no-docs', 'pinright']);
+    files['chart-home-docs.html'] = bars({ title: T.homeDocs, rows, max: 16, desc: T.homeDocsDesc + tips(rows) });
+  }
+
+  // Home, efficiency: docs only against pinright, tokens per run with intervals, one chart per benchmark on one scale.
+  {
+    const agentsRows = tokenRows('agents', ['docs-only', 'pinright'], 'tokens');
+    const docsRowsT = tokenRows('docs', ['docs-only', 'pinright'], 'tokens');
+    const max = niceMax(Math.max(maxOf(agentsRows, true), maxOf(docsRowsT, true)));
+    const ticks = tickSet(max, 50, (v) => (v ? `${v}k` : '0'));
+    files['chart-home-tokens-agents.html'] = bars({ title: T.tokensAgents, rows: agentsRows, max, width: 420, whiskers: true, ticks,
+      desc: T.homeTokensAgentsDesc + tips(agentsRows) });
+    files['chart-home-tokens-docs.html'] = bars({ title: T.tokensDocs, rows: docsRowsT, max, width: 420, whiskers: true, ticks,
+      desc: T.homeTokensDocsDesc + tips(docsRowsT) });
+  }
+
+  // Evidence: every arm, with 95% cluster-bootstrap intervals, one panel per model on a shared scale.
+  const allArms = ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
+  {
+    const rows = agentRows(allArms, 'alerts');
+    const max = niceMax(maxOf(rows, true));
+    files['chart-ev-alerts.html'] = perModel(rows, { title: T.evAlerts, max, ticks: tickSet(max, 10, String), desc: T.evAlertsDesc + tips(rows) });
+  }
+  {
+    const rows = agentRows(allArms, 'pins');
+    const max = niceMax(maxOf(rows, true));
+    files['chart-ev-pins.html'] = perModel(rows, { title: T.evPins, max, ticks: tickSet(max, 20, (v) => `${v}%`), desc: T.evPinsDesc + tips(rows) });
+  }
+  {
+    const rows = docsRows(['no-docs', 'docs-only', 'pinright']);
+    files['chart-ev-docs.html'] = perModel(rows, { title: T.evDocs, max: 16, ticks: tickSet(16, 4, String), desc: T.evDocsDesc + tips(rows) });
+  }
+  {
+    const effArms = ['no-docs', 'docs-only', 'pinright'];
+    const a = tokenRows('agents', effArms, 'tokens');
+    const d = tokenRows('docs', effArms, 'tokens');
+    const max = niceMax(Math.max(maxOf(a, true), maxOf(d, true)));
+    const ticks = tickSet(max, 50, (v) => (v ? `${v}k` : '0'));
+    files['chart-ev-tokens-agents.html'] = perModel(a, { title: T.tokensAgents, max, ticks, desc: T.evTokensAgentsDesc + tips(a) });
+    files['chart-ev-tokens-docs.html'] = perModel(d, { title: T.tokensDocs, max, ticks, desc: T.evTokensDocsDesc + tips(d) });
+    const t = tokenRows('agents', ['docs-only', 'pinright'], 'text');
+    const tmax = niceMax(maxOf(t, true));
+    files['chart-ev-mcptext.html'] = perModel(t, { title: T.evText, max: tmax, ticks: tickSet(tmax, 20, (v) => (v ? `${v}k` : '0')), desc: T.evTextDesc + tips(t) });
+  }
+  {
+    const rows = [];
+    const p2 = (n) => L.dec(n.toFixed(2));
+    for (const r of fpSources) {
+      const src = L.source[r.source] ?? r.source;
+      const before = num(r.blocked_or_asked_pct_baseline);
+      const after = num(r.blocked_or_asked_pct_after_fixes);
+      rows.push({ group: src, label: L.fpBefore, value: before, text: `${p2(before)}%`, key: false, tip: L.fpTip(src, p2(before), L.fpWhen.before, r.entries) });
+      rows.push({ group: src, label: L.fpAfter, value: after, text: `${p2(after)}%`, key: true, tip: L.fpTip(src, p2(after), L.fpWhen.after, r.entries) });
+    }
+    files['chart-ev-fp.html'] = bars({ title: T.fp, rows, max: 8, width: 560, labelW: 112, valueW: 60, ticks: tickSet(8, 2, (v) => `${v}%`), desc: T.fpDesc + tips(rows) });
+  }
+  return files;
 }
 
-for (const [name, svg] of Object.entries(files)) fs.writeFileSync(path.join(partials, name), `${svg}\n`);
-console.log(`charts: ${Object.keys(files).length} chart partials written to partials/`);
+let count = 0;
+for (const L of Object.values(LANGS)) {
+  for (const [name, svg] of Object.entries(chartsFor(L))) {
+    fs.writeFileSync(path.join(partials, name.replace(/\.html$/, `${L.suffix}.html`)), `${svg}\n`);
+    count++;
+  }
+}
+console.log(`charts: ${count} chart partials written to partials/ (English and Spanish)`);
