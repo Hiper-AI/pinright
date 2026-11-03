@@ -8,5 +8,6 @@ bench/agents/runs/
 pack.json
 *.tgz
 bench/docs/runs/
+bench/fp/sessions-corpus/
 build/
 paper/kit/pinright-paper-kit.zip
