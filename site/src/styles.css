@@ -1502,46 +1502,6 @@ tr.hl th {
   background: var(--good);
 }
 
-/* Example prompts */
-
-.prompts-head {
-  margin: 80px 0 20px;
-}
-
-.prompts {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (min-width: 760px) {
-  .prompts {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.prompts li {
-  margin: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-}
-
-.prompts li::before {
-  content: "\201C";
-  color: var(--muted);
-}
-
-.prompts li::after {
-  content: "\201D";
-  color: var(--muted);
-}
-
 /* Footer */
 
 .site-footer {
