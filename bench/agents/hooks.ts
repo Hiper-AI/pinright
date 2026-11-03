@@ -97,8 +97,9 @@ export function recovered(r: RunHooks): boolean | undefined {
   return r.steps.slice(k + 1).some((s) => s.tool === 'Bash' && INSTALL.test(s.target) && !s.isError);
 }
 
+/** The first problem the hook listed (its "- ..." lines follow a "pinright blocked ..." header). */
 const firstProblem = (reason?: string) =>
-  (reason ?? '').split('\n').map((l) => l.trim()).find((l) => l && !/^pinright:?$/i.test(l))?.replace(/\|/g, '/').slice(0, 180) ?? '';
+  (reason ?? '').split('\n').map((l) => l.trim()).find((l) => l.startsWith('- '))?.slice(2).replace(/\|/g, '/').slice(0, 180) ?? '';
 const short = (s: string, n = 70) => {
   const one = s.replace(/\s+/g, ' ').replace(/\|/g, '/').trim();
   return one.length > n ? `${one.slice(0, n - 3)}...` : one;

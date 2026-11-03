@@ -70,6 +70,27 @@ export interface RunScore {
   model?: string; deps: DepScore[]; tree?: TreeScore; build?: BuildScore;
 }
 
+/**
+ * The project directory inside work/: work/ itself when the manifest is there, else the one
+ * subdirectory (up to two levels down) that holds it. Agents with a shell often scaffold into
+ * a subdirectory (work/app/package.json); two candidates are ambiguous and count as none.
+ */
+function projectDir(work: string, eco: 'npm' | 'pypi'): string {
+  const file = eco === 'npm' ? 'package.json' : 'requirements.txt';
+  if (existsSync(join(work, file)) || !existsSync(work)) return work;
+  const found: string[] = [];
+  const walk = (dir: string, depth: number) => {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      if (!d.isDirectory() || d.name === 'node_modules' || d.name.startsWith('.')) continue;
+      const sub = join(dir, d.name);
+      if (existsSync(join(sub, file))) found.push(sub);
+      else if (depth < 2) walk(sub, depth + 1);
+    }
+  };
+  walk(work, 1);
+  return found.length === 1 ? found[0] : work;
+}
+
 function readManifest(work: string, eco: 'npm' | 'pypi'): Dep[] | undefined {
   if (eco === 'npm') {
     const p = join(work, 'package.json');
@@ -279,7 +300,7 @@ await Promise.all(
     while (next < jobs.length) {
       const i = next++;
       const { arm, name, task, rep, dir } = jobs[i];
-      const work = join(dir, 'work');
+      const work = projectDir(join(dir, 'work'), task.ecosystem);
       const t = readTranscript(dir);
       const manifest = readManifest(work, task.ecosystem);
       const deps: DepScore[] = [];

@@ -162,13 +162,28 @@ function runOne(job: Job, o: HarnessOptions): Promise<number> {
     }
     child.stdout.pipe(out);
     child.stderr.pipe(err);
-    const timer = setTimeout(() => {
-      // Killing the docker client leaves the container running; stop it by name.
-      if (o.sandbox) spawnSync('docker', ['kill', name], { windowsHide: true });
-      child.kill();
-    }, o.timeoutMs ?? 15 * 60_000);
+    // In the sandbox, stop the agent's CLI (not the container) so run-job.sh still copies the
+    // project out; the container itself is killed a minute later if it is still up.
+    const timers: NodeJS.Timeout[] = [];
+    const stopAgent = () => {
+      spawnSync('docker', ['exec', name, 'pkill', '-TERM', '-f', 'claude-code'], { windowsHide: true });
+      timers.push(setTimeout(() => {
+        spawnSync('docker', ['kill', name], { windowsHide: true });
+        child.kill();
+      }, 60_000));
+    };
+    if (o.sandbox) {
+      // The CLI has been seen to stay up for minutes after its final result; give it a grace period.
+      let seenResult = false;
+      child.stdout.on('data', (c: Buffer) => {
+        if (seenResult || !c.toString('utf8').includes('"type":"result"')) return;
+        seenResult = true;
+        timers.push(setTimeout(stopAgent, 60_000));
+      });
+    }
+    timers.push(setTimeout(() => (o.sandbox ? stopAgent() : child.kill()), o.timeoutMs ?? (o.sandbox ? 30 : 15) * 60_000));
     child.on('close', (code) => {
-      clearTimeout(timer);
+      timers.forEach(clearTimeout);
       const run = { tools, sandbox: o.sandbox ? o.sandbox.image : undefined };
       writeFileSync(join(dir, 'meta.json'), JSON.stringify({ ...job, prompt: undefined, model: o.model, ...run, exitCode: code, wallMs: Date.now() - started }, null, 2));
       console.log(`${job.arm.padEnd(12)} ${job.taskId}-r${job.rep} exit=${code} ${Math.round((Date.now() - started) / 1000)}s`);
