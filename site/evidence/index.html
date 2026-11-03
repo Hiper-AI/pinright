@@ -26,6 +26,7 @@
             <li><a href="#pins">Vulnerable pins</a></li>
             <li><a href="#ablation">Docs-only ablation</a></li>
             <li><a href="#docs">Docs benchmark</a></li>
+            <li><a href="#shell">With a shell</a></li>
             <li><a href="#hook">Hook false positives</a></li>
             <li><a href="#latency">Latency</a></li>
             <li><a href="#caveats">Caveats</a></li>
@@ -139,7 +140,28 @@
         </div>
       </section>
 
-      <section class="section soft" id="hook" aria-labelledby="hook-title">
+      <section class="section soft" id="shell" aria-labelledby="shell-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="shell-title">With a shell, every arm ended at the same 6 alerts</h2>
+            <p>The runs above give the agent Write and Read only, so it pins from memory. We ran the same 12 tasks again with Bash, each job in a disposable Linux container, with a real <code>npm install</code> or <code>pip install</code> and a build check: 216 runs over three models and three arms (no docs, hook only, MCP server and hook). Without the MCP server, the agent ran <code>npm view</code> or <code>pip index versions</code> before pinning in every run. Every arm and model ended with 6 whole-tree alerts, the ones the latest nuxt tree carries, and no direct dependency with an advisory. On these tasks, with a shell, pinright made no measurable difference to what got pinned.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <caption>Shell arm, 24 runs per arm and model, whole-tree alerts summed over the runs.</caption>
+              <thead><tr><th scope="col">Arm</th><th scope="col" class="num">Sonnet 5.5</th><th scope="col" class="num">Opus 5.5</th><th scope="col" class="num">Haiku 5.5</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">No docs</th><td class="num">6</td><td class="num">6</td><td class="num">6</td></tr>
+                <tr><th scope="row">Hook only</th><td class="num">6</td><td class="num">6</td><td class="num">6</td></tr>
+                <tr><th scope="row">MCP server and hook</th><td class="num">6</td><td class="num">6</td><td class="num">6</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="chart-note">The hook answered 897 tool calls and denied or asked on 48. None stopped a version with an advisory, because no agent tried to install one. 13 were false positives on <code>npm install &amp;&amp; npx tsc</code> in one command, and 13 came from a release published hours earlier that deps.dev did not list yet. Hook-only runs took 15% to 21% longer than no docs. Details in <a href="https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-shell.md">RESULTS-shell.md</a>.</p>
+        </div>
+      </section>
+
+      <section class="section" id="hook" aria-labelledby="hook-title">
         <div class="wrap">
           <div class="section-head">
             <h2 id="hook-title">The hook blocked or asked on 1.46% of 25,077 public commands</h2>
@@ -156,7 +178,7 @@
         </div>
       </section>
 
-      <section class="section" id="latency" aria-labelledby="latency-title">
+      <section class="section soft" id="latency" aria-labelledby="latency-title">
         <div class="wrap">
           <div class="section-head">
             <h2 id="latency-title">Latency</h2>
@@ -181,7 +203,7 @@
         </div>
       </section>
 
-      <section class="section soft" id="caveats" aria-labelledby="caveats-title">
+      <section class="section" id="caveats" aria-labelledby="caveats-title">
         <div class="wrap split">
           <div>
             <h2 id="caveats-title">Caveats</h2>
@@ -190,6 +212,7 @@
             <ul>
               <li>One vendor's models, all driven by Claude Code. Other agents may pin differently.</li>
               <li>Tasks we wrote, and new projects only. Editing an old codebase is a different problem.</li>
+              <li>The headline runs give the agent no shell. With a shell, the agents looked versions up themselves and every arm ended at the same 6 alerts.</li>
               <li>Advisory data from the two days of the run, 2026-11-02 and 2026-11-03. New advisories change the counts.</li>
               <li>2 runs per arm and model, so 16 to 24 runs per cell. Read the intervals, not just the bars.</li>
               <li>pinright knows published advisories only. A package with no advisory on record has none reported yet.</li>
@@ -199,7 +222,7 @@
         </div>
       </section>
 
-      <section class="section" id="data" aria-labelledby="data-title">
+      <section class="section soft" id="data" aria-labelledby="data-title">
         <div class="wrap split">
           <div>
             <h2 id="data-title">Data and report</h2>

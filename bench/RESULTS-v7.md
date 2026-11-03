@@ -141,6 +141,12 @@ benchmark now runs docs-only on all three models (v6: Sonnet only): 16, 15 and 1
   the MCP server, 0 direct dependencies and 114 to 116 alerts, 112 of them from one task whose current
   upstream release pulls a capped `pillow`. That set was scored before the two scorer fixes below; its
   run data shows the same misses only in no-docs runs, so its no-docs counts are low, not high.
+- **Shell arm** ([RESULTS-shell.md](RESULTS-shell.md)). The same 12 tasks with Bash, each job in a
+  disposable Linux container, with a real install and a build check: 216 runs over three models and
+  three arms (no docs, hook only, MCP and hook). Without the MCP server the agents looked versions up
+  with `npm view` or `pip index versions` in every run, and every arm ended at the same 6 whole-tree
+  alerts per model, from the latest `nuxt` tree. On these tasks, with a shell, pinright made no
+  measurable difference to what got pinned.
 - **Hook replay of real agent sessions** ([fp/RESULTS.md](fp/RESULTS.md#real-agent-sessions-2026-11-02)).
   156,977 tool calls from one month of the maintainers' Claude Code sessions. The hook asked or blocked
   on 0.46%; read by hand, 10 cases in 154,402 were false positives (0.006%) after the fixes, against 52
@@ -176,8 +182,11 @@ benchmark now runs docs-only on all three models (v6: Sonnet only): 16, 15 and 1
   the real-session replay. The hook arms ran without them. Agents here have no shell, so the hook read
   only their manifest writes.
 - **No shell.** Agents had only Write and Read. They could not run `npm install`, read a lockfile they
-  did not write, or test their code, so the hook only saw manifest writes. Real sessions with a shell
-  will differ.
+  did not write, or test their code, so the hook only saw manifest writes. In the shell arm
+  ([RESULTS-shell.md](RESULTS-shell.md)), with Bash in a container, the agents looked versions up
+  with `npm view` or `pip index versions` before pinning, and every arm (no docs, hook only, MCP and
+  hook) ended at the same 6 whole-tree alerts per model. On these tasks, the gap measured here is
+  the gap of an agent that pins from memory.
 - **The models know most of the docs tasks.** Without docs they already wrote the current API of
   Next 16, Tailwind 4, Zod 4 and Express 5; the docs benchmark separates arms mainly on AI SDK 7,
   LangChain 1 and, for Haiku, ESLint 10 and Pydantic 2. The post-cutoff set addresses this.

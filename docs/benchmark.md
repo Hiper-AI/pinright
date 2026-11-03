@@ -93,6 +93,9 @@ The prompt-injection scanner has its own measurements on real docs and an advers
 - The advisory data is from the two days of the run, 2026-11-02 and 2026-11-03. A version clean
   today can carry advisories tomorrow.
 - Agents had only Write and Read, no shell, so the hook saw manifest writes and no install commands.
+  In a second run with a shell ([bench/RESULTS-shell.md](../bench/RESULTS-shell.md)), the agents
+  looked versions up with `npm view` or `pip index versions` before pinning, and every arm, with or
+  without pinright, ended at the same 6 alerts per model.
 
 These numbers are not a promise. The share of direct dependencies with an advisory is counted
 through pinright's own deps.dev client; the whole-tree alerts from `npm audit` and `pip-audit` are

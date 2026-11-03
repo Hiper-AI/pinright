@@ -62,7 +62,9 @@ pinright.
 The 0.3 left is nuxt, whose current release pulls packages with no fix published; installing
 with no version at all gets the same 0.3. Docs alone, with the verdict off, already took alerts
 down to 0.3 to 3.5 per project. One vendor's models, tasks we wrote, no shell, two days of advisory
-data, and small n: intervals overlap between the pinright arms. The hook, replayed over 25,077
+data, and small n: intervals overlap between the pinright arms. In a second run with a shell, the
+agents looked versions up with `npm view` or `pip index` before pinning, and every arm, with or
+without pinright, ended at the same 6 alerts per model. The hook, replayed over 25,077
 commands from 180 public repositories, blocked or asked on 1.46%. Replayed over a month of our
 own agent sessions (154,402 distinct tool calls), it misread 10 of them.
 [Results and caveats](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v7.md) ·

@@ -84,6 +84,9 @@ list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 | v6 to v7, alerts per project | no docs 33.1/29.6/29.9 to 31.9/29.8/30.5; MCP 0.25 in both; docs-only 2.0/0.88/0.25 to 3.5/2.6/0.25 | `bench/RESULTS-v6.md` and `bench/RESULTS-v7.md` tables; `git show 0b8d229^:paper/kit/data/agents_by_model_arm.csv` |
 | Scorer fixes moved | Sonnet docs-only 0 to 2 vulnerable direct deps; Sonnet no-docs 66/160 to 66/164; Haiku no-docs 701 to 715 alerts | `bench/AGENTS.md`, "Scoring fixes"; commits `d038934`, `b8af24d`, `8846ff0` |
 | Claude Code 2.1.308, Write and Read only | | `bench/AGENTS.md` intro |
+| Shell arm: 216 runs (3 models x 3 arms x 12 tasks x 2), Bash in a disposable container; every arm 6 whole-tree alerts per model (latest nuxt tree, both nuxt-app runs), 0 direct deps with an advisory | "every arm ended at the same 6 alerts" (site, README, docs/benchmark.md, RESULTS-v7) | `bench/RESULTS-shell.md`, results table and "What we saw" |
+| Shell arm: without the MCP server the agent ran `npm view` / `pip index versions` before pinning in every run; with it in 1, 3 and 5 of 24 (Sonnet, Haiku, Opus) | "looked versions up themselves" | `bench/RESULTS-shell.md`, "What we saw" |
+| Shell arm hook: 897 tool calls, 28 denies and 20 asks; 13 false positives on `npm install && npx tsc`, 13 on `jsonpointer==3.8` missing from deps.dev; hook-only runs 15% to 21% longer than no docs | evidence page, shell section | `bench/RESULTS-shell.md`, "Hook events" |
 
 ## 4. Docs benchmark and probes (report 5.3, 5.4)
 
