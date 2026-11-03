@@ -67,11 +67,13 @@ export function writtenPath(abs: string, platform: NodeJS.Platform = process.pla
     const colon = p.indexOf(':', at + 1);
     if (colon > at) p = p.slice(0, colon);
   }
+  // Path rules of the platform being judged, so a Windows path stays one when read elsewhere.
+  const P = platform === 'win32' ? path.win32 : path.posix;
   try {
     return fs.realpathSync.native(p);
   } catch {
     try {
-      return path.join(fs.realpathSync.native(path.dirname(p)), path.basename(p));
+      return P.join(fs.realpathSync.native(P.dirname(p)), P.basename(p));
     } catch {
       return p;
     }

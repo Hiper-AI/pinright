@@ -12,7 +12,12 @@ beforeEach(() => {
 });
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-const deps = (inputs: Record<string, unknown>[], cwd: string) => inputs.flatMap((i) => intentsFromToolInput('', i, cwd)).map((i) => `${i.ecosystem}:${i.name}${i.spec ? ` ${i.spec}` : ''}`);
+// The dependencies the hook judges; unchanged lines that ride along for range checks are left out.
+const deps = (inputs: Record<string, unknown>[], cwd: string) =>
+  inputs
+    .flatMap((i) => intentsFromToolInput('', i, cwd))
+    .filter((i) => !i.contextOnly)
+    .map((i) => `${i.ecosystem}:${i.name}${i.spec ? ` ${i.spec}` : ''}`);
 
 describe('each agent stdin -> the same tool inputs', () => {
   it('Claude Code and Codex Bash: tool_input.command', () => {
