@@ -23,6 +23,11 @@ export interface TreePackage {
   path?: string[];
   /** Ranges the resolved graphs put on this package (manifests resolved through deps.dev, pip and Composer only). */
   requiredBy?: Constraint[];
+  /**
+   * A pin deps.dev has no record of yet that the registry named here publishes (manifests resolved through
+   * deps.dev). `package`: deps.dev does not know the package at all. Only OSV checked it; its tree was not resolved.
+   */
+  notIndexed?: { registry: string; package?: boolean };
 }
 
 export interface ParsedTree {

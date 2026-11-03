@@ -104,6 +104,9 @@ async function fromRegistry(eco: Ecosystem, name: string, version: string): Prom
   }
 }
 
+/** The registries existsInRegistry (typosquat.ts) and versionInRegistry ask, by the host named in the agent's notice. */
+export const REGISTRY_HOST: Partial<Record<Ecosystem, string>> = { npm: 'registry.npmjs.org', pypi: 'pypi.org', cargo: 'crates.io', rubygems: 'rubygems.org' };
+
 /** What the registry itself says about one version, for when deps.dev has not indexed it yet. */
 export interface RegistryVersion {
   /** Host that answered ("pypi.org"), named in the agent's notice. */

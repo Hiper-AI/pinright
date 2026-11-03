@@ -73,6 +73,6 @@ package name, without line or version, so GitHub keeps one alert per advisory an
 across lockfile churn and closes it when you fix the package. Rules: one per advisory (GHSA
 id, CVE in the description and tags, `security-severity` from the CVSS v3 vector or the GitHub
 severity), plus `pinright/malware`, `pinright/typosquat`, `pinright/unknown-package`,
-`pinright/unpublished-version`, `pinright/deprecated`, `pinright/policy-deny`,
+`pinright/unpublished-version`, `pinright/not-indexed`, `pinright/deprecated`, `pinright/policy-deny`,
 `pinright/policy-license`, `pinright/risk/<signal>`, `pinright/action-unpinned`,
 `pinright/action-missing-ref` and `pinright/action-unverified`.

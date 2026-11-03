@@ -160,6 +160,8 @@ function row(r: BatchResult): string {
       if (rep.safeVersionLicenses?.length && use === rep.safeVersion) notes.push(rep.safeVersionLicenses.join('/'));
       break;
   }
+  // Advisories from osv.dev alone (malware, a known CVE) on a version deps.dev has not indexed: the rest is still unknown.
+  if (rep.requested?.notIndexed && rep.verdict !== 'unknown') notes.push(`published on ${rep.requested.notIndexed}; deps.dev has no data for it yet`);
   const tree = rep.sameLineTree;
   if (tree && use === tree.version) notes.push(`its tree still pulls ${pullsText(tree.pulls, 2)}; ${tree.cleaner} (${tree.cleanerLine}) pulls fixed versions`);
   const risky = v.risk?.signals.filter((s) => s.level !== 'info') ?? [];

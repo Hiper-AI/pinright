@@ -9,14 +9,12 @@ import { sameLineTree } from './advisories/lineTree.js';
 import { getPackage } from './advisories/depsdev.js';
 import { config } from './config.js';
 import { type Ecosystem } from './ecosystems.js';
+import { REGISTRY_HOST } from './registry.js';
 import { assessRisk, type RiskReport } from './risk/index.js';
 import { weeklyDownloads } from './risk/sources.js';
 import { checkTyposquat, findLookalike, type TyposquatReport } from './typosquat.js';
 
 const YOUNG_PACKAGE_DAYS = 60;
-
-/** The registries existsInRegistry asks, by the host named in the agent's notice. */
-const REGISTRY_HOST: Partial<Record<Ecosystem, string>> = { npm: 'registry.npmjs.org', pypi: 'pypi.org', cargo: 'crates.io', rubygems: 'rubygems.org' };
 
 export interface Verdict {
   report: PackageReport;

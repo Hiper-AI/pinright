@@ -70,7 +70,10 @@ typosquat name, a package or version the registry does not have, deprecation and
 malware, a typosquat, an install script in a brand-new package or from a new publisher, a
 package or license the policy denies, and an action ref that does not exist. A
 `.pinright.json` that does not parse fails it even with `none`. A missing version, deprecation
-and the other risk signals show up in the report and never fail it.
+and the other risk signals show up in the report and never fail it. Neither does a package or
+version the registry publishes and deps.dev has not indexed yet (it does so with a delay of hours):
+it is reported as unverified (`pinright/not-indexed` in SARIF), with osv.dev's advisories for it
+counted as usual.
 
 ## Configuration
 

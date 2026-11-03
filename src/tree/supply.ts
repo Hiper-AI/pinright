@@ -15,7 +15,7 @@ import { checkPackage } from '../verdict.js';
 import { pool } from './audit.js';
 import { type TreePackage } from './lockfiles.js';
 
-export type SupplyKind = 'malware' | 'typosquat' | 'unknown-package' | 'unpublished-version' | 'deprecated' | 'risk';
+export type SupplyKind = 'malware' | 'typosquat' | 'unknown-package' | 'unpublished-version' | 'not-indexed' | 'deprecated' | 'risk';
 
 export interface SupplyFinding {
   kind: SupplyKind;
@@ -93,6 +93,32 @@ export function toFindings(p: TreePackage, v: Checked): SupplyFinding[] {
       message: `${p.name} is not in the public ${r.ecosystem} registry (${r.sources[0]}): a hallucinated name someone could register, or a private package. If it is yours, add it to "allow" in .pinright.json.`,
     });
     return out;
+  }
+  // deps.dev has not indexed it yet, the registry publishes it: unverified, said as the hook and the MCP say it.
+  if (r.notIndexed) {
+    out.push({
+      ...base,
+      kind: 'not-indexed',
+      blocking: false,
+      level: 'warning',
+      message:
+        `${p.name}@${p.version}: unverified. ${p.name} is published on ${r.notIndexed}, but deps.dev has no data for it yet (it indexes new packages with a delay of hours), ` +
+        'so its versions, advisories, age and install scripts could not be checked. A package this new is where most malicious publishes hide: review it before trusting it.',
+    });
+    return out;
+  }
+  if (r.requested?.notIndexed) {
+    const n = r.requested.advisories.length;
+    const osv = r.unavailable?.includes('osv.dev') ? 'osv.dev did not answer either' : n ? `osv.dev lists ${n} advisor${n === 1 ? 'y' : 'ies'} for it` : 'osv.dev lists no advisories for it';
+    out.push({
+      ...base,
+      kind: 'not-indexed',
+      blocking: false,
+      level: 'note',
+      message:
+        `${p.name}@${p.version}: unverified. It is published on ${r.requested.notIndexed}, but deps.dev has no data for this version yet (it indexes new releases with a delay of hours); ` +
+        `${osv}, and its licenses, deprecation status and risk signals could not be checked.`,
+    });
   }
   if (r.requested?.verdict === 'unknown-package') {
     out.push({

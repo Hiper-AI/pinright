@@ -118,6 +118,13 @@ const KINDS: Record<string, { name: string; short: string; full: string; level: 
     score: 5.0,
     tags: ['security', 'supply-chain'],
   },
+  'pinright/not-indexed': {
+    name: 'NotIndexedYet',
+    short: 'Dependency is unverified: deps.dev has no data for it yet',
+    full: 'The registry publishes this package or version, but deps.dev has not indexed it yet (it indexes new releases with a delay of hours). Advisories come from osv.dev alone; licenses, deprecation and risk signals could not be checked. A package deps.dev has never seen is hours old: review it before trusting it, or run the audit again later.',
+    level: 'note',
+    tags: ['security', 'supply-chain'],
+  },
   'pinright/deprecated': {
     name: 'DeprecatedVersion',
     short: 'Dependency version is deprecated',

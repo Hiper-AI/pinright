@@ -66,6 +66,17 @@ pinright blocked this dependency change:
 Verdicts: `ok`, `vulnerable`, `malicious`, `deprecated`, `possible-typosquat`, `unknown-package`,
 `unknown`. `unknown` means a data source did not answer; pinright never says `ok` when it could not check.
 
+deps.dev indexes new releases and new packages with a delay of hours. Before any tool calls a package
+or version missing, pinright asks the registry (npm, PyPI, crates.io, RubyGems). If the registry
+publishes it, the answer is unverified, not missing: `check-package` and the hook give `unknown` and say
+deps.dev has no data for it yet, `check-packages` marks the row UNVERIFIED (or adds that note to a row
+whose osv.dev advisories make it vulnerable or malware), and `check-manifest` keeps an exact pin of a
+manifest in the tree, so osv.dev still checks it, with a note that its dependencies, licenses,
+deprecation status and risk signals were not checked. A range on a package deps.dev has never seen
+cannot be resolved, so `check-manifest` notes it as unverified and not audited. In `pinright audit` and
+the GitHub Action these entries are a `pinright/not-indexed` finding: a note for a fresh version, a
+warning for a package deps.dev has never seen, and never a failure on their own.
+
 ## How the safe version is chosen
 
 The newest version that is stable (no `rc`, `beta`, `canary`, Go pseudo-versions), not deprecated,

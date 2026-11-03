@@ -11,6 +11,8 @@ import { compareVersionsDesc, isPrerelease } from '../advisories/resolve.js';
 import { pickComposerVersion } from '../composer/constraint.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { pickMavenVersion } from '../jvm/maven.js';
+import { REGISTRY_HOST, versionInRegistry } from '../registry.js';
+import { existsInRegistry } from '../typosquat.js';
 import { type ParsedTree, type TreePackage, normalizePypiName } from './lockfiles.js';
 import { graphConstraints } from './constraints.js';
 
@@ -83,6 +85,40 @@ export function pickVersion(eco: Ecosystem, spec: string, versions: DepsDevVersi
   return names.includes(s) ? s : def;
 }
 
+/** The one version an exact pin names ("==3.8", "3.8.0", "=1.2.3"), or undefined for a range. */
+export function exactVersion(eco: Ecosystem, spec: string): string | undefined {
+  const s = spec.trim();
+  const m =
+    eco === 'pypi'
+      ? s.match(/^===?\s*(\d[\w.!+-]*)$/)
+      : eco === 'npm'
+        ? s.match(/^=?\s*v?(\d+\.\d+\.\d+(?:[-+][\w.+-]*)?)$/)
+        : eco === 'cargo'
+          ? s.match(/^=\s*(\d+\.\d+\.\d+(?:[-+][\w.+-]*)?)$/)
+          : eco === 'rubygems'
+            ? s.match(/^=?\s*(\d[\w.]*)$/)
+            : undefined;
+  return m?.[1];
+}
+
+/**
+ * A declared dependency deps.dev cannot place: no record of the package, or no version that fits the spec.
+ * deps.dev indexes new releases and packages hours late, so the registry is asked before the entry is
+ * called missing (one cached lookup). An exact pin the registry publishes is kept in the tree, so OSV
+ * still checks it; a range on a package deps.dev has never seen cannot be resolved, only noted.
+ */
+async function notIndexed(eco: Ecosystem, name: string, spec: string, packageKnown: boolean): Promise<{ version?: string; registry: string } | undefined> {
+  const host = REGISTRY_HOST[eco];
+  if (!host) return undefined;
+  const version = exactVersion(eco, spec);
+  if (version) {
+    const reg = await versionInRegistry(eco, name, version);
+    return reg ? { version, registry: reg.registry } : undefined;
+  }
+  if (packageKnown) return undefined;
+  return (await existsInRegistry(eco, name)) ? { registry: host } : undefined;
+}
+
 /** Resolve a manifest's declared ranges into a tree with paths. */
 export async function resolveManifest(tree: ParsedTree, notes: string[]): Promise<TreePackage[]> {
   const eco = tree.ecosystem;
@@ -90,13 +126,22 @@ export async function resolveManifest(tree: ParsedTree, notes: string[]): Promis
   for (const d of tree.declared ?? []) {
     const name = eco === 'pypi' ? normalizePypiName(d.name) : d.name;
     const pkg = await getPackage(eco, name).catch(() => undefined);
-    if (!pkg) {
-      notes.push(`${name}: not found in the ${eco} registry (${eco === 'composer' ? 'Packagist' : 'deps.dev'}).`);
-      continue;
-    }
-    const version = pickVersion(eco, d.spec, pkg.versions);
+    const version = pkg ? pickVersion(eco, d.spec, pkg.versions) : undefined;
     if (!version) {
-      notes.push(`${name}: no published version satisfies "${d.spec}".`);
+      // A deps.dev miss is not the registry's: an entry the registry publishes is unverified, not missing.
+      const fresh = await notIndexed(eco, name, d.spec, Boolean(pkg));
+      if (fresh?.version) {
+        out.set(`${name}@${fresh.version}`, { name, version: fresh.version, direct: true, dev: d.dev, path: [name], notIndexed: { registry: fresh.registry, package: !pkg } });
+      } else if (fresh) {
+        notes.push(
+          `${name}: unverified. It is published on ${fresh.registry}, but deps.dev has no data for it yet (it indexes new packages with a delay of hours), ` +
+            `so the version "${d.spec}" installs could not be told and it was not audited.`,
+        );
+      } else if (!pkg) {
+        notes.push(`${name}: not found in the ${eco} registry (${eco === 'composer' ? 'Packagist' : 'deps.dev'}).`);
+      } else {
+        notes.push(`${name}: no published version satisfies "${d.spec}".`);
+      }
       continue;
     }
     out.set(`${name}@${version}`, { name, version, direct: true, dev: d.dev, path: [name] });

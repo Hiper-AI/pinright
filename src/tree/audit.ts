@@ -174,6 +174,18 @@ export async function auditTree(tree: ParsedTree, opts: { includeDev?: boolean; 
     });
   });
 
+  // Pins deps.dev has not indexed yet: in the tree, but only OSV vouches for them. Said the way the hook and the MCP say it.
+  packages.forEach((p, i) => {
+    if (!p.notIndexed) return;
+    const n = ids[i].length;
+    const osv = n ? `osv.dev lists ${n} advisor${n === 1 ? 'y' : 'ies'} for it` : 'osv.dev lists no advisories for it';
+    notes.push(
+      `${p.name} ${p.version}: unverified. It is published on ${p.notIndexed.registry}, but deps.dev has no data for ${p.notIndexed.package ? 'the package' : 'this version'} yet ` +
+        `(it indexes new ${p.notIndexed.package ? 'packages' : 'releases'} with a delay of hours); ${osv}, its dependencies were not resolved, ` +
+        'and its licenses, deprecation status and risk signals could not be checked.',
+    );
+  });
+
   const rank = (f: TreeFinding) => (f.malicious ? -1 : f.severity ? SEV_ORDER.indexOf(f.severity) : 9);
   findings.sort((a, b) => rank(a) - rank(b) || b.advisories.length - a.advisories.length);
 

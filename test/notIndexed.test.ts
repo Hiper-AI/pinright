@@ -33,6 +33,11 @@ const { resolvePolicy } = await import('../src/teamConfig.js');
 const { securityNotice } = await import('../src/format.js');
 const { formatBatch } = await import('../src/batch.js');
 const { HttpError } = await import('../src/http.js');
+const { auditTree, formatTreeAudit } = await import('../src/tree/audit.js');
+const { parseFile } = await import('../src/tree/lockfiles.js');
+const { toFindings } = await import('../src/tree/supply.js');
+const { buildSarif } = await import('../src/sarif/build.js');
+const { annotations } = await import('../src/sarif/summary.js');
 
 const DD = '/v3/systems/pypi/packages/jsonpointer';
 const PYPI_38 = '/pypi/jsonpointer/3.8/json';
@@ -144,5 +149,94 @@ describe('a package deps.dev has never seen but the registry publishes', () => {
     const d = await decide([{ ecosystem: 'pypi', name: 'zqvplorbatch', source: 'pip install' }], resolvePolicy(undefined, {}));
     expect(d.action).toBe('deny');
     expect(d.problems.join('\n')).toMatch(/no such package/);
+  });
+});
+
+describe('check-packages: a fresh version with advisories', () => {
+  it('the row says deps.dev has no data for it, next to the advisories osv.dev lists', async () => {
+    fixtures.set(PYPI_38, { urls: [{ upload_time_iso_8601: '2026-11-02T21:52:11Z' }] });
+    fixtures.set('/v1/query', { vulns: [{ id: 'GHSA-j1', summary: 'Pointer escape', database_specific: { severity: 'HIGH' } }] });
+    const v = await checkPackage('pypi', 'jsonpointer', '3.8');
+    expect(v.report.verdict).toBe('vulnerable');
+    const table = formatBatch([{ ecosystem: 'pypi', name: 'jsonpointer', version: '3.8', verdict: v }]);
+    expect(table).toMatch(/\| pypi jsonpointer \| 3\.8 \| VULNERABLE \(1, HIGH\) \|.*published on pypi\.org; deps\.dev has no data for it yet \|/);
+  });
+});
+
+describe('check-manifest: deps.dev has not indexed a declared dependency yet', () => {
+  /** A manifest (one line is a range), so the tree is resolved through deps.dev. */
+  const manifest = 'jsonpointer==3.8\nzqvplorbatch>=0.1\n';
+
+  it('a fresh pin is audited by osv.dev and noted unverified; a fresh package is noted, not "not found"', async () => {
+    fixtures.set(PYPI_38, { urls: [{ upload_time_iso_8601: '2026-11-02T21:52:11Z' }] });
+    fixtures.set('/pypi/zqvplorbatch/json', { info: { name: 'zqvplorbatch' } });
+    fixtures.set('/v1/querybatch', { results: [{}] });
+    const packages: import('../src/tree/lockfiles.js').TreePackage[] = [];
+    const a = await auditTree(parseFile('requirements.txt', manifest), { packagesOut: packages });
+    expect(packages).toMatchObject([{ name: 'jsonpointer', version: '3.8', direct: true, notIndexed: { registry: 'pypi.org', package: false } }]);
+    const text = formatTreeAudit(a);
+    expect(text).toContain(
+      'Note: jsonpointer 3.8: unverified. It is published on pypi.org, but deps.dev has no data for this version yet (it indexes new releases with a delay of hours); ' +
+        'osv.dev lists no advisories for it, its dependencies were not resolved, and its licenses, deprecation status and risk signals could not be checked.',
+    );
+    expect(text).toContain(
+      'Note: zqvplorbatch: unverified. It is published on pypi.org, but deps.dev has no data for it yet (it indexes new packages with a delay of hours), ' +
+        'so the version ">=0.1" installs could not be told and it was not audited.',
+    );
+    expect(text).not.toMatch(/not found in the pypi registry|no published version satisfies/);
+  });
+
+  it('osv.dev advisories on the fresh pin are findings, and the note counts them', async () => {
+    fixtures.set(PYPI_38, { urls: [] });
+    fixtures.set('/v1/querybatch', { results: [{ vulns: [{ id: 'GHSA-j1' }] }] });
+    fixtures.set('/v1/vulns/GHSA-j1', { id: 'GHSA-j1', summary: 'Pointer escape', database_specific: { severity: 'HIGH' } });
+    const a = await auditTree(parseFile('requirements.txt', manifest));
+    expect(a.findings).toMatchObject([{ name: 'jsonpointer', version: '3.8', severity: 'HIGH' }]);
+    expect(formatTreeAudit(a)).toContain('osv.dev lists 1 advisory for it, its dependencies were not resolved');
+  });
+
+  it('only an exact pin names a version to ask the registry about', async () => {
+    const { exactVersion } = await import('../src/tree/resolveManifest.js');
+    expect(['==3.8', '===3.8', '>=3.8', '~=3.8'].map((s) => exactVersion('pypi', s))).toEqual(['3.8', '3.8', undefined, undefined]);
+    expect(['1.2.3', '=1.2.3', 'v1.2.3', '^1.2.3', '1.2', '1.2.3-rc.1'].map((s) => exactVersion('npm', s))).toEqual(['1.2.3', '1.2.3', '1.2.3', undefined, undefined, '1.2.3-rc.1']);
+    // Cargo's bare "1.2.3" means "^1.2.3".
+    expect(['=1.2.3', '1.2.3'].map((s) => exactVersion('cargo', s))).toEqual(['1.2.3', undefined]);
+    expect(exactVersion('maven', '1.2.3')).toBeUndefined();
+  });
+
+  it('the registry does not publish them either: the notes it always gave', async () => {
+    const a = await auditTree(parseFile('requirements.txt', manifest));
+    expect(a.packages).toBe(0);
+    const text = formatTreeAudit(a);
+    expect(text).toContain('Note: jsonpointer: no published version satisfies "==3.8".');
+    expect(text).toContain('Note: zqvplorbatch: not found in the pypi registry (deps.dev).');
+    expect(text).not.toContain('unverified');
+  });
+
+  it('audit (CLI and Action): a supply finding per entry, rendered in SARIF and as an annotation, never blocking', async () => {
+    fixtures.set(PYPI_38, { urls: [] });
+    fixtures.set('/pypi/zqvplorbatch/json', { info: { name: 'zqvplorbatch' } });
+    const version = toFindings({ name: 'jsonpointer', version: '3.8', direct: true }, await checkPackage('pypi', 'jsonpointer', '3.8'));
+    expect(version).toMatchObject([{ kind: 'not-indexed', blocking: false, level: 'note' }]);
+    expect(version[0].message).toBe(
+      'jsonpointer@3.8: unverified. It is published on pypi.org, but deps.dev has no data for this version yet (it indexes new releases with a delay of hours); ' +
+        'osv.dev lists no advisories for it, and its licenses, deprecation status and risk signals could not be checked.',
+    );
+    const pkg = toFindings({ name: 'zqvplorbatch', version: '0.1.0', direct: true }, await checkPackage('pypi', 'zqvplorbatch', '0.1.0'));
+    expect(pkg).toMatchObject([{ kind: 'not-indexed', blocking: false, level: 'warning' }]);
+    expect(pkg[0].message).toMatch(/^zqvplorbatch@0\.1\.0: unverified\. zqvplorbatch is published on pypi\.org, but deps\.dev has no data for it yet/);
+    const file = 'requirements.txt';
+    fixtures.set('/v1/querybatch', { results: [{}] });
+    const log = buildSarif({
+      root: '.',
+      toolVersion: '0.0.0',
+      trees: [{ audit: { ...(await auditTree(parseFile(file, 'jsonpointer==3.6.0\n'))), file }, supply: [...version, ...pkg] }],
+      read: () => 'jsonpointer==3.8\nzqvplorbatch==0.1.0\n',
+    });
+    const results = log.runs[0].results as { ruleId: string; level: string }[];
+    expect(results.map((r) => [r.ruleId, r.level])).toEqual(expect.arrayContaining([['pinright/not-indexed', 'note'], ['pinright/not-indexed', 'warning']]));
+    const ann = annotations(log).join('\n');
+    expect(ann).toMatch(/::warning .*::zqvplorbatch@0\.1\.0: unverified/);
+    expect(ann).toMatch(/::notice .*::jsonpointer@3\.8: unverified/);
   });
 });
