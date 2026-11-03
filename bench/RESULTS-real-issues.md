@@ -1,6 +1,6 @@
 # pinright agent benchmark: tasks taken from public GitHub issues
 
-The v6 agent benchmark ([RESULTS-v6.md](RESULTS-v6.md)) uses 12 tasks we wrote. A reader can fairly
+The main agent benchmark ([RESULTS-v7.md](RESULTS-v7.md), and v6 before it) uses 12 tasks we wrote. A reader can fairly
 ask whether we picked them to favor pinright. This set tests that with 12 tasks we did not write:
 each prompt is the body of a public GitHub issue that asks for an example or a new piece of code,
 picked by the rule below. The harness, arms, scorer and statistics are the v6 ones.
@@ -160,7 +160,8 @@ and, for Opus, one per run in `mastra-deep-research`; the no-pin reference has t
 ## How this set differs from v6
 
 - **The no-docs baseline is lower.** No docs averaged 22 to 25 alerts per project here, against 30
-  to 33 in v6, and 26% to 29% of its direct pins carried an advisory, against 40% to 42%. Three
+  to 33 in v6 (30 to 32 in v7), and 26% to 29% of its direct pins carried an advisory, against 40% to
+  42% in both. Three
   of the twelve issue tasks (`kittentts-streaming`, `openevolve-symreg`, `livekit-ultravox` for
   two models) came out clean or nearly clean without docs.
 - **The MCP arm keeps its direct pins clean** (0 of 103 to 118 per model), as in v6. On the 11

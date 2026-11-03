@@ -1,5 +1,8 @@
 # pinright benchmark v6: results across three models
 
+History. The current results, from a rerun on the 1.0.0 release code, are in
+[RESULTS-v7.md](RESULTS-v7.md).
+
 Run on 2026-11-01 against the pre-release commit `b2fcfe2`, plus a benchmark-only ablation flag.
 Claude Code 2.1.308 in headless mode, driving Sonnet 5.5, Haiku 5.5 and Opus 5.5. **The code under
 test is not the 1.0.0 code**: 28 files under `src/` changed between that commit and the release

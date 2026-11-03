@@ -1,9 +1,9 @@
 /**
  * Cross-model summary of the agent and docs benchmarks: one row per model and arm.
- * Fills the generated part of bench/RESULTS-v6.md (between the "generated" markers;
+ * Fills the generated part of bench/RESULTS-v7.md (between the "generated" markers;
  * the hand-written text around it is kept).
  *
- *   npx tsx bench/summary.ts --agents <stamp,stamp,...> --docs <stamp,stamp,...> [--out bench/RESULTS-v6.md]
+ *   npx tsx bench/summary.ts --agents <stamp,stamp,...> --docs <stamp,stamp,...> [--out bench/RESULTS-v7.md]
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -19,7 +19,7 @@ const opt = (n: string) => (args.includes(`--${n}`) ? args[args.indexOf(`--${n}`
 const root = resolve(import.meta.dirname, '..');
 const agentStamps = (opt('agents') ?? '').split(',').filter(Boolean);
 const docsStamps = (opt('docs') ?? '').split(',').filter(Boolean);
-const file = resolve(root, opt('out') ?? join('bench', 'RESULTS-v6.md'));
+const file = resolve(root, opt('out') ?? join('bench', 'RESULTS-v7.md'));
 
 function load<T extends { arm: string; model?: string }>(kind: 'agents' | 'docs', stamp: string) {
   const dir = join(root, 'bench', kind, 'runs', stamp);
