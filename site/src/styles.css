@@ -304,24 +304,11 @@ pre {
   text-decoration: none;
 }
 
-.mark {
-  width: 22px;
+/* The pinright lockup (mark and wordmark), drawn in currentColor so it follows the theme. */
+.lockup {
+  display: block;
+  width: auto;
   height: 22px;
-}
-
-.mark-bg {
-  fill: var(--ink);
-}
-
-.mark-fg {
-  fill: var(--bg);
-}
-
-.wordmark {
-  font-family: var(--sans);
-  font-size: 1.0625rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
 }
 
 .nav {
@@ -1539,9 +1526,14 @@ tr.hl th {
   margin-top: 8px;
 }
 
-.footer-brand .wordmark {
-  margin-bottom: 12px;
+.footer-lockup {
+  display: inline-block;
+  margin-bottom: 14px;
   color: var(--ink);
+}
+
+.footer-lockup .lockup {
+  height: 22px;
 }
 
 .footer-brand a {
@@ -1802,11 +1794,6 @@ ul.small li + li {
   overflow: hidden;
 }
 
-.footer-brand .wordmark {
-  display: inline-block;
-  font-size: 1.0625rem;
-  text-decoration: none;
-}
 
 .df-band {
   position: relative;

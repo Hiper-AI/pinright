@@ -72,6 +72,7 @@ current versions do most of the work.
 | `visuals/cli/pinright-check-lodash` | CLI for people, same verdict the agent gets |
 | `visuals/cli/pinright-audit-sarif`, `pinright-sarif-summary` | CI and code-scanning story |
 | `visuals/landing/*` | The pinright.dev home page (desktop light and dark, phone full length and one screen per section), with the v7 numbers |
+| `../../assets/brand/*` | The pinright logo: `lockup.svg` (ink, for light backgrounds), `lockup-white.svg` (for dark backgrounds), `lockup-currentcolor.svg` (takes the text color) and `mark.svg` (the check and dot alone, switches color with the system theme) |
 
 Every figure comes as SVG and 2x PNG, light (`<id>`) and dark (`<id>-dark`), with a caption in
 `figures/<id>.caption.md` and alt text in `copy/alt-text.md`. The charts are generated from the CSVs

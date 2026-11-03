@@ -5,23 +5,28 @@
  *
  *   npx tsx paper/kit/make-cover.ts [--no-png]
  *
- * The mark is the provisional logo from site/partials/header.html.
+ * The lockup (mark and wordmark) is assets/brand/lockup-currentcolor.svg, drawn in the theme ink.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AFTER, esc, MONO, type Mode, pngFromSvg, SANS, terminal, text, THEME } from './svg.js';
+import { esc, MONO, type Mode, pngFromSvg, SANS, terminal, text, THEME } from './svg.js';
 
 const here = import.meta.dirname;
 const outDir = join(here, '..', '..', 'assets');
 mkdirSync(outDir, { recursive: true });
 const wantPng = !process.argv.includes('--no-png');
 
+// The lockup's drawing, without its outer <svg> and <title>; it paints in currentColor.
+const LOCKUP = readFileSync(join(outDir, 'brand', 'lockup-currentcolor.svg'), 'utf8')
+  .replace(/^[\s\S]*?<svg[^>]*>/, '')
+  .replace(/<\/svg>\s*$/, '')
+  .replace(/<title>[\s\S]*?<\/title>/, '');
+
 const W = 1280;
 const H = 640;
 
 function cover(mode: Mode): string {
   const t = THEME[mode];
-  const accent = AFTER[mode];
   const msg = readFileSync(join(here, 'visuals', 'cli', 'hook-block.txt'), 'utf8').trimEnd().split('\n');
   const term = terminal({
     mode,
@@ -46,10 +51,9 @@ function cover(mode: Mode): string {
   // Mark and wordmark.
   const mx = 72;
   const my = 150;
-  parts.push(`<rect x="${mx}" y="${my}" width="56" height="56" rx="14" fill="${accent}"/>`);
-  parts.push(`<circle cx="${mx + 28}" cy="${my + 21}" r="10" fill="${t.bg}"/>`);
-  parts.push(`<rect x="${mx + 25.5}" y="${my + 28}" width="5" height="19" rx="2.5" fill="${t.bg}"/>`);
-  parts.push(text(mx + 74, my + 44, 'pinright', { size: 54, weight: 700, fill: t.ink, font: MONO }));
+  // The lockup's viewBox is 1000 units tall with the baseline at 0 and the top at -776.
+  const scale = 56 / 1000;
+  parts.push(`<g color="${t.ink}" transform="translate(${mx} ${my + 776 * scale}) scale(${scale})">${LOCKUP}</g>`);
 
   // Promise and the four shapes it ships in.
   const lines = ['Version-accurate docs and a', 'dependency check for coding agents.'];

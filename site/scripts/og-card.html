@@ -1,41 +1,39 @@
 <!doctype html>
 <!-- Source of public/og.png (1200x630). Screenshot it at 1200x630, device scale 1, with any headless
-     browser; scripts/README in site/README.md has the command. Not part of the site build. -->
+     browser; site/README.md has the command. Not part of the site build. Fonts and the lockup load
+     from site/public, so open this file from its place in the repository. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <style>
+  @font-face { font-family: "Geist"; src: url("../public/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "Geist Mono"; src: url("../public/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; }
   html, body { margin: 0; }
   body {
     width: 1200px; height: 630px; overflow: hidden; box-sizing: border-box;
-    background: #fbfaf7; color: #111110;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #fafafa; color: #0a0a0a;
+    font-family: "Geist", system-ui, sans-serif;
     padding: 64px 72px; display: flex; flex-direction: column; justify-content: space-between;
   }
-  .brand { display: flex; align-items: center; gap: 16px; }
-  .brand svg { width: 52px; height: 52px; }
-  .wm { font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; font-weight: 700; font-size: 44px; letter-spacing: -1.5px; }
-  h1 { font-size: 50px; line-height: 1.08; letter-spacing: -1.6px; margin: 0; font-weight: 650; max-width: 980px; }
-  .term { background: #f1f0ec; border: 1px solid #d6d3ca; border-radius: 14px; padding: 20px 24px;
-    font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; font-size: 19px; line-height: 1.5; color: #1d1d1b; }
-  .run { font-weight: 700; }
-  .bad { color: #b3261e; font-weight: 700; }
-  .good { color: #146c43; font-weight: 700; }
-  .foot { display: flex; justify-content: space-between; font-size: 22px; color: #5c5b57; }
-  .foot b { color: #111110; font-weight: 600; }
+  .lockup { height: 44px; width: auto; display: block; align-self: flex-start; }
+  h1 { font-size: 54px; line-height: 1.06; letter-spacing: -0.035em; margin: 0; font-weight: 600; max-width: 1000px; }
+  .term { background: #111111; border-radius: 14px; padding: 22px 26px; color: #ededed;
+    font-family: "Geist Mono", ui-monospace, monospace; font-size: 19px; line-height: 1.55; }
+  .run { color: #a1a1a1; }
+  .bad { color: #ff6b5e; }
+  .good { color: #5ad17a; }
+  .foot { display: flex; justify-content: space-between; font-size: 22px; color: #666666; border-top: 1px solid #e6e6e6; padding-top: 20px; }
+  .foot b { color: #0a0a0a; font-weight: 600; }
 </style>
 </head>
 <body>
-  <div class="brand">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#111110"/><circle cx="12" cy="9" r="4.25" fill="#fbfaf7"/><rect x="11" y="12" width="2" height="8" rx="1" fill="#fbfaf7"/></svg>
-    <span class="wm">pinright</span>
-  </div>
+  <img class="lockup" src="../public/brand/lockup.svg" alt="pinright">
   <h1>Version-accurate docs and a dependency check for coding agents</h1>
   <div class="term">
-    <div class="run">agent runs: npm install lodash@4.17.20</div>
-    <div class="bad">pinright blocked this dependency change:</div>
-    <div>- lodash@4.17.20 has 5 known advisories. Use 4.x release 4.18.1: <span class="good">npm install lodash@4.18.1</span></div>
+    <div class="run">● Bash  npm install lodash@4.17.20</div>
+    <div><span class="bad">pinright blocked</span> this dependency change:</div>
+    <div>- lodash@4.17.20 has <span class="bad">5 known advisories</span>. Use 4.x release <span class="good">4.18.1</span></div>
   </div>
-  <div class="foot"><span>Open source · MIT · by Hiper AI</span><b>pinright.dev</b></div>
+  <div class="foot"><span>Open source · MIT</span><b>pinright.dev</b></div>
 </body>
 </html>
