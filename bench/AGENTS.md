@@ -43,7 +43,7 @@ Runs: `v7-sonnet-2026-11-02` (Sonnet 5.5, 2 repetition(s)), `v7-haiku-2026-11-02
 | Pinned version or package does not exist | 0 | 0 | 0 | 0 | 0 | 0 |
 | Manifests that fail to resolve | 0 | 0 | 0 | 0 | 0 | 0 |
 | Dependabot-style alerts, whole tree (sum) | 766 | 84 | 6 | 14 | 6 | 3 |
-| Alerts per project (mean [95% CI]) | 31.9 [20.3, 44.7] | 3.5 [0.0, 10.3] | 0.3 [0.0, 0.8] | 0.6 [0.0, 1.4] | 0.3 [0.0, 0.8] | 0.3 [0.0, 0.8] |
+| Alerts per project (mean [95% CI]) | 31.9 [20.3, 44.7] | 3.5 [0.0, 10.0] | 0.3 [0.0, 0.8] | 0.6 [0.0, 1.4] | 0.3 [0.0, 0.8] | 0.3 [0.0, 0.8] |
 | Projects with 0 alerts | 0 / 24 | 20 / 24 | 22 / 24 | 20 / 24 | 21 / 23 | 11 / 12 |
 | Critical + high alerts (npm trees) | 178 | 42 | 0 | 4 | 0 | 0 |
 | Projects that install | 24 / 24 | 24 / 24 | 24 / 24 | 24 / 24 | 23 / 23 | n/a |
