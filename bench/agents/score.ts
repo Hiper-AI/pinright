@@ -109,6 +109,16 @@ function readManifest(work: string, eco: 'npm' | 'pypi'): Dep[] | undefined {
     .map((l) => l.replace(/#.*/, '').trim())
     .filter((l) => l && !l.startsWith('-'))
     .map((l) => {
+      // A PEP 508 direct reference ("kittentts @ https://.../kittentts-0.1.0-py3-none-any.whl"): the
+      // version is the one in the wheel or sdist file name. It used to be read as version "@", a
+      // lookup deps.dev never answers, which the retrying lookup then turned into a failed run.
+      const ref = l.match(/^([A-Za-z0-9_.-]+)(?:\[[^\]]*\])?\s*@\s*(\S+)/);
+      if (ref) {
+        const name = ref[1].toLowerCase().replace(/[_.]+/g, '-');
+        const file = ref[2].split(/[?#]/)[0].split('/').pop() ?? '';
+        const v = file.match(/^[A-Za-z0-9_.]+?-(\d[^-]*?)(?:-[^-]+-[^-]+-[^-]+\.whl|\.tar\.gz|\.zip)$/)?.[1] ?? '';
+        return { name, spec: l, version: v, exact: Boolean(v) };
+      }
       const m = l.match(/^([A-Za-z0-9_.-]+)(?:\[[^\]]*\])?\s*(==|>=|~=|<=|>|<)?\s*([^;,\s]*)/);
       const name = (m?.[1] ?? l).toLowerCase().replace(/[_.]+/g, '-');
       return { name, spec: l, version: m?.[3] ?? '', exact: m?.[2] === '==' };
