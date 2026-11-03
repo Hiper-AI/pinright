@@ -42,12 +42,12 @@ is an engineer explaining what they measured.
 |---|---|---|---|
 | 1 | 40% to 42% | of direct dependencies pinned without tools had a known advisory (three models) | `data/agents_by_model_arm.csv`, `bench/AGENTS.md` |
 | 2 | ~30 to 0.3 | whole-tree alerts per project, no tools vs the pinright MCP server (0.3 = the same as installing with no version) | `data/agents_by_model_arm.csv` (`alerts_per_project_mean`), figure a |
-| 3 | 48 / 21 / 6 to 6 / 6 / 6 | alerts over 24 projects per model, docs for the latest release only vs the full verdict (Sonnet / Haiku / Opus) | same CSV, `docs-only` and `pinright` rows |
-| 4 | 16 of 16 | docs-benchmark runs that wrote the current API with pinright, for each model (10 to 13 of 16 without) | `data/docs_by_model_arm.csv`, figure c |
+| 3 | 84 / 63 / 6 to 6 / 6 / 6 | alerts over 24 projects per model, docs for the latest release only vs the full verdict (Sonnet / Haiku / Opus) | same CSV, `docs-only` and `pinright` rows |
+| 4 | 16 of 16 | docs-benchmark runs that wrote the current API with pinright, for each model (9 to 14 of 16 without) | `data/docs_by_model_arm.csv`, figure c |
 | 5 | 1.46% | of 25,077 public commands the hook blocked or asked about, mostly on purpose | `data/fp_by_source.csv`, figure e |
 
 Each number needs its qualifier on the same surface: "Claude Code, three models, 12 tasks we wrote,
-2026-11-01". Never show number 1 or 2 without number 3 nearby, because the honest story is that
+benchmark v7, 2026-11-02, the 1.0.0 code". Never show number 1 or 2 without number 3 nearby, because the honest story is that
 current versions do most of the work.
 
 ## Figures and visuals
@@ -95,5 +95,5 @@ zero baseline, labels in ink colors.
 - That the hook is a sandbox or contains a compromised agent. It reads commands; it is a guardrail
   and a speed bump.
 - That the prompt-injection detector stops injections. It caught 20% to 40% of new phrasings.
-- Results generalized beyond what was measured: one vendor's models, one day of advisory data, tasks
+- Results generalized beyond what was measured: one vendor's models, two days of advisory data, tasks
   we wrote, new projects only.

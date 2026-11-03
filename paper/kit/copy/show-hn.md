@@ -33,11 +33,11 @@ pinright has four parts:
 
 One result surprised us, and we would rather say it first. We ran pinright with its security layer
 switched off, serving docs for each package's latest release and nothing else. That alone cut
-whole-tree alerts from 711 to 794 per model down to 48, 21 and 6: most of the gain comes from steering the
+whole-tree alerts from 715 to 766 per model down to 84, 63 and 6 (Sonnet, Haiku, Opus): most of the gain comes from steering the
 agent to current versions. The full server took every model to 6 (all in nuxt dependencies with no
 fixed release) and 0 vulnerable direct pins. The security layer catches what "latest" misses: an
 agent that picks an older version to fit a peer range, a pre-release with advisories, a lookalike or
-nonexistent name, and an agent that never calls the tool (the hook alone left 10 to 14).
+nonexistent name, and an agent that never calls the tool (the hook alone left 14).
 
 Things we would like feedback on, because we know they are weak:
 
@@ -49,7 +49,7 @@ Things we would like feedback on, because we know they are weak:
   lists the reader gaps still open.
 - False positives. On 25,077 public CI, script and README commands it blocked or asked about 1.46%,
   mostly on purpose. If it blocks something it should not, please open an issue.
-- Our numbers come from one model vendor, one day of advisory data and tasks we wrote.
+- Our numbers come from one model vendor, two days of advisory data and tasks we wrote.
 
 MIT licensed, no telemetry, no account. `npx pinright init` in a project sets it up. The technical
 report, the aggregate CSVs and the benchmark scripts are in the repo; the raw transcripts are not.

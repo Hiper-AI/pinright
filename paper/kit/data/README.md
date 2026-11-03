@@ -9,23 +9,23 @@ a subscription, so nobody paid them.
 
 | What | Where it came from |
 |---|---|
-| Code under test (benchmarks) | `lanzamiento` at `b2fcfe2` plus the benchmark-only ablation flag (`PINRIGHT_ABLATION=docs-only`, commit `0e4f2d8`) |
-| Report and kit | branch `feat/paperkit` from `lanzamiento` at `99027f5` |
-| Agent runs | `bench/agents/runs/v6-sonnet-2026-11-01`, `v6-haiku-2026-11-01`, `v6-opus-2026-11-01` (`scores.json`, `config.json`) |
-| Docs runs | `bench/docs/runs/docs-v6-sonnet-2026-11-01`, `docs-v6-haiku-2026-11-01`, `docs-v6-opus-2026-11-01` |
-| Probes | `bench/docs/runs/probes-v6/` (`heldout-all.json`, `retrieval.log`), 2026-11-01, cold cache |
-| Run date and advisory data | 2026-11-01 (OSV, deps.dev, npm audit, pip-audit as of that day) |
+| Code under test (benchmarks) | `release` at `8efc4f0`, whose `src/` is the 1.0.0 release (`093175b`) |
+| Agent runs | `bench/agents/runs/v7-sonnet-2026-11-02`, `v7-haiku-2026-11-02`, `v7-opus-2026-11-02` (`scores.json`, `config.json`) |
+| Docs runs | `bench/docs/runs/docs-v7-sonnet-2026-11-02`, `docs-v7-haiku-2026-11-02`, `docs-v7-opus-2026-11-02` |
+| Probes | `bench/docs/runs/probes-v6/` (`heldout-all.json`, `retrieval.log`), 2026-11-01, cold cache, on the release candidate `b2fcfe2`; not rerun for v7 |
+| Run date and advisory data | 2026-11-02 and 2026-11-03, UTC-3 (OSV, deps.dev, npm audit, pip-audit as of scoring); a few runs rescored on 2026-11-03 after two scorer fixes (`bench/AGENTS.md`, "Scoring fixes") |
 | Agent | Claude Code 2.1.308, headless, Write and Read only; models `claude-sonnet-5-5`, `claude-haiku-5-5`, `claude-opus-5-5` |
 
-The run directories are gitignored (transcripts and generated projects). They were produced in the
-worktree `pinright-bench6` (branch `feat/bench6`, commit `9a1cc2b`). Its three benchmark commits
-reached `lanzamiento` as `0e4f2d8`, `32b5c2f` and `99027f5`, on top of the false-positive work.
+The run directories are gitignored (transcripts and generated projects). The v7 runs were produced in
+the release checkout; the probes come from the worktree `pinright-bench6` (branch `feat/bench6`).
+The v6 runs (`v6-*-2026-11-01`, on `b2fcfe2`) are summarized in `bench/RESULTS-v6.md`.
 
 ## Generated from the raw runs
 
-`npx tsx paper/kit/make-data.ts --bench <dir>` rebuilds these six files. `<dir>` is the `bench/`
-directory that holds `agents/runs/<stamp>` and `docs/runs/<stamp>`. The script uses the same helpers
-as `bench/AGENTS.md`, `bench/DOCS.md` and `bench/RESULTS-v6.md` (`armMetrics`, `docsArmMetrics`, and
+`npx tsx paper/kit/make-data.ts --agents <stamps> --docs <stamps> --probes <dir>` rebuilds these six
+files (the defaults are the v6 stamps and `bench/docs/runs/probes-v6`; `--bench <dir>` points at
+another `bench/` directory). The command for v7 is in `bench/RESULTS-v7.md`, "Reproduce". The script
+uses the same helpers as `bench/AGENTS.md`, `bench/DOCS.md` and `bench/RESULTS-v7.md` (`armMetrics`, `docsArmMetrics`, and
 the seeded cluster bootstrap in `bench/stats.ts`: 2,000 resamples of tasks, seed 20261101), so the
 values match those reports.
 
@@ -49,7 +49,7 @@ agent's packages installed without a version, 1 run per task).
 | projects_zero_alerts, projects_resolved | projects with no alert / projects whose tree resolved |
 | critical_high_npm | critical plus high alerts in npm projects |
 | projects_installed, projects_built, projects_build_conclusive | real install, build or import check; inconclusive builds (a native binary that needs an install script) are left out |
-| median_pinned_age_days | median age of the pinned version on 2026-11-01 |
+| median_pinned_age_days | median age of the pinned version on the day the run was scored (2026-11-02 or 2026-11-03) |
 | direct_deps_on_registry_default_pct | share pinned to the registry's default (latest) version |
 | cost_per_run_usd_list_price, cost_all_runs_usd_list_price | API-equivalent cost |
 | turns_per_run, duration_s_per_run, mcp_calls_per_run, hook_blocks_per_run | means |

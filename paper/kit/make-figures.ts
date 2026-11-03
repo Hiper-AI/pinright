@@ -146,14 +146,14 @@ function figA(mode: Mode) {
   const lab = (g: string, a: string) => val(g, a).toFixed(1);
   const lg = legend(32, 100, armLegend(mode, AGENT_ARMS), mode, W - 64);
   const body = [
-    header(mode, 'Whole-tree alerts per project', 'Mean npm audit / pip-audit alerts per generated project, 12 tasks x 2 runs, with 95% cluster-bootstrap intervals (tasks resampled). Run v6, 2026-11-01.', W),
+    header(mode, 'Whole-tree alerts per project', 'Mean npm audit / pip-audit alerts per generated project, 12 tasks x 2 runs, with 95% cluster-bootstrap intervals (tasks resampled). Run v7, 2026-11-02, 1.0.0 code.', W),
     lg.svg,
     groupedBars({ mode, x: 32, y: 140, w: 600, h: 400, groups: MODELS, series: AGENT_ARMS, value: val, ci, label: lab, color: (a) => ARM_COLOR[mode][a], outline: armOutline(mode), max: 50, ticks: [0, 10, 20, 30, 40, 50], tickFmt: String, panelTitle: 'All arms (0 to 50)' }),
-    groupedBars({ mode, x: 660, y: 140, w: 548, h: 400, groups: MODELS, series: AGENT_ARMS.filter((a) => a !== 'no-docs'), value: val, ci, label: lab, color: (a) => ARM_COLOR[mode][a], outline: armOutline(mode), max: 6, ticks: [0, 1, 2, 3, 4, 5, 6], tickFmt: String, panelTitle: 'Same data without "No docs" (0 to 6)' }),
+    groupedBars({ mode, x: 660, y: 140, w: 548, h: 400, groups: MODELS, series: AGENT_ARMS.filter((a) => a !== 'no-docs'), value: val, ci, label: lab, color: (a) => ARM_COLOR[mode][a], outline: armOutline(mode), max: 12, ticks: [0, 2, 4, 6, 8, 10, 12], tickFmt: String, panelTitle: 'Same data without "No docs" (0 to 12)' }),
     `<line x1="646" x2="646" y1="150" y2="540" stroke="${t.grid}"/>`,
-    footer(mode, 'Source: bench/RESULTS-v6.md, paper/kit/data/agents_by_model_arm.csv. "No pin" installs the no-docs packages without a version (1 run per task). The 0.3 left in the MCP arms is nuxt’s (no fixed release, same in "No pin"); hook only adds next 15.5.28’s postcss.', H, W),
+    footer(mode, 'Source: bench/RESULTS-v7.md, paper/kit/data/agents_by_model_arm.csv. "No pin" installs the no-docs packages without a version (1 run per task). The 0.3 left in the MCP arms is nuxt’s (no fixed release, same in "No pin"); hook only adds next 15.5.28’s postcss.', H, W),
   ].join('\n');
-  emit('fig-a-alerts-per-project', mode, W, H, svgDoc(W, H, mode, 'Whole-tree alerts per project by arm and model', 'Grouped bars: no docs about 30 alerts per project for each model; docs-only 2.0 (Sonnet), 0.9 (Haiku), 0.3 (Opus); pinright MCP and MCP + hook 0.3; hook only 0.4 to 0.6; no-pin reference 0.3.', body));
+  emit('fig-a-alerts-per-project', mode, W, H, svgDoc(W, H, mode, 'Whole-tree alerts per project by arm and model', 'Grouped bars: no docs about 30 alerts per project for each model; docs-only 3.5 (Sonnet), 2.6 (Haiku), 0.3 (Opus); pinright MCP and MCP + hook 0.3; hook only 0.6; no-pin reference 0.3.', body));
 }
 
 // ------------------------------------------------------------------ (b) % direct deps with advisories
@@ -164,12 +164,12 @@ function figB(mode: Mode) {
   const lab = (g: string, a: string) => `${Math.round(val(g, a))}%`;
   const lg = legend(32, 100, armLegend(mode, AGENT_ARMS), mode, W - 64);
   const body = [
-    header(mode, 'Direct dependencies pinned with a known advisory', 'Share of the direct dependencies the agent pinned that had at least one OSV advisory, with 95% cluster-bootstrap intervals. Run v6, 2026-11-01.', W),
+    header(mode, 'Direct dependencies pinned with a known advisory', 'Share of the direct dependencies the agent pinned that had at least one OSV advisory, with 95% cluster-bootstrap intervals. Run v7, 2026-11-02, 1.0.0 code.', W),
     lg.svg,
     groupedBars({ mode, x: 32, y: 150, w: W - 64, h: 360, groups: MODELS, series: AGENT_ARMS, value: val, ci, label: lab, color: (a) => ARM_COLOR[mode][a], outline: armOutline(mode), max: 60, ticks: [0, 10, 20, 30, 40, 50, 60], tickFmt: (v) => `${v}%` }),
-    footer(mode, 'Source: bench/AGENTS.md, paper/kit/data/agents_by_model_arm.csv (direct_deps_with_advisory_pct). docs-only: Sonnet 1 of 120, Haiku 2 of 127, Opus 0 of 126.', H),
+    footer(mode, 'Source: bench/AGENTS.md, paper/kit/data/agents_by_model_arm.csv (direct_deps_with_advisory_pct). docs-only: Sonnet 2 of 125, Haiku 3 of 142, Opus 0 of 126.', H),
   ].join('\n');
-  emit('fig-b-direct-deps-with-advisories', mode, W, H, svgDoc(W, H, mode, 'Share of pinned direct dependencies with a known advisory', 'No docs: 42% Sonnet, 40% Haiku, 41% Opus. docs-only: 1%, 2%, 0%. All three pinright arms and the no-pin reference: 0% for every model.', body));
+  emit('fig-b-direct-deps-with-advisories', mode, W, H, svgDoc(W, H, mode, 'Share of pinned direct dependencies with a known advisory', 'No docs: 40% Sonnet, 40% Haiku, 42% Opus. docs-only: 2%, 2%, 0%. All three pinright arms and the no-pin reference: 0% for every model.', body));
 }
 
 // ------------------------------------------------------------------ (c) docs benchmark
@@ -183,7 +183,7 @@ function figC(mode: Mode) {
   const lab = (g: string, a: string) => `${row(g, a)!.current_api_runs}/${row(g, a)!.runs}`;
   const lg = legend(32, 100, [
     { label: ARM_SHORT['no-docs'], color: ARM_COLOR[mode]['no-docs'] },
-    { label: 'docs-only (Sonnet only)', color: ARM_COLOR[mode]['docs-only'] },
+    { label: 'docs-only', color: ARM_COLOR[mode]['docs-only'] },
     { label: 'pinright', color: ARM_COLOR[mode].pinright },
   ], mode, W - 64);
   const body = [
@@ -192,7 +192,7 @@ function figC(mode: Mode) {
     groupedBars({ mode, x: 32, y: 140, w: W - 64, h: 350, groups: MODELS, series: ARMS, value: val, ci, label: lab, color: (a) => ARM_COLOR[mode][a], max: 100, ticks: [0, 25, 50, 75, 100], tickFmt: (v) => `${v}%` }),
     footer(mode, 'Source: bench/DOCS.md, paper/kit/data/docs_by_model_arm.csv. "Current" = installs, builds, passes the smoke test, pins the asked major, uses every new API and no removed or deprecated one.', H),
   ].join('\n');
-  emit('fig-c-docs-current-api', mode, W, H, svgDoc(W, H, mode, 'Docs benchmark: current-API runs by model', 'No docs: Sonnet 13 of 16, Haiku 10 of 16, Opus 12 of 16. docs-only (Sonnet): 15 of 16. pinright: 16 of 16 for every model.', body));
+  emit('fig-c-docs-current-api', mode, W, H, svgDoc(W, H, mode, 'Docs benchmark: current-API runs by model', 'No docs: Sonnet 13 of 16, Haiku 9 of 16, Opus 14 of 16. docs-only: 16, 15 and 16 of 16. pinright: 16 of 16 for every model.', body));
 }
 
 // ------------------------------------------------------------------ (d) retrieval probes

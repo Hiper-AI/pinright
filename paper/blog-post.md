@@ -6,11 +6,11 @@ Ask a coding agent for a small FastAPI app with JWT login and it writes a `requi
 exact versions. Those versions come from the model's training data. They were current a year or two
 before the model shipped, and many have advisories published since.
 
-We measured it. On 2026-11-01 we gave Claude Code 12 tasks we wrote, 8 for npm and 4 for PyPI, each
+We measured it on the 1.0.0 code. On 2026-11-02 we gave Claude Code 12 tasks we wrote, 8 for npm and 4 for PyPI, each
 asking for pinned versions, and ran each one twice with three models: Sonnet 5.5, Haiku 5.5 and Opus
 5.5. Then we audited every project with `npm audit` or `pip-audit`, tools that share no code with
 ours. With no tools attached, 40% to 42% of the direct dependencies each model pinned had a known
-advisory. Across the full dependency trees, projects averaged 30 to 33 alerts of the kind Dependabot
+advisory. Across the full dependency trees, projects averaged 30 to 32 alerts of the kind Dependabot
 raises. Four of 72 came out clean.
 
 The package choices were fine. When we installed the same packages without a version and let the
@@ -48,12 +48,12 @@ Whole-tree alerts summed over each model's 24 projects:
 
 | | Sonnet 5.5 | Haiku 5.5 | Opus 5.5 |
 |---|---|---|---|
-| No tools | 794 | 711 | 718 |
-| pinright, security layer off (docs only) | 48 | 21 | 6 |
+| No tools | 766 | 715 | 732 |
+| pinright, security layer off (docs only) | 84 | 63 | 6 |
 | pinright MCP server | 6 | 6 | 6 |
-| pinright hook only | 14 | 10 | 14 |
+| pinright hook only | 14 | 14 | 14 |
 | MCP server + hook | 6 | 6 | 6 |
-| Direct deps with an advisory, no tools / MCP | 42% / 0% | 40% / 0% | 41% / 0% |
+| Direct deps with an advisory, no tools / MCP | 40% / 0% | 40% / 0% | 42% / 0% |
 
 We ran pinright with its security layer switched off on purpose, to see where the gain comes from.
 In that mode it serves docs for each package's latest release and says nothing about advisories. It
@@ -62,21 +62,23 @@ tool that points at the current release gets it most of the way there.
 
 The security layer handles what is left. With it, every model pinned zero vulnerable direct
 dependencies, and the remaining 6 alerts are the nuxt ones that an unpinned install also gets. In the
-docs-only runs, Sonnet pinned `next` 15.5.4 (35 advisories) to fit `next-auth` 4's peer range, and
-Haiku pinned a `next-auth` beta with advisories; nothing told them. Those runs also took more turns
+docs-only runs, Sonnet pinned `next` 15.5.0 (32 advisories) in both of its next-auth runs, and
+Haiku pinned `next-auth` betas with advisories in both of its own; nothing told them. Those runs also took more turns
 and cost more, because the agents asked for "latest" one package at a time. The hook alone, for
-agents that never call the MCP server, left 10 to 14 alerts: it kept a Next.js app on the clean 15.x
+agents that never call the MCP server, left 14 alerts per model: it kept a Next.js app on the clean 15.x
 release, which still pulls a vulnerable `postcss`.
 
 On a second benchmark of eight tasks that need a library's newest major (Next.js 16, AI SDK 7, Zod 4
-and others), all three models used the current API in 16 of 16 runs with pinright, against 13, 10 and
-12 of 16 without. Most of that gap is AI SDK 7 and LangChain 1; the models already knew five of the eight APIs. Cost per run
-roughly doubled.
+and others), all three models used the current API in 16 of 16 runs with pinright, against 13, 9 and
+14 of 16 without. Most of that gap is AI SDK 7 and LangChain 1; the models already knew most of the
+eight APIs. On eight APIs first released after August 2026, the gap was wider: 2 of 48 runs without
+docs, 46 of 48 with pinright. Cost per run roughly doubled.
 
 The hook has to stay out of the way. We replayed 25,077 commands from the CI files, scripts and
 READMEs of 180 public repositories through it. It blocked or asked about 1.46% of them, most on
 purpose (a version in a variable, a git source, another registry) and 32 because of real advisories.
-A command that installs nothing costs about 120 ms.
+On a month of our own Claude Code sessions, 154,402 distinct tool calls, it misread 10. A command
+that installs nothing costs about 120 ms.
 
 ## What it does not do
 
@@ -90,7 +92,7 @@ The hook reads commands; it does not sandbox anything. A Python script that call
 vectors and their status, and two internal security reviews (24 findings, all fixed) list what stays
 open. Run your agent in a sandbox, and keep a proxy registry if you have one.
 
-The numbers come from one model vendor, one day of advisory data, two repetitions and tasks we wrote.
+The numbers come from one model vendor, two days of advisory data, two repetitions and tasks we wrote.
 Our tasks start from empty folders, which favors "pin the latest"; we did not measure existing
 projects. The technical report has the method, the intervals and the threats to validity.
 

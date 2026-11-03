@@ -5,18 +5,18 @@ One entry per figure and visual. The dark variants use the same text.
 ## Figures
 
 **fig-a-alerts-per-project.** Bar chart of mean whole-tree alerts per project for three models and six
-arms, with 95% intervals. Without tools: 33.1 (Sonnet), 29.6 (Haiku), 29.9 (Opus). pinright with its
-security layer off: 2.0, 0.9, 0.3. pinright MCP server and MCP plus hook: 0.3 for every model. Hook
-only: 0.6, 0.4, 0.6. Packages installed without a version: 0.3. A second panel repeats the data
-without the no-tools arm on a scale of 0 to 6.
+arms, with 95% intervals. Without tools: 31.9 (Sonnet), 29.8 (Haiku), 30.5 (Opus). pinright with its
+security layer off: 3.5, 2.6, 0.3. pinright MCP server and MCP plus hook: 0.3 for every model. Hook
+only: 0.6 for every model. Packages installed without a version: 0.3. A second panel repeats the data
+without the no-tools arm on a scale of 0 to 12.
 
 **fig-b-direct-deps-with-advisories.** Bar chart of the share of pinned direct dependencies with a
-known advisory. Without tools: 42% for Sonnet, 40% for Haiku, 41% for Opus. pinright with its
-security layer off: 1%, 2%, 0%. Every pinright arm and the unpinned reference: 0%.
+known advisory. Without tools: 40% for Sonnet, 40% for Haiku, 42% for Opus. pinright with its
+security layer off: 2%, 2%, 0%. Every pinright arm and the unpinned reference: 0%.
 
 **fig-c-docs-current-api.** Bar chart of docs-benchmark runs that wrote the current API of eight
-recently changed libraries. Without docs: 13 of 16 (Sonnet), 10 of 16 (Haiku), 12 of 16 (Opus).
-pinright with its security layer off, Sonnet only: 15 of 16. pinright: 16 of 16 for every model.
+recently changed libraries. Without docs: 13 of 16 (Sonnet), 9 of 16 (Haiku), 14 of 16 (Opus).
+pinright with its security layer off: 16, 15 and 16 of 16. pinright: 16 of 16 for every model.
 
 **fig-d-retrieval-probes.** Bar chart of probe questions answered with the current API, before
 tuning and on the release candidate. Original set: 16 to 24 of 25. Held-out A: 53 to 75 of 81.
