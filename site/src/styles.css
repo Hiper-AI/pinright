@@ -571,6 +571,10 @@ main {
   gap: 16px;
 }
 
+.install-pair > * {
+  min-width: 0;
+}
+
 @media (min-width: 760px) {
   .install-pair {
     grid-template-columns: 1fr 1fr;
@@ -660,6 +664,7 @@ main {
 .cmd pre {
   flex: 1;
   min-width: 0;
+  overflow-x: auto;
   padding: 12px 8px 12px 16px;
   font-size: 0.875rem;
 }
@@ -2123,4 +2128,18 @@ thead .vs-key {
 .sub-head + .prose {
   margin-top: 12px;
   color: var(--ink-2);
+}
+
+/* Brand marks inside buttons */
+
+.btn-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+/* Grid columns may shrink below their content, so long command lines scroll inside their box. */
+
+.split > * {
+  min-width: 0;
 }
