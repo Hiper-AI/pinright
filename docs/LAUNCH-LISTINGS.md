@@ -1,7 +1,7 @@
 # Launch listings
 
-Ready-to-paste submissions for the directories where people find MCP servers. Nothing here has
-been submitted. Checked against each directory's docs on 2026-11-01; they change often, so re-read
+Ready-to-paste submissions for the directories where people find MCP servers. The Official MCP
+Registry entry is live since 2026-11-03 (1.0.0); the others are not submitted yet. Checked against each directory's docs on 2026-11-01; they change often, so re-read
 the linked page before submitting.
 
 Names used below: npm package `pinright`, MCP Registry name `io.github.Hiper-AI/pinright`,
@@ -23,8 +23,8 @@ Before any of them:
 
 - [ ] 1.0.0 is on npm with provenance (docs/RELEASE.md, steps 5 to 8).
 - [ ] The repository is public.
-- [ ] A 400x400 PNG logo exists (Cline asks for one; the `.mcpb` can carry `icon.png`). There is
-      none in the repository yet.
+- [ ] A 400x400 PNG logo exists (Cline asks for one; the `.mcpb` can carry `icon.png`):
+      `assets/brand/logo-400.png`.
 
 ## Descriptions
 
@@ -94,8 +94,11 @@ Check:
 curl -s "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Hiper-AI/pinright"
 ```
 
-returns the entry with version 1.0.0. If `login github` refuses the namespace, the org membership
-is private: make it public on https://github.com/orgs/Hiper-AI/people, or ask an org owner to publish.
+returns the entry with version 1.0.0. The `io.github.Hiper-AI` namespace needs an owner of the
+organization, and the device-code flow of `login github` cannot read organization roles: it only
+offers `io.github.<your login>/*`. Log in with a token that has the `read:org` scope instead,
+`& "$env:TEMP\mcp-publisher.exe" login github --token (gh auth token)` (the GitHub CLI token has
+it), then `publish`. That is how 1.0.0 went in.
 
 ## 2. Glama
 
