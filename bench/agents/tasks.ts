@@ -33,3 +33,18 @@ export const TASKS: AgentTask[] = [
 
 export const DOCS_HINT =
   'If you have documentation tools available, use them to check the libraries before choosing versions.';
+
+const NO_COMMAND = 'Do not run any command.';
+const SHELL_RULE: Record<AgentTask['ecosystem'], string> = {
+  npm: 'Then install the dependencies with npm install and check that the project builds or type-checks. Do not start a server.',
+  pypi: 'Then install the dependencies with pip install -r requirements.txt and check that the code imports. Do not start a server.',
+};
+
+/**
+ * The task for an agent that has a shell (the sandboxed shell arm): the same request, but
+ * instead of "do not run any command" it asks for a real install and a build or import check.
+ */
+export function shellTask(t: AgentTask): AgentTask {
+  if (!t.prompt.includes(NO_COMMAND)) throw new Error(`task ${t.id} has no "${NO_COMMAND}" rule to replace`);
+  return { ...t, prompt: t.prompt.replace(NO_COMMAND, SHELL_RULE[t.ecosystem]) };
+}

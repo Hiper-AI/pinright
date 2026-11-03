@@ -1,0 +1,9 @@
+**
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/**
+!bench/**
+bench/agents/runs/**
+bench/**/*.log
+**/node_modules

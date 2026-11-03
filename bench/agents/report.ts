@@ -3,7 +3,8 @@
  * of bench/AGENTS.md (between the "generated" markers; hand-written text around it is kept).
  *
  * All stamps must use the same task set (config.json `set`, v6 when absent). --out writes
- * another file instead (e.g. bench/AGENTS-real-issues.md for the real-issues set).
+ * another file instead (e.g. bench/AGENTS-real-issues.md for the real-issues set, or
+ * bench/RESULTS-shell.md for the shell arm).
  *
  *   npx tsx bench/agents/report.ts <stamp> [<stamp> ...] [--out bench/AGENTS.md]
  */
@@ -21,7 +22,13 @@ const stamps = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--o
 if (!stamps.length) throw new Error('usage: report.ts <stamp> [<stamp> ...] [--out file]');
 const root = resolve(import.meta.dirname, '..', '..');
 
-interface Run { stamp: string; scores: RunScore[]; config: { model: string; reps: number }; model: string; set: string }
+interface Run {
+  stamp: string;
+  scores: RunScore[];
+  config: { model: string; reps: number; arms?: string[]; tools?: string[]; sandbox?: { kind: string; image: string } };
+  model: string;
+  set: string;
+}
 const runs: Run[] = stamps.map((stamp) => {
   const runDir = join(root, 'bench', 'agents', 'runs', stamp);
   const scores: RunScore[] = canonicalScores(JSON.parse(readFileSync(join(runDir, 'scores.json'), 'utf8')));
@@ -144,6 +151,13 @@ L.push('## Reproduce', '', '```bash', 'npm ci && npm run build');
 // Runs of a non-default set name the set and the arms they ran; v6 lines stay as they were.
 const setFlags = (r: Run) => (SET === DEFAULT_SET ? '' : ` --set ${SET} --arms ${armsOf(r.scores.map((s) => s.arm)).filter(isAgentArm).join(',')}`);
 for (const r of runs) {
+  if (r.config.sandbox) {
+    // The shell arm: agents and scorer both run in the sandbox image, never on the host.
+    const runsMount = `--mount type=bind,source="$PWD/bench/agents/runs/${r.stamp}",target=/opt/pinright/bench/agents/runs/${r.stamp}`;
+    L.push(`npx tsx bench/agents/run.ts --model ${r.config.model} --reps ${r.config.reps} --concurrency 2 --arms ${(r.config.arms ?? []).join(',')} --tools ${(r.config.tools ?? []).join(',')} --sandbox ${r.config.sandbox.kind} --stamp ${r.stamp}`);
+    L.push(`docker run --rm ${runsMount} --workdir /opt/pinright --entrypoint npx ${r.config.sandbox.image} tsx bench/agents/score.ts ${r.stamp} --concurrency 2`);
+    continue;
+  }
   L.push(`GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model ${r.config.model} --reps ${r.config.reps} --concurrency 3 --stamp ${r.stamp}${setFlags(r)}`);
   if (SET === DEFAULT_SET && r.scores.some((s) => s.arm === 'docs-only')) {
     L.push(`GITHUB_TOKEN=... npx tsx bench/agents/run.ts --model ${r.config.model} --reps ${r.config.reps} --concurrency 3 --stamp ${r.stamp} --arms docs-only --resume`);
