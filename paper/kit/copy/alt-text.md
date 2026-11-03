@@ -44,6 +44,11 @@ answers: "pinright blocked this dependency change: lodash@4.17.20 (npm) has 5 kn
 (CVE-2021-23337, CVE-2026-4800, CVE-2020-28500, HIGH). Use 4.x release 4.18.1: npm install
 lodash@4.18.1." The command does not run.
 
+**fig-i-tokens-per-run.** Bar chart of thousands of tokens per run for three models and three arms,
+with 95% intervals, in two panels. Agent benchmark: without tools 15 (Sonnet), 21 (Haiku), 16 (Opus);
+pinright with its security layer off 56, 94, 73; pinright 42, 74, 55. Docs benchmark: without tools
+17, 23, 19; security layer off 94, 135, 113; pinright 63, 95, 84.
+
 ## CLI renders (visuals/cli)
 
 **pinright-doctor.** Terminal output of npx pinright doctor: Node version, response times of deps.dev,

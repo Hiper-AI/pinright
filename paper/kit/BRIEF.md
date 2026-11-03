@@ -56,12 +56,13 @@ current versions do most of the work.
 |---|---|
 | `figures/fig-a-alerts-per-project` | Headline chart: blog hero, report Figure 3, landing benchmark section |
 | `figures/fig-b-direct-deps-with-advisories` | Support for the 40% stat; pairs with fig a |
-| `figures/fig-c-docs-current-api` | Docs claim: blog, report Figure 4 |
+| `figures/fig-c-docs-current-api` | Docs claim: blog, report Figure 5 |
 | `figures/fig-d-retrieval-probes` | Docs quality without an agent; technical readers |
 | `figures/fig-e-hook-false-positives` | "Will it get in my way?": blog, FAQ, Show HN replies |
 | `figures/fig-f-hook-latency` | "Will it slow my agent down?": FAQ, docs |
 | `figures/fig-g-architecture` | How it works: landing, report Figure 1, slides |
 | `figures/fig-h-what-the-agent-sees` | The product moment: social card, landing hero, report Figure 2 |
+| `figures/fig-i-tokens-per-run` | Efficiency against the docs-only ablation: report Figure 4, evidence page |
 | `visuals/cli/pinright-doctor` | Install and setup step |
 | `visuals/cli/pinright-check-lodash` | CLI for people, same verdict the agent gets |
 | `visuals/cli/pinright-audit-sarif`, `pinright-sarif-summary` | CI and code-scanning story |

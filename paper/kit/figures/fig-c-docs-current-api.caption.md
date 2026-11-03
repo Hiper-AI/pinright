@@ -7,4 +7,4 @@ labels: runs; whiskers: 95% intervals (tasks resampled). No docs: 13, 9 and 14 o
 models, and LangChain 1, where no-docs runs pinned a release that does not import.
 
 Source: `data/docs_by_model_arm.csv`; `bench/DOCS.md`. Runs `docs-v7-{sonnet,haiku,opus}-2026-11-02`.
-Use: report Figure 4, the docs claim in the blog. Files: `fig-c-docs-current-api{,-dark}.{svg,png}`.
+Use: report Figure 5, the docs claim in the blog. Files: `fig-c-docs-current-api{,-dark}.{svg,png}`.

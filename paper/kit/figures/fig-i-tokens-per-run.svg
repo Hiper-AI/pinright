@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="t d">
+<title id="t">Tokens per run by arm and model</title>
+<desc id="d">Grouped bars, thousands of tokens per run. Agent benchmark: no docs 15 to 21, docs-only 56 to 94, pinright 42 to 74. Docs benchmark: no docs 17 to 23, docs-only 94 to 135, pinright 63 to 95.</desc>
+<rect x="0.5" y="0.5" width="1239" height="599" rx="10" fill="#fcfcfb" stroke="#e1e0d9"/>
+<text x="32" y="40" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="19" fill="#0b0b0b" font-weight="650">Tokens per run</text>
+<text x="32" y="64" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13.5" fill="#52514e">Tokens the model processed per run (input, cache reads and writes, output), with 95% cluster-bootstrap intervals (tasks resampled). Runs v7, 2026-11-02, 1.0.0 code.</text>
+<rect x="32" y="90" width="12" height="12" rx="3" fill="#898781"/>
+<text x="50" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e">No docs</text>
+<rect x="123.5" y="90" width="12" height="12" rx="3" fill="#eb6834"/>
+<text x="141.5" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e">docs-only (security layer off)</text>
+<rect x="364.5" y="90" width="12" height="12" rx="3" fill="#2a78d6"/>
+<text x="382.5" y="100" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#52514e">pinright MCP</text>
+<text x="76" y="152" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13.5" fill="#0b0b0b" font-weight="600">Agent benchmark (12 tasks x 2 runs)</text>
+<line x1="76" x2="632" y1="510" y2="510" stroke="#c3c2b7" stroke-width="1"/>
+<text x="68" y="514" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">0k</text>
+<line x1="76" x2="632" y1="424" y2="424" stroke="#e1e0d9" stroke-width="1"/>
+<text x="68" y="428" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">50k</text>
+<line x1="76" x2="632" y1="338" y2="338" stroke="#e1e0d9" stroke-width="1"/>
+<text x="68" y="342" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">100k</text>
+<line x1="76" x2="632" y1="252" y2="252" stroke="#e1e0d9" stroke-width="1"/>
+<text x="68" y="256" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">150k</text>
+<line x1="76" x2="632" y1="166" y2="166" stroke="#e1e0d9" stroke-width="1"/>
+<text x="68" y="170" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">200k</text>
+<g><title>Sonnet 5.5, no-docs: 15k</title><path d="M121.7,510 V487.6 Q121.7,483.6 125.7,483.6 H147.7 Q151.7,483.6 151.7,487.6 V510 Z" fill="#898781"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="136.7" x2="136.7" y1="482.3" y2="484.8"/><line x1="132.7" x2="140.7" y1="482.3" y2="482.3"/><line x1="132.7" x2="140.7" y1="484.8" y2="484.8"/></g>
+<text x="136.7" y="476.3" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">15k</text>
+<g><title>Sonnet 5.5, docs-only: 56k</title><path d="M153.7,510 V418.4 Q153.7,414.4 157.7,414.4 H179.7 Q183.7,414.4 183.7,418.4 V510 Z" fill="#eb6834"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="168.7" x2="168.7" y1="400.8" y2="428.8"/><line x1="164.7" x2="172.7" y1="400.8" y2="400.8"/><line x1="164.7" x2="172.7" y1="428.8" y2="428.8"/></g>
+<text x="168.7" y="394.8" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">56k</text>
+<g><title>Sonnet 5.5, pinright: 42k</title><path d="M185.7,510 V441.5 Q185.7,437.5 189.7,437.5 H211.7 Q215.7,437.5 215.7,441.5 V510 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="200.7" x2="200.7" y1="429.5" y2="445.7"/><line x1="196.7" x2="204.7" y1="429.5" y2="429.5"/><line x1="196.7" x2="204.7" y1="445.7" y2="445.7"/></g>
+<text x="200.7" y="423.5" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">42k</text>
+<text x="168.7" y="532" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Sonnet 5.5</text>
+<g><title>Haiku 5.5, no-docs: 21k</title><path d="M307,510 V478.1 Q307,474.1 311,474.1 H333 Q337,474.1 337,478.1 V510 Z" fill="#898781"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="322" x2="322" y1="472.2" y2="476"/><line x1="318" x2="326" y1="472.2" y2="472.2"/><line x1="318" x2="326" y1="476" y2="476"/></g>
+<text x="322" y="466.2" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">21k</text>
+<g><title>Haiku 5.5, docs-only: 94k</title><path d="M339,510 V352.6 Q339,348.6 343,348.6 H365 Q369,348.6 369,352.6 V510 Z" fill="#eb6834"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="354" x2="354" y1="312.6" y2="383.5"/><line x1="350" x2="358" y1="312.6" y2="312.6"/><line x1="350" x2="358" y1="383.5" y2="383.5"/></g>
+<text x="354" y="306.6" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">94k</text>
+<g><title>Haiku 5.5, pinright: 74k</title><path d="M371,510 V386.4 Q371,382.4 375,382.4 H397 Q401,382.4 401,386.4 V510 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="386" x2="386" y1="359" y2="403.8"/><line x1="382" x2="390" y1="359" y2="359"/><line x1="382" x2="390" y1="403.8" y2="403.8"/></g>
+<text x="386" y="353" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">74k</text>
+<text x="354" y="532" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Haiku 5.5</text>
+<g><title>Opus 5.5, no-docs: 16k</title><path d="M492.3,510 V485.8 Q492.3,481.8 496.3,481.8 H518.3 Q522.3,481.8 522.3,485.8 V510 Z" fill="#898781"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="507.3" x2="507.3" y1="479" y2="483.7"/><line x1="503.3" x2="511.3" y1="479" y2="479"/><line x1="503.3" x2="511.3" y1="483.7" y2="483.7"/></g>
+<text x="507.3" y="473" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">16k</text>
+<g><title>Opus 5.5, docs-only: 73k</title><path d="M524.3,510 V387.9 Q524.3,383.9 528.3,383.9 H550.3 Q554.3,383.9 554.3,387.9 V510 Z" fill="#eb6834"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="539.3" x2="539.3" y1="357.7" y2="408.9"/><line x1="535.3" x2="543.3" y1="357.7" y2="357.7"/><line x1="535.3" x2="543.3" y1="408.9" y2="408.9"/></g>
+<text x="539.3" y="351.7" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">73k</text>
+<g><title>Opus 5.5, pinright: 55k</title><path d="M556.3,510 V420.1 Q556.3,416.1 560.3,416.1 H582.3 Q586.3,416.1 586.3,420.1 V510 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="571.3" x2="571.3" y1="398.1" y2="432.2"/><line x1="567.3" x2="575.3" y1="398.1" y2="398.1"/><line x1="567.3" x2="575.3" y1="432.2" y2="432.2"/></g>
+<text x="571.3" y="392.1" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">55k</text>
+<text x="539.3" y="532" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Opus 5.5</text>
+<text x="704" y="152" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13.5" fill="#0b0b0b" font-weight="600">Docs benchmark (8 tasks x 2 runs)</text>
+<line x1="704" x2="1208" y1="510" y2="510" stroke="#c3c2b7" stroke-width="1"/>
+<text x="696" y="514" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">0k</text>
+<line x1="704" x2="1208" y1="424" y2="424" stroke="#e1e0d9" stroke-width="1"/>
+<text x="696" y="428" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">50k</text>
+<line x1="704" x2="1208" y1="338" y2="338" stroke="#e1e0d9" stroke-width="1"/>
+<text x="696" y="342" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">100k</text>
+<line x1="704" x2="1208" y1="252" y2="252" stroke="#e1e0d9" stroke-width="1"/>
+<text x="696" y="256" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">150k</text>
+<line x1="704" x2="1208" y1="166" y2="166" stroke="#e1e0d9" stroke-width="1"/>
+<text x="696" y="170" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#6f6e69" text-anchor="end">200k</text>
+<g><title>Sonnet 5.5, no-docs: 17k</title><path d="M741,510 V484.5 Q741,480.5 745,480.5 H767 Q771,480.5 771,484.5 V510 Z" fill="#898781"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="756" x2="756" y1="478.8" y2="482"/><line x1="752" x2="760" y1="478.8" y2="478.8"/><line x1="752" x2="760" y1="482" y2="482"/></g>
+<text x="756" y="472.8" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">17k</text>
+<g><title>Sonnet 5.5, docs-only: 94k</title><path d="M773,510 V352.3 Q773,348.3 777,348.3 H799 Q803,348.3 803,352.3 V510 Z" fill="#eb6834"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="788" x2="788" y1="294.8" y2="400.3"/><line x1="784" x2="792" y1="294.8" y2="294.8"/><line x1="784" x2="792" y1="400.3" y2="400.3"/></g>
+<text x="788" y="288.8" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">94k</text>
+<g><title>Sonnet 5.5, pinright: 63k</title><path d="M805,510 V405.8 Q805,401.8 809,401.8 H831 Q835,401.8 835,405.8 V510 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="820" x2="820" y1="378" y2="419.9"/><line x1="816" x2="824" y1="378" y2="378"/><line x1="816" x2="824" y1="419.9" y2="419.9"/></g>
+<text x="820" y="372" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">63k</text>
+<text x="788" y="532" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Sonnet 5.5</text>
+<g><title>Haiku 5.5, no-docs: 23k</title><path d="M909,510 V473.6 Q909,469.6 913,469.6 H935 Q939,469.6 939,473.6 V510 Z" fill="#898781"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="924" x2="924" y1="464.9" y2="473.5"/><line x1="920" x2="928" y1="464.9" y2="464.9"/><line x1="920" x2="928" y1="473.5" y2="473.5"/></g>
+<text x="924" y="458.9" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">23k</text>
+<g><title>Haiku 5.5, docs-only: 135k</title><path d="M941,510 V281.7 Q941,277.7 945,277.7 H967 Q971,277.7 971,281.7 V510 Z" fill="#eb6834"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="956" x2="956" y1="200.6" y2="345.4"/><line x1="952" x2="960" y1="200.6" y2="200.6"/><line x1="952" x2="960" y1="345.4" y2="345.4"/></g>
+<text x="956" y="194.6" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">135k</text>
+<g><title>Haiku 5.5, pinright: 95k</title><path d="M973,510 V350.6 Q973,346.6 977,346.6 H999 Q1003,346.6 1003,350.6 V510 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="988" x2="988" y1="315" y2="377.3"/><line x1="984" x2="992" y1="315" y2="315"/><line x1="984" x2="992" y1="377.3" y2="377.3"/></g>
+<text x="988" y="309" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">95k</text>
+<text x="956" y="532" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Haiku 5.5</text>
+<g><title>Opus 5.5, no-docs: 19k</title><path d="M1077,510 V481.3 Q1077,477.3 1081,477.3 H1103 Q1107,477.3 1107,481.3 V510 Z" fill="#898781"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="1092" x2="1092" y1="473.9" y2="480.3"/><line x1="1088" x2="1096" y1="473.9" y2="473.9"/><line x1="1088" x2="1096" y1="480.3" y2="480.3"/></g>
+<text x="1092" y="467.9" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">19k</text>
+<g><title>Opus 5.5, docs-only: 113k</title><path d="M1109,510 V319.3 Q1109,315.3 1113,315.3 H1135 Q1139,315.3 1139,319.3 V510 Z" fill="#eb6834"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="1124" x2="1124" y1="247.4" y2="374.5"/><line x1="1120" x2="1128" y1="247.4" y2="247.4"/><line x1="1120" x2="1128" y1="374.5" y2="374.5"/></g>
+<text x="1124" y="241.4" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">113k</text>
+<g><title>Opus 5.5, pinright: 84k</title><path d="M1141,510 V369.7 Q1141,365.7 1145,365.7 H1167 Q1171,365.7 1171,369.7 V510 Z" fill="#2a78d6"/></g>
+<g stroke="#52514e" stroke-width="1.25" fill="none"><line x1="1156" x2="1156" y1="339.9" y2="394.5"/><line x1="1152" x2="1160" y1="339.9" y2="339.9"/><line x1="1152" x2="1160" y1="394.5" y2="394.5"/></g>
+<text x="1156" y="333.9" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#52514e" text-anchor="middle">84k</text>
+<text x="1124" y="532" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Opus 5.5</text>
+<line x1="646" x2="646" y1="150" y2="540" stroke="#e1e0d9"/>
+<text x="32" y="566" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">Source: paper/kit/data/tokens_by_model_arm.csv (bench/tokens.ts). Paired by task, pinright used fewer tokens than docs-only: 24%, 21%, 26% (agent benchmark) and 33%, 30%, 26% (docs benchmark),</text>
+<text x="32" y="582" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="11.5" fill="#6f6e69">Sonnet, Haiku, Opus. No docs used the fewest.</text>
+</svg>

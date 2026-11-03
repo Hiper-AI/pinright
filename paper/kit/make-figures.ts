@@ -318,6 +318,35 @@ function figG(mode: Mode) {
   emit('fig-g-architecture', mode, W, H, svgDoc(W, H, mode, 'pinright architecture', 'The coding agent calls MCP tools or triggers the pre-install hook. Both use the verdict pipeline (deps.dev, OSV, registries, offline lookalike list); the MCP tools also use the docs pipeline (package files at the version, repo at the release tag via jsDelivr, llms.txt, site discovery). The answer goes back fenced: a security notice, docs inside untrusted-data blocks, or a deny, ask or allow decision.', out.join('\n')));
 }
 
+// ------------------------------------------------------------------ (i) tokens per run
+function figI(mode: Mode) {
+  const tok = readCsv('tokens_by_model_arm.csv');
+  const row = (bench: string, g: string, a: string) => tok.find((x) => x.benchmark === bench && x.model === g && x.arm === a);
+  const W = 1240, H = 600;
+  const t = THEME[mode];
+  const ARMS = ['no-docs', 'docs-only', 'pinright'];
+  const panel = (bench: string, x: number, w: number, title: string) => {
+    const val = (g: string, a: string) => (row(bench, g, a) ? num(row(bench, g, a)!.ktokens_total_per_run) : undefined);
+    const ci = (g: string, a: string): [number, number] | undefined => {
+      const r0 = row(bench, g, a);
+      return r0 ? [num(r0.ktokens_total_per_run_ci95_lo), num(r0.ktokens_total_per_run_ci95_hi)] : undefined;
+    };
+    const lab = (g: string, a: string) => `${val(g, a)!.toFixed(0)}k`;
+    return groupedBars({ mode, x, y: 140, w, h: 400, groups: MODELS, series: ARMS, value: val, ci, label: lab, color: (a) => ARM_COLOR[mode][a], max: 200, ticks: [0, 50, 100, 150, 200], tickFmt: (v) => `${v}k`, panelTitle: title });
+  };
+  const saved = (bench: string) => MODELS.map((g) => `${Math.round(num(row(bench, g, 'pinright')!.tokens_saved_vs_docs_only_pct))}%`).join(', ');
+  const lg = legend(32, 100, ARMS.map((a) => ({ label: ARM_SHORT[a], color: ARM_COLOR[mode][a] })), mode, W - 64);
+  const body = [
+    header(mode, 'Tokens per run', 'Tokens the model processed per run (input, cache reads and writes, output), with 95% cluster-bootstrap intervals (tasks resampled). Runs v7, 2026-11-02, 1.0.0 code.', W),
+    lg.svg,
+    panel('agents', 32, 600, 'Agent benchmark (12 tasks x 2 runs)'),
+    panel('docs', 660, 548, 'Docs benchmark (8 tasks x 2 runs)'),
+    `<line x1="646" x2="646" y1="150" y2="540" stroke="${t.grid}"/>`,
+    footer(mode, `Source: paper/kit/data/tokens_by_model_arm.csv (bench/tokens.ts). Paired by task, pinright used fewer tokens than docs-only: ${saved('agents')} (agent benchmark) and ${saved('docs')} (docs benchmark), Sonnet, Haiku, Opus. No docs used the fewest.`, H, W),
+  ].join('\n');
+  emit('fig-i-tokens-per-run', mode, W, H, svgDoc(W, H, mode, 'Tokens per run by arm and model', 'Grouped bars, thousands of tokens per run. Agent benchmark: no docs 15 to 21, docs-only 56 to 94, pinright 42 to 74. Docs benchmark: no docs 17 to 23, docs-only 94 to 135, pinright 63 to 95.', body));
+}
+
 // ------------------------------------------------------------------ (h) what the agent sees
 function figH(mode: Mode) {
   const msg = readFileSync(join(here, 'visuals', 'cli', 'hook-block.txt'), 'utf8').trimEnd().split('\n');
@@ -332,6 +361,6 @@ function figH(mode: Mode) {
 }
 
 for (const mode of ['light', 'dark'] as Mode[]) {
-  figA(mode); figB(mode); figC(mode); figD(mode); figE(mode); figF(mode); figG(mode); figH(mode);
+  figA(mode); figB(mode); figC(mode); figD(mode); figE(mode); figF(mode); figG(mode); figH(mode); figI(mode);
 }
 console.log(`wrote ${written.length} files in paper/kit/figures`);
