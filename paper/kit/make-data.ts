@@ -18,8 +18,9 @@ import { armMetrics, LABEL, modelName } from '../../bench/agents/metrics.js';
 import type { RunScore } from '../../bench/agents/score.js';
 import { docsArmMetrics, docsCalls } from '../../bench/docs/metrics.js';
 import type { DocsRunScore } from '../../bench/docs/score.js';
-import { canonicalScores } from '../../bench/legacy.js';
+import { armDir, canonicalScores } from '../../bench/legacy.js';
 import { bootstrap, mean, sum } from '../../bench/stats.js';
+import { readTokens, type RunTokens } from '../../bench/tokens.js';
 
 const args = process.argv.slice(2);
 const opt = (n: string) => (args.includes(`--${n}`) ? args[args.indexOf(`--${n}`) + 1] : undefined);
@@ -48,8 +49,35 @@ function load<T extends { arm: string; model?: string }>(kind: 'agents' | 'docs'
   if (!existsSync(join(dir, 'scores.json'))) throw new Error(`missing ${join(dir, 'scores.json')}: pass --bench <dir with ${kind}/runs/${stamp}>`);
   const scores = canonicalScores(JSON.parse(readFileSync(join(dir, 'scores.json'), 'utf8'))) as T[];
   const config = JSON.parse(readFileSync(join(dir, 'config.json'), 'utf8'));
-  return { stamp, scores, reps: Number(config.reps), model: String(scores.find((s) => s.model)?.model ?? config.model) };
+  return { dir, stamp, scores, reps: Number(config.reps), model: String(scores.find((s) => s.model)?.model ?? config.model) };
 }
+
+// ---------------------------------------------------------------- tokens (both benchmarks)
+// One row per benchmark, model and agent arm: means over runs with a 95% interval that resamples
+// tasks, the same bootstrap as the other metrics. Read from each run's transcript (bench/tokens.ts).
+const tokenRows: Cell[][] = [];
+const runTokens = (dir: string, arm: string, r: { task: string; rep: number }) => readTokens(join(armDir(dir, arm), `${r.task}-r${r.rep}`));
+function tokenRow(benchmark: string, model: string, stamp: string, arm: string, rs: { task: string; rep: number }[], dir: string) {
+  const ts = rs.map((r) => ({ task: r.task, t: runTokens(dir, arm, r) })).filter((x): x is { task: string; t: RunTokens } => Boolean(x.t));
+  const stat = (f: (t: RunTokens) => number) => {
+    const byTask = new Map<string, number[]>();
+    for (const x of ts) byTask.set(x.task, [...(byTask.get(x.task) ?? []), f(x.t)]);
+    return [mean(ts.map((x) => f(x.t))), ...bootstrap([...byTask.values()], mean)];
+  };
+  const k = (n: number) => n / 1000;
+  tokenRows.push([
+    benchmark, modelName(model), model, stamp, arm, LABEL[arm], rs.length, ts.length,
+    ...stat((t) => k(t.total)), ...stat((t) => k(t.input + t.cacheCreation)), k(mean(ts.map((x) => x.t.cacheRead))), ...stat((t) => k(t.output)),
+    ...stat((t) => t.mcpResultChars / 1000),
+    mean(ts.map((x) => x.t.getDocs)), sum(ts.map((x) => x.t.getDocs)), sum(ts.map((x) => x.t.getDocsNoVersion)),
+    ts.filter((x) => x.t.firstTool === 'check-packages').length, ts.filter((x) => x.t.firstTool === 'get-docs').length,
+  ]);
+}
+const tokensOf = (dir: string, arm: string, r: { task: string; rep: number }) => {
+  const t = runTokens(dir, arm, r);
+  return t ? [t.total, t.input, t.cacheRead, t.cacheCreation, t.output, t.mcpResultChars] : [null, null, null, null, null, null];
+};
+const TOKEN_COLS = ['tokens_total', 'tokens_input_uncached', 'tokens_cache_read', 'tokens_cache_creation', 'tokens_output', 'mcp_result_chars'];
 
 // ---------------------------------------------------------------- agent benchmark
 const agentRows: Cell[][] = [];
@@ -67,6 +95,7 @@ for (const stamp of AGENT_STAMPS) {
     }
     const vulnCi = bootstrap([...byTask.values()], mean);
     const agent = arm !== 'latest';
+    if (agent) tokenRow('agents', run.model, stamp, arm, rs, run.dir);
     agentRows.push([
       modelName(run.model), run.model, stamp, arm, LABEL[arm], agent ? run.reps : 1, m.runs, m.withManifest,
       m.realDeps, m.vulnDeps, m.realDeps ? (100 * m.vulnDeps) / m.realDeps : NaN, 100 * vulnCi[0], 100 * vulnCi[1], m.highDeps, m.missingDeps,
@@ -83,6 +112,7 @@ for (const stamp of AGENT_STAMPS) {
         r.tree?.resolved ?? false, r.tree?.resolved ? (r.tree.alerts ?? 0) : null, r.tree?.critical, r.tree?.high, r.tree?.pinright?.alerts,
         r.build?.installed, r.build?.built, r.build?.step, r.build?.inconclusive ?? false,
         r.costUsd, r.turns, r.durationMs == null ? null : r.durationMs / 1000, sum(Object.values(r.mcpCalls)), r.hookBlocks,
+        ...(agent ? tokensOf(run.dir, arm, r) : TOKEN_COLS.map(() => null)),
       ]);
     }
   }
@@ -98,7 +128,7 @@ csv('agents_by_model_arm.csv', [
 csv('agents_by_task.csv', [
   'model', 'run_stamp', 'arm', 'task', 'ecosystem', 'rep', 'manifest_written', 'direct_deps', 'direct_deps_with_advisory', 'direct_deps_cvss7', 'direct_deps_nonexistent',
   'tree_resolved', 'alerts', 'critical', 'high', 'alerts_pinright_check_manifest',
-  'installed', 'built', 'build_step', 'build_inconclusive', 'cost_usd_list_price', 'turns', 'duration_s', 'mcp_calls', 'hook_blocks',
+  'installed', 'built', 'build_step', 'build_inconclusive', 'cost_usd_list_price', 'turns', 'duration_s', 'mcp_calls', 'hook_blocks', ...TOKEN_COLS,
 ], agentTaskRows);
 
 // ---------------------------------------------------------------- docs benchmark
@@ -110,6 +140,7 @@ for (const stamp of DOCS_STAMPS) {
     const rs = run.scores.filter((s) => s.arm === arm);
     if (!rs.length) continue;
     const m = docsArmMetrics(rs);
+    tokenRow('docs', run.model, stamp, arm, rs, run.dir);
     docsRows.push([
       modelName(run.model), run.model, stamp, arm, LABEL[arm], run.reps, m.runs, m.current, (100 * m.current) / m.runs, 100 * m.currentCi[0], 100 * m.currentCi[1],
       m.works, m.installed, m.built, m.smokeRuns, m.smokePass, m.versionOk, m.requiredOk, m.removed, m.deprecated,
@@ -120,6 +151,7 @@ for (const stamp of DOCS_STAMPS) {
       docsTaskRows.push([
         modelName(run.model), stamp, arm, r.task, r.rep, r.current, r.works, r.build?.installed, r.build?.built, r.smoke ? r.smoke.pass : null, r.versionOk,
         failed('required'), failed('removed'), failed('deprecated'), r.costUsd, r.turns, r.durationMs == null ? null : r.durationMs / 1000, r.calls.length, docsCalls(r).length,
+        ...tokensOf(run.dir, arm, r),
       ]);
     }
   }
@@ -131,8 +163,15 @@ csv('docs_by_model_arm.csv', [
 ], docsRows);
 csv('docs_by_task.csv', [
   'model', 'run_stamp', 'arm', 'task', 'rep', 'current_api', 'works', 'installed', 'built', 'smoke_pass', 'pinned_asked_major',
-  'required_missing', 'removed_used', 'deprecated_used', 'cost_usd_list_price', 'turns', 'duration_s', 'mcp_calls', 'docs_calls',
+  'required_missing', 'removed_used', 'deprecated_used', 'cost_usd_list_price', 'turns', 'duration_s', 'mcp_calls', 'docs_calls', ...TOKEN_COLS,
 ], docsTaskRows);
+const ci = (n: string) => [n, `${n}_ci95_lo`, `${n}_ci95_hi`];
+csv('tokens_by_model_arm.csv', [
+  'benchmark', 'model', 'model_id', 'run_stamp', 'arm', 'arm_label', 'runs', 'runs_with_usage',
+  ...ci('ktokens_total_per_run'), ...ci('ktokens_fresh_input_per_run'), 'ktokens_cache_read_per_run', ...ci('ktokens_output_per_run'),
+  ...ci('mcp_result_kchars_per_run'),
+  'get_docs_calls_per_run', 'get_docs_calls', 'get_docs_calls_without_version', 'runs_first_call_check_packages', 'runs_first_call_get_docs',
+], tokenRows);
 
 // ---------------------------------------------------------------- retrieval probes
 // heldout-all.json lists set A (81), then B (28), then C (45), in that order (probe-heldout.ts --set all).

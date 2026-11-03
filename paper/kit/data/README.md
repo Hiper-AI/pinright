@@ -22,7 +22,7 @@ The v6 runs (`v6-*-2026-11-01`, on `b2fcfe2`) are summarized in `bench/RESULTS-v
 
 ## Generated from the raw runs
 
-`npx tsx paper/kit/make-data.ts --agents <stamps> --docs <stamps> --probes <dir>` rebuilds these six
+`npx tsx paper/kit/make-data.ts --agents <stamps> --docs <stamps> --probes <dir>` rebuilds these seven
 files (the defaults are the v7 stamps and `bench/docs/runs/probes-v6`; `--bench <dir>` points at
 another `bench/` directory). The command for v7 is in `bench/RESULTS-v7.md`, "Reproduce". The script
 uses the same helpers as `bench/AGENTS.md`, `bench/DOCS.md` and `bench/RESULTS-v7.md` (`armMetrics`, `docsArmMetrics`, and
@@ -58,11 +58,14 @@ agent's packages installed without a version, 1 run per task).
 
 One row per model, arm, task and repetition (396 rows). Columns as above at run level, plus
 `alerts_pinright_check_manifest` (what `check-manifest` reported on the same lockfile), `build_step`
-and `build_inconclusive`. `alerts` is empty when the run wrote no manifest.
+and `build_inconclusive`. `alerts` is empty when the run wrote no manifest. The last six columns are the
+run's tokens (see `tokens_by_model_arm.csv`): `tokens_total`, `tokens_input_uncached`, `tokens_cache_read`,
+`tokens_cache_creation`, `tokens_output`, and `mcp_result_chars`, the characters every MCP tool returned. They
+are empty for `latest`, which has no agent.
 
 ### docs_by_model_arm.csv
 
-One row per model and arm of the docs benchmark (7 rows; `docs-only` ran for Sonnet only).
+One row per model and arm of the docs benchmark (9 rows).
 `current_api_runs` counts runs that install, build, pass the smoke test (6 of 8 tasks have one), pin
 the asked major, use every required new API and no removed or deprecated one; the interval resamples
 tasks. `works_runs` drops the API checks. `api_checks_passed_pct` pools every check of every run.
@@ -71,8 +74,28 @@ text they returned.
 
 ### docs_by_task.csv
 
-One row per model, arm, task and repetition (112 rows). `required_missing`, `removed_used` and
-`deprecated_used` list the failed check ids, space-separated (see `bench/docs/checks.ts`).
+One row per model, arm, task and repetition (144 rows). `required_missing`, `removed_used` and
+`deprecated_used` list the failed check ids, space-separated (see `bench/docs/checks.ts`). The last six
+columns are the run's tokens, as in `agents_by_task.csv`.
+
+### tokens_by_model_arm.csv
+
+One row per benchmark (`agents`, `docs`), model and agent arm (24 rows). `bench/tokens.ts` reads each run's
+`transcript.jsonl`: the token counts come from the `modelUsage` block of the final `result` line, the block
+Claude Code prices `total_cost_usd` from, summed over every model the session used (the run's model plus a
+small helper call). Means are per run; intervals resample tasks with the same seeded bootstrap.
+
+| Column | Meaning |
+|---|---|
+| benchmark, model, model_id, run_stamp, arm, arm_label | identity |
+| runs, runs_with_usage | runs scored / runs whose transcript has a usage block (all of them) |
+| ktokens_total_per_run, _ci95_lo, _ci95_hi | thousands of tokens the model processed: uncached input, cache reads, cache writes and output |
+| ktokens_fresh_input_per_run, _ci95_lo, _ci95_hi | uncached input plus cache writes: context the model had not seen before in the run |
+| ktokens_cache_read_per_run | prompt-cache reads (the rest of the input) |
+| ktokens_output_per_run, _ci95_lo, _ci95_hi | output, thinking included |
+| mcp_result_kchars_per_run, _ci95_lo, _ci95_hi | thousands of characters the MCP tools returned (docs, verdicts, find-library) |
+| get_docs_calls_per_run, get_docs_calls, get_docs_calls_without_version | `get-docs` calls, and those that named no version (no `version` argument, no `@version` in the id) |
+| runs_first_call_check_packages, runs_first_call_get_docs | runs whose first tool call was `check-packages` / `get-docs` |
 
 ### probes.csv
 
