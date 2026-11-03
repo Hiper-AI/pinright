@@ -14,21 +14,20 @@ agent and docs benchmarks (run v7) ran on 2026-11-02 and 2026-11-03 against comm
 Coding agents pick dependency versions from what their model saw in training, and those versions
 often carry advisories published since. We measured this with Claude Code driving three models
 (Sonnet 5.5, Haiku 5.5, Opus 5.5) on 12 tasks we wrote (8 npm, 4 PyPI), two runs each, scored with
-`npm audit` and `pip-audit`. Without tools, 40% to 42% of the direct dependencies each model pinned
-had a known advisory, and projects averaged 30 to 32 whole-tree alerts. We built pinright, an
-MIT-licensed MCP server, CLI, pre-install hook and GitHub Action that gives the agent a verdict on
-each dependency (OSV and deps.dev advisories, malware records, lookalike names, registry existence,
-supply-chain signals) and docs taken from the package at the version it will install. An ablation
-shows where the gain comes from. pinright with its security layer off, which documents the
-registry's latest release, already cut alerts to 84, 63 and 6 over 24 projects per model: steering
-the agent to current versions removes most of the exposure. The full server brought each model to 6
-alerts and 0 vulnerable direct pins; the 6 come from one nuxt dependency with no fixed release, which
-an unpinned install also gets. The hook alone, for agents that never call the tool, left 14 per model.
-With pinright's docs, all three models wrote the current API of eight recently changed libraries in
-16 of 16 runs, against 9 to 14 without docs. Replaying 25,077 public commands through the hook as
-released, 1.46% were blocked or asked about. These results come from one vendor's models, two days of
-advisory data, tasks we wrote, and two repetitions whose intervals overlap between the pinright
-arms.
+`npm audit` and `pip-audit`. With file tools only and nothing attached, 40% to 42% of the direct
+dependencies each model pinned had a known advisory, and projects averaged 30 to 32 whole-tree
+alerts. pinright, an MIT-licensed MCP server, CLI, pre-install hook and GitHub Action, gives the agent
+a verdict on each dependency (advisories, malware records, lookalike and nonexistent names) and docs
+from the package at the version it will install. With its security layer off, documenting the latest
+release, pinright already cut alerts to 84, 63 and 6 over 24 projects per model: current versions
+remove most of the exposure. The full server brought each model to 6 alerts, all from one nuxt
+dependency with no fixed release, and 0 vulnerable direct pins, using 21% to 33% fewer tokens per
+run than the docs-only ablation and more than no tools. Given a shell, the agents looked versions up
+with `npm view` or `pip index versions`, and every arm, with or without pinright, ended at the same 6
+alerts: there pinright made no measurable difference to the pins. With pinright's docs, all three
+models wrote the current API of eight recently changed libraries in 16 of 16 runs, against 9 to 14
+without. The hook blocked or asked about 1.46% of 25,077 public commands. These results come from one
+vendor's models, two days of advisory data, tasks we wrote, and two repetitions.
 
 ## 1. Problem
 
@@ -81,6 +80,10 @@ pinright combines pieces that exist separately.
   fact; Dependabot and Renovate open pull requests to move vulnerable or outdated dependencies. They
   act after a dependency entered the repository. pinright acts while the agent chooses it, and also
   ships a scanner (`pinright audit`) for CI.
+- **Docs MCP servers.** Several MCP servers give coding agents library documentation. They return
+  docs for a library; they do not check the version the agent pins, and they do not see the
+  install. We did not test any of them. The docs-only arm in Section 5.2 is pinright's own ablation,
+  not another product.
 - **Install-time guards.** Proxy registries and package firewalls block known-bad packages for every
   client of a registry. They see the package request, not the agent's intent, and return no
   recommended version or docs to the agent. Our threat model recommends running one next to pinright.
@@ -503,7 +506,154 @@ Every task here starts from an empty directory, which favors "pin the latest". W
 existing projects, where the agent has to keep a major or a lockfile and a "latest" answer no longer
 settles the version.
 
-### 5.3 Docs benchmark: what the agent writes
+### 5.3 Agents with a shell
+
+In 5.1 the agents had only Read and Write, so the hook saw manifest writes and never an install
+command. The shell arm (`bench/RESULTS-shell.md`, runs `shell-{sonnet,haiku,opus}-2026-11-02`) gives
+them Bash.
+
+**Setup.** Each job runs in a fresh Linux container (Node 22.23.4, Python 3.12.16, uv 0.11.17,
+pip-audit 2.10.1, Claude Code 2.1.308, pinright built from the branch the harness lives on), as an
+unprivileged user, with no host environment variables. The container is removed when the job ends;
+only the project files come back. Claude Code used the team's Claude subscription through a
+read-only copy of the credentials file. The prompt is the 5.1 prompt with one change: instead of
+"Do not run any command", the agent installs the dependencies for real (install scripts included)
+and checks that the project builds, type-checks or imports. Three arms (no docs, hook only, MCP +
+hook), the same 12 tasks, two runs each: 216 runs. Scoring is the 5.1 scorer, run inside the same
+image. At the commit that holds the results (`7c4caf1`), `src/` is the 1.0.0 code plus the two
+hook-reader commits of Section 6.
+
+| Model | Arm | Alerts (sum) | Alerts per project [95% CI] | Direct deps with advisory | Builds | Median pin age (days) | Cost per run (USD) | Duration (s) |
+|---|---|---|---|---|---|---|---|---|
+| Sonnet | No docs | 6 | 0.3 [0.0, 0.8] | 0/176 | 23/24 | 37 | 0.034 | 145 |
+| Sonnet | Hook only | 6 | 0.3 [0.0, 0.8] | 0/268 | 21/24 | 33 | 0.038 | 167 |
+| Sonnet | MCP + hook | 6 | 0.3 [0.0, 0.8] | 0/159 | 23/24 | 37 | 0.054 | 153 |
+| Haiku | No docs | 6 | 0.3 [0.0, 0.8] | 0/227 | 24/24 | 35 | 0.004 | 98 |
+| Haiku | Hook only | 6 | 0.3 [0.0, 0.8] | 0/169 | 23/23 | 37 | 0.005 | 119 |
+| Haiku | MCP + hook | 6 | 0.3 [0.0, 0.8] | 0/203 | 24/24 | 34 | 0.007 | 111 |
+| Opus | No docs | 6 | 0.3 [0.0, 0.8] | 0/296 | 24/24 | 34 | 0.094 | 90 |
+| Opus | Hook only | 6 | 0.3 [0.0, 0.8] | 0/291 | 24/24 | 33 | 0.109 | 103 |
+| Opus | MCP + hook | 6 | 0.3 [0.0, 0.8] | 0/307 | 24/24 | 36 | 0.174 | 103 |
+
+**What the agents did.** In every run without the MCP server (no docs and hook only, 48 per model),
+the agent asked the registry from the shell (`npm view <pkg> version`, `pip index versions <pkg>`)
+before pinning. With the MCP server it did so in 1, 3 and 5 of 24 runs (Sonnet, Haiku, Opus) and
+called `check-packages` instead. Every arm pinned recent versions (median age 33 to 37 days, 85% to
+94% of direct dependencies on the registry default), and every arm and model ended at the same 6
+alerts: the 3 that the current `nuxt` tree carries, in both nuxt runs. With a shell, on these tasks,
+pinright made no measurable difference to the pins. The gap in 5.1 is the gap of an agent that pins
+from memory.
+
+**Hook events.** The hook answered 897 tool calls and returned 28 denies and 20 asks, in 31 of the
+144 hooked runs. None stopped a version with a known advisory, because no agent tried to install
+one. 14 denies were `npx tsc` before `typescript` was installed; in 13 of them the same command ran
+`npm install` first from a `package.json` that lists `typescript`, so those 13 are false positives.
+13 denies called `jsonpointer==3.8` unpublished: PyPI had published it hours before the runs and
+deps.dev had not indexed it yet, another false positive. The other 21 worked as designed: 1 deny and
+13 asks on edits the hook cannot read (`sed -i`, `pip freeze > requirements.txt`), 6 asks on changes
+that add more than 40 dependencies (a full `langchain-rag` freeze of 56 to 62 packages) and 1 ask on a
+package name from a shell substitution. Headless Claude Code treats an ask as a deny. 22 of the 31
+runs recovered and installed after their last block; 7 of the other 9 still left a project that
+builds.
+
+**Overhead.** Hook-only runs took 15% to 21% longer than no docs, and cost 12% (Sonnet) and 16%
+(Opus) more; Haiku's cost is too small to compare at three decimals. MCP + hook cost 1.6 to 1.85
+times no docs, from the extra MCP calls and turns. The prompt asks for exact pins, which is what
+sends the agents to `npm view`; with a prompt that does not ask for pins, an agent may run
+`npm install <pkg>` and take whatever the registry serves, which we did not measure.
+
+### 5.4 Tokens and turns against the docs-only ablation
+
+Tokens are everything the model processed in a run (uncached input, cache reads, cache writes and
+output), read by `bench/tokens.ts` from the usage block Claude Code prices each run from
+(`data/tokens_by_model_arm.csv`). The reduction pairs the two arms task by task, and its interval
+resamples tasks. The docs-only arm stands in for a docs server that has no verdict; it is pinright
+itself, not another product.
+
+| Benchmark | Model | No docs (k) | docs-only (k) [95% CI] | pinright (k) [95% CI] | Fewer than docs-only, paired [95% CI] | Turns, docs-only to pinright | MCP text (k chars) | Cost per run (USD) |
+|---|---|---|---|---|---|---|---|---|
+| Agent | Sonnet | 15.3 | 55.6 [47.2, 63.5] | 42.2 [37.4, 46.8] | 24% [14, 34] | 9.3 to 5.9 | 24.8 to 5.3 | 0.088 to 0.050 |
+| Agent | Haiku | 20.8 | 93.8 [73.5, 114.8] | 74.2 [61.8, 87.8] | 21% [6, 33] | 11.1 to 7.5 | 45.3 to 17.2 | 0.008 to 0.005 |
+| Agent | Opus | 16.4 | 73.3 [58.8, 88.5] | 54.6 [45.2, 65.0] | 26% [11, 37] | 9.9 to 6.8 | 32.9 to 10.4 | 0.212 to 0.126 |
+| Docs | Sonnet | 17.2 | 94.0 [63.8, 125.1] | 62.9 [52.4, 76.7] | 33% [13, 45] | 11.7 to 8.1 | 35.0 to 20.2 | 0.120 to 0.084 |
+| Docs | Haiku | 23.5 | 135.1 [95.7, 179.9] | 95.0 [77.2, 113.3] | 30% [4, 46] | 13.4 to 9.1 | 46.9 to 26.1 | 0.010 to 0.007 |
+| Docs | Opus | 19.0 | 113.2 [78.8, 152.6] | 83.9 [67.1, 98.9] | 26% [2, 43] | 12.4 to 9.3 | 38.6 to 23.7 | 0.263 to 0.195 |
+
+![Figure 4. Tokens per run by arm and model.](figures/fig-i-tokens-per-run.png)
+
+*Figure 4. Tokens per run with 95% intervals. Left: agent benchmark. Right: docs benchmark.*
+
+pinright used 21% to 33% fewer tokens per run than the docs-only ablation, 3.1 to 4.3 fewer turns,
+and 0.7 to 2.0 `get-docs` calls per run instead of 4.5 to 6.4. The paired intervals stay above zero
+in all six rows; the lowest bound is 2%. The per-arm intervals overlap in five of the six rows (only
+the agent benchmark on Sonnet separates). No tools at all used fewer tokens and cost less than either
+docs arm in every cell: 15k to 21k tokens per agent run and 17k to 23k per docs run.
+
+**Mechanism, from the transcripts.** With docs only, the agent used `get-docs` as its version lookup.
+In the agent benchmark it called it once per package, 5.2 to 5.7 times per run, before its first file
+write; 345 of the 398 calls (87%) named no version, so they returned the latest release's docs, and
+299 (75%) put "version" or "latest" in the query. Each call returned 4.8k to 8.0k characters on
+average. With pinright, all 72 agent runs opened with `check-packages` for the whole dependency list
+(0.5k to 0.7k characters per call), which returns the version to pin; the agent then called
+`get-docs` 0.7 to 1.7 times per run, with a version in 86 of 87 calls. The full server's
+instructions ask for that order, and the docs-only server has no `check-packages`. Fresh input
+(uncached input plus cache writes) about halved in the agent benchmark: 16.3k to 8.0k (Sonnet),
+26.7k to 14.5k (Haiku), 19.2k to 9.8k (Opus). Most input is a cache read, which costs less than fresh
+input, so tokens and cost do not move in proportion.
+
+### 5.5 Tasks from public GitHub issues
+
+The 5.1 tasks are ours, and a reader can ask whether we picked them to favor pinright. This set
+(`bench/RESULTS-real-issues.md`, `bench/AGENTS-real-issues.md`) takes 12 prompts from public GitHub
+issues that ask for an example or a new piece of code.
+
+**Selection rule**, fixed before any agent ran and applied once on 2026-11-02: two `gh search issues`
+queries for `"example" in:title`, one for TypeScript and one for Python repositories, issues created
+from 2025-01-01 to 2026-09-30, sorted by reactions. Walking each list in order, we kept an issue if it
+asks for runnable code and says what the code should do (I1), the code needs one registry (I2), it
+needs no GPU, training or native mobile or desktop build (I3), and it is the first kept issue of its
+repository (I4), and stopped at 6 per list. The prompt is the trimmed issue body inside a fixed frame
+with the 5.1 pinning rules. The raw search output, the trimmed bodies and a log of every result read,
+with the criterion that excluded it, are committed.
+
+**The 12 tasks.** npm: Hono examples for the MCP TypeScript SDK, a Proton Drive SDK example, a Mastra
+deep-research example, an assistant-ui backend tool-call example, a Next.js GitHub Pages example and
+openapi-fetch with Next.js. PyPI: a remote MCP OAuth example, KittenTTS streaming, an OpenEvolve
+symbolic-regression example, a pydantic-ai deep-research example, GDPval for Stirrup and a LiveKit
+Ultravox agent. Same harness as 5.1 (Write and Read only), on `8efc4f0`, three arms, two runs each:
+216 runs.
+
+| Model | Arm | Alerts (sum) | Alerts per project [95% CI] | Direct deps with advisory | Builds |
+|---|---|---|---|---|---|
+| Sonnet | No docs | 504 | 21.9 [10.5, 33.7] | 24/92 (26%) | 9/24 |
+| Sonnet | MCP | 114 | 4.8 [0.0, 14.2] | 0/106 | 18/24 |
+| Sonnet | MCP + hook | 58 | 2.6 [0.0, 8.9] | 0/99 | 14/23 |
+| Sonnet | No pin (reference) | 56 | 4.7 [0.0, 14.0] | 0/56 | n/a |
+| Haiku | No docs | 514 | 22.3 [9.5, 36.9] | 27/92 (29%) | 9/24 |
+| Haiku | MCP | 114 | 4.8 [0.0, 14.2] | 0/103 | 17/24 |
+| Haiku | MCP + hook | 56 | 2.4 [0.0, 8.0] | 0/102 | 14/24 |
+| Haiku | No pin (reference) | 70 | 5.8 [0.0, 17.4] | 0/45 | n/a |
+| Opus | No docs | 600 | 25.0 [12.5, 38.3] | 30/116 (26%) | 15/24 |
+| Opus | MCP | 116 | 4.8 [0.0, 14.3] | 0/118 | 19/24 |
+| Opus | MCP + hook | 3 | 0.1 [0.0, 0.3] | 0/123 | 18/24 |
+| Opus | No pin (reference) | 57 | 4.8 [0.0, 14.2] | 0/63 | n/a |
+
+Without docs, 26% to 29% of direct pins carried an advisory, lower than the 40% to 42% on our tasks,
+and three issue tasks came out clean or nearly clean. With the MCP server no model pinned a direct
+dependency with an advisory. **One task dominates the sums.** In `stirrup-gdpval` the current
+`stirrup` release (0.2.1) pulls `moviepy` 2.2.1, which caps `pillow` below 12.0, and the fixes for the
+56 `pillow` 11.3.0 alerts shipped in 13.0.0; the no-pin reference has the same 56. 112 of each MCP
+arm's alerts come from that task. On the other 11 tasks the MCP arm totaled 2 to 4 alerts per model,
+against 375 to 484 without docs. In 4 of 6 MCP + hook runs of that task the hook's note led the agent
+to pin `pillow==13.0.0` next to `stirrup`, which does not resolve, so those manifests drop out of the
+alert columns: read the low MCP + hook sums with that in mind. Builds failed often in every arm,
+mostly from incomplete projects (no root layout, `process` without `@types/node`).
+
+We scored this set before the two scorer fixes of 5.1. Its run data shows those misses only in no-docs
+runs, so its no-docs counts are low, if anything. With 12 tasks the no-docs and MCP intervals of
+alerts per project overlap for every model.
+
+### 5.6 Docs benchmark: what the agent writes
 
 **Tasks.** Eight tasks that come out right only with a library's current major: Next.js 16
 (`proxy.ts`, async `cookies()`), Tailwind CSS 4 (`@theme`, `@utility`), Zod 4, AI SDK 7
@@ -530,9 +680,9 @@ Runs `docs-v7-{sonnet,haiku,opus}-2026-11-02`, on the 1.0.0 code:
 | Opus | docs-only | 16/16 | 16/16 | 0 | 0.263 | 12.4 |
 | Opus | pinright | 16/16 | 16/16 | 0 | 0.195 | 9.3 |
 
-![Figure 4. Docs benchmark: runs that wrote the current API.](figures/fig-c-docs-current-api.png)
+![Figure 5. Docs benchmark: runs that wrote the current API.](figures/fig-c-docs-current-api.png)
 
-*Figure 4. Share of runs current, by model and arm, with 95% intervals.*
+*Figure 5. Share of runs current, by model and arm, with 95% intervals.*
 
 Two libraries explain most of the gap. AI SDK 7 (released 2026-06-25) reads as newer than what the
 models saw, although no cutoff dates are published: without docs, all six runs wrote AI SDK 5/6 code
@@ -544,17 +694,51 @@ which `check-packages` fixes, more than about the docs. Haiku also used the depr
 `tseslint.config()` in both ESLint runs, next to a `typescript-eslint` that crashes ESLint 10, and
 lost one Pydantic run to a set of pins `uv` could not resolve. The models already knew Next 16,
 Tailwind 4, Zod 4 and Express 5, so on those tasks this benchmark cannot separate docs from no docs.
-The no-docs intervals for Sonnet and Opus overlap 16 of 16; only Haiku's does not. The `[100%, 100%]`
-interval in Table 3 is what a task bootstrap returns when every run passes; a Wilson interval for
-16 of 16 is [81%, 100%]. The docs-only arm, which v7 ran on all three models, lost one Haiku AI SDK
-run that failed to build. pinright roughly doubled the cost per run with every model. In v6, on the
+The no-docs intervals for Sonnet and Opus overlap 16 of 16; only Haiku's does not. A task bootstrap
+returns an interval of zero width for an arm where every run passes; a Wilson interval for 16 of 16
+starts at 81%. The docs-only arm, which v7 ran on all three models, lost one Haiku AI SDK run that
+failed to build. pinright roughly doubled the cost per run with every model. In v6, on the
 pre-release commit, no docs scored 13, 10 and 12 of 16 and pinright 16 of 16 on every model.
 
-A second set of eight tasks uses APIs first released on 2026-08-01 or later, newer than the models
-(`bench/RESULTS-post-cutoff.md`). There the agents wrote the new API in 2 of 48 runs without docs,
-46 of 48 with pinright and 45 of 48 with the docs-only arm.
+### 5.7 Post-cutoff docs set
 
-### 5.4 Retrieval probes: the docs pipeline without an agent
+Because the models knew most of the 5.6 APIs, we wrote eight more tasks whose required API first
+appeared on the registry on 2026-08-01 or later (`bench/RESULTS-post-cutoff.md`): msw 3
+(`msw/graphql`, `onUnhandledFrame`), Hono 4.13 (`hono/mount`), dotenv 18 (`dotenv run`), Zod 4.5
+(`z.compile`), Polars 2 (`bin_intervals`, `bin_quantiles`), FastAPI 0.142 (`telemetry=`), pandas 3.1
+(`DataFrame.select`, `filter(cond=)`) and LangChain 1.4 (`langchain.mcp`). The prompts name the
+library and the major, describe the behavior and never the API, and set a minimum version. Each task
+has a reference project that must pass and an old-API variant that must fail. Same scorer as 5.6
+without the runtime smoke test; runs `docs-post-{sonnet,haiku,opus}-2026-11-02`, from a branch that
+adds the set to the release branch.
+
+| Model | Arm | Current API | 95% Wilson (%) | Works | Cost per run (USD) |
+|---|---|---|---|---|---|
+| Sonnet | No docs | 2/16 | 13 [3, 36] | 9/16 | 0.034 |
+| Sonnet | docs-only | 14/16 | 88 [64, 97] | 16/16 | 0.089 |
+| Sonnet | pinright | 16/16 | [81, 100] | 16/16 | 0.080 |
+| Haiku | No docs | 0/16 | 0 [0, 19] | 12/16 | 0.003 |
+| Haiku | docs-only | 15/16 | 94 [72, 99] | 15/16 | 0.010 |
+| Haiku | pinright | 15/16 | 94 [72, 99] | 16/16 | 0.008 |
+| Opus | No docs | 0/16 | 0 [0, 19] | 8/16 | 0.078 |
+| Opus | docs-only | 16/16 | [81, 100] | 16/16 | 0.292 |
+| Opus | pinright | 15/16 | 94 [72, 99] | 15/16 | 0.216 |
+
+Over the three models: 2 of 48 runs without docs, 46 of 48 with pinright and 45 of 48 with the
+docs-only ablation. The two docs arms share the docs code and do not differ at this sample size. The
+Wilson column treats every run as independent, which two repetitions of a task are not; the task
+bootstrap in the source file is wider. Both no-docs passes are Sonnet on pandas 3.1, whose design was
+public in 2025 issues. In 7 of the 48 no-docs runs the agent wrote no files and said it could not
+check the API.
+
+**The 5 misses with docs**, out of 96 runs. Opus with pinright once wrote `graphql.query()` on msw 3,
+where only `graphql.link(url).query()` exists; pinright's msw answers showed the new import path but
+not that change. Sonnet docs-only (twice) and Haiku pinright (once) passed the mask to
+`DataFrame.filter` positionally or as `items=`, which on pandas 3.1 selects labels and returns no
+rows; only `cond=` filters. Haiku docs-only once wrote a `tsconfig.json` without the DOM types that
+`@mswjs/interceptors` needs. The msw miss led to two changes after the benchmark (Section 6).
+
+### 5.8 Retrieval probes: the docs pipeline without an agent
 
 To measure the docs pipeline apart from the model, we send it questions and check the answer for
 strings of the current API. We wrote each held-out set and scored it before changing code, tuned only
@@ -573,7 +757,7 @@ Sets B and C are the numbers to quote: 25 of 28 and 33 of 45. The misses fall in
 pinright cannot read, ranking failures where a parameter list outranks a call example, and vocabulary
 mismatches ("lazily" against "lazy"). A probe counts markers, not correctness.
 
-### 5.5 Hook false positives on public commands
+### 5.9 Hook false positives on public commands
 
 A hook that runs before every shell command has to stay quiet on ordinary work. We collected 25,077
 commands and manifest writes (14,902 distinct) from 180 public repositories: the most-starred per
@@ -589,9 +773,9 @@ repository checkout as working directory, on live data with a warm cache, on 202
 | Blocked or asked, without GitHub `${{ }}` templating | 1.92% | 1.16% |
 | Denied, without templating | 0.42% | 0.13% |
 
-![Figure 5. Hook false-positive rate by source, before and after fixes.](figures/fig-e-hook-false-positives.png)
+![Figure 6. Hook false-positive rate by source, before and after fixes.](figures/fig-e-hook-false-positives.png)
 
-*Figure 5. Share of entries blocked or asked, by source, without templating.*
+*Figure 6. Share of entries blocked or asked, by source, without templating.*
 
 The replay found 13 root causes, fixed with regression tests: Make variables read as command
 substitutions (43 entries), `$PYTHON -m module` read as an install verb (62), Go pins looked up
@@ -603,16 +787,51 @@ templating an agent never types, and 32 are known advisories (true positives, su
 `npm install -g pnpm@8` with 26 advisories in a public workflow). The corpus is CI and README
 commands, not agent sessions; README lines, the closest to what agents copy, run at 0.61%.
 
-**Real agent sessions.** We also replayed the Claude Code transcripts of one month of the
-maintainers' own work (2026-10-02 to 2026-11-02): 156,977 tool calls, 154,402 cases after removing
-duplicates, against `release` at `8efc4f0` and again after two fixes it prompted. The hook asked or
-blocked on 0.46% of the calls both times. We read every flagged case: after the fixes, 52 were true
-positives, 79 asks by design (a manifest changed by `sed -i` or `cp`, a name in a variable), and 10
-false positives, 0.006% of the cases (22 before the fixes). Another 568 were replay artifacts from
-folders deleted since the session. One user and one month: another team's sessions will repeat other
-commands (`bench/fp/RESULTS.md`, "Real agent sessions").
+### 5.10 Hook replay of real agent sessions
 
-### 5.6 Latency
+The public corpus holds CI and README commands. This replay uses what coding agents ran: the Claude
+Code transcripts of one month of the author's own work on pinright, its website and other Hiper AI
+products (2026-10-02 to 2026-11-02), with his consent (`bench/fp/RESULTS.md`, "Real agent
+sessions"). The transcripts stay on his machine; the results below are counts.
+
+**Corpus.** 7,434 transcripts (483 sessions and 6,951 subagent runs) with 156,977 tool calls: Bash
+117,892, Edit 18,952, PowerShell 11,241, Write 8,896. Removing duplicates (same tool, input and
+working directory) leaves 154,402 cases. `bench/fp/sessions.ts` replayed them through the real CLI,
+one process per case the reader marks for checking, with the default policy and live data, against
+`release` at `8efc4f0` and again after the fixes below.
+
+| | Baseline (`8efc4f0`) | After the fixes |
+|---|---|---|
+| Asked | 92 (0.060%) | 80 (0.052%) |
+| Blocked | 627 (0.406%) | 629 (0.407%) |
+| Asked or blocked, over 156,977 calls | 729 (0.46%) | 719 (0.46%) |
+
+**Adjudication.** We read and sorted every asked or blocked case by hand, with a script for the 568
+cases that share one shape. Those 568 are replay artifacts: `npx tsc` denied in a worktree deleted or a
+repository renamed since the session, where `node_modules` existed at the time. Of the other 141
+after the fixes, 52 are true positives (versions with advisories or a malware record, such as
+`npx --yes pnpm@10.4.1` with 25 advisories in 37 cases), 79 are asks by design (a manifest changed by
+`sed -i`, `cp` or `git checkout`, a name or path in a variable, `git apply` on a manifest, a change to
+the hook settings), and 10 are false positives: 10 in 154,402 cases (0.006%), down from 22 (0.014%).
+Several true positives were the author testing pinright on purpose; they count because the hook
+answered as it should.
+
+**Fixes it prompted.** Commit `6837139` fixed four misreadings and one gap: `grep -l ... | xargs npx
+vitest run` asked although xargs passes arguments to the command npx already names; PowerShell
+`$o = npx vitest run` read as a program from a variable; `Set-Content ... -Encoding ascii` appended
+`ascii` to the manifest; `Push-Location` did not move the folder; and `$out = npm install x` read as
+an assignment, so nothing was checked. `699770d` keeps a PowerShell here-string assigned to a variable
+as a value. Both have regression tests. The 10 remaining false positives come from four shapes kept
+as `it.todo` (a `cd` the hook cannot resolve, `npm install <tarball> && npx <bin>`, PowerShell
+here-strings and `*> $null` read as commands). `bench/fp/RESULTS.md` names the two fixes by their
+commits on the replay branch (`3f25662`, `54b8d1d`); the release branch carries them as `6837139` and
+`699770d`.
+
+One user and one month, mostly TypeScript and Rust work driven by long agent loops: another team's
+sessions will repeat other commands. The replay runs today's files, and 22 manifest edits replay as
+no-ops because the file before the edit could not be rebuilt.
+
+### 5.11 Latency
 
 Measured with `scripts/latency.ts` (5 runs per cell, Windows 11, Node 24, live services, 2026-11-01):
 
@@ -688,22 +907,41 @@ single call: treat the MCP numbers as an order of magnitude, not a distribution.
 - **Shared data source.** pinright and the reference scanners read OSV-derived data. The benchmark
   shows that pinright's choices hold up against those scanners, not that the advisory data is
   complete.
-- **Agents without a shell.** Runs had only Read and Write, so the hook saw manifest writes, not
-  install commands. Its command reader is covered by unit tests and the public-command replay, not by
-  the agent benchmark.
+- **Agents without a shell.** In 5.1 and 5.5 the agents had only Read and Write, so the hook saw
+  manifest writes, not install commands, and the agents could not look versions up. With a shell
+  (Section 5.3) the agents ran `npm view` or `pip index versions` before pinning, and every arm, with
+  or without pinright, ended at the same 6 alerts per model. On these tasks the 5.1 gap measures an
+  agent that pins from memory; it does not show what pinright adds for an agent with a shell, where
+  we measured no difference in the pins. The shell arm does cover the hook's command reader on real
+  agent traffic: 27 denies came from two causes, 26 of them false positives, both fixed afterwards.
 - **The models knew most new APIs.** Without docs they wrote the current API for four to seven of
   eight docs tasks; the docs benchmark separates arms mainly on AI SDK 7, LangChain 1 and, for
-  Haiku, ESLint 10 and Pydantic 2. The post-cutoff set (Section 5.3) addresses this.
+  Haiku, ESLint 10 and Pydantic 2. The post-cutoff set (Section 5.7) addresses this.
 - **Probes measure markers.** A probe passes when expected strings appear, which says nothing about
   the surrounding text.
 - **The public false-positive corpus is not agent traffic.** CI scripts use more variables and
   private indexes than an agent in a working copy, so the "by design" asks are over-represented; the
   replay judges each command alone. The real-session replay covers one user's month.
-- **Injection held-out sets are small** (50 attacks over three sets) and written by the team that
-  wrote the rules.
-- **The hook changed after the run.** Two commits after v7 (`6837139`, `699770d`) fix false
-  positives in the hook's shell command reader. Agents in the benchmark have no shell, so the hook read
-  only their manifest writes. The retrieval probes ran on the release candidate `b2fcfe2`.
+- **Injection held-out sets are small** (50 attacks over three sets) and written by the author of
+  the rules.
+- **The code changed after the run.** v7, the real-issues set and the real-session baseline measured
+  `8efc4f0`, whose `src/` is the 1.0.0 release; the retrieval probes ran on the release candidate
+  `b2fcfe2`. After the runs, the `release` branch gained these commits, which no benchmark in this
+  report measured:
+  - `6837139` and `699770d`: hook command-reader fixes from the real-session replay (Section 5.10).
+    The `src/` of the shell arm's results commit includes them; in the agent benchmark, without a
+    shell, the hook read only manifest writes.
+  - `899d8d2`: a deps.dev 404 for a version is confirmed against the registry (npm, PyPI, crates.io,
+    RubyGems) before pinright calls it unpublished; a version the registry publishes gets an
+    `unknown` verdict instead (the `jsonpointer` 3.8 denies in Section 5.3).
+  - `867dd08`: the hook and `check-manifest` check a recommended fix against the ranges other
+    dependencies in the manifest set, and recommend inside the range (the `pillow` cap in Section 5.5).
+  - `43e44fd`: `npx <bin>` after a bare `npm install`, `npm ci`, `pnpm install` or `yarn` in the same
+    command counts as the local bin (13 of the 14 `npx tsc` denies in Section 5.3).
+  - `824752c`: `upgrade-guide` reports exports that moved to a new entry point, with the members they
+    lost (msw 3's `graphql`, Section 5.7).
+  - `c813289`: `get-docs` says when a question names a member that the object's type definitions no
+    longer declare (`graphql.query` on msw 3).
 - **The scorer had two silent failures**, fixed during v7: a failed deps.dev lookup counted as a
   version that does not exist, and an empty `pip-audit` answer as a clean tree. We rescored the 34
   affected runs; the main change is 2 vulnerable direct pins in Sonnet's docs-only arm instead of 0.
@@ -733,14 +971,20 @@ single call: treat the MCP numbers as an order of magnitude, not a distribution.
 - With OSV down, the single-package path relies on deps.dev, which lags by hours.
 - Benchmarks: other vendors' agents, more repetitions, and tasks drawn from existing repositories.
   The post-cutoff docs set and the tasks from public GitHub issues (`bench/RESULTS-real-issues.md`)
-  are first steps.
+  are first steps. With a shell, the agents already pinned current versions on our tasks; prompts
+  that do not ask for pins, existing lockfiles and abandoned or compromised packages would test the
+  verdict where a registry lookup does not settle the version.
 
 ## 8. Availability and reproduction
 
 - Repository: <https://github.com/Hiper-AI/pinright> (public from 2026-11-03). Site: <https://pinright.dev>.
 - License: MIT. Install in the project to protect: `npx pinright init`; setup check: `npx pinright doctor`.
-- Unit tests at 1.0.0: 983 pass, 10 skipped on Windows (POSIX-only symlink and FIFO tests, which run
-  in the Linux CI).
+- Unit tests on `release` on 2026-11-03, after the commits listed in Section 6: 1,047 pass, 10
+  skipped on Windows (POSIX-only symlink and FIFO tests, which run in the Linux CI) and 4 todo (the
+  open false-positive shapes of Section 5.10), in 56 files. At 1.0.0 the count was 983 passing.
+- Changes after the benchmark: the `release` branch holds seven commits under `src/` after the
+  measured `8efc4f0` (Section 6, "The code changed after the run"); `CHANGELOG.md`, "Unreleased",
+  lists the two user-facing fixes. None of them was benchmarked.
 - Data behind every table and figure: the aggregate CSVs in `paper/kit/data/`. The raw agent
   transcripts and scored projects are not published; `npx tsx paper/kit/make-data.ts --agents
   <stamps> --docs <stamps>` rebuilds the CSVs from the run directories, and
@@ -769,6 +1013,55 @@ npx tsx bench/injection/run.ts && npx tsx scripts/latency.ts
 The agent benchmarks need Claude Code and an Anthropic account. Over the 504 runs of v7 the
 transcripts report USD 35.10 of API-equivalent cost at list price. Results move with the live advisory data and the
 services' latency.
+
+## Conflict of interest
+
+The author builds and publishes the tool this report evaluates. Hiper AI develops pinright and
+publishes it under the MIT license. The benchmarks ran on a Claude team subscription; every cost in
+this report is the list-price equivalent that Claude Code reports, not an amount paid per run. The
+work received no external funding. pinright queries deps.dev, OSV, the package registries, jsDelivr
+and GitHub through their public interfaces, as any client does; the author and Hiper AI have no
+other relationship with those services.
+
+## Data and ethics
+
+The real-session replay (Section 5.10) used one month of the author's own Claude Code sessions, with
+his consent. The transcripts are not published: the report and `bench/fp/RESULTS.md` give aggregate
+counts and anonymized command shapes, and the regression tests hold hand-written cases. The public
+false-positive corpus (Section 5.9) and the real-issues tasks (Section 5.5) come from public
+repositories. The benchmark transcripts and scored projects are not published; the aggregate CSVs in
+`paper/kit/data/` are. The study involved no human subjects other than the author.
+
+## Contributions
+
+Juan Pablo Mandelbaum designed the study and leads pinright: conception, methodology, software
+direction, analysis and writing. He is the sole contributor.
+
+**Use of AI tools.** AI coding agents (Claude Code with Claude models) implemented much of the code,
+ran the benchmarks and replays and drafted parts of the text, under the author's direction; the
+author is responsible for the content.
+
+## How to cite
+
+Mandelbaum, J. P. (2026). *pinright: version-accurate library docs and a supply-chain verdict for
+coding agents* (Technical report, version 1.0.0). Hiper AI. <https://github.com/Hiper-AI/pinright>
+
+DOI: N/A
+
+```bibtex
+@techreport{mandelbaum2026pinright,
+  author      = {Mandelbaum, Juan Pablo},
+  title       = {{pinright}: version-accurate library docs and a supply-chain verdict for coding agents},
+  institution = {Hiper AI},
+  type        = {Technical report},
+  year        = {2026},
+  version     = {1.0.0},
+  url         = {https://github.com/Hiper-AI/pinright},
+  note        = {DOI: N/A}
+}
+```
+
+`CITATION.cff` at the repository root holds the same entry.
 
 ## References
 

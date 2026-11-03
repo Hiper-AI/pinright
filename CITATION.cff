@@ -1,0 +1,34 @@
+# DOI: N/A (not assigned yet)
+cff-version: 1.2.0
+message: "If you use pinright or its benchmark results, please cite the technical report."
+title: "pinright"
+abstract: "An MCP server, CLI, pre-install hook and GitHub Action that gives coding agents a supply-chain verdict on each dependency and docs taken from the package at the version they install."
+type: software
+version: 1.0.0
+date-released: 2026-11-03
+authors:
+  - given-names: "Juan Pablo"
+    family-names: "Mandelbaum"
+    affiliation: "Hiper AI"
+license: MIT
+repository-code: "https://github.com/Hiper-AI/pinright"
+url: "https://pinright.dev"
+keywords:
+  - coding agents
+  - Model Context Protocol
+  - software supply chain
+  - dependency management
+preferred-citation:
+  type: report
+  title: "pinright: version-accurate library docs and a supply-chain verdict for coding agents"
+  authors:
+    - given-names: "Juan Pablo"
+      family-names: "Mandelbaum"
+      affiliation: "Hiper AI"
+  institution:
+    name: "Hiper AI"
+  year: 2026
+  version: 1.0.0
+  url: "https://github.com/Hiper-AI/pinright"
+  repository-code: "https://github.com/Hiper-AI/pinright"
+  notes: "Technical report, version 1.0.0. DOI: N/A."

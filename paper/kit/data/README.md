@@ -130,7 +130,7 @@ The public-command corpus itself (25,077 entries from 180 repositories) stays ou
 ## Raw logs
 
 `latency-2026-11-02/` holds the raw output behind the Linux and same-session Windows tables of the
-report's section 5.6. These are text logs, not CSV.
+report's section 5.11. These are text logs, not CSV.
 
 | File | What |
 |---|---|

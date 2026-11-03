@@ -188,7 +188,7 @@ benchmark: 16.3k to 8.0k (Sonnet), 26.7k to 14.5k (Haiku), 19.2k to 9.8k (Opus).
 - **Hook false positives on public commands** ([fp/RESULTS.md](fp/RESULTS.md)). 25,077 CI steps, scripts,
   README lines, Dockerfiles, Makefiles and manifest writes from 180 public repositories: blocked or
   asked on 1.46%, denied 0.13% of the entries without GitHub templating.
-- **Latency** ([report, section 5.6](../paper/kit/pinright-report.md#56-latency)). In a Linux container
+- **Latency** ([report, section 5.11](../paper/kit/pinright-report.md#511-latency)). In a Linux container
   on 2026-11-02, the hook took 109 ms (p50, warm) on a command that installs nothing and 554 ms on one
   install; a 30-dependency `package.json` took 2.5 s warm, over its 1.5 s budget.
 

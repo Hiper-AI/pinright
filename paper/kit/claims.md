@@ -47,7 +47,7 @@ not answer, the verdict is unknown, never ok" (`src/verdict.ts`), "no install sc
 (`package.json`), "GITHUB_TOKEN ... goes only to api.github.com" (`src/github.ts`, SECURITY.md), the
 list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 
-## 3. Agent benchmark (report 5.1, 5.2; blog; one-pager; README "Benchmark"; social; press)
+## 3. Agent benchmark (report 5.1, 5.2, 5.3 shell arm; blog; one-pager; README "Benchmark"; social; press)
 
 | Claim | Value | Source |
 |---|---|---|
@@ -87,8 +87,15 @@ list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 | Shell arm: 216 runs (3 models x 3 arms x 12 tasks x 2), Bash in a disposable container; every arm 6 whole-tree alerts per model (latest nuxt tree, both nuxt-app runs), 0 direct deps with an advisory | "every arm ended at the same 6 alerts" (site, README, docs/benchmark.md, RESULTS-v7) | `bench/RESULTS-shell.md`, results table and "What we saw" |
 | Shell arm: without the MCP server the agent ran `npm view` / `pip index versions` before pinning in every run; with it in 1, 3 and 5 of 24 (Sonnet, Haiku, Opus) | "looked versions up themselves" | `bench/RESULTS-shell.md`, "What we saw" |
 | Shell arm hook: 897 tool calls, 28 denies and 20 asks; 13 false positives on `npm install && npx tsc`, 13 on `jsonpointer==3.8` missing from deps.dev; hook-only runs 15% to 21% longer than no docs | evidence page, shell section | `bench/RESULTS-shell.md`, "Hook events" |
+| Shell arm setup (report 5.3): fresh Linux container per job, Node 22.23.4, Python 3.12.16, uv 0.11.17, pip-audit 2.10.1, Claude Code 2.1.308, unprivileged user, no host env, team subscription via a read-only credentials copy; real install and build check; scorer run in the same image | | `bench/RESULTS-shell.md`, "Setup" |
+| Shell arm table (report 5.3): alerts 6 in all 9 cells, 0.3 [0.0, 0.8]; direct deps 0/176, 0/268, 0/159 (Sonnet), 0/227, 0/169, 0/203 (Haiku), 0/296, 0/291, 0/307 (Opus); builds 23/24, 21/24, 23/24, 24/24, 23/23, 24/24, 24/24 x3; median pin age 37/33/37, 35/37/34, 34/33/36; cost 0.034/0.038/0.054, 0.004/0.005/0.007, 0.094/0.109/0.174; duration 145/167/153, 98/119/111, 90/103/103 s | | `bench/RESULTS-shell.md`, per-model tables |
+| Shell arm: median pin age 33 to 37 days, 85% to 94% on the registry default, in every arm | | `bench/RESULTS-shell.md`, "What we saw" |
+| Shell arm hook causes: 14 `npx tsc` denies (13 false positives), 13 `jsonpointer==3.8` denies, 1 deny + 13 asks on unreadable edits, 6 asks over 40 dependencies, 1 ask on a substitution; deny or ask in 31 of 144 hooked runs; 22 of 31 recovered; 7 of the other 9 still build; "27 denies from two causes, 26 false positives" | 14 + 13 + 1 = 28 denies; 13 + 6 + 1 = 20 asks | `bench/RESULTS-shell.md`, "What we saw" table and recovery paragraph |
+| Shell arm overhead: hook only cost 12% (Sonnet) and 16% (Opus) more than no docs; MCP + hook 1.6x to 1.85x | 0.038/0.034, 0.109/0.094; 0.054/0.034 = 1.59, 0.174/0.094 = 1.85 | `bench/RESULTS-shell.md`, "Cost of the hook here" |
+| "With a shell, on these tasks, pinright made no measurable difference to the pins" (report abstract, 5.3, 6) | every arm: 6 alerts, 0 vulnerable direct deps | same |
+| Shell arm results commit `7c4caf1`: `src/` = 1.0.0 plus `6837139`, `699770d` | `git diff --stat 8efc4f0 7c4caf1 -- src` (only `src/hook/command.ts`) | git |
 
-## 4. Docs benchmark and probes (report 5.3, 5.4)
+## 4. Docs benchmark, post-cutoff set and probes (report 5.6, 5.7, 5.8)
 
 | Claim | Value | Source |
 |---|---|---|
@@ -102,10 +109,15 @@ list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 | Fully current no-docs tasks: Sonnet 6, Haiku 4, Opus 7 of 8 ("four to seven", report 6) | | `bench/DOCS.md` per-task tables |
 | v6 docs values | no docs 13, 10, 12 of 16; Sonnet docs-only 15 of 16 | `bench/RESULTS-v6.md` |
 | Post-cutoff set: 2/48 no docs, 46/48 pinright, 45/48 docs-only | | `bench/RESULTS-post-cutoff.md`, "Result" |
+| Post-cutoff table (report 5.7): current API and 95% Wilson, Sonnet 2/16 13% [3, 36], 14/16 88% [64, 97], 16/16 100% [81, 100]; Haiku 0/16 [0, 19], 15/16 94% [72, 99], 15/16 94% [72, 99]; Opus 0/16 [0, 19], 16/16 [81, 100], 15/16 [72, 99] (no docs, docs-only, pinright); works 9/16/16, 12/15/16, 8/16/15; cost 0.034/0.089/0.080, 0.003/0.010/0.008, 0.078/0.292/0.216 | | `bench/RESULTS-post-cutoff.md`, summary table |
+| Post-cutoff: 7 of 48 no-docs runs wrote no files; both no-docs passes are Sonnet on pandas 3.1 (design in GH 61317, GH 61522, 2025) | | same, "Why this set" and "Result" |
+| Post-cutoff: 5 misses with docs in 96 runs (Opus pinright `graphql.query()`; Sonnet docs-only x2 and Haiku pinright x1 on `DataFrame.filter`; Haiku docs-only tsconfig without DOM types) | | same, "Where the runs fail" |
+| Post-cutoff task APIs and first releases (msw 3.0.0, hono 4.13.13, dotenv 18.0.0, zod 4.5.0 canary, polars 2.0.0rc1, fastapi 0.142.0, pandas 3.1.0rc0, langchain 1.4.0a1, all 2026-08-01 or later) | | same, task table |
+| Docs benchmark: a task bootstrap returns [100%, 100%] when every run passes (replaces "the interval in Table 3", which the table does not show) | | `docs_by_model_arm.csv` `current_api_pct_ci95_*` |
 | Probes 24/25; 133/154 (A 75/81, B 25/28, C 33/45), run on `b2fcfe2`, not rerun for v7 | | `probes.csv` (from `probes-v6/heldout-all.json`, `retrieval.log`) |
 | Probe "before" values 16, 53, 22, 28 | | `bench/DOCS.md` (rounds 1 to 3); `probes.csv` `before` |
 
-## 4b. Efficiency against the docs-only server (README "Why pinright"; site home `#why` and evidence `#efficiency`; docs/benchmark.md "Efficiency"; bench/RESULTS-v7.md "Efficiency"; llms.txt)
+## 4b. Efficiency against the docs-only server (report 5.4, Figure 4, abstract; README "Why pinright"; site home `#why` and evidence `#efficiency`; docs/benchmark.md "Efficiency"; bench/RESULTS-v7.md "Efficiency"; llms.txt)
 
 `tokens_by_model_arm.csv` is written by `make-data.ts` from the transcripts through `bench/tokens.ts`
 (the `modelUsage` block of each run's `result` line, summed over the models of the session). The
@@ -137,8 +149,10 @@ another product.
 | Every prompt asks the agent to check the libraries before choosing versions | `DOCS_HINT` | `bench/agents/tasks.ts` |
 | Comparison table capability rows (verdict, install-time hook in 6 clients, `check-manifest` with SARIF and the Action) | | `docs/how-it-works.md` "Tools" and verdicts; `docs/hook.md`; `docs/install.md`; section 7 above |
 | "15 or 16 of 16" (docs-only current API) | 16, 15, 16 | `docs_by_model_arm.csv` `current_api_runs` |
+| Figure 4 (`fig-i-tokens-per-run`) bar values and footer percentages | drawn from `ktokens_total_per_run`, `_ci95_*`, `tokens_saved_vs_docs_only_pct` | `make-figures.ts` `figI` |
+| "Most input is a cache read, so tokens and cost do not move in proportion" | e.g. agent Sonnet pinright 32.2k cache read of 42.2k | `ktokens_cache_read_per_run`; `bench/RESULTS-v7.md` caveats |
 
-## 5. Hook false positives (report 5.5; blog; social)
+## 5. Hook false positives, real sessions, real-issues tasks (report 5.5, 5.9, 5.10; blog; social)
 
 | Claim | Value | Source |
 |---|---|---|
@@ -149,6 +163,14 @@ another product.
 | `npm install -g pnpm@8`: 26 advisories in a public workflow | microsoft/playwright | "True positives" |
 | Real-session replay: 156,977 tool calls, 154,402 cases, one user, 2026-10-02 to 2026-11-02 | | `bench/fp/RESULTS.md`, "Real agent sessions", "Corpus" |
 | Real-session replay: asked or blocked 0.46% before and after the fixes; after: 52 true positives, 79 by design, 10 false positives (0.006% of cases, 22 before), 568 replay artifacts | "10 misreads in 154,402 tool calls" (site, README, blog) | same, "Rates" and "Adjudication" |
+| Real-session corpus (report 5.10): 7,434 transcripts (483 sessions, 6,951 subagent runs); Bash 117,892, Edit 18,952, PowerShell 11,241, Write 8,896; asked 92 to 80, blocked 627 to 629, asked or blocked 729 to 719 | | `bench/fp/RESULTS.md`, "Real agent sessions", "Corpus", "Rates" |
+| Real sessions: of 141 non-artifact cases after the fixes, 52 / 79 / 10; 10 in 154,402 (0.006%), 22 before (0.014%); `npx --yes pnpm@10.4.1` 37 cases, 25 advisories | 52 + 79 + 10 = 141 | same, "Adjudication", "True positives" |
+| Real sessions: the 10 remaining false positives are four shapes kept as `it.todo` (7 + 1 + 1 + 1 cases) | | same, "False positives"; `test/hookRealWorld.test.ts` (4 `it.todo`) |
+| Real sessions: fixes `3f25662` and `54b8d1d` on `bench/fp-real` are `6837139` and `699770d` on `release` | `git diff 3f25662 6837139 -- src test` and `git diff 54b8d1d 699770d -- src test` are empty | git |
+| Real sessions: 22 manifest edits replay as no-ops | | same, "How far to trust these numbers" |
+| Real-issues set (report 5.5): selection rule (two `gh search issues` queries, created 2025-01-01..2026-09-30, by reactions, I1 to I4, 6 per list), the 12 tasks, 216 runs on `8efc4f0` | | `bench/RESULTS-real-issues.md`, intro, "Selection rule", "The 12 issues" |
+| Real-issues table (report 5.5): alerts 504/114/58/56, 514/114/56/70, 600/116/3/57 (no docs, MCP, MCP + hook, no pin; Sonnet, Haiku, Opus) with the per-project intervals, direct deps 24/92, 27/92, 30/116 and 0 in the MCP arms, builds 9, 18, 14; 9, 17, 14; 15, 19, 18 | | `bench/RESULTS-real-issues.md`, generated table |
+| Real-issues: on the 11 tasks other than `stirrup-gdpval`, MCP 2 to 4 alerts per model, no docs 375 to 484; 4 of 6 MCP + hook stirrup runs pinned `pillow==13.0.0` and did not resolve; three tasks clean or nearly clean without docs | | same, "Without the stirrup-gdpval task", "How this set differs from v6" |
 | Real-tasks set (GitHub issues): no docs 26% to 29% vulnerable direct pins, 504 to 600 alerts per model; MCP 0 and 114 to 116 (112 from `stirrup-gdpval`) | scored before the v7 scorer fixes; its run data shows the same misses only in no-docs runs | `bench/RESULTS-real-issues.md`, "Headline"; run dirs in the `pinright-real-tasks` worktree |
 
 ## 6. Security of the tool (report 4; blog; Show HN)
@@ -162,7 +184,7 @@ another product.
 | 57 hook vectors, each reproduced in `test/hookBypass.test.ts` | `docs/HOOK-THREAT-MODEL.md`, vector table |
 | Injection: 4 of 38,381 sections dropped (0.01%), 26 warned; 61/61 corpus, 0/41 negatives; held-out 5/20, 6/15, 3/15, 0/35 benign | `bench/injection/RESULTS.md`; headers of `bench/injection/heldout*.ts`; `injection.csv` |
 | "caught 20% to 40%" | 3/15 = 20%, 6/15 = 40% (5/20 = 25%) | same |
-| Unit tests: 983 pass, 10 skipped (54 files) | `npx vitest run` on `release` after the launch-review commits, 2026-11-02, Windows; the skipped ones are POSIX-only (symlinks, FIFO) and run in the Linux CI |
+| Unit tests: 1,047 pass, 10 skipped, 4 todo (56 files) | `npx vitest run` on `release` at `edb738c` plus the paper commits, 2026-11-03, Windows; the skipped ones are POSIX-only (symlinks, FIFO) and run in the Linux CI; the todo ones are the open real-session shapes. At 1.0.0 (2026-11-02): 983 pass, 10 skipped (54 files) |
 
 ## 6b. Caveats added in the launch review (2026-11-02)
 
@@ -186,6 +208,28 @@ another product.
 | No published cutoff dates for the models | Anthropic's model pages give none; "newer than the models" is an inference | external |
 | Public rate for the hook: 1.46% (release), not 1.44% (pre-review-2) | row above, section 5; the copy now uses 1.46% everywhere | this file |
 
+## 6c. Changes after the benchmark (report 6, "The code changed after the run"; report 8)
+
+| Claim | Source |
+|---|---|
+| Seven commits under `src/` on `release` after `8efc4f0`: `6837139`, `699770d`, `899d8d2`, `824752c`, `c813289`, `43e44fd`, `867dd08` | `git log --format='%h %s' 8efc4f0..HEAD -- src` |
+| One-line descriptions of each | each commit's message and `git show --stat` |
+| `899d8d2` and `867dd08` are the two entries in `CHANGELOG.md` "Unreleased" | `CHANGELOG.md` |
+| `43e44fd` covers 13 of the 14 shell-arm `npx tsc` denies; `899d8d2` the `jsonpointer` 3.8 denies; `867dd08` the `stirrup` / `pillow` cap; `824752c` and `c813289` the msw 3 post-cutoff miss | commit messages; `bench/RESULTS-shell.md`, `bench/RESULTS-real-issues.md`, `bench/RESULTS-post-cutoff.md` |
+| No benchmark in the report measured these commits | run stamps and dates above; the commits are dated 2026-11-03 07:53 to 08:03 -03:00, after every run |
+
+## 6d. Back matter (report "Conflict of interest", "Data and ethics", "Contributions", "How to cite")
+
+| Claim | Source |
+|---|---|
+| Hiper AI develops pinright; MIT license | `LICENSE`, `package.json`, README |
+| Benchmarks ran on a Claude team subscription; costs are list-price equivalents | `bench/RESULTS-shell.md` "Setup", `bench/RESULTS-post-cutoff.md` caveats, `bench/RESULTS-v7.md` caveats |
+| No external funding; no relationship with the queried services beyond being their client | statement of the author (2026-11-03); not checkable in the repository |
+| Real-session replay used the author's own sessions with his consent; transcripts stay on his machine | `bench/fp/RESULTS.md`, "Real agent sessions" ("The owner approved the run") |
+| Transcripts and scored projects are not committed; aggregate CSVs are | `.gitignore` (`bench/agents/runs/`, `bench/docs/runs/`); `paper/kit/data/` |
+| Sole contributor; AI coding agents (Claude Code) wrote code and ran experiments | statement of the author; `Co-Authored-By: Claude` trailers in `git log` |
+| `CITATION.cff`: valid CFF 1.2.0, no `doi` key | `uvx cffconvert --validate -i CITATION.cff`, 2026-11-03 |
+
 ## 7. Design facts (report 2, 3; README; landing)
 
 | Claim | Source |
@@ -202,10 +246,10 @@ another product.
 | SSRF guard: https only, 3 redirects, 10 MB cap | `src/safeFetch.ts`; SECURITY.md |
 | OpenSSF Scorecard workflow | `.github/workflows/scorecard.yml` |
 | Latency figures | `docs/hook.md` "Latency" (`scripts/latency.ts`); `latency.csv`. Measured once on Windows; no raw log committed |
-| Hook latency on Linux (report 5.6): `npm test` 109 / 113 ms warm, one install 554 / 687 ms warm and 2.1 / 2.8 s cold, 30-dep `package.json` 2.5 / 3.0 s warm and 9.7 / 12.3 s cold (p50 / p95, 5 runs) | `data/latency-2026-11-02/linux-container-hook.txt`. Linux container (Debian 12, Node 24.22.2) on Docker Desktop / WSL2 on a Windows host, 2026-11-02, host also running another benchmark. Not a Linux machine; the CI VM was not reachable |
-| Same-session Windows re-run (report 5.6), slower than the 2026-11-01 table in most cells | `data/latency-2026-11-02/windows-same-session.txt`, Windows 11, Node 24.20.0, same host and hour as the container |
+| Hook latency on Linux (report 5.11): `npm test` 109 / 113 ms warm, one install 554 / 687 ms warm and 2.1 / 2.8 s cold, 30-dep `package.json` 2.5 / 3.0 s warm and 9.7 / 12.3 s cold (p50 / p95, 5 runs) | `data/latency-2026-11-02/linux-container-hook.txt`. Linux container (Debian 12, Node 24.22.2) on Docker Desktop / WSL2 on a Windows host, 2026-11-02, host also running another benchmark. Not a Linux machine; the CI VM was not reachable |
+| Same-session Windows re-run (report 5.11), slower than the 2026-11-01 table in most cells | `data/latency-2026-11-02/windows-same-session.txt`, Windows 11, Node 24.20.0, same host and hour as the container |
 | Warm 30-dep manifest misses its 1.5 s budget on 2026-11-02 (2.5 to 3.3 s) | same two logs; the 2026-11-01 Windows run met it (1.2 / 1.5 s) |
-| MCP tool latency (report 5.6): e.g. `check-packages` of 10 npm packages 4.8 s cold / 598 ms warm on Linux, 6.5 s / 780 ms on Windows | `data/latency-2026-11-02/linux-container-mcp.txt` (run 1 of 3), `windows-same-session.txt`; one call per cell; runs 2 and 3 and the Windows 40-package call hit HTTP 429 from api.npmjs.org |
+| MCP tool latency (report 5.11): e.g. `check-packages` of 10 npm packages 4.8 s cold / 598 ms warm on Linux, 6.5 s / 780 ms on Windows | `data/latency-2026-11-02/linux-container-mcp.txt` (run 1 of 3), `windows-same-session.txt`; one call per cell; runs 2 and 3 and the Windows 40-package call hit HTTP 429 from api.npmjs.org |
 | No macOS latency | GitHub-hosted jobs in the org fail to start since 2026-10-22 ("recent account payments have failed", annotation on secureai-copilot job, 2026-10-27); a macOS run would also need a new workflow in the repo. Not measured |
 | GitHub API request counts in `docs/cli.md` "GitHub rate limit" (1 request for 8 packages, etc.) | that page only; measured 2026-10-29 by hand, no committed log. Not used in the kit |
 
