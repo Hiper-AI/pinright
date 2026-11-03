@@ -334,3 +334,66 @@ describe('make expansion keeps the reading budget (R4)', () => {
     expect(cmd('make t0', { '/p/Makefile': chain })).toContain('?npm');
   });
 });
+
+/*
+ * From the replay of real agent sessions (bench/fp/sessions.ts, 2026-11-02). The commands are
+ * rewritten with made-up names and paths; each keeps the shape that made the hook ask or block.
+ */
+describe('real sessions: xargs feeding the arguments of a command npx already names', () => {
+  const vitest = { '/p/node_modules/.bin/vitest': '' };
+  it('grep -l ... | xargs npx vitest run passes the file names to vitest', () => {
+    expect(cmd('grep -lE "SettingsPage" test/*.test.jsx | tr "\\n" " " | xargs npx vitest run 2>&1 | grep -E "Tests"', vitest)).toEqual([]);
+    expect(cmd('ls src/*.ts | xargs npx eslint')).toEqual(['npm:eslint (exec)']);
+  });
+  it('still asks when xargs supplies the package, or what npx runs installs', () => {
+    expect(cmd('cat list.txt | xargs npx')).toContain('?npm');
+    expect(cmd('cat list.txt | xargs npx -y')).toContain('?npm');
+    expect(cmd('cat list.txt | xargs -I{} npx {} --help')).toContain('?npm');
+    expect(cmd('cat list.txt | xargs npx pnpm add')).toContain('?npm');
+    expect(cmd('cat list.txt | xargs npm install')).toContain('?npm');
+  });
+});
+
+describe('real sessions: PowerShell assignments', () => {
+  const vitest = { '/p/node_modules/.bin/vitest': '' };
+  it('$o=npx vitest run x runs vitest (no spaces around =), it is not a program from a variable', () => {
+    expect(cmd('function run($n){ $o=npx vitest run test/a.test.js 2>&1 | Out-String; "$n => $o" }', vitest)).toEqual([]);
+    expect(cmd('$out = npx vitest run test/a.test.js -t E11 2>&1 | Out-String', vitest)).toEqual([]);
+  });
+  it('$out = npm install x runs the install, so it is checked', () => {
+    expect(cmd('$out = npm install lodash@4.17.20 2>&1 | Out-String')).toEqual(['npm:lodash 4.17.20']);
+    expect(cmd('$out=npm install lodash@4.17.20')).toEqual(['npm:lodash 4.17.20']);
+  });
+  it('a plain value is still a variable', () => {
+    expect(cmd('$ok = $false; $pm = "npm"; & $pm install lodash@4.17.20')).toEqual(['npm:lodash 4.17.20']);
+    expect(cmd('$env:NPM_CONFIG_REGISTRY = "https://registry.example.test"; npm i left-pad')).toContain('?npm');
+  });
+});
+
+describe('real sessions: Set-Content parameters', () => {
+  it('-Encoding ascii is not part of the manifest it writes', () => {
+    const json = '{"name":"p","version":"1.0.0","dependencies":{"undici":"7.30.0"}}';
+    expect(cmd(`Set-Content package.json '${json}' -Encoding ascii`)).toEqual(['npm:undici 7.30.0']);
+    expect(cmd(`Set-Content -Encoding utf8 -Path package.json -Value '${json}'`)).toEqual(['npm:undici 7.30.0']);
+  });
+});
+
+describe('real sessions: Push-Location', () => {
+  it("moves into the folder like cd, so npx tsc finds that folder's typescript", () => {
+    expect(cmd('Push-Location web; npx tsc --noEmit; Pop-Location', { '/p/web/node_modules/.bin/tsc': '' })).toEqual([]);
+    expect(cmd('Push-Location web; npx tsc --noEmit; Pop-Location')).toEqual(['npm:tsc (exec)']);
+  });
+});
+
+describe('real sessions: left as they are (see bench/fp/RESULTS.md)', () => {
+  // The hook does not know which folder a cd to a variable or a loop item lands in, so npx tsc is
+  // judged in the folder before it and blocked when typescript lives only in the target.
+  it.todo('for d in a b; do cd "$d"; npx tsc; done finds typescript in a and b');
+  // npm install ./pkg.tgz && npx its-bin: the hook judges the whole line before the install, so the
+  // bin of the local tarball is not there yet and npx reads as a registry download.
+  it.todo('npx <bin> right after npm install <local tarball> in the same command runs the tarball bin');
+  // Both need the shell to be known (the Bash and PowerShell tools of Claude Code), which the reader
+  // does not get today: in bash the same characters mean something else.
+  it.todo("a PowerShell @'...'@ here-string is data, not commands");
+  it.todo('PowerShell *> $null redirects all streams; "npm init -y *> $null" runs no initializer');
+});

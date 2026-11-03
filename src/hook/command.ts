@@ -66,6 +66,31 @@ function looksLikeInstall(words: string[]): boolean {
   return (MANAGERS.has(bin) || isDynamic(bin)) && words.slice(1, 4).some((w) => INSTALL_VERBS.test(w));
 }
 
+/** The string xargs replaces in its command (-I x, -Ix, -i, --replace), if any. */
+function xargsPlaceholder(args: string[]): string | undefined {
+  for (let k = 0; k < args.length && args[k].startsWith('-'); k++) {
+    if (args[k] === '-I') return args[k + 1];
+    if (/^-I./.test(args[k])) return args[k].slice(2);
+    if (/^(-i|--replace)$/.test(args[k])) return '{}';
+    if (/^--replace=/.test(args[k])) return args[k].slice(10);
+  }
+  return undefined;
+}
+
+/**
+ * "xargs npx vitest run": npx already names the package it runs, so the words xargs appends are
+ * arguments of vitest, not packages. Not when the package itself comes from xargs (no name yet, or
+ * the -I placeholder in it) or when what npx runs installs something (xargs npx pnpm add).
+ */
+function runnerNamesItsCommand(words: string[], placeholder: string | undefined): boolean {
+  if (!/^(npx|pnpx|bunx)$/.test(binName(words[0] ?? ''))) return false;
+  const after = skipFlags(words.slice(1), ['-p', '--package', '-c', '--call', '--prefix', '--registry', '--cache', '--userconfig', '--loglevel', '-w', '--workspace']);
+  // npx's own options and the package it runs: the placeholder there means xargs picks the package.
+  const head = words.slice(1, words.length - after.length + 1);
+  if (!after[0] || (placeholder && head.some((w) => w.includes(placeholder)))) return false;
+  return !looksLikeInstall(after);
+}
+
 function binName(word: string): string {
   return (word.split(/[\\/]/).pop() ?? word).replace(/\.(cmd|exe|ps1|bat|com)$/i, '').toLowerCase();
 }
@@ -136,10 +161,16 @@ function simple(c: SimpleCommand, piped: SimpleCommand | undefined, ctx: Ctx, de
     env.push([k, v.join('=')]);
     words = words.slice(1);
   }
-  // PowerShell: $X = "npm", $env:NPM_CONFIG_REGISTRY = "...".
+  // PowerShell: $X = "npm", $env:NPM_CONFIG_REGISTRY = "...". With arguments after the first word
+  // ($out = npm install x, $o=npx vitest run) the right side is a command that runs, and $X gets its output.
+  const glued = words.length >= 2 ? /^\$(\w+)=(.*)$/.exec(words[0]) : null;
+  if (glued) words = [`$${glued[1]}`, '=', ...(glued[2] ? [glued[2]] : []), ...words.slice(1)];
   if (words.length >= 3 && /^\$(env:)?\w+$/i.test(words[0]) && words[1] === '=') {
-    env.push([words[0].replace(/^\$(env:)?/i, ''), words.slice(2).join(' ')]);
-    words = [];
+    if (words.length > 3 && !/^\$env:/i.test(words[0])) words = words.slice(2);
+    else {
+      env.push([words[0].replace(/^\$(env:)?/i, ''), words.slice(2).join(' ')]);
+      words = [];
+    }
   }
   if (words[0] === 'export' || words[0] === 'set' && words[1]?.includes('=')) {
     for (const w of words.slice(1)) if (w.includes('=')) env.push([w.split('=')[0], w.split('=').slice(1).join('=')]);
@@ -162,7 +193,7 @@ function simple(c: SimpleCommand, piped: SimpleCommand | undefined, ctx: Ctx, de
 
   // Aliases: alias n=npm, alias n='npm i', Set-Alias n npm.
   const head = binName(words[0]);
-  if (/^(cd|pushd|chdir|set-location|sl)$/.test(head)) {
+  if (/^(cd|pushd|chdir|set-location|sl|push-location)$/.test(head)) {
     const dir = words.slice(1).find((w) => !w.startsWith('-'));
     if (dir && !isDynamic(dir) && dir !== '~') ctx.cwd = path.resolve(ctx.cwd, windowsPath(dir));
     return;
@@ -276,7 +307,10 @@ function peel(bin: string, rest: string[], c: SimpleCommand, stdin: string | und
       // Arguments come from stdin: known when the pipe starts with echo/printf, opaque otherwise.
       const fed = stdin !== undefined && !stdinUnknown ? stdin.split(/\s+/).filter(Boolean) : undefined;
       if (fed) return [...inner, ...fed];
-      if (looksLikeInstall(inner)) ctx.out.push(unverifiable('npm', binName(inner[0]), `xargs passes ${binName(inner[0])} arguments pinright cannot see; name the packages in the command.`, src));
+      const runner = /^(npx|pnpx|bunx)$/.test(binName(inner[0]));
+      if ((looksLikeInstall(inner) || runner) && !runnerNamesItsCommand(inner, xargsPlaceholder(rest))) {
+        ctx.out.push(unverifiable('npm', binName(inner[0]), `xargs passes ${binName(inner[0])} arguments pinright cannot see; name the packages in the command.`, src));
+      }
       return inner;
     }
     case 'eval':
@@ -523,6 +557,8 @@ function fileWriters(bin: string, args: string[], c: SimpleCommand, ctx: Ctx, sr
         const a = args[k].toLowerCase();
         if (a === '-path' || a === '-filepath' || a === '-literalpath') file = args[++k];
         else if (a === '-value' || a === '-inputobject') value = args[++k];
+        // "-Encoding ascii": the parameter's value is not part of the content.
+        else if (/^-(encoding|stream|filter|include|exclude|credential|width|delimiter)$/.test(a)) k++;
         else if (a.startsWith('-')) continue;
         else free.push(args[k]);
       }
