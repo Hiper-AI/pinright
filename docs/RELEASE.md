@@ -55,9 +55,9 @@ change to `release.yml`. The placeholder holds a `package.json` and a README, no
       then `false-negative` (B60205) and `docs-answer` (0E8A16) the same way. `bug` and
       `enhancement` exist by default.
 - [ ] The site in `site/` builds clean (`cd site && npm ci && npm run build`) and is ready for
-      Cloudflare Pages (project `pinright-site`, Direct Upload of `site/dist`). Until the deploy,
-      `pinright.dev` keeps its 301 to `https://hiperai.com/pinright`; the deploy replaces the
-      redirect rule and the Access bypass app stays. The product page on hiperai.com (website
+      Cloudflare Workers static assets (`site/wrangler.jsonc`, Worker `pinright-site`). Until the
+      deploy, `pinright.dev` keeps its 301 to `https://hiperai.com/pinright`; the deploy replaces
+      the redirect rule and the Access bypass app stays. The product page on hiperai.com (website
       branch `feat/pinright`) links to the site.
 
 ### 1. Final check from a clean clone of `main` (about 10 minutes)
@@ -227,9 +227,14 @@ package), then Glama, then the rest.
 
 ### 10. Landing page and pinright.dev
 
-Build `site/` and upload `site/dist` to Cloudflare Pages (`npx wrangler pages deploy dist
---project-name pinright-site` from `site/`), then point the `pinright.dev` DNS at the Pages project
-and delete the 301 redirect rule. Check the domain before you link it anywhere (Git Bash):
+Build `site/` and deploy `site/dist` as static assets on Cloudflare Workers: `npm run build &&
+npx wrangler@4 deploy` from `site/` (`wrangler.jsonc` names the Worker `pinright-site` and attaches
+`pinright.dev` as its custom domain). No Worker code runs; `dist/_headers` sets the headers. The
+`www.pinright.dev` redirect rule sends `www` to the apex with a 301; the old rule to
+hiperai.com/pinright is gone. The account's Zero Trust settings deny hostnames without an Access
+app, and the "Público (bypass) - pinright.dev" app covers `pinright.dev` and `www`. Cloudflare Web
+Analytics is off for the zone: the site promises no trackers, and the CSP would block its beacon.
+Check the domain before you link it anywhere (Git Bash):
 
 ```bash
 curl -sI https://pinright.dev | grep -iE '^(HTTP|location)'       # 200, no location header
