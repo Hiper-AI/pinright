@@ -109,7 +109,7 @@ projects. The technical report has the method, the intervals and the threats to 
 In a project:
 
 ```bash
-npx pinright init
+npx -y pinright init
 ```
 
 `init` wires the MCP server and the hook into the agents it finds. Restart your agent, and

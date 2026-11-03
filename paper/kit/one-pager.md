@@ -6,7 +6,7 @@ server, a CLI, a pre-install hook for Claude Code, Cursor, VS Code with Copilot,
 Windsurf, and a GitHub Action. It runs on your machine, needs no account and sends no telemetry.
 
 ```bash
-npx pinright init      # wires the MCP server and the hook into the agents the project uses
+npx -y pinright init   # wires the MCP server and the hook into the agents the project uses
 npx pinright doctor    # shows what answers and what is wired
 ```
 
