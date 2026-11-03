@@ -88,7 +88,7 @@ function tokenRow(benchmark: string, model: string, stamp: string, arm: string, 
     benchmark, modelName(model), model, stamp, arm, LABEL[arm], rs.length, ts.length,
     ...stat((t) => k(t.total)), ...stat((t) => k(t.input + t.cacheCreation)), k(mean(ts.map((x) => x.t.cacheRead))), ...stat((t) => k(t.output)),
     ...stat((t) => t.mcpResultChars / 1000),
-    mean(ts.map((x) => x.t.getDocs)), sum(ts.map((x) => x.t.getDocs)), sum(ts.map((x) => x.t.getDocsNoVersion)),
+    mean(ts.map((x) => x.t.getDocs)), sum(ts.map((x) => x.t.getDocs)), sum(ts.map((x) => x.t.getDocsNoVersion)), sum(ts.map((x) => x.t.getDocsVersionQuery)),
     ts.filter((x) => x.t.firstTool === 'check-packages').length, ts.filter((x) => x.t.firstTool === 'get-docs').length,
     ...(!arm.startsWith('pinright') ? [null, null, null, null, null, null] : [...savedVsDocsOnly(base, means, 0), ...savedVsDocsOnly(base, means, 1)]),
   ]);
@@ -190,7 +190,7 @@ csv('tokens_by_model_arm.csv', [
   'benchmark', 'model', 'model_id', 'run_stamp', 'arm', 'arm_label', 'runs', 'runs_with_usage',
   ...ci('ktokens_total_per_run'), ...ci('ktokens_fresh_input_per_run'), 'ktokens_cache_read_per_run', ...ci('ktokens_output_per_run'),
   ...ci('mcp_result_kchars_per_run'),
-  'get_docs_calls_per_run', 'get_docs_calls', 'get_docs_calls_without_version', 'runs_first_call_check_packages', 'runs_first_call_get_docs',
+  'get_docs_calls_per_run', 'get_docs_calls', 'get_docs_calls_without_version', 'get_docs_calls_query_names_version', 'runs_first_call_check_packages', 'runs_first_call_get_docs',
   ...ci('tokens_saved_vs_docs_only_pct'), ...ci('mcp_text_saved_vs_docs_only_pct'),
 ], tokenRows);
 

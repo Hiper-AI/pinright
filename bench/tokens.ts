@@ -23,6 +23,8 @@ export interface RunTokens {
   /** get-docs calls, and those that named no version (in `version` or as `name@version` in the id). */
   getDocs: number;
   getDocsNoVersion: number;
+  /** get-docs calls whose query text asks about a version ("version" or "latest"). */
+  getDocsVersionQuery: number;
   /** Short name of the first tool the agent called (`check-packages`, `get-docs`, `Write`, ...). */
   firstTool?: string;
 }
@@ -41,6 +43,7 @@ export function readTokens(dir: string): RunTokens | undefined {
   let mcpResultChars = 0;
   let getDocs = 0;
   let getDocsNoVersion = 0;
+  let getDocsVersionQuery = 0;
   let firstTool: string | undefined;
   for (const l of lines) {
     for (const c of l.message?.content ?? []) {
@@ -50,6 +53,7 @@ export function readTokens(dir: string): RunTokens | undefined {
         if (/__(get|query)-docs$/.test(String(c.name))) {
           getDocs++;
           if (!c.input?.version && !/@\d/.test(String(c.input?.libraryId ?? ''))) getDocsNoVersion++;
+          if (/version|latest/i.test(String(c.input?.query ?? ''))) getDocsVersionQuery++;
         }
       }
       if (l.type === 'user' && c.type === 'tool_result' && mcp.has(c.tool_use_id)) {
@@ -58,5 +62,5 @@ export function readTokens(dir: string): RunTokens | undefined {
     }
   }
   const t = { input: add('inputTokens'), cacheRead: add('cacheReadInputTokens'), cacheCreation: add('cacheCreationInputTokens'), output: add('outputTokens') };
-  return { ...t, total: t.input + t.cacheRead + t.cacheCreation + t.output, mcpResultChars, getDocs, getDocsNoVersion, firstTool };
+  return { ...t, total: t.input + t.cacheRead + t.cacheCreation + t.output, mcpResultChars, getDocs, getDocsNoVersion, getDocsVersionQuery, firstTool };
 }
