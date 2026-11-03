@@ -85,6 +85,18 @@ The v7 benchmark ran on the code before them.
   `graphql.query` on msw 3, where `graphql` only has `link`) and shows the current declaration first.
   `upgrade-guide` reports exports that moved to a new entry point, with the members they lost, and
   keeps nested changelog bullets with their parent.
+- `check-manifest` asks the registry before it calls a package or version deps.dev has not indexed
+  "not found". An exact pin the registry publishes stays in the audited tree, where osv.dev checks it,
+  with a note that it is unverified; a range on a package deps.dev has never seen is noted as
+  unverified and not audited. `pinright audit` and the GitHub Action report these entries as
+  `pinright/not-indexed` in SARIF and the annotations: a note for a fresh version, a warning for a
+  package deps.dev has never seen, never a failure on its own. Lockfile entries are covered too.
+- `check-packages` checks each recommended version against the ranges the other packages in the
+  same call set on it (requirements in their resolved graphs for pip and Composer, peer ranges for npm
+  when the version leaves the line asked for). Out of range, the row names the range and recommends
+  the newest clean release inside it, or no version, and the notice drops the upgrade the range rules
+  out. A fresh version that osv.dev marks vulnerable or malware says deps.dev has no data for it yet.
+  `check-manifest` keeps the ranges on a pin declared after the package that pulls it.
 
 [Unreleased]: https://github.com/Hiper-AI/pinright/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/Hiper-AI/pinright/releases/tag/v1.0.0
