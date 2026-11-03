@@ -25,7 +25,7 @@ npm run preview   # serves dist/ at http://localhost:4321
 | `es/` | The same pages in Spanish, same slugs (`es/index.html`, `es/evidence/index.html`, ...) |
 | `partials/` | Head, header, footer, the lockups and the large icons, inserted by the `<!-- @include file -->` plugin in `vite.config.mjs`; `*.es.html` are the Spanish variants |
 | `src/styles.css`, `src/main.js` | All the CSS and the entry script (theme toggle, copy buttons), which imports `story.js`, `footer.js`, `header.js`, `lang.js` (language switcher) and `i18n.js` (script strings) |
-| `public/` | Files served as they are: `_headers` (CSP and other headers for Cloudflare Pages), `robots.txt`, `sitemap.xml`, favicons, `og.png`, `og-es.png`, `theme-init.js` |
+| `public/` | Files served as they are: `_headers` (CSP and other headers, read by Cloudflare static assets), `robots.txt`, `sitemap.xml`, favicons, `og.png`, `og-es.png`, `theme-init.js` |
 | `scripts/prepare-assets.mjs` | Copies the launch-kit figures and the report before dev and build, and runs `scripts/llms.mjs` |
 | `llms.txt`, `scripts/llms.mjs` | `/llms.txt` (hand-written, for agents) and `/llms-full.txt` (the README and the main docs concatenated, built on every dev and build) |
 | `scripts/check-dist.mjs` | Fails the build on a broken internal link or anchor, an inline script or style the CSP would block, an em dash or a word the launch copy rules out |
@@ -75,7 +75,7 @@ node scripts/render-og.mjs ../../secureai/qa/package.json es   # only og-es.png
 
 English lives at `/` and Spanish at `/es/`, with the same slugs (`/install/` and `/es/install/`),
 so every page maps 1:1 to its counterpart. There is one `404.html`, in English with a Spanish line
-and a link to `/es/`, because Pages serves a single 404 page. `llms.txt` and `llms-full.txt` stay
+and a link to `/es/`, because the site serves a single 404 page. `llms.txt` and `llms-full.txt` stay
 English only.
 
 **Pages.** A Spanish page is `es/<route>/index.html`, registered in `vite.config.mjs` together with
@@ -171,8 +171,11 @@ does `x` for multiples (`1,5x`) and for "12 tareas x 2 ejecuciones". Versions ke
 
 ## Deploy
 
-Cloudflare Pages, static output: build command `npm ci && npm run build` with root directory
-`site`, output directory `dist`, `NODE_VERSION=22`. Because the report PDF is not in git, either
-deploy with Direct Upload from a machine that has built it
-(`npx wrangler pages deploy dist --project-name pinright-site`), or publish the PDF somewhere the
-build can fetch it. Nothing is deployed from this folder automatically.
+Cloudflare Workers static assets: `npm run build && npx wrangler@4 deploy` from this folder.
+`wrangler.jsonc` names the Worker `pinright-site`, serves `dist/` with the 404 page and trailing
+slashes, and attaches `pinright.dev` as its custom domain; no Worker code runs, and `_headers` in
+`dist/` sets the CSP and the other headers. The report PDF is not in git, so deploy from a machine
+that has built `paper/kit/pinright-report.pdf`. Nothing is deployed from this folder automatically.
+
+Do not run `wrangler pages project create` here: recent wrangler versions offer to convert the
+folder into a Workers project and rewrite `package.json` and `vite.config`.
