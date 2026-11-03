@@ -244,7 +244,10 @@ APIs the project does not have. pinright reads the project's dependency files by
 - **Where.** The roots the MCP client announces (and re-reads them on `roots/list_changed`). Without
   them, `PINRIGHT_PROJECT_DIR` (several directories separated by the OS path delimiter), else the working
   directory: Claude Code and Cursor launch stdio servers inside the project. When that directory has
-  no dependency files, the nearest parent that has them, up to the repository root. Subprojects up to
+  no dependency files, the nearest parent that has them, up to the repository root (a monorepo
+  subfolder uses the monorepo's lockfile). Two parents are never adopted: one whose `.gitignore` files
+  ignore the folder or a folder between them (scratch space, generated output, run folders: not part of
+  that project), and the home directory, unless the agent works in it directly. Subprojects up to
   three levels down count too (monorepos), skipping `node_modules`, build output and hidden folders.
 - **What.** One file per ecosystem and directory, lockfile first: the exact version from the lockfile;
   for npm without a lockfile, the version in `node_modules`; an exact pin in a manifest; else the

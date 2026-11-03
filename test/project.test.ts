@@ -141,6 +141,64 @@ describe('Project.installed', () => {
     expect((await p.installed('npm', 'next'))?.version).toBe('15.1.0');
   });
 
+  it('a subfolder the parent repository ignores is not part of it (found in the benchmark: run folders read the repo lockfile)', async () => {
+    const d = tempDir();
+    write(d, 'package-lock.json', lock({ express: '5.3.0' }));
+    write(d, '.gitignore', 'node_modules/\nbench/agents/runs/\n*.log\n');
+    write(d, 'bench/.gitignore', 'runs/*\n!runs/kept/\n');
+    const outside = async (sub: string) => {
+      fs.mkdirSync(path.join(d, sub), { recursive: true });
+      const p = new Project();
+      p.setRoots([path.join(d, sub)]);
+      return (await p.installed('npm', 'express'))?.version;
+    };
+    expect(await outside('bench/agents/runs/v7/docs-only/express5-api-r1/work')).toBeUndefined();
+    expect(await outside('bench/runs/v7/work')).toBeUndefined();
+    // Not ignored: re-included by a deeper .gitignore, or simply tracked (a monorepo subfolder).
+    expect(await outside('bench/runs/kept/work')).toBe('5.3.0');
+    expect(await outside('bench/agents/tasks')).toBe('5.3.0');
+    expect(await outside('src/app')).toBe('5.3.0');
+  });
+
+  it('gitignore patterns: anchored, any depth, ** and classes; nothing inside an ignored folder comes back', async () => {
+    const { ignoredBelow } = await import('../src/project.js');
+    const d = tempDir();
+    write(d, '.gitignore', '# comment\n/scratch\n**/tmp/**\nout-[0-9]\nbuild/\n!build/keep\n');
+    const at = (sub: string) => ignoredBelow(d, path.join(d, ...sub.split('/')));
+    expect(at('scratch/app')).toBe(true);
+    expect(at('src/scratch/app')).toBe(false);
+    expect(at('a/tmp/b')).toBe(true);
+    expect(at('out-3/x')).toBe(true);
+    expect(at('out-x/x')).toBe(false);
+    expect(at('pkg/build/keep')).toBe(true);
+    expect(at('src/app')).toBe(false);
+    expect(ignoredBelow(d, d)).toBe(false);
+  });
+
+  it('never adopts the home directory from a folder below it (a stray ~/package-lock.json)', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pinright-home-'));
+    tmp.push(home);
+    write(home, 'package-lock.json', lock({ next: '15.1.0' }));
+    fs.mkdirSync(path.join(home, 'code', 'new-app'), { recursive: true });
+    const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    try {
+      const p = new Project();
+      p.setRoots([path.join(home, 'code', 'new-app')]);
+      expect(await p.installed('npm', 'next')).toBeUndefined();
+      // The home directory as the root itself still works.
+      const q = new Project();
+      q.setRoots([home]);
+      expect((await q.installed('npm', 'next'))?.version).toBe('15.1.0');
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
   it('re-reads a file when it changes, and falls back to PINRIGHT_PROJECT_DIR without roots', async () => {
     const d = tempDir();
     write(d, 'package-lock.json', lock({ next: '15.1.0' }));

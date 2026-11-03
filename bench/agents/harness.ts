@@ -2,14 +2,17 @@
  * Runs Claude Code headless, one job per (arm, task, repetition), with only
  * Write and Read as built-in tools (by default) and the arm's MCP servers. Shared by the
  * agent benchmark (run.ts) and the docs benchmark (bench/docs/run.ts).
- * Each run writes <runDir>/<arm>/<task>-r<rep>/{work/,transcript.jsonl,meta.json}.
+ * Each run writes <runDir>/<arm>/<task>-r<rep>/{work/,transcript.jsonl,meta.json}. On the host the
+ * agent works in a temp folder outside the repo (hostWorkDir), copied to work/ when the run ends.
  *
  * With a sandbox, each job runs in a fresh Docker container (bench/agents/sandbox/) instead of
  * on the host: the agent may then have Bash and run real installs, install scripts included.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join } from 'node:path';
+import { manifestsIn } from '../../src/tree/discover.js';
 
 export interface Job { arm: string; taskId: string; rep: number; prompt: string }
 
@@ -71,6 +74,26 @@ export function runPath(runDir: string, arm: string, taskId: string, rep: number
 }
 
 /**
+ * Where a host job's agent works: a folder under the OS temp directory, copied to <job>/work when the
+ * run ends. Not <job>/work itself: that is inside this repository, and while the agent had written no
+ * dependency file yet, pinright's project detection walked up to the repo's own package-lock.json
+ * (v7 runs: express 5.3.0 and typescript 5.9.3 "installed in this project").
+ */
+export function hostWorkDir(runDir: string, job: Pick<Job, 'arm' | 'taskId' | 'rep'>, base = tmpdir()): string {
+  const safe = (s: string) => s.replace(/[^\w.-]/g, '_');
+  return join(base, 'pinright-bench', safe(basename(runDir)), safe(job.arm), `${job.taskId}-r${job.rep}`, 'work');
+}
+
+/** Folders above `dir` with dependency files a project detector could adopt, up to the filesystem root. */
+export function dependencyFilesAbove(dir: string): string[] {
+  const out: string[] = [];
+  for (let cur = dirname(dir); ; cur = dirname(cur)) {
+    out.push(...manifestsIn(cur));
+    if (dirname(cur) === cur) return out;
+  }
+}
+
+/**
  * Does the transcript end in a successful result? Parsed, not matched as text: newer Claude Code
  * versions put other keys between "type" and "subtype", and a text match then reran every job.
  */
@@ -112,7 +135,13 @@ export function planJobs(
 
 function runOne(job: Job, o: HarnessOptions): Promise<number> {
   const dir = runPath(o.runDir, job.arm, job.taskId, job.rep);
-  const work = join(dir, 'work');
+  // In the sandbox the job directory is mounted at /job, with nothing above it.
+  const work = o.sandbox ? join(dir, 'work') : hostWorkDir(o.runDir, job);
+  if (!o.sandbox) {
+    rmSync(work, { recursive: true, force: true });
+    const above = dependencyFilesAbove(work);
+    if (above.length) throw new Error(`dependency files above the job folder ${work}: ${above.join(', ')}; point TMPDIR (TEMP on Windows) at a folder with none above it`);
+  }
   mkdirSync(work, { recursive: true });
   // Paths the agent's CLI sees: the job directory itself, or its mount point in the container.
   const seen = (file: string) => (o.sandbox ? `/job/${file}` : join(dir, file));
@@ -186,6 +215,10 @@ function runOne(job: Job, o: HarnessOptions): Promise<number> {
     timers.push(setTimeout(() => (o.sandbox ? stopAgent() : child.kill()), o.timeoutMs ?? (o.sandbox ? 30 : 15) * 60_000));
     child.on('close', (code) => {
       timers.forEach(clearTimeout);
+      if (!o.sandbox) {
+        cpSync(work, join(dir, 'work'), { recursive: true });
+        rmSync(work, { recursive: true, force: true });
+      }
       const run = { tools, sandbox: o.sandbox ? o.sandbox.image : undefined };
       writeFileSync(join(dir, 'meta.json'), JSON.stringify({ ...job, prompt: undefined, model: o.model, ...run, exitCode: code, wallMs: Date.now() - started }, null, 2));
       console.log(`${job.arm.padEnd(12)} ${job.taskId}-r${job.rep} exit=${code} ${Math.round((Date.now() - started) / 1000)}s`);

@@ -63,6 +63,75 @@ interface ParsedDir {
   entries: Map<string, DirEntry>;
 }
 
+/** A glob from a .gitignore line as a regex source: `*` and `?` stay within one path segment, `**` crosses them. */
+function globSource(glob: string): string {
+  let out = '';
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === '*' && glob[i + 1] === '*') {
+      const slash = glob[i + 2] === '/';
+      out += slash ? '(?:.*/)?' : '.*';
+      i += slash ? 2 : 1;
+    } else if (c === '*') out += '[^/]*';
+    else if (c === '?') out += '[^/]';
+    else if (c === '\\' && i + 1 < glob.length) out += glob[++i].replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&');
+    else if (c === '[' && glob.indexOf(']', i + 2) > i) {
+      const end = glob.indexOf(']', i + 2);
+      const body = glob.slice(i + 1, end).replace(/^!/, '^').replace(/\\/g, '\\\\');
+      out += `[${body}]`;
+      i = end;
+    } else out += c.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&');
+  }
+  return out;
+}
+
+/** The rules of `dir/.gitignore`, each matching a folder path relative to `dir`. */
+function gitignoreRules(dir: string): { negate: boolean; re: RegExp }[] {
+  let text: string;
+  try {
+    text = readProjectFile(path.join(dir, '.gitignore'), { root: dir, maxBytes: 1_000_000 });
+  } catch {
+    return [];
+  }
+  const rules: { negate: boolean; re: RegExp }[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    let line = raw.replace(/(?<!\\)\s+$/, '');
+    if (!line || line.startsWith('#')) continue;
+    const negate = line.startsWith('!');
+    if (negate) line = line.slice(1);
+    line = line.replace(/^\\(?=[#!])/, '').replace(/\/+$/, '');
+    if (!line) continue;
+    // A pattern with a slash is relative to the .gitignore's folder; one without matches at any depth.
+    const anchored = line.includes('/');
+    line = line.replace(/^\/+/, '');
+    try {
+      rules.push({ negate, re: new RegExp(`${anchored ? '^' : '(?:^|/)'}${globSource(line)}$`) });
+    } catch {
+      // a pattern this reader cannot express: skip it
+    }
+  }
+  return rules;
+}
+
+/**
+ * Does a .gitignore between `base` and `root` (in `base` or a folder under it, above `root`) ignore
+ * `root` or one of its parents below `base`? Git's rules: the deeper file and the later line win, and
+ * nothing inside an ignored folder can be re-included.
+ */
+export function ignoredBelow(base: string, root: string): boolean {
+  const rel = path.relative(base, root);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return false;
+  const parts = rel.split(path.sep);
+  const rules: { negate: boolean; re: RegExp; depth: number }[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    rules.push(...gitignoreRules(path.join(base, ...parts.slice(0, i))).map((r) => ({ ...r, depth: i })));
+    let ignored = false;
+    for (const r of rules) if (r.re.test(parts.slice(r.depth, i + 1).join('/'))) ignored = !r.negate;
+    if (ignored) return true;
+  }
+  return false;
+}
+
 const keyOf = (eco: Ecosystem, name: string) => `${eco}:${eco === 'pypi' ? normalizePypiName(name) : name}`;
 
 /** What one dependency file says about each package. */
@@ -142,15 +211,17 @@ export class Project {
     const dirs: string[] = [];
     let base = root;
     if (!manifestsIn(root).length) {
-      // Launched from a subfolder: the nearest parent with dependency files, up to the repo root.
+      // Launched from a subfolder: the nearest parent with dependency files, up to the repo root. Not a
+      // parent that ignores the folder in its .gitignore (scratch space, generated output, a benchmark's
+      // run folders: the folder is not part of that project), and never the home directory itself.
       const home = path.resolve(os.homedir());
       for (let cur = root; ; ) {
         if (manifestsIn(cur).length) {
-          base = cur;
+          if (!ignoredBelow(cur, root)) base = cur;
           break;
         }
         const up = path.dirname(cur);
-        if (fs.existsSync(path.join(cur, '.git')) || cur === home || up === cur) break;
+        if (fs.existsSync(path.join(cur, '.git')) || cur === home || up === home || up === cur) break;
         cur = up;
       }
     }
