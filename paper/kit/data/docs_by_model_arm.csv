@@ -1,8 +1,10 @@
 model,model_id,run_stamp,arm,arm_label,reps,runs,current_api_runs,current_api_pct,current_api_pct_ci95_lo,current_api_pct_ci95_hi,works_runs,installed_runs,built_runs,smoke_runs,smoke_pass,pinned_asked_major,all_required_present,runs_using_removed_api,runs_using_deprecated_api,api_checks_passed_pct,cost_per_run_usd_list_price,cost_all_runs_usd_list_price,turns_per_run,duration_s_per_run,mcp_calls_per_run,docs_calls_per_run,docs_kchars_per_run
-Sonnet 5.5,claude-sonnet-5-5,docs-v6-sonnet-2026-11-01,no-docs,No docs,2,16,13,81.25,56.25,100,15,16,15,14,13,16,14,0,2,91.5254,0.0443,0.7084,5.3125,17.5499,0,0,0
-Sonnet 5.5,claude-sonnet-5-5,docs-v6-sonnet-2026-11-01,docs-only,docs-only (pinright with the security layer off),2,16,15,93.75,81.25,100,16,16,16,14,14,16,15,0,0,99.1525,0.1169,1.8711,11.4375,39.7602,6.0625,4.125,32.3931
-Sonnet 5.5,claude-sonnet-5-5,docs-v6-sonnet-2026-11-01,pinright,pinright MCP,2,16,16,100,100,100,16,16,16,14,14,16,16,0,0,100,0.0815,1.3034,8.1875,24.7583,2.9375,1.6875,18.8249
-Haiku 5.5,claude-haiku-5-5,docs-v6-haiku-2026-11-01,no-docs,No docs,2,16,10,62.5,25,87.5,12,15,13,14,11,16,14,0,4,89.8305,0.0037,0.0589,5.25,19.9154,0,0,0
-Haiku 5.5,claude-haiku-5-5,docs-v6-haiku-2026-11-01,pinright,pinright MCP,2,16,16,100,100,100,16,16,16,14,14,16,16,0,0,100,0.0076,0.1212,9.375,31.5064,4.1875,2.375,28.2084
-Opus 5.5,claude-opus-5-5,docs-v6-opus-2026-11-01,no-docs,No docs,2,16,12,75,50,100,14,16,14,14,12,16,14,0,2,91.5254,0.1028,1.6448,5.375,29.0931,0,0,0
-Opus 5.5,claude-opus-5-5,docs-v6-opus-2026-11-01,pinright,pinright MCP,2,16,16,100,100,100,16,16,16,14,14,16,16,0,0,100,0.2027,3.2434,9.4375,37.4445,3.875,2.125,22.351
+Sonnet 5.5,claude-sonnet-5-5,docs-v7-sonnet-2026-11-02,no-docs,No docs,2,16,13,81.25,56.25,100,13,14,13,14,13,16,14,0,2,91.5254,0.0442,0.7073,5.25,18.3663,0,0,0
+Sonnet 5.5,claude-sonnet-5-5,docs-v7-sonnet-2026-11-02,docs-only,docs-only (pinright with the security layer off),2,16,16,100,100,100,16,16,16,14,14,16,16,0,0,100,0.1205,1.9278,11.6875,38.3775,6.4375,5.375,34.3979
+Sonnet 5.5,claude-sonnet-5-5,docs-v7-sonnet-2026-11-02,pinright,pinright MCP,2,16,16,100,100,100,16,16,16,14,14,16,16,0,0,100,0.084,1.3438,8.125,29.4252,2.875,1.6875,19.4894
+Haiku 5.5,claude-haiku-5-5,docs-v7-haiku-2026-11-02,no-docs,No docs,2,16,9,56.25,25,87.5,9,14,11,14,9,16,14,0,3,90.678,0.0036,0.0583,5.5625,20.2069,0,0,0
+Haiku 5.5,claude-haiku-5-5,docs-v7-haiku-2026-11-02,docs-only,docs-only (pinright with the security layer off),2,16,15,93.75,81.25,100,15,16,15,14,14,16,16,0,0,100,0.01,0.1605,13.4375,37.1621,8.1875,4.5,45.4317
+Haiku 5.5,claude-haiku-5-5,docs-v7-haiku-2026-11-02,pinright,pinright MCP,2,16,16,100,100,100,16,16,16,14,14,16,16,0,0,100,0.0074,0.118,9.125,30.4746,4,2.0625,24.7608
+Opus 5.5,claude-opus-5-5,docs-v7-opus-2026-11-02,no-docs,No docs,2,16,14,87.5,62.5,100,16,16,16,14,14,16,14,0,2,91.5254,0.0988,1.5813,5.375,30.7082,0,0,0
+Opus 5.5,claude-opus-5-5,docs-v7-opus-2026-11-02,docs-only,docs-only (pinright with the security layer off),2,16,16,100,100,100,16,16,16,14,14,16,16,0,0,100,0.2626,4.2018,12.375,47.4489,7.1875,6.375,38.0873
+Opus 5.5,claude-opus-5-5,docs-v7-opus-2026-11-02,pinright,pinright MCP,2,16,16,100,100,100,16,16,16,14,14,16,16,0,0,100,0.1955,3.1277,9.25,41.5085,3.75,1.9375,22.5904

@@ -1,397 +1,397 @@
 model,run_stamp,arm,task,ecosystem,rep,manifest_written,direct_deps,direct_deps_with_advisory,direct_deps_cvss7,direct_deps_nonexistent,tree_resolved,alerts,critical,high,alerts_pinright_check_manifest,installed,built,build_step,build_inconclusive,cost_usd_list_price,turns,duration_s,mcp_calls,hook_blocks
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,axios-client,npm,1,true,3,2,2,0,true,35,1,14,35,true,true,import check,false,0.0359,4,16.64,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,axios-client,npm,2,true,3,2,2,0,true,35,1,14,35,true,true,import check,false,0.0267,3,10.557,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,express-jwt-api,npm,1,true,5,0,0,0,true,8,0,2,8,true,true,import check,false,0.033,3,12.883,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,express-jwt-api,npm,2,true,5,0,0,0,true,8,0,2,8,true,true,import check,false,0.0318,3,12.033,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,fastapi-jwt,pypi,1,true,15,7,4,0,true,35,,,36,true,true,import check,false,0.0405,3,16.745,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,fastapi-jwt,pypi,2,true,14,7,4,0,true,35,,,36,true,true,import check,false,0.0324,3,14.798,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,flask-proxy,pypi,1,true,15,8,2,0,true,20,,,21,true,true,import check,false,0.0305,3,12.964,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,flask-proxy,pypi,2,true,14,8,1,0,true,19,,,20,true,true,import check,false,0.025,3,12.933,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,langchain-rag,pypi,1,true,8,5,2,0,true,77,,,77,true,true,import check,false,0.0342,3,15.779,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,langchain-rag,pypi,2,true,7,5,2,0,true,77,,,77,true,true,import check,false,0.0299,3,13.834,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,mcp-server-ts,npm,1,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0317,4,11.638,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,mcp-server-ts,npm,2,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0305,4,11.8,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,next-auth-middleware,npm,1,true,4,2,2,0,true,52,8,19,52,true,true,npm run build,false,0.0569,9,18.226,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,next-auth-middleware,npm,2,true,8,2,2,0,true,52,8,19,52,true,true,npm run build,false,0.0595,9,22.041,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,nuxt-app,npm,1,true,3,1,1,0,true,26,3,7,29,true,true,npm run build,false,0.0271,4,13.163,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,nuxt-app,npm,2,true,3,1,1,0,true,55,4,17,69,true,true,npm run build,false,0.0231,5,9.942,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,pandas-pipeline,pypi,1,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0359,4,14.186,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,pandas-pipeline,pypi,2,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0316,4,14.259,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,upload-sharp-s3,npm,1,true,4,2,1,0,true,28,1,14,28,true,true,import check,false,0.0311,3,12.387,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,upload-sharp-s3,npm,2,true,4,2,1,0,true,28,1,15,28,true,true,import check,false,0.032,3,12.055,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,vite-react-spa,npm,1,true,6,1,0,0,true,25,0,9,25,true,true,npm run build,false,0.0398,5,14.258,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,vite-react-spa,npm,2,true,6,1,0,0,true,33,0,11,33,true,true,npm run build,false,0.0418,5,15.433,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,xml-yaml-parser,npm,1,true,2,1,1,0,true,4,0,3,4,true,true,import check,false,0.0256,3,9.415,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,no-docs,xml-yaml-parser,npm,2,true,2,1,1,0,true,4,0,3,4,true,true,import check,false,0.0274,3,11.084,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1096,7,32.947,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.077,6,15.966,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0824,8,33.416,5,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0647,8,18.039,5,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.1137,7,21.736,4,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.1115,7,18.408,4,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.1067,17,83.788,14,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.117,18,28.839,14,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,langchain-rag,pypi,1,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.1409,8,38.288,5,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,langchain-rag,pypi,2,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.1127,9,33.268,6,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,mcp-server-ts,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,"npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop ""src\index.ts""",false,0.0543,5,16.893,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,mcp-server-ts,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,"npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop ""src\index.ts""",false,0.049,5,14.688,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,next-auth-middleware,npm,1,true,4,1,1,0,true,42,4,19,42,true,true,npm run build,false,0.1089,12,39.157,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,next-auth-middleware,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1038,12,40.448,5,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0624,8,32.149,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0633,8,20.301,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.091,11,48.991,8,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0843,12,23.43,8,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0655,7,30.772,4,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0658,7,16.767,4,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1092,12,62.826,7,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0805,10,20.471,5,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.057,5,11.291,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,docs-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0577,5,11.685,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0346,4,16.34,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0317,4,12.723,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0361,4,16.591,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.036,4,13.116,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.052,5,20.343,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0469,5,17.174,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0591,7,32.186,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0472,6,16.885,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,langchain-rag,pypi,1,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0517,5,21.227,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0364,5,16.343,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,mcp-server-ts,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.047,6,21.44,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,mcp-server-ts,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.056,6,14.481,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,next-auth-middleware,npm,1,true,7,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.1116,12,44.01,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,next-auth-middleware,npm,2,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.092,12,27.15,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0483,6,31.847,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0457,7,21.077,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,pandas-pipeline,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0466,5,19.747,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,pandas-pipeline,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.07,7,23.043,4,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0486,5,27.331,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0474,5,14.713,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0681,8,38.192,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0541,7,17.644,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0293,4,13.092,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0296,4,11.388,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0367,4,22.214,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0407,5,20.686,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0347,4,18.44,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,express-jwt-api,npm,2,false,0,0,0,0,false,,,,,,,,false,0.0384,4,18.883,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,fastapi-jwt,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.053,5,27.4,0,2
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,fastapi-jwt,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0531,5,24.381,0,2
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0413,5,26.157,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0396,5,20.536,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,langchain-rag,pypi,1,true,10,0,0,0,true,0,,,0,true,true,import check,false,0.0496,5,32.953,0,2
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,langchain-rag,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.054,5,29.39,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0403,5,22.525,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0365,5,19.608,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,next-auth-middleware,npm,1,true,4,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.0991,16,37.524,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,next-auth-middleware,npm,2,true,8,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.0941,14,38.801,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0477,7,29.655,0,2
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0401,6,19.173,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0392,4,22.38,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,pandas-pipeline,pypi,2,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0386,5,19.711,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0368,4,20.321,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0362,4,16.057,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0427,6,21.482,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0488,6,24.402,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0286,4,14.381,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,hook-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0294,4,14.696,0,1
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0281,4,13.725,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0377,5,17.99,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0365,4,13.727,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0318,4,13.696,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0575,5,25.237,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0617,6,19.644,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0496,6,19.382,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.048,6,18.405,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,langchain-rag,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0506,6,18.313,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.048,6,17.602,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0507,6,23.256,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,mcp-server-ts,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0418,6,15.563,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,next-auth-middleware,npm,1,true,7,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0813,12,25.352,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,next-auth-middleware,npm,2,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0714,9,22.359,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0605,7,24.135,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.045,6,20.246,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0557,7,24.789,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,pandas-pipeline,pypi,2,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.041,6,21.385,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0447,5,17.236,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0447,5,15.838,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0477,7,20.017,2,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.045,6,19.177,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0291,4,11.24,1,0
-Sonnet 5.5,v6-sonnet-2026-11-01,pinright+hook,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0394,6,20.224,3,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,fastapi-jwt,pypi,1,true,15,0,0,0,true,0,,,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,langchain-rag,pypi,1,true,8,0,0,0,true,0,,,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,8,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Sonnet 5.5,v6-sonnet-2026-11-01,latest,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,axios-client,npm,1,true,3,2,2,0,true,33,0,12,33,true,true,import check,false,0.0029,3,16.803,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,axios-client,npm,2,true,3,2,2,0,true,35,1,14,35,true,true,import check,false,0.0029,3,15.687,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0029,3,15.426,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0027,3,13.14,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,fastapi-jwt,pypi,1,true,14,7,4,0,true,34,,,35,true,true,import check,false,0.0033,3,16.817,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,fastapi-jwt,pypi,2,true,16,6,3,0,true,33,,,34,true,true,import check,false,0.0042,3,21.978,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,flask-proxy,pypi,1,true,14,7,1,0,true,14,,,15,true,true,import check,false,0.0029,4,15.212,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,flask-proxy,pypi,2,true,14,7,1,0,true,14,,,15,true,true,import check,false,0.0029,4,15.093,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,langchain-rag,pypi,1,true,5,3,1,0,true,73,,,73,true,true,import check,false,0.003,3,17.249,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,langchain-rag,pypi,2,true,8,5,1,0,true,75,,,75,true,true,import check,false,0.004,3,20.085,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,mcp-server-ts,npm,1,true,4,2,2,0,true,9,0,7,9,true,false,npm run build,false,0.0019,3,10.46,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,mcp-server-ts,npm,2,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0023,4,10.926,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,next-auth-middleware,npm,1,true,8,2,2,0,true,50,7,21,50,true,true,npm run build,false,0.0044,9,21.376,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,next-auth-middleware,npm,2,true,8,2,2,0,true,50,7,21,50,true,true,npm run build,false,0.0045,9,20.729,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,nuxt-app,npm,1,true,3,1,1,0,true,27,3,7,30,true,true,npm run build,false,0.0021,5,11.374,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,nuxt-app,npm,2,true,2,1,1,0,true,27,3,7,30,true,true,npm run build,false,0.0023,4,11.087,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,pandas-pipeline,pypi,1,true,8,2,2,0,true,60,,,62,true,true,import check,false,0.0034,4,17.6,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,pandas-pipeline,pypi,2,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0039,4,18.912,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,upload-sharp-s3,npm,1,true,4,2,1,0,true,30,1,16,30,true,true,import check,false,0.0025,3,13.124,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,upload-sharp-s3,npm,2,true,4,2,1,0,true,20,1,12,20,true,true,import check,false,0.0031,3,15.307,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,vite-react-spa,npm,1,true,6,2,1,0,true,24,0,10,24,true,true,npm run build,false,0.0039,7,18.97,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,vite-react-spa,npm,2,true,6,2,1,0,true,24,0,10,24,true,true,npm run build,false,0.0035,7,16.875,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,xml-yaml-parser,npm,1,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0025,3,12.934,0,0
-Haiku 5.5,v6-haiku-2026-11-01,no-docs,xml-yaml-parser,npm,2,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0025,3,11.842,0,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0055,6,26.273,3,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0052,6,20.087,3,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0077,8,21.471,5,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0067,8,25.527,5,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,fastapi-jwt,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0168,16,57.43,13,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0079,7,26.618,4,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0153,18,32.692,14,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0155,18,38.127,14,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,langchain-rag,pypi,1,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0078,12,32.499,9,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,langchain-rag,pypi,2,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.01,9,26.516,6,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0056,7,17.173,4,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,mcp-server-ts,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,"npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop ""server.ts""",false,0.004,5,15.217,2,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,next-auth-middleware,npm,1,true,8,1,1,0,true,7,3,2,7,true,true,npm run build,false,0.0164,19,80.467,11,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,next-auth-middleware,npm,2,true,4,1,1,0,true,7,3,2,7,true,true,npm run build,false,0.0093,13,39.878,5,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0085,9,34.464,5,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,nuxt-app,npm,2,true,2,0,0,0,true,4,0,1,9,true,true,npm run build,false,0.0051,8,40.489,4,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,pandas-pipeline,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0087,12,28.383,8,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0127,12,37.365,8,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0065,7,16.827,4,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0064,7,18.307,4,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0103,12,33.129,6,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0089,11,31.249,5,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0048,5,16.584,2,0
-Haiku 5.5,v6-haiku-2026-11-01,docs-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0035,5,11.546,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0059,5,30.092,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0042,5,18.563,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0031,4,15.725,1,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0034,4,15.827,1,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0069,7,26.551,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,fastapi-jwt,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0056,6,30.686,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,flask-proxy,pypi,1,true,13,0,0,0,true,0,,,0,true,true,import check,false,0.0054,7,24.074,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0046,6,18.801,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,langchain-rag,pypi,1,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0061,7,23.226,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,langchain-rag,pypi,2,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0076,8,22.624,5,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0033,6,13.084,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0034,5,12.163,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0075,14,39.689,5,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,next-auth-middleware,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.008,12,35.313,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0043,9,20.799,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0035,7,15.424,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.006,7,21.138,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,pandas-pipeline,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0066,8,23.31,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.004,5,18.041,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0065,7,18.494,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0051,9,21.042,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0077,10,33.49,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0041,6,14.486,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0035,5,15.217,2,0
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0032,4,19.678,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0059,4,35.176,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0029,3,15.598,0,0
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0029,3,14.83,0,0
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,fastapi-jwt,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0068,5,38.822,0,2
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,fastapi-jwt,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0063,5,37.968,0,2
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0043,6,26.224,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0041,6,23.802,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,langchain-rag,pypi,1,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0052,5,32.369,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0062,6,34.896,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0026,5,18.098,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0027,4,16.188,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,next-auth-middleware,npm,1,true,8,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.0105,16,59.054,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,next-auth-middleware,npm,2,false,0,0,0,0,false,,,,,,,,false,0.0052,9,32.886,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0036,6,26.908,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0029,6,18.785,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0039,5,22.004,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,pandas-pipeline,pypi,2,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.004,4,23.624,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0033,4,18.13,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0037,4,21.485,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0048,10,27.621,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0045,8,26.027,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0026,4,14.544,0,1
-Haiku 5.5,v6-haiku-2026-11-01,hook-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0024,4,14.03,0,1
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0039,5,18.404,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0052,5,26.8,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0031,4,15.654,1,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0024,4,13.02,1,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0057,7,19.29,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0047,5,21.377,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,flask-proxy,pypi,1,true,13,0,0,0,true,0,,,0,true,true,import check,false,0.0042,7,21.273,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0049,7,21.066,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,langchain-rag,pypi,1,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.0054,6,19.786,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,langchain-rag,pypi,2,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0055,6,20.835,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0034,6,14.249,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,mcp-server-ts,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,"npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop ""src\index.ts""",false,0.003,5,12.197,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0074,12,34.527,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,next-auth-middleware,npm,2,true,8,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0089,13,39.072,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,nuxt-app,npm,1,true,1,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0035,6,18.271,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,nuxt-app,npm,2,true,1,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0034,7,17.99,2,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,pandas-pipeline,pypi,1,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0071,8,30.309,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0088,8,34.194,5,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0047,6,15.033,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0051,6,16.394,3,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0072,12,27.265,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0066,11,25.315,4,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0025,4,12.555,1,0
-Haiku 5.5,v6-haiku-2026-11-01,pinright+hook,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.002,4,10.785,1,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,fastapi-jwt,pypi,1,true,14,0,0,0,true,0,,,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,langchain-rag,pypi,1,true,5,0,0,0,true,0,,,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,next-auth-middleware,npm,1,true,8,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,8,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Haiku 5.5,v6-haiku-2026-11-01,latest,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,axios-client,npm,1,true,3,2,2,0,true,33,0,12,33,true,true,import check,false,0.0986,3,28.456,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,axios-client,npm,2,true,3,2,2,0,true,33,0,12,33,true,true,import check,false,0.078,3,23.945,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0683,3,16.53,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.057,3,19.837,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,fastapi-jwt,pypi,1,true,16,6,3,0,true,33,,,34,true,true,import check,false,0.0975,3,29.063,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,fastapi-jwt,pypi,2,true,16,6,3,0,true,33,,,34,true,true,import check,false,0.0873,3,24.748,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,flask-proxy,pypi,1,true,14,7,1,0,true,14,,,15,true,true,import check,false,0.0798,4,23.85,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,flask-proxy,pypi,2,true,15,7,1,0,true,14,,,15,true,true,import check,false,0.0737,4,21.014,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,langchain-rag,pypi,1,true,7,5,1,0,true,77,,,77,true,true,import check,false,0.0955,3,27.427,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,langchain-rag,pypi,2,true,9,6,4,0,true,82,,,82,true,true,import check,false,0.0894,3,26.304,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,mcp-server-ts,npm,1,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0701,4,20.792,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,mcp-server-ts,npm,2,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0655,4,16.43,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,next-auth-middleware,npm,1,true,4,2,2,0,true,51,7,20,51,true,true,npm run build,false,0.1258,8,28.754,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,next-auth-middleware,npm,2,true,4,2,2,0,true,44,4,19,44,true,true,npm run build,false,0.123,9,39.619,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,nuxt-app,npm,1,true,3,1,1,0,true,27,3,7,30,true,true,npm run build,false,0.0551,4,18.615,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,nuxt-app,npm,2,true,3,1,1,0,true,28,3,7,31,true,true,npm run build,false,0.0687,5,17.441,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,pandas-pipeline,pypi,1,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0818,4,23.852,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,pandas-pipeline,pypi,2,true,9,2,2,0,true,62,,,64,true,true,import check,false,0.0847,4,23.923,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,upload-sharp-s3,npm,1,true,4,2,1,0,true,26,1,14,26,true,true,import check,false,0.0797,3,25.083,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,upload-sharp-s3,npm,2,true,4,2,1,0,true,21,1,13,21,true,true,import check,false,0.0683,3,18.869,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,vite-react-spa,npm,1,true,6,2,1,0,true,25,0,9,25,true,true,npm run build,false,0.0798,5,20.272,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,vite-react-spa,npm,2,true,6,2,1,0,true,27,0,12,27,true,true,npm run build,false,0.0845,5,24.793,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,xml-yaml-parser,npm,1,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0589,3,16.692,0,0
-Opus 5.5,v6-opus-2026-11-01,no-docs,xml-yaml-parser,npm,2,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0584,3,15.676,0,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.2152,6,31.211,3,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1664,6,29.357,3,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.2484,8,27.153,5,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.1531,8,28,5,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.2479,8,34.995,4,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.1958,7,27.823,4,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.2261,18,35.532,14,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.2318,18,35.608,14,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.2995,11,36.962,8,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.3387,11,42.8,8,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1336,8,22.506,4,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1149,8,24.516,4,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2756,13,38.622,4,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,next-auth-middleware,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2964,14,45.033,6,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.1215,7,27.665,3,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.1186,8,35.65,4,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.2315,12,34.278,8,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.2496,14,44.555,10,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1662,7,23.668,4,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1411,7,21.702,4,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2711,10,27.516,5,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2271,10,29.683,5,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.1342,5,20.038,2,0
-Opus 5.5,v6-opus-2026-11-01,docs-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0994,5,19.897,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.076,4,18.881,1,0
-Opus 5.5,v6-opus-2026-11-01,pinright,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1255,5,33.017,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0789,4,20.229,1,0
-Opus 5.5,v6-opus-2026-11-01,pinright,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0736,4,25.498,1,0
-Opus 5.5,v6-opus-2026-11-01,pinright,fastapi-jwt,pypi,1,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.1935,7,42.87,4,0
-Opus 5.5,v6-opus-2026-11-01,pinright,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.1474,6,35.243,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.1123,6,25.828,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.1144,6,25.281,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.1206,5,33.831,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.1335,5,29.42,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1124,6,22.551,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.108,6,21.891,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,next-auth-middleware,npm,1,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2596,12,36.276,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright,next-auth-middleware,npm,2,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.207,12,49.055,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.1323,8,38.329,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0873,6,23.261,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1706,9,35.834,5,0
-Opus 5.5,v6-opus-2026-11-01,pinright,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.179,8,31.634,4,0
-Opus 5.5,v6-opus-2026-11-01,pinright,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1137,6,32.729,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1148,6,24.002,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.145,8,31.186,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1733,8,30.545,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0659,4,18.262,1,0
-Opus 5.5,v6-opus-2026-11-01,pinright,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0753,5,20.601,1,0
-Opus 5.5,v6-opus-2026-11-01,hook-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0768,4,27.385,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1028,4,41.233,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0628,3,18.806,0,0
-Opus 5.5,v6-opus-2026-11-01,hook-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0654,3,24.156,0,0
-Opus 5.5,v6-opus-2026-11-01,hook-only,fastapi-jwt,pypi,1,true,16,0,0,0,true,0,,,0,true,true,import check,false,0.1308,5,45.767,0,2
-Opus 5.5,v6-opus-2026-11-01,hook-only,fastapi-jwt,pypi,2,true,16,0,0,0,true,0,,,0,true,true,import check,false,0.1247,5,40.751,0,2
-Opus 5.5,v6-opus-2026-11-01,hook-only,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.08,5,30.133,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.1026,5,34.129,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,langchain-rag,pypi,1,true,10,0,0,0,true,0,,,0,true,true,import check,false,0.1326,5,52.302,0,2
-Opus 5.5,v6-opus-2026-11-01,hook-only,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.159,6,52.267,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.092,6,33.277,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0906,5,34.815,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,next-auth-middleware,npm,1,true,4,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.2215,14,56.251,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,next-auth-middleware,npm,2,true,4,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.1241,8,51.318,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0946,7,34.356,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0831,6,32.462,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.1081,5,35.053,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,pandas-pipeline,pypi,2,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0873,5,29.655,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0909,5,36.876,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0951,4,29.246,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.088,6,29.422,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.089,6,31.83,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0652,4,29.016,0,1
-Opus 5.5,v6-opus-2026-11-01,hook-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0649,4,22.715,0,1
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0657,4,19.409,1,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1022,5,30.46,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0802,5,21.195,1,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0789,5,29.333,1,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,fastapi-jwt,pypi,1,true,16,0,0,0,true,0,,,0,true,true,import check,false,0.1949,8,43.355,5,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,fastapi-jwt,pypi,2,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.2015,8,43.427,5,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.1151,6,26.88,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.1013,6,27.763,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.1086,5,27.359,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,langchain-rag,pypi,2,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.1729,6,34.119,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1056,6,30.42,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0987,6,24.577,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,next-auth-middleware,npm,1,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2275,14,43.648,4,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,next-auth-middleware,npm,2,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2028,12,54.798,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.1082,8,36.607,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,8,true,true,npm run build,false,0.0724,6,23.91,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1729,9,32.851,5,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1819,8,35.936,4,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1026,6,26.888,2,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1248,7,27.952,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1297,8,30.686,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1304,8,31.666,3,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0575,4,17.268,1,0
-Opus 5.5,v6-opus-2026-11-01,pinright+hook,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0585,4,17.47,1,0
-Opus 5.5,v6-opus-2026-11-01,latest,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,fastapi-jwt,pypi,1,true,16,0,0,0,true,0,,,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,8,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,,,,false,,,,0,0
-Opus 5.5,v6-opus-2026-11-01,latest,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,axios-client,npm,1,true,3,2,2,0,true,35,1,14,35,true,true,import check,false,0.0358,4,16.78,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,axios-client,npm,2,true,3,2,2,0,true,35,1,14,35,true,true,import check,false,0.0313,3,19.718,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,express-jwt-api,npm,1,true,5,0,0,0,true,8,0,2,8,true,true,import check,false,0.0302,3,12.754,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,express-jwt-api,npm,2,true,5,0,0,0,true,8,0,2,8,true,true,import check,false,0.0329,3,13.766,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,fastapi-jwt,pypi,1,true,15,7,4,0,true,34,,,35,true,true,import check,false,0.0351,3,15.138,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,fastapi-jwt,pypi,2,true,15,7,4,0,true,35,,,36,true,true,import check,false,0.0363,3,17.031,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,flask-proxy,pypi,1,true,15,8,1,0,true,19,,,20,true,true,import check,false,0.032,4,13.809,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,flask-proxy,pypi,2,true,15,8,1,0,true,19,,,20,true,true,import check,false,0.0276,4,13.26,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,langchain-rag,pypi,1,true,9,5,2,0,true,77,,,77,true,true,import check,false,0.0368,3,16.02,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,langchain-rag,pypi,2,true,7,5,2,0,true,76,,,76,true,true,import check,false,0.033,3,14.717,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,mcp-server-ts,npm,1,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0298,4,11.413,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,mcp-server-ts,npm,2,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0296,4,14.17,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,next-auth-middleware,npm,1,true,8,2,2,0,true,52,8,19,52,true,true,npm run build,false,0.0554,9,19.178,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,next-auth-middleware,npm,2,true,8,2,2,0,true,52,8,19,52,true,true,npm run build,false,0.052,9,19.117,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,nuxt-app,npm,1,true,3,1,1,0,true,26,3,7,26,true,true,npm run build,false,0.0227,4,8.213,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,nuxt-app,npm,2,true,3,1,1,0,true,45,4,16,46,true,true,npm run build,false,0.0279,6,10.986,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,pandas-pipeline,pypi,1,true,9,2,1,2,true,60,,,62,true,true,import check,false,0.0279,3,11.365,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,pandas-pipeline,pypi,2,true,9,2,1,2,true,60,,,62,true,true,import check,false,0.0363,4,16.318,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,upload-sharp-s3,npm,1,true,4,2,1,0,true,28,1,14,28,true,true,import check,false,0.0311,3,12.339,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,upload-sharp-s3,npm,2,true,4,2,1,0,true,20,1,13,20,true,true,import check,false,0.0302,3,13.008,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,vite-react-spa,npm,1,true,6,1,0,0,true,25,0,9,25,true,true,npm run build,false,0.0365,5,12.99,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,vite-react-spa,npm,2,true,6,1,0,0,true,24,0,2,24,true,true,npm run build,false,0.0379,5,20.135,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,xml-yaml-parser,npm,1,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0272,3,11.225,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,no-docs,xml-yaml-parser,npm,2,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0255,3,11.918,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.075,6,26.551,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0736,6,26.241,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0667,8,27.307,5,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.065,8,18.503,5,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.1137,7,30.401,4,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.1158,7,36.009,4,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.1101,19,77.823,14,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.1018,18,35.359,14,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.1109,10,56.27,7,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,langchain-rag,pypi,2,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.1332,8,24.105,5,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0626,8,22.1,4,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0625,8,19.946,4,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,next-auth-middleware,npm,1,true,4,0,0,1,true,39,4,17,39,true,true,npm run build,false,0.1073,12,55.491,4,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,next-auth-middleware,npm,2,true,4,0,0,1,true,39,4,17,39,true,true,npm run build,false,0.1071,13,56.097,6,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0829,10,54.886,5,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0476,6,24.59,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1366,11,46.105,8,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0872,12,28.331,8,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0697,7,34.486,4,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0677,7,19.903,4,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0933,10,53.665,5,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1031,11,33.136,6,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0547,5,17.886,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,docs-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0561,5,12.89,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0433,5,23.052,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0346,4,17.371,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0346,4,14.574,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.037,4,19.23,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0648,6,22.774,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0542,5,21.468,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0526,7,27.774,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0363,5,18.752,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,langchain-rag,pypi,1,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0367,4,16.168,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0397,4,16.868,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,mcp-server-ts,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0451,6,17.157,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,mcp-server-ts,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0452,6,19.709,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1014,10,36.862,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,next-auth-middleware,npm,2,true,7,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0782,11,25.941,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0531,6,30.681,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0474,7,21.981,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0677,8,26.302,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0616,7,23.503,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0476,5,17.192,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0454,5,16.948,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0667,8,24.351,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0472,6,20.455,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0277,4,15.364,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0282,4,11.595,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0267,4,19.557,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0285,4,20.833,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0316,4,21.503,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0339,4,26.767,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,fastapi-jwt,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0534,5,32.105,0,2
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,fastapi-jwt,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0545,5,34.262,0,2
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0392,4,23.942,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.036,4,21.108,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,langchain-rag,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0555,5,34.63,0,2
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.056,5,36.564,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0359,5,22.037,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0368,5,21.083,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,next-auth-middleware,npm,1,true,8,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.0857,14,41.209,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,next-auth-middleware,npm,2,true,4,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.0907,15,45.735,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.037,6,32.025,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,nuxt-app,npm,2,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0355,6,26.662,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,pandas-pipeline,pypi,1,true,9,0,0,2,true,0,,,0,true,true,import check,false,0.0401,5,28.253,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,pandas-pipeline,pypi,2,true,9,0,0,2,true,0,,,0,true,true,import check,false,0.038,5,22.168,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0436,4,21.898,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.037,4,24.736,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.048,6,29.258,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0421,6,26.688,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0275,4,20.831,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,hook-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0317,4,19.362,0,1
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.03,4,15.394,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.034,5,24.905,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0302,4,14.97,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0302,4,18.212,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,fastapi-jwt,pypi,1,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0548,6,27.814,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0516,6,25.06,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0475,6,16.746,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0392,6,18.317,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,langchain-rag,pypi,1,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0353,4,15.724,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,langchain-rag,pypi,2,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0307,4,15.717,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,mcp-server-ts,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0552,6,17.472,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,mcp-server-ts,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0512,6,19.298,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0782,10,23.214,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,next-auth-middleware,npm,2,true,4,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.073,11,26.62,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0459,7,30.122,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,nuxt-app,npm,2,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0466,6,30.869,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,pandas-pipeline,pypi,1,false,0,0,0,0,false,,,,,,,,false,0.0585,7,20.264,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0544,6,22.466,3,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0422,5,17.211,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0434,5,18.252,2,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0402,6,15.748,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0446,6,18.336,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0235,4,11.958,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,pinright+hook,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0301,4,12.656,1,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,fastapi-jwt,pypi,1,true,15,0,0,0,true,0,,,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,langchain-rag,pypi,1,true,9,0,0,0,true,0,,,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,next-auth-middleware,npm,1,true,8,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Sonnet 5.5,v7-sonnet-2026-11-02,latest,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,axios-client,npm,1,true,3,2,2,0,true,35,1,14,35,true,true,import check,false,0.0035,3,18.99,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,axios-client,npm,2,true,3,2,2,0,true,35,1,14,35,true,true,import check,false,0.0031,3,18.049,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.003,3,15.214,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0023,5,13.199,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,fastapi-jwt,pypi,1,true,16,7,4,0,true,34,,,35,true,true,import check,false,0.0039,3,20.578,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,fastapi-jwt,pypi,2,true,16,7,4,0,true,34,,,35,true,true,import check,false,0.0041,3,22.509,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,flask-proxy,pypi,1,true,14,7,1,0,true,0,,,15,true,true,import check,false,0.0027,4,13.686,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,flask-proxy,pypi,2,true,15,7,1,0,true,14,,,15,true,true,import check,false,0.0027,4,15.501,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,langchain-rag,pypi,1,true,6,4,2,0,true,77,,,77,true,true,import check,false,0.0035,3,19.197,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,langchain-rag,pypi,2,true,6,4,2,0,true,77,,,77,true,true,import check,false,0.0033,3,18.067,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,mcp-server-ts,npm,1,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0025,4,13.102,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,mcp-server-ts,npm,2,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0022,4,12.515,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,next-auth-middleware,npm,1,true,4,2,2,0,true,50,7,21,50,true,true,npm run build,false,0.004,8,20.834,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,next-auth-middleware,npm,2,true,8,2,2,0,true,50,7,21,50,true,true,npm run build,false,0.0048,8,24.408,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,nuxt-app,npm,1,true,3,1,1,0,true,25,0,5,25,true,true,npm run build,false,0.0025,6,13.424,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,nuxt-app,npm,2,true,3,1,1,0,true,27,3,7,27,true,true,npm run build,false,0.0024,6,13.456,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,pandas-pipeline,pypi,1,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0036,4,17.81,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,pandas-pipeline,pypi,2,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0029,4,15.261,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,upload-sharp-s3,npm,1,true,4,2,1,0,true,28,1,14,28,true,true,import check,false,0.0028,3,14.053,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,upload-sharp-s3,npm,2,true,4,2,1,0,true,19,1,7,30,true,true,import check,false,0.0025,3,13.952,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,vite-react-spa,npm,1,true,6,1,0,0,true,24,0,10,24,true,true,npm run build,false,0.0039,7,19.417,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,vite-react-spa,npm,2,true,6,2,1,0,true,24,0,10,24,true,true,npm run build,false,0.0037,7,17.999,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,xml-yaml-parser,npm,1,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0026,3,13.642,0,0
+Haiku 5.5,v7-haiku-2026-11-02,no-docs,xml-yaml-parser,npm,2,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0021,3,11.173,0,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0051,6,17.547,3,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0052,6,19.069,3,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0068,8,21.645,5,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0067,8,20.654,5,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.009,11,29.251,8,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,fastapi-jwt,pypi,2,true,17,0,0,0,true,0,,,0,true,true,import check,false,0.0143,22,51.611,19,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0145,18,27.418,14,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0145,18,24.463,14,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0082,13,30.545,10,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,langchain-rag,pypi,2,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.0089,12,33.751,9,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0055,8,16.527,4,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,mcp-server-ts,npm,2,true,3,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0051,7,19.122,3,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,next-auth-middleware,npm,1,true,7,2,2,0,true,50,7,21,50,true,true,npm run build,false,0.0116,14,59.678,6,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,next-auth-middleware,npm,2,true,7,1,1,0,true,7,3,2,7,true,false,npm run build,false,0.0104,17,51.294,8,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0078,9,27.389,5,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0065,8,22.074,4,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0124,12,29.421,8,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,pandas-pipeline,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0092,17,33.74,13,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0065,7,16.97,4,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0062,7,17.083,4,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0086,15,38.482,9,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0102,14,34.343,6,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0045,5,15.791,2,0
+Haiku 5.5,v7-haiku-2026-11-02,docs-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0041,5,14.386,2,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0044,5,21.2,2,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0043,6,17.829,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0033,4,17.185,1,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0031,4,16.433,1,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,fastapi-jwt,pypi,1,true,12,0,0,0,true,0,,,0,true,true,import check,false,0.0074,8,29.499,5,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,fastapi-jwt,pypi,2,true,17,0,0,0,true,0,,,0,true,true,import check,false,0.0099,10,34.502,7,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0046,6,19.104,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0043,7,19.546,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.006,7,21.584,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,langchain-rag,pypi,2,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0057,7,19.815,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,mcp-server-ts,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,"npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop ""src\index.ts""",false,0.0036,5,15.317,2,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0046,7,17.315,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0083,13,36.218,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,next-auth-middleware,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0104,14,42.198,6,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,nuxt-app,npm,1,true,1,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0044,9,22.855,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,nuxt-app,npm,2,true,1,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0037,8,18.882,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,pandas-pipeline,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0055,7,19.081,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,pandas-pipeline,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0073,9,31.675,5,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0054,6,18.232,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0043,6,13.612,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0069,10,26.418,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0056,10,21.768,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0051,6,16.07,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.005,6,16.084,3,0
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0035,4,22.347,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0045,4,27.03,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0036,4,20.923,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0027,3,14.666,0,0
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,fastapi-jwt,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0058,5,32.834,0,2
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,fastapi-jwt,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0067,5,38.551,0,2
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0036,5,20.667,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0043,5,25.97,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,langchain-rag,pypi,1,false,0,0,0,0,false,,,,,,,,false,0.0045,5,32.748,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,langchain-rag,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0058,5,36.144,0,2
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0029,5,19.277,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.003,5,32.016,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,next-auth-middleware,npm,1,true,8,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.0091,14,51.828,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,next-auth-middleware,npm,2,true,4,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.0076,16,43.266,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.003,6,20.577,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,nuxt-app,npm,2,true,1,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0028,5,18.184,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0045,5,26.092,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,pandas-pipeline,pypi,2,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0043,5,25.955,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0032,4,21.413,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0035,4,19.434,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0042,7,27.694,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.004,8,24.306,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0028,4,16.917,0,1
+Haiku 5.5,v7-haiku-2026-11-02,hook-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0031,4,17.271,0,1
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0042,6,16.843,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0039,5,19.162,2,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0032,4,16.953,1,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0024,4,12.74,1,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0067,7,30.864,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.0072,7,23.033,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0045,6,20.933,2,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.0055,9,24.409,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,langchain-rag,pypi,1,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.007,8,22.256,5,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,langchain-rag,pypi,2,true,6,0,0,0,true,0,,,0,true,true,import check,false,0.0064,7,24.5,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,mcp-server-ts,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,"npx -y -p typescript tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --esModuleInterop ""src\index.ts""",false,0.0032,5,13.96,2,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,false,npm run build,false,0.0036,6,15.412,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,next-auth-middleware,npm,1,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0107,15,51.16,6,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,next-auth-middleware,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0082,14,37.603,5,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,nuxt-app,npm,1,true,1,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0034,7,19.991,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0044,9,22.952,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.0078,10,32.609,6,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,pandas-pipeline,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0063,9,30.028,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0061,7,17.736,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0063,7,19.078,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0053,11,28.574,3,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0079,10,26.883,4,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0025,4,13.036,1,0
+Haiku 5.5,v7-haiku-2026-11-02,pinright+hook,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0039,6,16.233,3,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,fastapi-jwt,pypi,1,true,16,0,0,0,true,0,,,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,langchain-rag,pypi,1,true,6,0,0,0,true,0,,,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Haiku 5.5,v7-haiku-2026-11-02,latest,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,axios-client,npm,1,true,3,2,2,0,true,33,0,12,33,true,true,import check,false,0.0802,3,25.14,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,axios-client,npm,2,true,3,2,2,0,true,33,0,12,33,true,true,import check,false,0.0673,3,23.281,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.069,3,23.173,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0666,3,21.515,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,fastapi-jwt,pypi,1,true,16,7,4,0,true,34,,,35,true,true,import check,false,0.0858,3,25.137,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,fastapi-jwt,pypi,2,true,16,7,4,0,true,34,,,35,true,true,import check,false,0.0782,3,26.356,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,flask-proxy,pypi,1,true,15,7,1,0,true,14,,,15,true,true,import check,false,0.1047,5,33.028,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,flask-proxy,pypi,2,true,15,7,1,0,true,14,,,15,true,true,import check,false,0.0788,5,25.449,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,langchain-rag,pypi,1,true,7,5,2,0,true,77,,,77,true,true,import check,false,0.0867,3,30.427,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,langchain-rag,pypi,2,true,10,5,2,0,true,77,,,77,true,true,import check,false,0.0745,3,26.711,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,mcp-server-ts,npm,1,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0708,4,21.779,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,mcp-server-ts,npm,2,true,4,2,2,0,true,9,0,7,9,true,true,npm run build,false,0.0591,4,21.797,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,next-auth-middleware,npm,1,true,4,2,2,0,true,44,4,19,44,true,true,npm run build,false,0.1217,7,32.925,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,next-auth-middleware,npm,2,true,4,2,2,0,true,36,4,14,36,true,true,npm run build,false,0.0934,7,29.871,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,nuxt-app,npm,1,true,3,1,1,0,true,45,4,16,46,true,true,npm run build,false,0.052,4,15.083,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,nuxt-app,npm,2,true,3,1,1,0,true,55,4,17,66,true,true,npm run build,false,0.0446,5,14.043,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,pandas-pipeline,pypi,1,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0831,4,25.753,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,pandas-pipeline,pypi,2,true,9,2,2,0,true,60,,,62,true,true,import check,false,0.0638,4,21.444,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,upload-sharp-s3,npm,1,true,4,2,1,0,true,20,1,12,20,true,true,import check,false,0.0721,3,23.377,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,upload-sharp-s3,npm,2,true,4,2,1,0,true,18,1,12,18,true,true,import check,false,0.0701,3,23.654,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,vite-react-spa,npm,1,true,6,2,1,0,true,25,0,9,25,true,true,npm run build,false,0.0797,5,21.118,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,vite-react-spa,npm,2,true,6,2,1,0,true,25,0,9,25,true,true,npm run build,false,0.0695,5,27.785,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,xml-yaml-parser,npm,1,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0544,3,15.277,0,0
+Opus 5.5,v7-opus-2026-11-02,no-docs,xml-yaml-parser,npm,2,true,2,1,1,0,true,5,0,3,5,true,true,import check,false,0.0482,3,16.595,0,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1657,6,29.316,3,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1622,6,31.002,3,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.1666,8,29.917,5,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.1992,8,31.777,5,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,fastapi-jwt,pypi,1,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.2465,7,39.926,4,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,fastapi-jwt,pypi,2,true,4,0,0,0,true,0,,,0,true,true,import check,false,0.32,11,41.024,8,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,flask-proxy,pypi,1,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.2318,18,42.491,14,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,flask-proxy,pypi,2,true,14,0,0,0,true,0,,,0,true,true,import check,false,0.3281,18,50.302,14,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.2929,11,50.775,7,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.2598,10,43.843,7,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1272,8,26.229,4,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1081,8,28.093,4,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2969,13,67.758,5,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,next-auth-middleware,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2867,14,59.223,5,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.1952,10,48.835,5,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.1276,9,33.425,3,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.2191,12,39.886,8,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.2206,12,33.928,8,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1758,8,33.468,5,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1781,9,31.971,6,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2622,10,59.416,5,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2774,11,38.493,5,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.126,5,26.529,2,0
+Opus 5.5,v7-opus-2026-11-02,docs-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.1242,5,22.073,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1244,5,33.503,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0599,4,19.582,1,0
+Opus 5.5,v7-opus-2026-11-02,pinright,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.078,4,20.823,1,0
+Opus 5.5,v7-opus-2026-11-02,pinright,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0745,5,26.863,1,0
+Opus 5.5,v7-opus-2026-11-02,pinright,fastapi-jwt,pypi,1,true,18,0,0,0,true,0,,,0,true,true,import check,false,0.2075,8,46.403,5,0
+Opus 5.5,v7-opus-2026-11-02,pinright,fastapi-jwt,pypi,2,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.129,5,31.753,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.1118,6,28.213,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.1051,6,26.339,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,langchain-rag,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.1664,6,34.724,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.0983,5,28.543,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1036,6,24.446,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.099,6,26.701,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.258,11,52.235,4,0
+Opus 5.5,v7-opus-2026-11-02,pinright,next-auth-middleware,npm,2,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1889,13,43.581,4,0
+Opus 5.5,v7-opus-2026-11-02,pinright,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.1016,7,35.622,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.1143,9,38.988,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1572,7,38.094,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.2104,10,40.779,6,0
+Opus 5.5,v7-opus-2026-11-02,pinright,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1038,6,28.589,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.1109,6,24.101,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright,vite-react-spa,npm,1,true,9,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1609,10,51.123,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright,vite-react-spa,npm,2,true,9,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1387,9,35.357,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0639,4,19.596,1,0
+Opus 5.5,v7-opus-2026-11-02,pinright,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0557,4,19.233,1,0
+Opus 5.5,v7-opus-2026-11-02,hook-only,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0729,4,28.196,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0821,4,34.802,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0611,3,21.385,0,0
+Opus 5.5,v7-opus-2026-11-02,hook-only,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0644,4,23.016,0,0
+Opus 5.5,v7-opus-2026-11-02,hook-only,fastapi-jwt,pypi,1,true,17,0,0,0,true,0,,,0,true,true,import check,false,0.1294,5,45.668,0,2
+Opus 5.5,v7-opus-2026-11-02,hook-only,fastapi-jwt,pypi,2,true,16,0,0,0,true,0,,,0,true,true,import check,false,0.1169,5,42.574,0,2
+Opus 5.5,v7-opus-2026-11-02,hook-only,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0886,5,40.223,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0866,5,36.66,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,langchain-rag,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1375,5,55.132,0,2
+Opus 5.5,v7-opus-2026-11-02,hook-only,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.126,5,47.47,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0832,5,31.176,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0834,5,30.139,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,next-auth-middleware,npm,1,true,4,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.1851,14,69.283,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,next-auth-middleware,npm,2,true,4,0,0,0,true,4,0,2,4,true,true,npm run build,false,0.1863,14,56.588,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0758,6,32.715,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0744,5,30.452,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0943,5,38.732,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,pandas-pipeline,pypi,2,true,9,0,0,0,true,0,,,0,true,true,import check,false,0.0881,5,31.464,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0963,4,37.222,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0782,4,29.448,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0936,6,46.643,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0909,6,31.443,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0687,5,30.752,0,1
+Opus 5.5,v7-opus-2026-11-02,hook-only,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0689,4,24.991,0,1
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.1199,5,35.649,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,axios-client,npm,2,true,3,0,0,0,true,0,0,0,0,true,true,import check,false,0.0985,5,32.058,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0725,5,23.17,1,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,express-jwt-api,npm,2,true,5,0,0,0,true,0,0,0,0,true,true,import check,false,0.0729,5,25.794,1,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,fastapi-jwt,pypi,1,true,5,0,0,0,true,0,,,0,true,true,import check,false,0.1387,6,39.428,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,fastapi-jwt,pypi,2,true,17,0,0,0,true,0,,,0,true,true,import check,false,0.1564,7,39.753,4,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.1015,6,34.374,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,flask-proxy,pypi,2,true,15,0,0,0,true,0,,,0,true,true,import check,false,0.0748,5,23.228,1,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,langchain-rag,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.2394,9,47.438,6,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,langchain-rag,pypi,2,true,7,0,0,0,true,0,,,0,true,true,import check,false,0.1346,6,32.909,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0984,6,22.535,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,mcp-server-ts,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.0997,6,19.887,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,next-auth-middleware,npm,1,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.2084,13,60.085,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,next-auth-middleware,npm,2,true,7,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.1812,12,47.14,4,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,nuxt-app,npm,1,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0651,6,22.401,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,nuxt-app,npm,2,true,2,0,0,0,true,3,0,0,5,true,true,npm run build,false,0.0712,6,28.854,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,pandas-pipeline,pypi,1,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1551,8,31.018,4,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,pandas-pipeline,pypi,2,true,8,0,0,0,true,0,,,0,true,true,import check,false,0.1383,7,32.073,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0997,6,29.724,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,upload-sharp-s3,npm,2,true,4,0,0,0,true,0,0,0,0,true,true,import check,false,0.0995,6,28.866,2,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.127,8,32.648,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,vite-react-spa,npm,2,true,6,0,0,0,true,0,0,0,0,true,true,npm run build,false,0.126,8,27.773,3,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0557,4,20.002,1,0
+Opus 5.5,v7-opus-2026-11-02,pinright+hook,xml-yaml-parser,npm,2,true,2,0,0,0,true,0,0,0,0,true,true,import check,false,0.0554,4,18.558,1,0
+Opus 5.5,v7-opus-2026-11-02,latest,axios-client,npm,1,true,3,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,express-jwt-api,npm,1,true,5,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,fastapi-jwt,pypi,1,true,16,0,0,0,true,0,,,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,flask-proxy,pypi,1,true,15,0,0,0,true,0,,,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,langchain-rag,pypi,1,true,7,0,0,0,true,0,,,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,mcp-server-ts,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,next-auth-middleware,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,nuxt-app,npm,1,true,3,0,0,0,true,3,0,0,5,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,pandas-pipeline,pypi,1,true,9,0,0,0,true,0,,,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,upload-sharp-s3,npm,1,true,4,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,vite-react-spa,npm,1,true,6,0,0,0,true,0,0,0,0,,,,false,,,,0,0
+Opus 5.5,v7-opus-2026-11-02,latest,xml-yaml-parser,npm,1,true,2,0,0,0,true,0,0,0,0,,,,false,,,,0,0

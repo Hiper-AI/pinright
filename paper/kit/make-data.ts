@@ -25,10 +25,11 @@ const args = process.argv.slice(2);
 const opt = (n: string) => (args.includes(`--${n}`) ? args[args.indexOf(`--${n}`) + 1] : undefined);
 const root = resolve(import.meta.dirname, '..', '..');
 const bench = resolve(opt('bench') ?? join(root, 'bench'));
-const out = join(import.meta.dirname, 'data');
+const out = resolve(opt('out') ?? join(import.meta.dirname, 'data'));
 
-const AGENT_STAMPS = ['v6-sonnet-2026-11-01', 'v6-haiku-2026-11-01', 'v6-opus-2026-11-01'];
-const DOCS_STAMPS = ['docs-v6-sonnet-2026-11-01', 'docs-v6-haiku-2026-11-01', 'docs-v6-opus-2026-11-01'];
+// --agents and --docs pick other runs (comma-separated stamps), e.g. a rerun on the release code.
+const AGENT_STAMPS = (opt('agents') ?? 'v6-sonnet-2026-11-01,v6-haiku-2026-11-01,v6-opus-2026-11-01').split(',');
+const DOCS_STAMPS = (opt('docs') ?? 'docs-v6-sonnet-2026-11-01,docs-v6-haiku-2026-11-01,docs-v6-opus-2026-11-01').split(',');
 const AGENT_ARMS = ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook', 'latest'];
 const DOCS_ARMS = ['no-docs', 'docs-only', 'pinright'];
 
@@ -135,7 +136,7 @@ csv('docs_by_task.csv', [
 
 // ---------------------------------------------------------------- retrieval probes
 // heldout-all.json lists set A (81), then B (28), then C (45), in that order (probe-heldout.ts --set all).
-const probesDir = join(bench, 'docs', 'runs', 'probes-v6');
+const probesDir = resolve(opt('probes') ?? join(bench, 'docs', 'runs', 'probes-v6'));
 const heldout = JSON.parse(readFileSync(join(probesDir, 'heldout-all.json'), 'utf8')) as { task: string; name: string; query: string; pass: boolean; chars: number; ms: number }[];
 const SIZES: [string, number][] = [['A', 81], ['B', 28], ['C', 45]];
 if (heldout.length !== sum(SIZES.map((s) => s[1]))) throw new Error(`heldout-all.json has ${heldout.length} probes, expected 154`);
