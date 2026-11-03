@@ -1,4 +1,6 @@
 // The only script on the site: the theme toggle and the copy buttons. Everything else is HTML and CSS.
+import './story.js';
+import './footer.js';
 
 const KEY = 'pinright-theme';
 const ORDER = ['system', 'light', 'dark'];

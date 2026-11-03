@@ -53,38 +53,39 @@
             </div>
             <p class="req">Node 20.9 or newer. No account, no key, no telemetry. The Cursor and VS Code buttons add the MCP server only; run <code>init</code> in the project for the hook. 16 clients, six with a hook.</p>
           </div>
-          <div class="hero-visual">
-            <figure class="term" aria-label="Hook answer in Claude Code">
-              <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><span>Claude Code · PreToolUse · pinright hook claude</span></div>
-              <pre><code><span class="run">agent runs: npm install lodash@4.17.20</span>
+        </div>
+      </section>
 
-<span class="bad">pinright blocked this dependency change:</span>
-- lodash@4.17.20 (npm) has 5 known advisories (CVE-2021-23337, CVE-2026-4800, CVE-2020-28500, HIGH). Use 4.x release 4.18.1: <span class="good">npm install lodash@4.18.1</span>
-<span class="dim">Change the version (or the name) and try again. check-package and get-docs from the pinright MCP server explain each case.</span></code></pre>
+      <section class="story" id="story" aria-labelledby="story-title" data-story>
+        <div class="story-stage">
+          <div class="wrap story-in">
+            <p class="eyebrow story-eyebrow">One install, start to finish</p>
+            <h2 id="story-title" class="visually-hidden">What pinright does when your agent installs a package</h2>
+            <figure class="term story-term" aria-label="A Claude Code session with the pinright hook">
+              <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><span>Claude Code · new project · pinright hook</span></div>
+              <pre><code><span class="run">● Bash</span>  npm install <span class="cut" data-cut="pin">lodash@4.17.20</span>
+
+  <span class="bad">pinright <span class="cut" data-cut="block">blocked</span> this dependency change:</span>
+  - lodash@4.17.20 (npm) has <span class="cut cut-bad" data-cut="adv">5 known advisories</span> (CVE-2021-23337,
+    CVE-2026-4800, CVE-2020-28500, HIGH). Use 4.x release <span class="cut cut-good" data-cut="fix">4.18.1</span>
+
+<span class="run">● pinright</span>  <span class="cut" data-cut="docs">get-docs</span> { libraryId: "npm:lodash@4.18.1" }
+  <span class="dim">These docs are for 4.18.1, the version to move to.</span></code></pre>
             </figure>
-            <p class="term-caption">Real output of <code>pinright hook claude</code> on 2026-11-01.</p>
+            <p class="story-sentence">Your agent ran npm install <span class="slot" data-slot="pin"><span class="brace">{</span><span class="chip">lodash@4.17.20</span><span class="brace">}</span></span>, a version from memory with <span class="slot" data-slot="adv"><span class="brace">{</span><span class="chip chip-bad">5 known advisories</span><span class="brace">}</span></span>. The pinright hook <span class="slot" data-slot="block"><span class="brace">{</span><span class="chip">blocked</span><span class="brace">}</span></span> it before it ran and named <span class="slot" data-slot="fix"><span class="brace">{</span><span class="chip chip-good">4.18.1</span><span class="brace">}</span></span> on the same release line. Then <span class="slot" data-slot="docs"><span class="brace">{</span><span class="chip">get-docs</span><span class="brace">}</span></span> served the docs for that version.</p>
+            <p class="story-caption">Hook text is real output of <code>pinright hook claude</code> on 2026-11-01.</p>
           </div>
         </div>
       </section>
 
-      <section class="section" aria-labelledby="compare-title">
+      <section class="section" aria-labelledby="prompts-title">
         <div class="wrap">
           <div class="section-head">
-            <p class="eyebrow">Without pinright, with pinright</p>
-            <h2 id="compare-title">The same install, two outcomes</h2>
+            <p class="eyebrow">Try it</p>
+            <h2 id="prompts-title">Ask your agent</h2>
+            <p>With the MCP server on, the agent asks before it pins. With the hook on, it gets the same answer when it does not ask.</p>
           </div>
-          <div class="compare">
-            <div class="compare-col compare-without">
-              <p class="compare-label">Without</p>
-              <p>The agent runs <code>npm install lodash@4.17.20</code>. It installs. The lockfile now carries five advisories, two of them high, and nobody is told.</p>
-            </div>
-            <div class="compare-col compare-with">
-              <p class="compare-label">With</p>
-              <p>The hook answers before the command runs. The agent reads the reason and retries with <code>4.18.1</code>, on the same release line. When it asks first, <code>check-package</code> and <code>get-docs</code> give it the same verdict and the docs for that version.</p>
-            </div>
-          </div>
-          <h3 class="prompts-head" id="prompts-title">Ask your agent</h3>
-          <ul class="prompts" aria-labelledby="prompts-title">
+          <ul class="prompts">
             <li>Add zod and pin a version with no known advisories.</li>
             <li>Show me the docs for the version of next this project has installed.</li>
             <li>Audit package-lock.json and tell me what to upgrade, on the same release lines.</li>

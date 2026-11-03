@@ -1655,3 +1655,375 @@ ul.small li + li {
 .note + p {
   margin-top: 16px;
 }
+
+/* Scroll story (src/story.js). Without .is-live it is a plain section with the finished sentence. */
+
+.story {
+  position: relative;
+  padding: 72px 0;
+  border-top: 1px solid var(--line);
+}
+
+.story-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+.story-eyebrow {
+  margin: 0;
+}
+
+.story-term {
+  width: 100%;
+  max-width: 880px;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+
+.cut {
+  white-space: nowrap;
+  border-radius: 5px;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  background: rgb(255 255 255 / 0.07);
+  transition: background-color 0.2s ease;
+}
+
+.cut-bad {
+  color: var(--term-bad);
+}
+
+.cut-good {
+  color: var(--term-good);
+}
+
+.cut.is-lifted {
+  color: transparent;
+  background: transparent;
+  outline: 1px dashed rgb(255 255 255 / 0.32);
+  outline-offset: -1px;
+}
+
+.cut.is-lifted.is-hot {
+  outline: 1.5px solid rgb(255 255 255 / 0.85);
+}
+
+.story-sentence {
+  max-width: 30em;
+  margin: 0;
+  font-size: clamp(1.25rem, 0.85rem + 1.5vw, 2.125rem);
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: -0.02em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.story-sentence .w {
+  display: inline-block;
+  will-change: transform, opacity, filter;
+}
+
+.slot {
+  white-space: nowrap;
+}
+
+.brace {
+  display: inline-block;
+  margin: 0 0.06em;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.chip,
+.story-piece {
+  display: inline-block;
+  padding: 0.16em 0.5em;
+  border-radius: 0.4em;
+  background: var(--term-bg);
+  color: var(--term-ink);
+  font-family: var(--mono);
+  font-size: 0.7em;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  vertical-align: 0.12em;
+  white-space: nowrap;
+  transition: transform 0.25s ease;
+}
+
+.chip-bad {
+  color: var(--term-bad);
+}
+
+.chip-good {
+  color: var(--term-good);
+}
+
+:root[data-theme="dark"] .chip,
+:root[data-theme="dark"] .story-piece {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .chip,
+  :root:not([data-theme="light"]) .story-piece {
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+}
+
+.story[data-settled] .slot:hover .chip {
+  transform: translateY(-2px);
+}
+
+.story-caption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.story-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.story-piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  visibility: hidden;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  vertical-align: baseline;
+  transition: none;
+}
+
+.story.is-live {
+  height: 360vh;
+  height: 360svh;
+  padding: 0;
+}
+
+.story.is-live .story-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.story.is-live .story-in {
+  gap: 32px;
+}
+
+@media (max-width: 720px) {
+  .story-term pre {
+    font-size: 0.6875rem;
+    padding: 16px;
+  }
+}
+
+/* Footer: the dot field with the name as its gap. The mask is /dither.svg (a file, since the CSP
+   allows images from 'self' only) over a 4px dot grid, so the dots take the ink color. */
+
+.site-footer {
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.footer-brand .wordmark {
+  display: inline-block;
+  font-size: 1.0625rem;
+  text-decoration: none;
+}
+
+.df-band {
+  position: relative;
+  height: 240px;
+  margin-top: 72px;
+  overflow: hidden;
+  --df-accent: var(--ink);
+}
+
+.df-field {
+  position: absolute;
+  inset: 0;
+}
+
+.df-field.df-lit {
+  -webkit-mask-image: radial-gradient(circle 190px at var(--df-x, 50%) var(--df-y, 50%), #000 35%, rgb(0 0 0 / 0.22) 100%);
+  mask-image: radial-gradient(circle 190px at var(--df-x, 50%) var(--df-y, 50%), #000 35%, rgb(0 0 0 / 0.22) 100%);
+}
+
+.df-dots {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100% + 360px);
+  background: var(--df-accent);
+  -webkit-mask-image: radial-gradient(circle, #000 0.9px, transparent 1.3px), url("/dither.svg");
+  mask-image: radial-gradient(circle, #000 0.9px, transparent 1.3px), url("/dither.svg");
+  -webkit-mask-size: 4px 4px, 360px 240px;
+  mask-size: 4px 4px, 360px 240px;
+  -webkit-mask-repeat: repeat, repeat-x;
+  mask-repeat: repeat, repeat-x;
+  -webkit-mask-position: 0 0, left bottom;
+  mask-position: 0 0, left bottom;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.df-mark {
+  position: absolute;
+  left: 12px;
+  bottom: -0.05em;
+  margin: 0;
+  color: var(--bg);
+  font-size: clamp(5rem, 21vw, 13rem);
+  font-weight: 700;
+  line-height: 0.8;
+  letter-spacing: -0.06em;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (min-width: 640px) {
+  .df-mark {
+    left: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .df-dots {
+    animation: df-drift 40s linear infinite;
+  }
+
+  @supports (animation-timeline: view()) {
+    .df-band {
+      view-timeline: --df-band;
+    }
+
+    .df-mark {
+      animation: df-rise linear both;
+      animation-timeline: --df-band;
+      animation-range: entry 20% entry 100%;
+    }
+  }
+}
+
+@keyframes df-drift {
+  to {
+    translate: -360px 0;
+  }
+}
+
+@keyframes df-rise {
+  from {
+    translate: 0 30%;
+  }
+}
+
+.df-bar {
+  border-top: 1px solid var(--line);
+}
+
+.df-bar-in {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .df-bar-in {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.df-legal,
+.df-social {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+.df-social {
+  gap: 4px;
+  margin-right: -8px;
+}
+
+.df-legal p {
+  margin: 0;
+}
+
+.site-footer .df-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: var(--muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.site-footer .df-icon:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.df-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.df-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 8px;
+  background: var(--line-strong);
+}
+
+.site-footer .df-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+}
+
+.df-top svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (pointer: coarse) {
+  .site-footer .df-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .df-legal a,
+  .site-footer .df-top {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
