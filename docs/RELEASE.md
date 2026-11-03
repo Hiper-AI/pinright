@@ -41,10 +41,11 @@ change to `release.yml`. The placeholder holds a `package.json` and a README, no
       `integracion`) are deleted from `origin` before the repository goes public. `main` CI is green:
       `test (node 20)`, `test (node 22)`, `test (node 24)`, `self-audit`, `package contents`. The
       release guard refuses a tag that is not on `origin/main`.
-- [ ] A self-hosted runner with label `hiperai-ci` is registered for this repository (VM
-      `hiperai-ci-linux`). Check:
-      `gh api repos/Hiper-AI/pinright/actions/runners --jq '.runners[] | [.name, .status] | @tsv'`
-      shows one `online`. Without it, `ci.yml` and the `verify` job wait in the queue with no error.
+- [ ] No self-hosted runner is registered for this repository: every job runs on GitHub-hosted
+      runners. `gh api repos/Hiper-AI/pinright/actions/runners --jq '.total_count'` prints `0`.
+- [ ] `npm run ci:local` passes on the commit you will tag. It runs the CI checks on your machine
+      (typecheck, lint, tests, build, client smoke test, self-audit, package contents, fresh
+      `action-dist`), for the time before GitHub-hosted runners start.
 - [ ] `npm view pinright` still returns `404 Not Found`.
 - [ ] The npm account that will own the package has 2FA (security key or authenticator app), and
       `npm --version` on your machine is 11.5.1 or newer. Decide whether the package lives under
@@ -102,9 +103,9 @@ Check, right away:
 - Security > Secret scanning: no open alerts. GitHub scans the whole history once the repository
   is public. If it finds something, rotate that credential before anything else.
 - **GitHub-hosted runners start.** The org's GitHub-hosted runners are blocked by billing, and
-  standard GitHub-hosted runners are free for public repositories. The `publish` job and
-  `scorecard.yml` need them (npm trusted publishing and Scorecard's `publish_results` reject
-  self-hosted runners). Prove it before you rely on it:
+  standard GitHub-hosted runners are free for public repositories. Every workflow needs them (npm
+  trusted publishing and Scorecard's `publish_results` reject self-hosted runners, and CI runs
+  there too). Prove it before you rely on it:
 
   ```powershell
   gh workflow run scorecard.yml -R Hiper-AI/pinright --ref main
@@ -188,7 +189,7 @@ Save the 1.0.0 section of `CHANGELOG.md` to `notes.md`, then:
 gh release create v1.0.0 -R Hiper-AI/pinright --title "pinright 1.0.0" --notes-file notes.md
 ```
 
-Publishing the release starts `release.yml`. `verify` runs on `hiperai-ci`; then `publish` waits
+Publishing the release starts `release.yml`. `verify` builds and checks the tarball; then `publish` waits
 for you: open the run (Actions > Release) and approve `npm-publish`.
 
 Check, in order:

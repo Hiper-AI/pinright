@@ -64,7 +64,8 @@
     "bundle:action": "tsx scripts/bundle-action.ts",
     "dist:artifacts": "tsx scripts/distribution.ts",
     "build:mcpb": "npm run build && tsx scripts/build-mcpb.ts",
-    "smoke:clients": "npm run build && tsx scripts/smoke-clients.ts"
+    "smoke:clients": "npm run build && tsx scripts/smoke-clients.ts",
+    "ci:local": "node scripts/ci-local.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0",

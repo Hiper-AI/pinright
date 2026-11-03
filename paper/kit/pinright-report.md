@@ -381,13 +381,15 @@ a local bin (R5), Codex `apply_patch` moves and deletes (R6), NTFS alternate str
 (R7), git commands that replace manifests (R8) and other clients' hook files (R9). R10 reordered the
 launch runbook so the npm name is reserved before the repository goes public.
 
-Open after round 2: the release tarball is built on a persistent self-hosted runner; the second
-reviewer confirmed hook reader gaps that need an agent hiding an install on purpose (`n\pm i x`,
-PowerShell backtick escapes, `cmd/c` and `^` escapes, unknown value options before the verb, several
-unhandled wrappers such as `cross-env` and `pipenv run pip`); malformed hook input exits 1; and the
-round-1 residuals (OSV as second source on the single-package path, unescaped names in jsDelivr URLs,
-`-r` includes read outside the repository, the 10-page OSV cap for Actions). Both reviews were
-internal; an external audit has not happened. `data/security_findings.csv` lists all 24 findings.
+Open after round 2: the second reviewer confirmed hook reader gaps that need an agent hiding an
+install on purpose (`n\pm i x`, PowerShell backtick escapes, `cmd/c` and `^` escapes, unknown value
+options before the verb, several unhandled wrappers such as `cross-env` and `pipenv run pip`);
+malformed hook input exits 1; and the round-1 residuals (OSV as second source on the single-package
+path, unescaped names in jsDelivr URLs, `-r` includes read outside the repository, the 10-page OSV
+cap for Actions). Round 2 also flagged that the release tarball was built on a persistent
+self-hosted runner shared with other repositories; on 2026-11-03 every workflow moved to
+GitHub-hosted runners, which closes it. Both reviews were internal; an external audit has not
+happened. `data/security_findings.csv` lists all 24 findings.
 
 ### 4.5 What the hook cannot stop
 

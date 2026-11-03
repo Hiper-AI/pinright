@@ -10,10 +10,9 @@ on:
 permissions:
   contents: read
 
-# The jobs run on Hiper AI's own runner (hiperai-ci), not GitHub-hosted minutes. That machine
-# also serves other repositories, so a pull request from a fork never runs here: code from
-# outside the organization does not execute on it. Fork PRs are reviewed and pushed to a
-# branch of this repository by a maintainer to get CI.
+# The jobs run on GitHub-hosted runners, one fresh machine per job, so a pull request from a fork
+# gets CI like any other and its code never runs on a machine of ours. Fork runs get a read-only
+# token and no secrets.
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -22,8 +21,7 @@ concurrency:
 jobs:
   test:
     name: test (node ${{ matrix.node }})
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: hiperai-ci # self-hosted (GCP hiperai-ci-linux); see the note on fork PRs above
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -47,8 +45,7 @@ jobs:
   self-audit:
     # pinright checks its own supply chain with the CLI it just built.
     name: self-audit
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: hiperai-ci
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -72,8 +69,7 @@ jobs:
   package:
     # What would be published: only dist, docs and the license; installs and runs without scripts.
     name: package contents
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: hiperai-ci
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

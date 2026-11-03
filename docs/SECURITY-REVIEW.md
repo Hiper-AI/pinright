@@ -55,7 +55,7 @@ The threat model assumes three attackers:
 - **GitHub token.** The token goes only to the API origin over https. A path such as `@evil.com/` changes the origin and loses the token. `HttpError` messages carry the URL, not headers. `gh auth token` is opt-in, and pinright validates its output and never logs it.
 - **Fencing.** Each response gets a fresh 32-bit block id, and pinright rewrites `<untrusted-data` and `</untrusted-data` inside content, in code blocks too. It also rewrites spoofed `SECURITY NOTICE` and `pinright:` lines.
 - **Process spawning.** pinright spawns only `gh`, with fixed arguments. Node does not resolve `gh` from the working directory on Windows.
-- **Workflows.** Actions are pinned to SHAs, permissions are minimal, and jobs on the self-hosted `hiperai-ci` runner skip fork PRs. Publishing runs on GitHub-hosted runners with OIDC and an environment approval, checks the tarball's SHA-256 against the verified one, and installs with `--ignore-scripts`. `check-pack.mjs` restricts the tarball's contents.
+- **Workflows.** Actions are pinned to SHAs, permissions are minimal, and every job runs on a fresh GitHub-hosted runner (since 2026-11-03; before, CI used a self-hosted runner that skipped fork PRs). Publishing runs with OIDC and an environment approval, checks the tarball's SHA-256 against the verified one, and installs with `--ignore-scripts`. `check-pack.mjs` restricts the tarball's contents.
 - **MCP inputs.** `check-manifest` reads from disk only file names that `detectKind` recognises, now through `readProjectFile`. Batch sizes and docs and upgrade budgets are capped.
 
 ## Residual risks and recommendations
@@ -130,7 +130,7 @@ The threat model is the first round's: a repository, a package publisher, a loca
 
 ## Residual risks and recommendations
 
-1. **The release tarball is built on the persistent self-hosted runner.** `verify` runs on `hiperai-ci`, a VM that also hosts runners for other repositories. The `publish` job checks that the tarball matches what `verify` produced. It cannot tell whether `verify` itself ran on a clean machine, yet the npm provenance says `release.yml` built it. *Recommendation:* once the repository is public and GitHub-hosted runners are free, move `verify` to `ubuntu-latest`. This needs Juan's decision; we did not change it.
+1. **The release tarball was built on a persistent self-hosted runner.** *Closed on 2026-11-03.* `verify` ran on `hiperai-ci`, a VM that also hosted runners for other repositories, so the `publish` job could not tell whether `verify` ran on a clean machine. All jobs, `verify` included, now run on GitHub-hosted `ubuntu-latest`, and the repository's runner registration was removed.
 2. **Hook reader gaps the second reviewer confirmed, still open.** Each one installs with no prompt. All need an agent that hides the install on purpose. The threat model calls the hook a speed bump against that.
    - Shell: `n\pm i x` (a backslash kept for Windows paths), PowerShell backtick escapes and `\"`, a heredoc delimiter that needs quote removal (`<<E\OF`), `$X x` where `X="npm i"` (no word splitting), brace expansion `{npm,i,x}`, `$(which npx) x`.
    - cmd.exe: `cmd/c`, `^` escapes, `start /b npm i x`, `cd /d`.
