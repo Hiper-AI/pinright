@@ -506,13 +506,29 @@ as before. Cost per run USD 0.084 against 0.081, 9.0 turns against 9.7. Tailwind
 `@utility` and `@custom-variant` from the docs (5 of 5 markers, from 1 of 5); Pydantic runs still get
 3 of 6.
 
+## Post-cutoff set (2026-11-02)
+
+The v6 tasks cannot separate "the docs helped" from "the model already knew": five of the eight came
+out right without docs. A second set of eight tasks (`--set post-cutoff`,
+[tasks-post-cutoff.ts](docs/tasks-post-cutoff.ts)) asks for APIs whose first release on npm or PyPI
+is dated 2026-08-01 or later: msw 3 (`msw/graphql`, `onUnhandledFrame`), Hono 4.13.13's `mount()`
+middleware, dotenv 18's `dotenv run`, Zod 4.5's `z.compile`, Polars 2's `bin_intervals` and
+`bin_quantiles`, FastAPI 0.142's `telemetry=`, pandas 3.1's `DataFrame.select` and `filter(cond=)`, and
+LangChain 1.4's `langchain.mcp.MCPAdapter`. Each task records the first release with the API, its
+registry publish time and the newest release we checked without it, and sets that first release as a
+minimum version. Same harness, arms and scoring as v6, with no runtime smoke tests.
+
+Without docs the three models wrote the new API in 2 of 48 runs, both on the pandas task. With
+pinright they did in 46 of 48, and with the docs-only ablation in 45 of 48. Per-model tables, the
+evidence for each API, failures and caveats: [RESULTS-post-cutoff.md](RESULTS-post-cutoff.md).
+
 ## Limits
 
 - Three models from one vendor, all driven by Claude Code; one day; 16 runs per arm and model; tasks
   we wrote. Two repetitions cannot separate 100% from 90%: the brackets in the tables are wide on
   purpose.
-- The models knew most of the new APIs without help. To separate docs sources, a benchmark needs APIs
-  newer than the model, and each model release makes the current ones stale.
+- The models knew most of the v6 APIs without help. The post-cutoff set uses APIs newer than the
+  models, and each model release will make those stale too.
 - The AI SDK task has no runtime smoke test (it needs a model); `next build` type-checks it.
 - The pinright arm costs more: about twice the API-equivalent cost and 3 to 4 more turns per run than
   no docs, with every model.
