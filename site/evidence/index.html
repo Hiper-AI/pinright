@@ -19,7 +19,7 @@
         <div class="wrap">
           <p class="eyebrow">Evidence · benchmark v6 · 2026-11-01</p>
           <h1>What we measured, and how far to trust it</h1>
-          <p class="lead">Every number here comes from the repository's data files and can be regenerated. The limits sit next to the results.</p>
+          <p class="lead">Every number here comes from the aggregate CSVs in the repository, which the figures are drawn from. The raw agent transcripts are not published; a new run uses live advisory data and will differ. The limits sit next to the results.</p>
           <ul class="toc" aria-label="On this page">
             <li><a href="#method">Method</a></li>
             <li><a href="#alerts">Alerts per project</a></li>
@@ -78,7 +78,7 @@
               <img class="only-light" src="/kit/fig-b-direct-deps-with-advisories.svg" width="1040" height="560" loading="lazy" decoding="async" alt="Bar chart of the share of pinned direct dependencies with a known advisory. Without tools: 42% for Sonnet, 40% for Haiku, 41% for Opus. pinright with its security layer off: 1%, 2%, 0%. Every pinright arm and the unpinned reference: 0%.">
               <img class="only-dark" src="/kit/fig-b-direct-deps-with-advisories-dark.svg" width="1040" height="560" loading="lazy" decoding="async" alt="Bar chart of the share of pinned direct dependencies with a known advisory. Without tools: 42% for Sonnet, 40% for Haiku, 41% for Opus. pinright with its security layer off: 1%, 2%, 0%. Every pinright arm and the unpinned reference: 0%.">
             </div>
-            <figcaption><strong>Direct dependencies pinned with a known advisory.</strong> At least one OSV advisory on 2026-11-01, with 95% cluster-bootstrap intervals.</figcaption>
+            <figcaption><strong>Direct dependencies pinned with a known advisory.</strong> At least one deps.dev advisory on 2026-11-01, with 95% cluster-bootstrap intervals. deps.dev is also the source pinright reads, so the 0% in its arms follows from how it picks versions. The whole-tree alerts above come from npm audit and pip-audit, which do not share that path.</figcaption>
           </figure>
         </div>
       </section>
@@ -114,7 +114,7 @@
         <div class="wrap">
           <div class="section-head">
             <h2 id="docs-title">16 of 16 runs wrote the current API, against 10 to 13 without docs</h2>
-            <p>Eight tasks that only come out right with a library's current major: Next.js 16, Tailwind CSS 4, Zod 4, AI SDK 7, Express 5, ESLint 10, Pydantic 2 and LangChain 1. A run counts when it installs, builds, passes a smoke test, pins the asked major and uses no removed API. Without docs, every model wrote AI SDK 5/6 code for AI SDK 7.</p>
+            <p>Eight tasks that only come out right with a library's current major: Next.js 16, Tailwind CSS 4, Zod 4, AI SDK 7, Express 5, ESLint 10, Pydantic 2 and LangChain 1. A run counts when it installs, builds, passes a smoke test, pins the asked major and uses no removed or deprecated API. Without docs, every model wrote AI SDK 5/6 code for AI SDK 7, and most LangChain runs pinned an early 1.x whose imports fail. The models already knew five of the eight APIs, so the gap rests on the other three. The no-docs intervals for Sonnet and Opus overlap 16 of 16; Haiku's does not.</p>
           </div>
           <figure class="fig">
             <div class="fig-frame">
@@ -130,8 +130,8 @@
       <section class="section soft" id="hook" aria-labelledby="hook-title">
         <div class="wrap">
           <div class="section-head">
-            <h2 id="hook-title">The hook stopped 1.46% of 25,077 public commands</h2>
-            <p>We ran 25,077 commands and manifest writes from 180 public repositories (CI steps, package.json scripts, README lines, Dockerfiles, Makefiles) through the real hook. The 1.0.0 release blocked or asked about 1.46%. Most of those ask on purpose: a version in a variable, a git source, another package index. 32 were true positives, such as <code>npm install -g pnpm@8</code> with 26 advisories in a public workflow.</p>
+            <h2 id="hook-title">The hook blocked or asked on 1.46% of 25,077 public commands</h2>
+            <p>We ran 25,077 commands and manifest writes from 180 public repositories (CI steps, package.json scripts, README lines, Dockerfiles, Makefiles) through the real hook. The 1.0.0 release blocked or asked about 1.46%, and denied 0.13%. Most of those ask on purpose: a version in a variable, a git source, another package index. 32 were true positives, such as <code>npm install -g pnpm@8</code> with 26 advisories in a public workflow. The 13 root causes we fixed were found on this same corpus, so there is no held-out set yet; agent sessions, not CI files, are the next corpus.</p>
           </div>
           <figure class="fig">
             <div class="fig-frame">
@@ -183,11 +183,11 @@
             <h2 id="data-title">Data and report</h2>
           </div>
           <div>
-            <p>The technical report covers design, method, results and the security reviews. The CSVs and the scripts that regenerate every figure are in the repository.</p>
+            <p>The technical report covers design, method, results and the security reviews. The aggregate CSVs and the scripts that draw every figure from them are in the repository. The benchmark ran on a pre-release commit; 28 source files changed between it and 1.0.0, mostly in the hook and the verdict.</p>
             <div class="ctas">
               <a class="btn btn-primary" href="/report.pdf">Technical report (PDF)</a>
               <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v6.md">Results v6</a>
-              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/tree/main/paper/kit/data">Raw data (CSV)</a>
+              <a class="btn btn-ghost" href="https://github.com/Hiper-AI/pinright/tree/main/paper/kit/data">Aggregate data (CSV)</a>
             </div>
           </div>
         </div>

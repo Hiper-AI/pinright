@@ -1277,3 +1277,100 @@ ul.small li + li {
 .ctas + ul {
   margin-top: 1.4rem;
 }
+
+/* Without / with: two short columns, then the real hook answer. */
+.compare {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 1.4rem;
+}
+
+@media (min-width: 760px) {
+  .compare {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.compare-col {
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 16px 18px;
+}
+
+.compare-col p:last-child {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.compare-without {
+  border-left-color: var(--bad);
+}
+
+.compare-with {
+  border-left-color: var(--good);
+}
+
+.compare-label {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.compare-without .compare-label {
+  color: var(--bad);
+}
+
+.compare-with .compare-label {
+  color: var(--good);
+}
+
+/* Example prompts the user types to the agent. */
+.prompts-head {
+  margin-top: 2.4rem;
+  margin-bottom: 1rem;
+}
+
+.prompts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+@media (min-width: 760px) {
+  .prompts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.prompts li {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.prompts li::before {
+  content: "> ";
+  color: var(--muted);
+}
+
+/* The per-model results table on the landing page. */
+.results td {
+  white-space: nowrap;
+}
+
+.results .to {
+  color: var(--muted);
+  padding-inline: 0.1em;
+}

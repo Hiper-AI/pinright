@@ -25,7 +25,8 @@ npm run preview   # serves dist/ at http://localhost:4321
 | `partials/` | Head, header and footer, inserted by the `<!-- @include file -->` plugin in `vite.config.mjs` |
 | `src/styles.css`, `src/main.js` | All the CSS and the only script |
 | `public/` | Files served as they are: `_headers` (CSP and other headers for Cloudflare Pages), `robots.txt`, `sitemap.xml`, favicons, `og.png`, `theme-init.js` |
-| `scripts/prepare-assets.mjs` | Copies the launch-kit figures and the report before dev and build |
+| `scripts/prepare-assets.mjs` | Copies the launch-kit figures and the report before dev and build, and runs `scripts/llms.mjs` |
+| `llms.txt`, `scripts/llms.mjs` | `/llms.txt` (hand-written, for agents) and `/llms-full.txt` (the README and the main docs concatenated, built on every dev and build) |
 | `scripts/check-dist.mjs` | Fails the build on a broken internal link or anchor, an inline script or style the CSP would block, an em dash or a word the launch copy rules out |
 | `scripts/og-card.html` | Source of `public/og.png` (1200x630) |
 

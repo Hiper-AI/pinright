@@ -3,3 +3,5 @@ dist/
 # Copied from ../paper/kit by scripts/prepare-assets.mjs on every dev and build.
 public/kit/
 public/report.pdf
+public/llms.txt
+public/llms-full.txt
