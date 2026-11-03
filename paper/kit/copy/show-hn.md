@@ -39,6 +39,12 @@ fixed release) and 0 vulnerable direct pins. The security layer catches what "la
 agent that picks an older version to fit a peer range, a pre-release with advisories, a lookalike or
 nonexistent name, and an agent that never calls the tool (the hook alone left 14).
 
+Two more results that limit the claim. When the agents had a shell, they ran `npm view` or
+`pip index versions` before pinning, and every arm, with or without pinright, ended at the same 6
+alerts: on these tasks pinright made no measurable difference to the pins. And against the
+security-layer-off mode, the full server used 21% to 33% fewer tokens per run, since one
+`check-packages` call replaced a docs lookup per package; no tools at all used fewer than either.
+
 Things we would like feedback on, because we know they are weak:
 
 - The prompt-injection detector. pinright fences package text and drops passages that address the

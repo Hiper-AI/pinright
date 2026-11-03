@@ -1,6 +1,6 @@
 # Your coding agent pins versions from memory. We built pinright to check them.
 
-*Hiper AI, 2026-11-03*
+*Juan Pablo Mandelbaum, Hiper AI, 2026-11-03*
 
 Ask a coding agent for a small FastAPI app with JWT login and it writes a `requirements.txt` with
 exact versions. Those versions come from the model's training data. They were current a year or two
@@ -67,6 +67,14 @@ Haiku pinned `next-auth` betas with advisories in both of its own; nothing told 
 and cost more, because the agents asked for "latest" one package at a time. The hook alone, for
 agents that never call the MCP server, left 14 alerts per model: it kept a Next.js app on the clean 15.x
 release, which still pulls a vulnerable `postcss`.
+
+Two more runs narrow the claim. When we gave the agents a shell and let them install for real, every
+run without the MCP server looked versions up with `npm view` or `pip index versions` before pinning.
+Every arm, with pinright or without, ended at the same 6 alerts per model. On these tasks, an agent
+with a shell and a prompt that asks for exact pins landed on current versions without pinright. The
+other run counted tokens: against the docs-only mode, the full server used 21% to 33% fewer per run.
+One `check-packages` call gave the agent its versions, where the docs-only agent read docs for each
+package to find them. An agent with no tools at all used fewer tokens than either.
 
 On a second benchmark of eight tasks that need a library's newest major (Next.js 16, AI SDK 7, Zod 4
 and others), all three models used the current API in 16 of 16 runs with pinright, against 13, 9 and

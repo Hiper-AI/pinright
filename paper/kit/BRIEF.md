@@ -35,6 +35,11 @@ is an engineer explaining what they measured.
    before they run, and tells the agent which version to use.
 4. Docs come from the package at the version you install, so the agent writes the current API.
 5. Local, open source, no account, no telemetry; every number is reproducible from the repository.
+6. Against pinright with its security layer off (the stand-in for a docs-only server), the full
+   server used 21% to 33% fewer tokens per run. No tools at all uses fewer than either.
+7. With a shell, the agents looked versions up themselves and every arm ended at the same 6 alerts:
+   on those tasks pinright made no measurable difference to the pins. Say this wherever the 40% to
+   42% appears in long form (blog, report, FAQ).
 
 ## The five numbers to show
 
@@ -79,6 +84,7 @@ zero baseline, labels in ink colors.
 ## Brand constraints
 
 - Maker: Hiper AI. "pinright by Hiper AI" or "Open source · MIT · by Hiper AI".
+- Report byline: Juan Pablo Mandelbaum, principal investigator and pinright lead, Hiper AI.
 - Wordmark: **pinright**, always lowercase, also at the start of a sentence and in titles.
 - Product parts keep their names: MCP server, CLI, hook (pre-install hook), GitHub Action.
 - Monospace for commands and package names (`npx pinright init`, `lodash@4.17.20`).
@@ -98,3 +104,5 @@ zero baseline, labels in ink colors.
 - That the prompt-injection detector stops injections. It caught 20% to 40% of new phrasings.
 - Results generalized beyond what was measured: one vendor's models, two days of advisory data, tasks
   we wrote, new projects only.
+- That pinright lowered alerts for agents with a shell. In the shell arm every arm tied at 6.
+- That pinright uses fewer tokens than no tools. The token claim is against the docs-only ablation.

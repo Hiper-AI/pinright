@@ -34,8 +34,14 @@ definitions, the Python API from the wheel), its repository at the release tag, 
 `llms.txt`. With them, all three models wrote the current API of eight recently changed libraries
 (Next.js 16, AI SDK 7, Zod 4, LangChain 1 and others) in 16 of 16 runs, against 9 to 14 without.
 
+**With a shell.** When the agents could run `npm view` or `pip index versions`, they looked versions
+up themselves, and every arm, with or without pinright, ended at the same 6 alerts per model. On
+those tasks pinright made no measurable difference to the pins.
+
 **Measured cost.** About 2 to 4 more agent turns per run, and 1.5 to 2 times the API-equivalent cost of a
-run without tools. The hook adds about 120 ms to a command that installs nothing, about 360 ms to an
+run without tools. Against pinright with its security layer off, which stands in for a docs-only
+server, the full server used 21% to 33% fewer tokens per run, because one `check-packages` call
+replaced a docs lookup per package. The hook adds about 120 ms to a command that installs nothing, about 360 ms to an
 install with a warm cache. On 25,077 public commands from 180 repositories, it blocked or asked about
 1.46%, most of them on purpose (versions in variables, git sources, other registries).
 
@@ -48,4 +54,4 @@ proxy registry and a sandbox. pinright knows published advisories only.
 repetitions, tasks we wrote. Every number, the aggregate CSVs and the scripts that draw the figures from them are
 in the repository.
 
-Code: github.com/Hiper-AI/pinright · Site: pinright.dev · Technical report: `paper/kit/pinright-report.pdf`
+Code: github.com/Hiper-AI/pinright · Site: pinright.dev · Technical report by Juan Pablo Mandelbaum: `paper/kit/pinright-report.pdf`
