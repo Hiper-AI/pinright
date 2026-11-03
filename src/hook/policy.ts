@@ -14,17 +14,28 @@
  * The team policy (.pinright.json, then env) adds deny and allow lists, license
  * rules and a severity threshold on top; see teamConfig.ts.
  */
-import { getDependencies, getPackage } from '../advisories/depsdev.js';
+import { getDependencies, getPackage, type DepsDevGraph } from '../advisories/depsdev.js';
 import { getVuln, queryBatch, severityOf } from '../advisories/osv.js';
 import { lineTreeMessage } from '../advisories/lineTree.js';
 import { recommendedUpgrade, releaseLine } from '../advisories/resolve.js';
-import { satisfiesComposer } from '../composer/constraint.js';
 import { config } from '../config.js';
 import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { riskOutcome } from '../risk/index.js';
+import {
+  checkFix,
+  conflictText,
+  type Constraint,
+  type FixConflict,
+  graphConstraints,
+  osvFix,
+  peerConstraints,
+  rangeText,
+  satisfiesRequirement,
+  SINGLE_VERSION,
+  violations,
+} from '../tree/constraints.js';
 import { normalizePypiName } from '../tree/lockfiles.js';
-import semver from 'semver';
-import { GRAPH_ECOSYSTEMS, pickVersion, satisfiesPep440 } from '../tree/resolveManifest.js';
+import { GRAPH_ECOSYSTEMS, pickVersion } from '../tree/resolveManifest.js';
 import { belowThreshold, checkLicenses, denyEntry, denyMessage, isAllowed, type Policy, resolvePolicy, severityLevel } from '../teamConfig.js';
 import { findLookalike } from '../typosquat.js';
 import { stripInvisible } from '../untrusted/index.js';
@@ -76,9 +87,19 @@ interface Checked {
   graph?: Map<string, string>;
   /** What this version requires of its direct dependencies, per deps.dev ("typing-inspection" -> ">=0.4.2"). */
   requires?: Map<string, string>;
+  /** The resolved graph itself, for the ranges packages deeper in it put on the project's other pins. */
+  deps?: DepsDevGraph;
 }
 
-type Outcome = { action: Action; problem?: string; warning?: string };
+type Outcome = {
+  action: Action;
+  problem?: string;
+  warning?: string;
+  /** The version the message recommends, its opening sentence, and why that version: checked against the project's ranges. */
+  to?: string;
+  head?: string;
+  lead?: string;
+};
 
 /**
  * Something could not be verified: the team's onError decides, and the message says which way it went.
@@ -119,41 +140,20 @@ async function inspect(i: DepIntent): Promise<Checked> {
   ]);
   let graph: Map<string, string> | undefined;
   let requires: Map<string, string> | undefined;
+  let deps: DepsDevGraph | undefined;
   if (wantsGraph && v?.report.verdict !== 'malicious') {
     if (g?.nodes?.length) {
+      deps = g;
       graph = new Map(g.nodes.slice(1).map((n) => [norm(i.ecosystem, n.versionKey.name), n.versionKey.version]));
       requires = new Map(
         g.edges.filter((e) => e.fromNode === 0 && e.requirement).map((e) => [norm(i.ecosystem, g.nodes[e.toNode].versionKey.name), e.requirement as string]),
       );
     }
   }
-  return { i, label, version, implicit, exists, v, graph, requires };
+  return { i, label, version, implicit, exists, v, graph, requires, deps };
 }
 
-/** Does an exact version satisfy a requirement string as deps.dev reports it for this ecosystem? */
-export function satisfiesRequirement(eco: Ecosystem, version: string, requirement: string): boolean | undefined {
-  const req = requirement.split(';')[0].trim();
-  if (!req || req === '*') return true;
-  try {
-    if (eco === 'pypi') return satisfiesPep440(version, req);
-    if (eco === 'composer') return satisfiesComposer(version, requirement.trim() === 'self.version' ? version : requirement);
-    if (eco === 'npm' || eco === 'cargo') {
-      const range = eco === 'cargo' ? req.split(',').map((p) => (/^\d/.test(p.trim()) ? `^${p.trim()}` : p.trim())).join(' ') : req;
-      if (!semver.validRange(range, { loose: true })) return undefined;
-      return semver.satisfies(version, range, { loose: true, includePrerelease: true });
-    }
-  } catch {
-    return undefined;
-  }
-  return undefined;
-}
-
-/**
- * Package managers that install one version per name, so a pin outside a parent's range fails the install.
- * npm nests a second copy and Cargo keeps one per semver-incompatible line, so for them it is no failure:
- * typescript@7 next to a package that wants typescript@^6 installs fine.
- */
-const SINGLE_VERSION: Ecosystem[] = ['pypi', 'composer', 'rubygems', 'nuget'];
+export { satisfiesRequirement };
 
 /** "==1.2.3", "1.2.3", "v1.2.3": one version, not a range. */
 const exactPin = (spec: string | undefined) => Boolean(spec && /^(===?\s*)?v?\d[\w.!+-]*$/.test(spec.trim()));
@@ -177,6 +177,21 @@ function conflicts(checked: Checked[]): Outcome[] {
           `${c.i.name} ${c.version} does not satisfy ${p.i.name} ${p.version}'s requirement "${req}", so this install would fail.` +
           (pulled ? ` ${p.i.name} ${p.version} resolves it to ${pulled}; pin that or drop the ${c.i.name} pin.` : ` Pin a version that satisfies it or drop the ${c.i.name} pin.`),
       });
+    }
+    // Ranges deeper in p's tree (stirrup > moviepy > pillow<12.0). The resolver may still find another release of the
+    // package in between that accepts the pin, so this is a note, not a block.
+    for (const c of checked) {
+      if (c === p || !c.version || c.implicit || !exactPin(c.i.spec) || c.i.ecosystem !== p.i.ecosystem) continue;
+      if (p.i.contextOnly && c.i.contextOnly) continue;
+      const deeper = violations(c.i.ecosystem, c.version, graphConstraints(c.i.ecosystem, p.deps, norm(c.i.ecosystem, c.i.name)).filter((x) => x.via));
+      for (const x of deeper.slice(0, 1)) {
+        out.push({
+          action: 'allow',
+          warning:
+            `${c.i.name} ${c.version} is outside ${x.by} ${x.byVersion}'s requirement ${rangeText(c.i.ecosystem, c.i.name, x.requirement)}, and ${p.i.name} ${p.version} pulls ${x.by} ${x.byVersion}. ` +
+            `The install will likely fail unless the resolver finds a ${x.by} release that accepts ${c.i.name} ${c.version}; pin ${c.i.name} inside that range or drop the pin.`,
+        });
+      }
     }
   }
   return out;
@@ -204,6 +219,68 @@ async function parentUpgrade(c: Checked, names: string[]): Promise<{ to: string;
     }),
   );
   return tried.find(Boolean);
+}
+
+/** Recommended fixes per change that get the lookups for a release inside the ranges; past this, only the conflict is named. */
+const MAX_FIX_CHECKS = 3;
+/** Declared npm packages whose peer ranges are read when a fix crosses a major. */
+const MAX_PEER_PARENTS = 20;
+
+/**
+ * The ranges the project's other dependencies put on c: every requirement in their resolved graphs where one
+ * version per name is installed (pip, Composer), or their npm peer ranges. Graph ranges cost nothing more;
+ * peer ranges are one cached lookup per declared npm package, read only when the fix leaves c's major,
+ * since a peer range almost always names one.
+ */
+async function rangesOn(c: Checked, checked: Checked[], to: string): Promise<Constraint[]> {
+  const eco = c.i.ecosystem;
+  const others = checked.filter((q) => q !== c && q.i.ecosystem === eco);
+  if (SINGLE_VERSION.includes(eco)) return others.flatMap((q) => graphConstraints(eco, q.deps, norm(eco, c.i.name)));
+  if (eco === 'npm' && (!c.version || releaseLine(to) !== releaseLine(c.version))) {
+    const parents = others
+      .filter((q) => q.version && q.exists && q.v?.report.verdict !== 'malicious')
+      .slice(0, MAX_PEER_PARENTS)
+      .map((q) => ({ name: q.i.name, version: q.version as string }));
+    return parents.length ? peerConstraints(c.i.name, parents) : [];
+  }
+  return [];
+}
+
+/** Each judged outcome's recommended version against those ranges: the conflict, with what fits, or undefined. */
+async function rangeChecks(checked: Checked[], judged: (Outcome | undefined)[]): Promise<(FixConflict | undefined)[]> {
+  const cons = await Promise.all(
+    checked.map((c, k) => {
+      const o = judged[k];
+      return o?.to && o.lead ? rangesOn(c, checked, o.to).catch(() => [] as Constraint[]) : Promise.resolve([] as Constraint[]);
+    }),
+  );
+  let budget = MAX_FIX_CHECKS;
+  return Promise.all(
+    checked.map(async (c, k) => {
+      const to = judged[k]?.to;
+      const bad = to ? violations(c.i.ecosystem, to, cons[k]) : [];
+      if (!to || !bad.length) return undefined;
+      if (budget-- <= 0) return { name: c.i.name, fix: to, bad };
+      return checkFix(c.i.ecosystem, c.i.name, to, cons[k], c.v?.report.requested?.advisories.length).catch(() => undefined);
+    }),
+  );
+}
+
+/**
+ * For a vulnerable package nobody declared: the explanation when its fix (per OSV) is outside a range the
+ * project's tree sets on it, so "consider an override" would not install. Undefined when it fits, or unknown.
+ */
+async function transitiveConflict(c: Checked, name: string, version: string, checked: Checked[]): Promise<string | undefined> {
+  const eco = c.i.ecosystem;
+  try {
+    const { fix, advisories } = await osvFix(eco, name, version);
+    if (!fix) return undefined;
+    const cons = checked.filter((q) => q.i.ecosystem === eco).flatMap((q) => graphConstraints(eco, q.deps, name));
+    const k = await checkFix(eco, name, fix, cons, advisories);
+    return k ? conflictText(eco, k, `${name} ${fix} fixes the advisories of ${name} ${version}`) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -253,7 +330,11 @@ function judge(c: Checked, p: Policy): Outcome {
       return { action: 'deny', problem: `${label}: looks like a typo of "${v.typo?.lookalikeOf}"${v.typo?.existsInRegistry === false ? ' and does not exist' : ''}. Use the real package name.` };
     case 'unknown-package':
       return r.latestVersion
-        ? { action: 'deny', problem: `${label}: version ${version} was never published (or was removed).${fix(r.safeVersion, 'Use')}` }
+        ? {
+            action: 'deny',
+            problem: `${label}: version ${version} was never published (or was removed).${fix(r.safeVersion, 'Use')}`,
+            ...(r.safeVersion ? { to: r.safeVersion, head: `${label}: version ${version} was never published (or was removed).`, lead: `${i.name} ${r.safeVersion} is the newest release with no known advisories` } : {}),
+          }
         : { action: 'deny', problem: `${label}: no such package in the ${i.ecosystem} registry. Check the name; if it is a private package, add it to "allow" in .pinright.json (or PINRIGHT_ALLOW).` };
     case 'unknown':
       // A package deps.dev has not indexed yet is hours old: nothing about it is known, so a human decides.
@@ -269,17 +350,18 @@ function judge(c: Checked, p: Policy): Outcome {
     const ids = req.advisories.slice(0, 3).map((a) => a.aliases.find((x) => x.startsWith('CVE-')) ?? a.id).join(', ');
     const sev = req.advisories.find((a) => a.severity)?.severity;
     const head = `${label}${implicit ? ` resolves to ${version}, which` : ''} has ${req.advisories.length} known advisor${req.advisories.length === 1 ? 'y' : 'ies'} (${ids}${sev ? `, ${sev}` : ''}).`;
+    const fixes = (to: string | undefined) => (to ? { to, head, lead: `${i.name} ${to} fixes ${req.advisories.length === 1 ? 'it' : 'these advisories'}` } : {});
     if (belowThreshold(p, req.advisories)) {
-      return { action: 'allow', warning: `${head} All are below the project's severity threshold (${p.severityThreshold}); allowed.${fix(recommendedUpgrade(r), 'Clean version')}` };
+      return { action: 'allow', warning: `${head} All are below the project's severity threshold (${p.severityThreshold}); allowed.${fix(recommendedUpgrade(r), 'Clean version')}`, ...fixes(recommendedUpgrade(r)) };
     }
-    if (r.safeVersionSameLine && r.safeVersionSameLine !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersionSameLine, `Use ${r.line} release`)}` };
+    if (r.safeVersionSameLine && r.safeVersionSameLine !== version) return { action: 'deny', problem: `${head}${fix(r.safeVersionSameLine, `Use ${r.line} release`)}`, ...fixes(r.safeVersionSameLine) };
     if (r.safeVersionNearestLine && r.safeVersionNearestLine !== version) {
       const guide = ` Call upgrade-guide (pinright MCP, or \`pinright upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersionNearestLine}\`) for the breaking changes before writing code for it.`;
-      return { action: 'deny', problem: `${head}${fix(r.safeVersionNearestLine, `No clean release on this line; the nearest fix is on ${r.nearestLine} (newest safe: ${r.safeVersion}),`)}${guide}` };
+      return { action: 'deny', problem: `${head}${fix(r.safeVersionNearestLine, `No clean release on this line; the nearest fix is on ${r.nearestLine} (newest safe: ${r.safeVersion}),`)}${guide}`, ...fixes(r.safeVersionNearestLine) };
     }
     if (r.safeVersion && r.safeVersion !== version) {
       const guide = ` Call upgrade-guide (pinright MCP, or \`pinright upgrade ${i.ecosystem} ${i.name} ${version} ${r.safeVersion}\`) for the breaking changes before writing code for it.`;
-      return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}${guide}` };
+      return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'No clean release on this line; the fix needs a new major,')}${guide}`, ...fixes(r.safeVersion) };
     }
     // No version is clean. If another one is clearly less exposed, point there.
     const le = r.leastExposed;
@@ -289,6 +371,9 @@ function judge(c: Checked, p: Policy): Outcome {
         return {
           action: 'deny',
           problem: `${head} No version is free of known advisories; the least exposed is ${le.version} (${le.advisories} advisor${le.advisories === 1 ? 'y' : 'ies'}, worst ${le.maxSeverity ?? 'unrated'}): ${installCommand(i.ecosystem, i.name, le.version)}`,
+          to: le.version,
+          head,
+          lead: `${i.name} ${le.version} is the least exposed release`,
         };
       }
     }
@@ -300,7 +385,10 @@ function judge(c: Checked, p: Policy): Outcome {
     if (r.unavailable?.includes('osv.dev') && !(r.safeVersion && r.safeVersion !== version)) {
       return unreachable(p, i, `${label}: deprecated by its maintainers${req.deprecatedReason ? `: ${req.deprecatedReason}` : ''}; its advisories could not be verified (osv.dev did not answer).`);
     }
-    if (r.safeVersion && r.safeVersion !== version) return { action: 'deny', problem: `${label}: deprecated (${req.deprecatedReason ?? 'by its maintainers'}).${fix(r.safeVersion, 'Use')}` };
+    if (r.safeVersion && r.safeVersion !== version) {
+      const head = `${label}: deprecated (${req.deprecatedReason ?? 'by its maintainers'}).`;
+      return { action: 'deny', problem: `${head}${fix(r.safeVersion, 'Use')}`, to: r.safeVersion, head, lead: `${i.name} ${r.safeVersion} is the newest maintained release` };
+    }
     return { action: 'allow', warning: `${label}: deprecated by its maintainers${req.deprecatedReason ? `: ${req.deprecatedReason}` : ''}.` };
   }
   if (implicit && r.safeVersion && version && r.safeVersion !== version) {
@@ -448,21 +536,32 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
       const name = norm(c.i.ecosystem, c.i.name);
       const ownFix = c.v ? recommendedUpgrade(c.v.report) : undefined;
       const range = parent?.requires?.get(name);
+      // Every range on it in the parent's tree (its own, and moviepy's pillow<12.0 under stirrup); only its own when the graph has none.
+      const ranges = parent ? graphConstraints(c.i.ecosystem, parent.deps, name) : [];
       // The package's own fix already fits the parent's range ("idna<4,>=2.5"): repinning it is enough.
-      const fitsParent = Boolean(ownFix && range && satisfiesRequirement(c.i.ecosystem, ownFix, range));
+      const fitsParent = Boolean(
+        ownFix && (ranges.length ? violations(c.i.ecosystem, ownFix, ranges).length === 0 : range && satisfiesRequirement(c.i.ecosystem, ownFix, range)),
+      );
       if (!parent || fitsParent || req?.verdict !== 'vulnerable' || belowThreshold(p, req.advisories) || !SINGLE_VERSION.includes(c.i.ecosystem)) return undefined;
       // Pinning a dependency of another pinned package outside that package's range does not install.
       return parentUpgrade(parent, [name]).then((up) => ({ parent, up }));
     }),
   );
 
+  const judged = checked.map((c) => (c.i.contextOnly ? undefined : judge(c, p)));
+  const fixChecks = await rangeChecks(checked, judged);
+
   for (const [k, c] of checked.entries()) {
     if (c.i.contextOnly) continue;
-    let o = judge(c, p);
+    let o = judged[k] as Outcome;
     const lic = licenseOutcome(c, p);
     if (lic) outcomes.push(lic);
     const name = norm(c.i.ecosystem, c.i.name);
     const via = viaParent[k];
+    const fc = fixChecks[k];
+    // The recommended version breaks a range another dependency of the project sets: say so, and recommend what fits.
+    const explained = fc && o.head && o.lead ? `${o.head} ${conflictText(c.i.ecosystem, fc, o.lead)}` : undefined;
+    const cleanFit = fc?.fit?.advisories === 0;
     if (via) {
       const { parent, up } = via;
       const head = (o.problem ?? '').replace(/ (Use|No clean).*$/, '');
@@ -471,9 +570,15 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
           action: 'deny',
           problem: `${head} It comes in through ${parent.i.name}: upgrade ${parent.i.name} to ${up.to}${up.sameLine ? '' : ' (new major)'}, which pulls ${c.i.name} ${up.pulled.get(name)} with no known advisories, and pin ${c.i.name} to that version or drop the pin.`,
         };
+      } else if (explained) {
+        // A clean release inside the range is a fix that installs: block toward it. Otherwise a human decides, as before.
+        o = { action: cleanFit ? 'deny' : 'ask', problem: explained };
       } else {
         o = { action: 'ask', problem: `${head} It is a dependency of ${parent.i.name}, and no release of ${parent.i.name} pulls a fixed version yet; pinning it outside ${parent.i.name}'s range would not install.` };
       }
+    } else if (explained) {
+      // Same action as before: only the version recommended and the explanation change.
+      o = o.problem !== undefined ? { action: o.action, problem: explained } : { action: o.action, warning: explained };
     }
     outcomes.push(o);
     // Told to move to the same-line fix, whose own tree still has advisories a newer line clears: say so, without blocking.
@@ -513,6 +618,16 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
   const fixes = await Promise.all(
     [...vulnerableBy].map(([c, vulns]) => parentUpgrade(c, [...new Set(vulns.map((x) => x.slice(0, x.lastIndexOf('@'))))])),
   );
+  // Where no parent upgrade helps, the override the note suggests must fit the ranges the tree sets on that package.
+  let budget = MAX_FIX_CHECKS;
+  const overrides = await Promise.all(
+    [...vulnerableBy].map(([c, vulns], k) => {
+      if (fixes[k] || !SINGLE_VERSION.includes(c.i.ecosystem)) return undefined;
+      const picked = vulns.slice(0, Math.max(0, budget));
+      budget -= picked.length;
+      return Promise.all(picked.map((x) => transitiveConflict(c, x.slice(0, x.lastIndexOf('@')), x.slice(x.lastIndexOf('@') + 1), checked)));
+    }),
+  );
   for (const [k, [c, vulns]] of [...vulnerableBy].entries()) {
     const up = fixes[k];
     const list = vulns.slice(0, 4).join(', ') + (vulns.length > 4 ? `, +${vulns.length - 4} more` : '');
@@ -530,7 +645,14 @@ export async function decide(intents: DepIntent[], policy: Policy = resolvePolic
           : `${c.label} pulls dependencies with known advisories (${list}); only ${c.i.name} ${up.to}, a new major, pulls fixed versions.`,
       });
     } else {
-      outcomes.push({ action: 'allow', warning: `${c.label} pulls dependencies with known advisories (${list}) and no release of ${c.i.name} fixes them yet; consider an override.` });
+      const notes = (overrides[k] ?? []).filter((x): x is string => Boolean(x));
+      const base = `${c.label} pulls dependencies with known advisories (${list}) and no release of ${c.i.name} fixes them yet`;
+      outcomes.push({
+        action: 'allow',
+        warning: notes.length
+          ? `${base}. ${notes.join(' ')}${vulns.length > notes.length ? ' For the others, consider an override.' : ''}`
+          : `${base}; consider an override.`,
+      });
     }
   }
 

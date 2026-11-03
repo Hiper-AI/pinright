@@ -11,6 +11,7 @@ import { parseComposerJson, parseComposerLock } from '../composer/manifest.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { parseGradleBuild, parseGradleLockfile, parseVersionCatalog } from '../jvm/gradle.js';
 import { parsePom } from '../jvm/maven.js';
+import type { Constraint } from './constraints.js';
 
 export interface TreePackage {
   name: string;
@@ -20,6 +21,8 @@ export interface TreePackage {
   dev?: boolean;
   /** Chain from a direct dependency down to this package, when known. */
   path?: string[];
+  /** Ranges the resolved graphs put on this package (manifests resolved through deps.dev, pip and Composer only). */
+  requiredBy?: Constraint[];
 }
 
 export interface ParsedTree {

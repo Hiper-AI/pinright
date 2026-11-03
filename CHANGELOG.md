@@ -17,6 +17,13 @@ All notable changes to pinright are listed here. The format follows
   check that cannot complete. A whole package the registry publishes but deps.dev has never seen
   asks a human instead of being denied as nonexistent. When the registry cannot be reached, or for
   ecosystems without a registry client (Go, Maven, NuGet), deps.dev's answer stands.
+- The hook and `check-manifest` no longer recommend a version that another dependency in the same
+  manifest forbids. `stirrup` 0.2.1 pulls `moviepy` 2.2.1, which requires `pillow<12.0`; the fix for
+  `pillow` 11.3.0 is 13.0.0, and agents that followed "consider an override" wrote a
+  `requirements.txt` that does not resolve. The message now names the range and the package that sets
+  it, recommends the newest clean release inside the range when there is one, and says whether a newer
+  release of that package accepts the fix. npm peer ranges are checked the same way when the fix moves
+  to a new major. A pin outside a range deeper in another pin's tree gets a note.
 
 ## [1.0.0] - 2026-11-03
 

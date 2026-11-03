@@ -147,6 +147,30 @@ export async function getDependencies(
   }
 }
 
+/** What a version declares, per deps.dev's :requirements endpoint. Only npm's peer ranges are read. */
+interface DepsDevRequirements {
+  npm?: { dependencies?: { peerDependencies?: { name: string; requirement: string }[] } };
+}
+
+/**
+ * The peerDependencies of one npm version ("react" -> "^18.3.1"). The resolved graph leaves peers out,
+ * and npm installs one copy of a peer for the whole project, so a peer range is a real constraint.
+ * Undefined on 404 or for other ecosystems.
+ */
+export async function getPeerRequirements(eco: Ecosystem, name: string, version: string): Promise<Map<string, string> | undefined> {
+  if (eco !== 'npm') return undefined;
+  const url =
+    `${config.depsDevBaseUrl}/v3/systems/${toDepsDevSystem(eco)}/packages/${enc(name)}` +
+    `/versions/${enc(version)}:requirements`;
+  try {
+    const res = await cached(`dd:req:${eco}:${name}:${version}`, config.ttl.versions, () => getJson<DepsDevRequirements>(url));
+    return new Map((res.npm?.dependencies?.peerDependencies ?? []).map((p) => [p.name, p.requirement]));
+  } catch (err) {
+    if (isNotFound(err)) return undefined;
+    throw err;
+  }
+}
+
 export interface DepsDevProject {
   projectKey: { id: string };
   starsCount?: number;

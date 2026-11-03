@@ -4,9 +4,10 @@
  *   - direct dependency: the safe version on its release line;
  *   - transitive: the upgrade of the direct parent that clears it, verified on
  *     deps.dev's graph of that parent version; otherwise an override pin.
+ * A fix outside a range another package in the resolved tree sets on it (constraints.ts)
+ * becomes a note that names that range, or the clean release inside it.
  * Counting matches Dependabot: one alert per (package, advisory).
  */
-import semver from 'semver';
 import { getDependencies } from '../advisories/depsdev.js';
 import { cvss3Of } from '../advisories/cvss.js';
 import { fixedVersions, getVuln, isMalware, queryBatch, severityOf, titleOf } from '../advisories/osv.js';
@@ -16,6 +17,7 @@ import { type Ecosystem, installCommand } from '../ecosystems.js';
 import { cleanText } from '../untrusted/index.js';
 import { normalizePypiName, type ParsedTree, type TreePackage } from './lockfiles.js';
 import { GRAPH_ECOSYSTEMS, resolveManifest } from './resolveManifest.js';
+import { checkFix, conflictText, fixFor, violations, type Constraint } from './constraints.js';
 
 export interface TreeFinding {
   name: string;
@@ -65,6 +67,8 @@ export interface TreeAudit {
 const SEV_ORDER = ['CRITICAL', 'HIGH', 'MODERATE', 'MEDIUM', 'LOW'];
 const MAX_VULN_DETAILS = 400;
 const MAX_PARENTS = 12;
+/** Fixes outside a range in the tree that get the lookups for a release that fits; past this, only the conflict is noted. */
+const MAX_FIX_CHECKS = 6;
 
 export async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
@@ -78,24 +82,6 @@ export async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise
     }),
   );
   return out;
-}
-
-function vcmp(a: string, b: string): number {
-  const va = semver.coerce(a);
-  const vb = semver.coerce(b);
-  if (va && vb) return semver.compare(va, vb);
-  return a.localeCompare(b, undefined, { numeric: true });
-}
-
-/** For each advisory, the lowest fix above the current version; the fix for all is the highest of those. */
-function fixFor(current: string, advisories: AdvisoryInfo[]): string | undefined {
-  let need: string | undefined;
-  for (const a of advisories) {
-    const above = (a.fixedIn ?? []).filter((f) => vcmp(f, current) > 0).sort(vcmp);
-    if (!above.length) return undefined; // one advisory without a fix: no single version fixes all
-    if (!need || vcmp(above[0], need) > 0) need = above[0];
-  }
-  return need;
 }
 
 function overrideHint(eco: Ecosystem, name: string, version: string): string {
@@ -232,11 +218,28 @@ async function remediate(eco: Ecosystem, packages: TreePackage[], findings: Tree
   const out: Remediation[] = [];
   const versionOf = new Map(packages.filter((p) => p.direct).map((p) => [p.name, p.version]));
 
+  // Ranges the resolved graphs put on each name: a fix outside them would not install (stirrup > moviepy > pillow<12.0).
+  const ranges = new Map<string, Constraint[]>();
+  for (const p of packages) if (p.requiredBy?.length) ranges.set(p.name, [...(ranges.get(p.name) ?? []), ...p.requiredBy]);
+  let fixChecks = 0;
+  /** Undefined when `to` fits every range; otherwise the conflict goes to the notes, with the clean release in range if there is one. */
+  const outOfRange = async (f: TreeFinding, to: string): Promise<{ clean?: string } | undefined> => {
+    const cons = (ranges.get(f.name) ?? []).filter((c) => c.by !== f.name);
+    const bad = violations(eco, to, cons);
+    if (!bad.length) return undefined;
+    const k = (fixChecks++ < MAX_FIX_CHECKS ? await checkFix(eco, f.name, to, cons, f.advisories.length).catch(() => undefined) : undefined) ?? { name: f.name, fix: to, bad };
+    notes.push(conflictText(eco, k, `${f.name} ${to} fixes the advisories of ${f.name} ${f.version}`));
+    return { clean: k.fit?.advisories === 0 ? k.fit.version : undefined };
+  };
+
   // Direct findings: upgrade on the release line, or across it if there is no other way.
   for (const f of findings.filter((x) => x.direct)) {
     const r = await assessPackage(eco, f.name, f.version).catch(() => undefined);
-    const to = (r && recommendedUpgrade(r)) ?? f.fixedVersion;
+    let to = (r && recommendedUpgrade(r)) ?? f.fixedVersion;
     if (!to) continue;
+    const blocked = await outOfRange(f, to);
+    if (blocked && !blocked.clean) continue;
+    to = blocked?.clean ?? to;
     out.push({
       target: f.name,
       from: f.version,
@@ -244,7 +247,7 @@ async function remediate(eco: Ecosystem, packages: TreePackage[], findings: Tree
       kind: 'upgrade-direct',
       command: installCommand(eco, f.name, to),
       clears: [`${f.name}@${f.version}`],
-      crossesMajor: !r?.safeVersionSameLine && Boolean(r?.safeVersion),
+      crossesMajor: blocked ? releaseLine(f.version) !== releaseLine(to) : !r?.safeVersionSameLine && Boolean(r?.safeVersion),
     });
   }
 
@@ -302,14 +305,18 @@ async function remediate(eco: Ecosystem, packages: TreePackage[], findings: Tree
   for (const f of orphans) {
     if (!f.fixedVersion || seen.has(f.name)) continue;
     seen.add(f.name);
+    // An override outside a range another package in the tree sets would not resolve: noted instead, or the clean release in range.
+    const blocked = await outOfRange(f, f.fixedVersion);
+    if (blocked && !blocked.clean) continue;
+    const to = blocked?.clean ?? f.fixedVersion;
     out.push({
       target: f.name,
       from: f.version,
-      to: f.fixedVersion,
+      to,
       kind: 'override',
-      command: overrideHint(eco, f.name, f.fixedVersion),
+      command: overrideHint(eco, f.name, to),
       // Forcing a transitive package onto another major can break the packages that asked for the old one.
-      crossesMajor: releaseLine(f.version) !== releaseLine(f.fixedVersion),
+      crossesMajor: releaseLine(f.version) !== releaseLine(to),
       clears: findings.filter((x) => x.name === f.name).map((x) => `${x.name}@${x.version}`),
     });
   }

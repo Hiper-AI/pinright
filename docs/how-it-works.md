@@ -78,6 +78,16 @@ In that case it first tries the lines between the project's and the newest one, 
 Spring 5.3 project is pointed at 6.2.19, still maintained, and not at 7.0, because the jump is
 smaller. The order is the same everywhere (notice, hook, `check-packages`, audit fixes, upgrade
 guide): same line, then the nearest newer line with a clean release, then the newest clean one.
+
+In a manifest, the hook and `check-manifest` also check that version against the ranges the other
+dependencies set on the package: requirements anywhere in the resolved graphs for pip and Composer,
+which install one version per name, and, in the hook, peer ranges for npm. When the fix falls outside one, they name
+the package that sets the range (`moviepy` 2.2.1, via `stirrup` 0.2.1, requires `pillow<12.0`) and
+recommend the newest clean release inside it. If none is clean, they give the least exposed one in
+range and say whether a newer release of that package accepts the fix. Graph ranges add no requests;
+a conflict adds a version list, one OSV batch, and one version list and graph lookup for the package
+that sets the range, all cached. Peer ranges are read only when the fix crosses a major, one lookup per
+declared npm package, up to 20. A lockfile without the graph keeps the plain recommendation.
 When the recommended version belongs to a major less than a year old, the notice says so and points
 the agent to that version's docs: its configuration may differ from what the model learned.
 

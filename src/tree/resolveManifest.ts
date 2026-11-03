@@ -12,6 +12,7 @@ import { pickComposerVersion } from '../composer/constraint.js';
 import { type Ecosystem } from '../ecosystems.js';
 import { pickMavenVersion } from '../jvm/maven.js';
 import { type ParsedTree, type TreePackage, normalizePypiName } from './lockfiles.js';
+import { graphConstraints } from './constraints.js';
 
 export const GRAPH_ECOSYSTEMS: Ecosystem[] = ['npm', 'pypi', 'cargo', 'maven', 'composer'];
 
@@ -121,6 +122,12 @@ export async function resolveManifest(tree: ParsedTree, notes: string[]): Promis
       const nm = eco === 'pypi' ? normalizePypiName(n.versionKey.name) : n.versionKey.name;
       const key = `${nm}@${n.versionKey.version}`;
       if (!out.has(key)) out.set(key, { name: nm, version: n.versionKey.version, direct: false, dev: d.dev, path: paths.get(i) });
+      // The ranges on it in this graph, so a fix for it can be checked against them (pip and Composer only).
+      const ranges = graphConstraints(eco, graph, nm);
+      if (ranges.length) {
+        const p = out.get(key) as TreePackage;
+        p.requiredBy = [...(p.requiredBy ?? []), ...ranges];
+      }
     });
   }
   return [...out.values()];

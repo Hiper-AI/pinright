@@ -79,7 +79,20 @@ when a clean one exists, deprecated versions with a maintained successor, and de
 transitive tree has advisories that a same-line upgrade clears. When a vulnerable pin is itself a
 dependency of another pinned package, it points at the parent upgrade, so the fix still installs.
 It also blocks a manifest whose pinned versions contradict each other (a pin outside the range its
-parent requires), because that install would fail. When no clean version exists at all, it asks a
+parent requires), because that install would fail. A pin outside a range set deeper in another pin's
+tree gets a note instead, because the resolver may still find a release in between that accepts it.
+
+Before it recommends a version, the hook checks it against the ranges the rest of the file sets on that
+package: every requirement in the other pins' resolved graphs for pip and Composer, and peer ranges for
+npm (read only when the fix moves to a new major). If the fix is out of range, the message names the
+package that sets the range and recommends the newest release inside it with no known advisories. When
+no release in range is clean, it names the least exposed one, says whether a newer release of the
+package that sets the range accepts the fix, and leaves the choice between upgrading that package and
+accepting the advisories. In the benchmark, `stirrup` 0.2.1 pulls `moviepy` 2.2.1, which requires
+`pillow<12.0`, and `pillow` 11.3.0's advisories are fixed only in 13.0.0: the hook now says so instead
+of suggesting an override to 13.0.0. The check never lifts a block; it changes the version recommended
+and the explanation. A vulnerable pip or Composer pin that another pin pulls, with no clean release in
+range, still asks a human, as before. When no clean version exists at all, it asks a
 human for high and critical advisories and lets the rest through with a note, so the work does not stop
 on a moderate finding nobody can fix yet. It also blocks two supply-chain patterns (see [Supply-chain signals](how-it-works.md#supply-chain-signals)): a
 package first published less than 14 days ago that runs install scripts, and a release that adds install
