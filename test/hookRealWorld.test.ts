@@ -390,6 +390,109 @@ describe('real sessions: Push-Location', () => {
   });
 });
 
+describe('shell benchmark: npm install && npx <bin> in one command (bench/RESULTS-shell.md)', () => {
+  // The hook reads the line before the install runs, so the bin is not in node_modules/.bin yet.
+  // A bare install of a manifest that lists the package puts it there before npx runs.
+  const pj = (o: object) => JSON.stringify({ name: 'p', version: '1.0.0', ...o });
+  const ts = { '/p/package.json': pj({ dependencies: { next: '16.0.0' }, devDependencies: { typescript: '5.9.3', vitest: '4.0.0' }, scripts: { build: 'tsc', clean: 'rm -rf node_modules' } }) };
+
+  it('runs the bin a bare manifest install just linked, as when it was installed before', () => {
+    expect(cmd('npm install && npx tsc --noEmit', ts)).toEqual([]);
+    expect(cmd('npm ci && npx vitest run', ts)).toEqual([]);
+    expect(cmd('npm i; npx tsc', ts)).toEqual([]);
+    expect(cmd('npm install\nnpx tsc --noEmit', ts)).toEqual([]);
+    expect(cmd('npm install && npx next build', ts)).toEqual([]);
+    expect(cmd('pnpm install && npx tsc', ts)).toEqual([]);
+    expect(cmd('yarn && npx tsc', ts)).toEqual([]);
+    expect(cmd('yarn install --frozen-lockfile && npx tsc', ts)).toEqual([]);
+    expect(cmd('npm install && npx tsc --noEmit && npx vitest run', ts)).toEqual([]);
+    expect(cmd('npm install && npx -y tsc', ts)).toEqual([]);
+    expect(cmd('if npm ci; then npx tsc; fi', ts)).toEqual([]);
+  });
+
+  it('follows cd and --prefix to the folder the install ran in', () => {
+    const app = { '/p/app/package.json': ts['/p/package.json'] };
+    expect(cmd('cd app && npm install && npx tsc', app)).toEqual([]);
+    expect(cmd('cd app/ && npm install && cd ../app && npx tsc', app)).toEqual([]);
+    expect(cmd('npm install --prefix app && cd app && npx tsc', app)).toEqual([]);
+  });
+
+  it('the commands agents ran in the benchmark', () => {
+    expect(cmd('npm install 2>&1 | tail -15 && npx tsc --noEmit && echo TYPECHECK_OK && npm run build 2>&1 | tail -3 && ls dist', ts)).toEqual([]);
+    expect(cmd('npm install --save-exact 2>&1 | tail -15 && npx tsc --version && npm run build && ls dist', ts)).toEqual([]);
+    expect(cmd('npm install 2>&1 | tail -20 && echo "--- installed:" && npm ls --depth=0 && echo "--- typecheck:" && npx tsc --noEmit 2>&1 | tail -30; echo "exit=$?"', ts)).toEqual([]);
+    expect(cmd('npm install 2>&1 | tail -5 && npm run build 2>&1 | tail -5 && echo "--- typecheck exit: $?" && npx tsc --noEmit; echo "tsc exit: $?"', ts)).toEqual([]);
+    expect(cmd(`sed -i 's|a|b|' tsconfig.json && npm install --save-exact 2>&1 | tail -5 && npx tsc --noEmit && echo TSC_OK`, ts)).toEqual([]);
+    const manifest = pj({ devDependencies: { typescript: '5.9.3' } });
+    const line = `mkdir -p /p/src && cd /p && cat > package.json <<'E'\n${manifest}\nE\ncat > src/index.ts <<'E'\nexport {};\nE\nnpm install 2>&1 | tail -5; npx tsc --noEmit && echo TYPECHECK OK`;
+    const out = cmd(line);
+    expect(out).toContain('npm:typescript 5.9.3');
+    expect(out).not.toContain('npm:tsc (exec)');
+  });
+
+  it('still checks npx when the manifest does not list the package, or npx names a version or another package', () => {
+    expect(cmd('npm install && npx evilpkg', ts)).toEqual(['npm:evilpkg (exec)']);
+    expect(cmd('npm install && npx @evil/tsc', ts)).toEqual(['npm:@evil/tsc (exec)']);
+    expect(cmd('npm install && npx typescript@4 tsc', ts)).toEqual(['npm:typescript 4 (exec)']);
+    expect(cmd('npm install && npx tsc@5.0.0', ts)).toEqual(['npm:tsc 5.0.0 (exec)']);
+    expect(cmd('npm install && npx --yes vitest@1.0.0 run', ts)).toEqual(['npm:vitest 1.0.0 (exec)']);
+    expect(cmd('npm install && npx -p evil tsc', ts)).toEqual(['npm:evil (exec)']);
+    expect(cmd('npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npx tsc && npm install', ts)).toEqual(['npm:tsc (exec)']);
+    const optional = { '/p/package.json': pj({ optionalDependencies: { typescript: '5.9.3' } }) };
+    expect(cmd('npm install && npx tsc', optional)).toEqual(['npm:tsc (exec)']);
+  });
+
+  it('still checks npx when the folder of the install or of npx is not known', () => {
+    expect(cmd('cd /unknown && npm install && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && cd sub && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('cd "$X" && npm install && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && cd "$X" && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && cd - && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    const app = { '/p/app/package.json': ts['/p/package.json'] };
+    expect(cmd('pushd app; npm install; popd; npx tsc', app)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('(cd app && npm install); npx tsc', app)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('bash -c "cd app" && npm install && npx tsc', app)).toEqual(['npm:tsc (exec)']);
+  });
+
+  it('still checks npx when the install may not have finished or succeeded before it', () => {
+    expect(cmd('npm install || npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install & npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install | npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && echo ok || npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+  });
+
+  it('still checks npx after a command that may remove the bin', () => {
+    expect(cmd('npm install && rm -rf node_modules && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && rm -rf ./* && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && git clean -fdx && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && npm uninstall typescript && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && node -e "1" && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && npm run clean && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && echo $(rm -rf node_modules) && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install && rm -rf dist && npx tsc', ts)).toEqual([]);
+  });
+
+  it('still checks npx when the install skips devDependencies, adds packages, is wrapped or links no bins', () => {
+    expect(cmd('npm install --omit=dev && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm ci --production && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('pnpm install -P && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('NODE_ENV=production npm ci && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm_config_omit=dev npm ci && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install --omit=dev && npx next build', ts)).toEqual([]);
+    expect(cmd('npm install left-pad && npx tsc', ts)).toEqual(['npm:left-pad', 'npm:tsc (exec)']);
+    expect(cmd('npm install -g && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install --dry-run && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm install --no-bin-links && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('sudo npm install && npx tsc', ts)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('npm ci && npx tsc', { ...ts, '/p/.npmrc': 'omit=dev\n' })).toEqual(['npm:tsc (exec)']);
+    // Yarn 2+ installs with Plug'n'Play by default: there is no node_modules/.bin for npx to find.
+    const berry = { '/p/package.json': pj({ packageManager: 'yarn@4.5.0', devDependencies: { typescript: '5.9.3' } }) };
+    expect(cmd('yarn install && npx tsc', berry)).toEqual(['npm:tsc (exec)']);
+    expect(cmd('yarn install && npx tsc', { ...berry, '/p/.yarnrc.yml': 'nodeLinker: node-modules\n' })).toEqual([]);
+  });
+});
+
 describe('real sessions: left as they are (see bench/fp/RESULTS.md)', () => {
   // The hook does not know which folder a cd to a variable or a loop item lands in, so npx tsc is
   // judged in the folder before it and blocked when typescript lives only in the target.

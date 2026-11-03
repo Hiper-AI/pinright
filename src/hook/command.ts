@@ -31,6 +31,34 @@ interface Ctx {
   budget: { n: number; cut?: boolean };
   /** Files already followed (scripts, requirement files), against loops. */
   followed: Set<string>;
+  /** What earlier commands of the same line installed (see Chain). Shared with nested reads. */
+  chain?: Chain;
+}
+
+/**
+ * "npm install && npx tsc" in one command: the hook reads the line before the install runs, so
+ * typescript's tsc is not in node_modules/.bin yet and npx would read as a download of the "tsc"
+ * package. A bare install of the manifest (no packages named) puts what it lists in node_modules,
+ * so a later npx in the same folder of a bin one of those dependencies provides runs that local
+ * bin, as when it was installed before. The manifest is the one the install reads, so nothing is
+ * run that the install itself did not put there.
+ *
+ * Only on a chain the hook can follow: `&&`, `;`, a newline, or a pipe into a filter (`| tail`)
+ * after the install, and in between only commands that cannot take the bin away or move the shell
+ * (chainKeeps). `||`, a lone `&`, a subshell, a `cd` it cannot resolve, `popd`, or any other
+ * command drop what it learned.
+ */
+interface Chain {
+  /** Folder -> bins its finished manifest install provides. */
+  ready: Map<string, Set<string>>;
+  /** Set by manager() for a bare manifest install; walk() takes it only from a command it reads directly. */
+  installed?: { dir: string; tool: string; prodOnly: boolean };
+  /** Set by npx() when it runs an installed bin and fetches nothing. */
+  ranLocal: boolean;
+  /** A nested read (an npm script, a substitution, bash -c) ran a command that could remove the bin. */
+  dirty: boolean;
+  /** The shell's folder is no longer known: nothing more is learned on this line. */
+  lost: boolean;
 }
 
 const MAX_DEPTH = 6;
@@ -98,7 +126,18 @@ function binName(word: string): string {
 function walk(src: string, ctx: Ctx, depth: number): void {
   if (depth > MAX_DEPTH || ctx.budget.n <= 0) return cut(src, ctx);
   const parsed = parseShell(src);
+  // The first walk of a line owns the chain; nested reads (scripts, bash -c, substitutions) only report into it.
+  const top = !ctx.chain;
+  const chain: Chain = ctx.chain ?? (ctx.chain = { ready: new Map(), ranLocal: false, dirty: false, lost: false });
   for (const s of parsed.substitutions) walk(s, ctx, depth + 1);
+  // A substitution runs when its command does, which this order does not follow: one that could remove a bin spoils the line.
+  if (top && chain.dirty) chain.lost = true;
+  // Installs whose pipeline is still running (npm install | tail): ready once it ends with && or ;.
+  const pending = new Map<string, Set<string>>();
+  const drop = () => {
+    chain.ready.clear();
+    pending.clear();
+  };
   let prev: SimpleCommand | undefined;
   for (const c of parsed.commands) {
     if (--ctx.budget.n < 0) return cut(src, ctx);
@@ -107,9 +146,148 @@ function walk(src: string, ctx: Ctx, depth: number): void {
     const opener = prev?.words ?? [];
     const loop = opener.length > 0 && /^(foreach|for)$/i.test(opener[opener.length - 1]) && (opener.length === 1 || opener[opener.length - 2] === '=');
     const header = prev && !prev.pipeNext && loop && /^\$\w+$/.test(c.words[0] ?? '') && /^in$/i.test(c.words[1] ?? '');
+    const outer = { installed: chain.installed, ranLocal: chain.ranLocal };
+    chain.installed = undefined;
+    chain.ranLocal = false;
+    if (top) chain.dirty = false;
+    const cwd = ctx.cwd;
     if (!header) simple(c, prev?.pipeNext ? prev : undefined, ctx, depth);
     prev = c;
+    const keeps = header ? 'keep' : chainKeeps(c, ctx);
+    if (!top) {
+      // Inside a script or bash -c a cd may not reach the outer shell, or may: either way the folder is unknown.
+      if (keeps === 'lost' || ctx.cwd !== cwd) chain.lost = true;
+      if (keeps !== 'keep' && !chain.ranLocal) chain.dirty = true;
+      chain.installed = outer.installed;
+      chain.ranLocal = outer.ranLocal;
+      continue;
+    }
+    if (keeps === 'lost' || c.next === 'group') chain.lost = true;
+    // simple() sets it; TypeScript does not see that through the call.
+    const inst = chain.installed as Chain['installed'];
+    const bins = inst && !chain.dirty && !chain.lost ? installedBins(c, inst, ctx) : undefined;
+    if (inst && bins) pending.set(inst.dir, bins);
+    else if (chain.lost || chain.dirty || (keeps !== 'keep' && !chain.ranLocal)) drop();
+    if (c.next === 'pipe') continue;
+    if (c.next === undefined || c.next === 'and' || c.next === 'seq') {
+      for (const [dir, b] of pending) chain.ready.set(dir, b);
+      pending.clear();
+    } else drop();
   }
+}
+
+/**
+ * Bins a dependency provides under another name. Otherwise the bin has to be the dependency's name:
+ * before the install there is no node_modules to read the bins from.
+ */
+const MANIFEST_BINS: Record<string, string[]> = {
+  typescript: ['tsc', 'tsserver'],
+  '@angular/cli': ['ng'],
+  '@biomejs/biome': ['biome'],
+  '@playwright/test': ['playwright'],
+  '@nestjs/cli': ['nest'],
+};
+
+/** npm settings that change what a bare install puts in node_modules/.bin, or where. */
+const NPM_INSTALL_SETTING = /^(omit|production|only|include|dry[-_]run|global|prefix|bin[-_]links|package[-_]lock[-_]only|install[-_]links|workspaces?|node[-_]linker)$/i;
+
+/**
+ * The bins a bare manifest install just made available in its folder, or undefined when the hook
+ * cannot be sure: the install is wrapped (sudo, env -C), the manifest is missing or unreadable, a
+ * setting moves or skips what it installs, or Yarn would use Plug'n'Play (no node_modules/.bin).
+ */
+function installedBins(c: SimpleCommand, inst: NonNullable<Chain['installed']>, ctx: Ctx): Set<string> | undefined {
+  let words = c.words.map((w) => expand(w, ctx));
+  let prodOnly = inst.prodOnly;
+  // The agent's shell inherits NODE_ENV from the process that runs the hook too. Not its npm_config_*:
+  // a hook started through npx gets a dozen of those from npx itself.
+  const env = new Map<string, string>([...(process.env.NODE_ENV ? [['NODE_ENV', process.env.NODE_ENV] as [string, string]] : []), ...ctx.vars]);
+  while (words.length && /^[A-Za-z_]\w*=/.test(words[0])) {
+    const [k, ...v] = words[0].split('=');
+    env.set(k, v.join('='));
+    words = words.slice(1);
+  }
+  while (words.length && KEYWORDS.has(words[0])) words = words.slice(1);
+  if (!/^(npm|pnpm|yarn)$/.test(binName(words[0] ?? ''))) return undefined;
+  for (const [k, v] of env) {
+    const m = /^npm_config_(.+)$/i.exec(k);
+    if (m && NPM_INSTALL_SETTING.test(m[1]) && v !== '') return undefined;
+  }
+  if (env.get('NODE_ENV') === 'production') prodOnly = true;
+  const { dir } = inst;
+  let pj: { dependencies?: unknown; devDependencies?: unknown; packageManager?: unknown } | undefined;
+  try {
+    pj = JSON.parse(ctx.readFile(path.join(dir, 'package.json')) ?? 'null') ?? undefined;
+  } catch {
+    return undefined;
+  }
+  if (!pj || typeof pj !== 'object') return undefined;
+  const npmrc = ctx.readFile(path.join(dir, '.npmrc')) ?? '';
+  if (npmrc.split(/\r?\n/).some((l) => NPM_INSTALL_SETTING.test(l.split('=')[0].trim()))) return undefined;
+  if (inst.tool === 'yarn') {
+    // Yarn 2+ defaults to Plug'n'Play: no node_modules, so npx finds nothing local.
+    let rc: string | undefined;
+    for (let d = dir, k = 0; k < 8 && rc === undefined; k++) {
+      rc = ctx.readFile(path.join(d, '.yarnrc.yml'));
+      if (path.dirname(d) === d) break;
+      d = path.dirname(d);
+    }
+    const berry = rc !== undefined || /^yarn@([2-9]|\d{2,})/.test(String(pj.packageManager ?? ''));
+    if (berry && !/^\s*nodeLinker:\s*["']?node-modules["']?\s*$/m.test(rc ?? '')) return undefined;
+  }
+  const bins = new Set<string>();
+  for (const section of prodOnly ? [pj.dependencies] : [pj.dependencies, pj.devDependencies]) {
+    if (!section || typeof section !== 'object') continue;
+    for (const [name, value] of Object.entries(section as Record<string, unknown>)) {
+      if (typeof value !== 'string' || !/^(@[\w.-]+\/)?[\w.-]+$/.test(name)) continue;
+      bins.add(name);
+      for (const b of MANIFEST_BINS[name] ?? []) bins.add(b);
+    }
+  }
+  return bins;
+}
+
+/** Commands that leave node_modules and the shell's folder as they are, for chainKeeps. */
+const CHAIN_READS = new Set([
+  'echo', 'printf', 'write-output', 'write-host', 'cat', 'type', 'get-content', 'gc', 'ls', 'dir', 'get-childitem', 'gci', 'pwd', 'get-location',
+  'grep', 'egrep', 'fgrep', 'rg', 'findstr', 'select-string', 'sls', 'head', 'tail', 'wc', 'sort', 'uniq', 'cut', 'tr', 'tee', 'jq', 'sed', 'awk',
+  'diff', 'file', 'stat', 'du', 'df', 'which', 'where', 'whoami', 'date', 'sleep', 'true', 'false', 'test', '[', ':', 'exit', 'clear', 'tree',
+  'mkdir', 'md', 'touch', 'new-item', 'ni', 'set-content', 'add-content', 'out-file', 'cp', 'copy', 'copy-item', 'chmod',
+  'fi', 'done', 'esac', 'tsc', 'eslint', 'prettier', 'vitest', 'jest', 'next', 'vite',
+]);
+const CHAIN_REMOVERS = new Set(['rm', 'rmdir', 'del', 'erase', 'rd', 'remove-item', 'ri', 'rimraf', 'mv', 'move', 'move-item', 'mi', 'unlink']);
+
+/**
+ * Whether an install learned earlier on the line still holds after this command: 'keep', 'drop' when
+ * it may have removed the bin (or the hook does not know the command), 'lost' when the shell's
+ * folder is no longer known (cd to a variable, cd -, popd).
+ */
+function chainKeeps(c: SimpleCommand, ctx: Ctx): 'keep' | 'drop' | 'lost' {
+  let words = c.words.map((w) => expand(w, ctx));
+  while (words.length && /^[A-Za-z_]\w*=/.test(words[0])) words = words.slice(1);
+  while (words.length && KEYWORDS.has(words[0])) words = words.slice(1);
+  if (!words.length) return 'keep';
+  const bin = binName(words[0]);
+  const args = words.slice(1);
+  const operands = args.filter((a) => !a.startsWith('-'));
+  if (/^(cd|pushd|chdir|set-location|sl|push-location)$/.test(bin)) {
+    // simple() moved ctx.cwd there; ready is keyed by folder, so a later npx elsewhere finds nothing.
+    const dir = words.slice(1).find((w) => !w.startsWith('-'));
+    return dir && !isDynamic(dir) && !/^~|^-$|\$/.test(dir) ? 'keep' : 'lost';
+  }
+  if (/^(popd|pop-location)$/.test(bin)) return 'lost';
+  if (CHAIN_READS.has(bin)) return 'keep';
+  if (CHAIN_REMOVERS.has(bin)) {
+    // rm -rf dist is fine; rm -rf node_modules, ., .., a glob, an absolute path or a variable may take the bin.
+    const safe = (a: string) => !isDynamic(a) && !/[*?[\]{}$`~]/.test(a) && !/^([\\/]|[A-Za-z]:|\.\.?([\\/]|$))/.test(a) && !/(^|[\\/])node_modules([\\/]|$)/i.test(a);
+    return operands.length && operands.every(safe) ? 'keep' : 'drop';
+  }
+  if (bin === 'find') return args.some((a) => /^-(delete|exec|execdir|ok|okdir)$/.test(a)) ? 'drop' : 'keep';
+  if (bin === 'node') return args.length && args.every((a) => /^(-v|--version)$/.test(a)) ? 'keep' : 'drop';
+  if (bin === 'git') return /^(status|log|diff|show|add|commit|rev-parse|init)$/.test(args[0] ?? '') ? 'keep' : 'drop';
+  // npm run/test/start: the script's own commands are read nested and spoil the chain themselves.
+  if (/^(npm|pnpm|yarn|bun)$/.test(bin)) return /^(ls|list|ll|la|view|v|info|show|outdated|why|explain|run|run-script|test|t|tst|start|help|-v|--version)$/.test(args[0] ?? '') ? 'keep' : 'drop';
+  return 'drop';
 }
 
 /**
@@ -686,6 +864,37 @@ function hasLocalBin(ctx: Ctx, spec: string): boolean {
   return false;
 }
 
+/** Options of a bare install that change nothing about which bins it links. */
+const INSTALL_FLAGS = new Set([
+  '--save-exact', '-E', '--no-audit', '--audit', '--no-fund', '--fund', '--silent', '-s', '--quiet', '-q', '--loglevel', '--verbose', '--no-progress',
+  '--progress', '--color', '--no-color', '--frozen-lockfile', '--no-frozen-lockfile', '--prefer-frozen-lockfile', '--prefer-offline', '--offline',
+  '--legacy-peer-deps', '--strict-peer-deps', '--force', '-f', '--ignore-scripts', '--foreground-scripts', '--prefix', '--cwd', '-C', '--dir',
+  '--immutable', '--pure-lockfile', '--non-interactive', '--network-timeout', '--reporter', '--ignore-engines', '--no-save', '--no-package-lock',
+]);
+
+/**
+ * For a bare install: true when it skips devDependencies (--production, --omit=dev, pnpm -P), false
+ * when it installs both, undefined for any other option (-g, -w, --filter, --dry-run, --no-bin-links...).
+ */
+function installFlags(flags: Map<string, string[]>): boolean | undefined {
+  let prodOnly = false;
+  for (const [k, values] of flags) {
+    if (/^(--production|--prod|-P)$/.test(k)) prodOnly ||= values.some((v) => v !== 'false');
+    else if (k === '--omit') prodOnly ||= values.some((v) => v === 'dev');
+    else if (k === '--only') prodOnly ||= values.some((v) => /^prod/.test(v));
+    else if (!INSTALL_FLAGS.has(k)) return undefined;
+  }
+  return prodOnly;
+}
+
+/** npx after a bare install earlier on the line (see Chain): the bin of a dependency that install linked here. */
+function installedEarlier(ctx: Ctx, spec: string, flags: Map<string, string[]>): boolean {
+  const chain = ctx.chain;
+  if (!chain || chain.lost || !/^(@[\w.-]+\/)?[\w.-]+$/.test(spec)) return false;
+  if (['--prefix', '-w', '--workspace', '--workspaces', '-g', '--global'].some((f) => flags.has(f))) return false;
+  return chain.ready.get(path.resolve(ctx.cwd))?.has(spec) ?? false;
+}
+
 function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src: string, stdin: string | undefined): void {
   let [bin, ...rest] = [binName(words[0]), ...words.slice(1)];
   if (fileWriters(bin, rest, c, ctx, src, stdin)) return;
@@ -761,7 +970,12 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
       const scriptsRun = !(flags.get('--ignore-scripts') ?? []).some((v) => v === '' || v === 'true');
       const lifecycleIf = (d: string) => (scriptsRun ? lifecycle(d) : undefined);
       const verb = pos[0] ?? '';
-      const adds = /^(install|i|in|ins|inst|insta|instal|isnt|isnta|isntal|isntall|add|a|update|up|upgrade|udpate)$/;
+      const bare = bin === 'npm' ? /^(install|i|in|ins|inst|insta|instal|isnt|isntall|ci)$/.test(verb) : bin === 'pnpm' ? /^(install|i)$/.test(verb) : bin === 'yarn' && (!verb || verb === 'install');
+      if (ctx.chain && bare && pos.length <= 1) {
+        const prodOnly = installFlags(flags);
+        if (prodOnly !== undefined) ctx.chain.installed = { dir: path.resolve(ctx.cwd, dir), tool: bin, prodOnly };
+      }
+      const adds =/^(install|i|in|ins|inst|insta|instal|isnt|isnta|isntal|isntall|add|a|update|up|upgrade|udpate)$/;
       if (bin === 'npm' && /^(exec|x)$/.test(verb)) return npx(pos.slice(1), flags);
       if (bin === 'bun' && verb === 'x') return npx(pos.slice(1), flags);
       if (bin !== 'npm' && verb === 'dlx') return npx(pos.slice(1), flags, false);
@@ -1061,10 +1275,16 @@ function manager(words: string[], c: SimpleCommand, ctx: Ctx, depth: number, src
     }
     if (!pos[0]) return;
     // npx --no-install / --no runs only what is installed and fails otherwise: nothing reaches the registry.
-    if (local && (flags.has('--no-install') || flags.has('--no'))) return thenRun(pos[0], pos.slice(1));
+    if (local && (flags.has('--no-install') || flags.has('--no'))) {
+      if (ctx.chain) ctx.chain.ranLocal = true;
+      return thenRun(pos[0], pos.slice(1));
+    }
     // "tsc@5", "@scope/x@1": a pinned version goes through the registry even when a bin is installed.
     const pinned = /^(@[^/@]+\/)?[^@]+@/.test(pos[0]);
-    if (local && !pinned && hasLocalBin(ctx, pos[0])) return thenRun(pos[0], pos.slice(1));
+    if (local && !pinned && (hasLocalBin(ctx, pos[0]) || installedEarlier(ctx, pos[0], flags))) {
+      if (ctx.chain) ctx.chain.ranLocal = true;
+      return thenRun(pos[0], pos.slice(1));
+    }
     npm([pos[0]], true);
     thenRun(packageBin(pos[0]), pos.slice(1));
   }

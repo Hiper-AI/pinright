@@ -55,6 +55,18 @@ manifest (`echo >>`, `tee`, `cat <<EOF >`, `cp`) are read like a Write, and note
 `!pip install` like a command. Lockfiles, registry settings (`.npmrc`, `pip.conf`, `--index-url`) and
 `overrides`/`resolutions` count too.
 
+`npx <bin>` runs the project's own bin when `node_modules/.bin` has it. The hook reads the whole line
+before any of it runs, so in `npm install && npx tsc` the bin does not exist yet. The hook still treats
+that `npx` as local when four things hold. An earlier command on the line ran `npm install`, `npm ci`,
+`pnpm install` or `yarn` with no package names, no options that change what gets linked, and no
+wrapper. The `package.json` in that folder lists the bin's package under `dependencies` or
+`devDependencies`: a package with the bin's name, or `typescript` for `tsc` and `tsserver`
+(`@angular/cli`, `@biomejs/biome`, `@playwright/test` and `@nestjs/cli` for theirs). `npx` runs in the
+same folder with no version or `-p`. Between the two, only `&&`, `;`, a newline or a pipe into a
+filter (`| tail`) join the commands, and none of them can remove the bin or leave the folder unknown.
+A `||`, a background `&`, a subshell, `rm -rf node_modules`, `cd "$X"` or `popd` brings the check
+back. If the install fails, `npx` downloads the package after all, as it would if you typed it.
+
 What the hook cannot check (a package name in a variable, a git or URL source, another registry, a
 manifest rewritten by `sed -i`) is *unverifiable*: it asks by default (`PINRIGHT_HOOK_UNVERIFIABLE`).
 Changes to `.pinright.json` or to the hook's entry in the agent settings always ask a human. The hook is

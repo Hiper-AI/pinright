@@ -16,7 +16,17 @@ export interface SimpleCommand {
   stdin?: string;
   /** True when this command's output is piped into the next one. */
   pipeNext: boolean;
+  /**
+   * What joins it to the next command: `&&` (and), `;` or a newline (seq), `||` (or), `|` (pipe),
+   * a lone `&` (bg) or a `(`/`)` (group). Undefined for the last one.
+   */
+  next?: Joiner;
 }
+
+export type Joiner = 'and' | 'seq' | 'or' | 'pipe' | 'bg' | 'group';
+
+/** A separator with nothing before it (`a && (b)`, `(a) && b`) makes the one already recorded stronger, never weaker. */
+const JOINER_RANK: Record<Joiner, number> = { seq: 0, and: 1, or: 2, pipe: 2, bg: 2, group: 2 };
 
 export interface ParsedShell {
   commands: SimpleCommand[];
@@ -58,11 +68,15 @@ export function parseShell(src: string): ParsedShell {
   let pending: { kind: 'write' | 'input' | 'herestring' | 'heredoc'; append?: boolean; strip?: boolean } | undefined;
   const heredocs: { delim: string; strip: boolean; cmd: SimpleCommand }[] = [];
 
-  const endCmd = (pipe: boolean) => {
+  const endCmd = (pipe: boolean, joiner?: Joiner) => {
     pushTok();
     if (cur.words.length || cur.writes.length || cur.stdin !== undefined || cur.input) {
       cur.pipeNext = pipe;
+      if (joiner) cur.next = joiner;
       commands.push(cur);
+    } else if (joiner && commands.length) {
+      const last = commands[commands.length - 1];
+      if (!last.next || JOINER_RANK[joiner] > JOINER_RANK[last.next]) last.next = joiner;
     }
     cur = fresh();
   };
@@ -84,7 +98,7 @@ export function parseShell(src: string): ParsedShell {
     }
     // A bare brace opens or closes a group: `{ npm i x; }`.
     if (!wasQuoted && (t === '{' || t === '}')) {
-      endCmd(false);
+      endCmd(false, 'seq');
       return;
     }
     cur.words.push(t);
@@ -177,7 +191,7 @@ export function parseShell(src: string): ParsedShell {
       continue;
     }
     if (c === '\n') {
-      endCmd(false);
+      endCmd(false, 'seq');
       // Heredoc bodies start on the next line.
       while (heredocs.length) {
         const h = heredocs.shift() as { delim: string; strip: boolean; cmd: SimpleCommand };
@@ -196,16 +210,16 @@ export function parseShell(src: string): ParsedShell {
       continue;
     }
     if (c === ';') {
-      endCmd(false);
+      endCmd(false, 'seq');
       continue;
     }
     if (c === '|') {
       if (next === '|') {
         i++;
-        endCmd(false);
+        endCmd(false, 'or');
       } else {
         if (next === '&') i++;
-        endCmd(true);
+        endCmd(true, 'pipe');
       }
       continue;
     }
@@ -217,8 +231,9 @@ export function parseShell(src: string): ParsedShell {
         if (append) i++;
         pending = { kind: 'write', append };
       } else {
-        if (next === '&') i++;
-        endCmd(false);
+        const and = next === '&';
+        if (and) i++;
+        endCmd(false, and ? 'and' : 'bg');
       }
       continue;
     }
@@ -230,7 +245,7 @@ export function parseShell(src: string): ParsedShell {
         i = substitution(i);
         continue;
       }
-      endCmd(false);
+      endCmd(false, 'group');
       continue;
     }
     if (c === '>' || c === '<') {
