@@ -110,7 +110,7 @@ list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 | 57 hook vectors, each reproduced in `test/hookBypass.test.ts` | `docs/HOOK-THREAT-MODEL.md`, vector table |
 | Injection: 4 of 38,381 sections dropped (0.01%), 26 warned; 61/61 corpus, 0/41 negatives; held-out 5/20, 6/15, 3/15, 0/35 benign | `bench/injection/RESULTS.md`; headers of `bench/injection/heldout*.ts`; `injection.csv` |
 | "caught 20% to 40%" | 3/15 = 20%, 6/15 = 40% (5/20 = 25%) | same |
-| Unit tests: 962 pass, 9 skipped | `npm test` on `feat/paperkit` (base `99027f5`), 2026-11-01 |
+| Unit tests: 983 pass, 10 skipped (54 files) | `npx vitest run` on `release` after the launch-review commits, 2026-11-02, Windows; the skipped ones are POSIX-only (symlinks, FIFO) and run in the Linux CI |
 
 ## 6b. Caveats added in the launch review (2026-11-02)
 

@@ -658,8 +658,8 @@ lines a write adds or changes, so later edits cost what the changed lines cost.
 
 - Repository: <https://github.com/Hiper-AI/pinright> (public from 2026-11-03). Site: <https://pinright.dev>.
 - License: MIT. Install in the project to protect: `npx pinright init`; setup check: `npx pinright doctor`.
-- Unit tests at the release candidate: 962 pass, 9 skipped (POSIX-only and privileged symlink tests on
-  Windows).
+- Unit tests at 1.0.0: 983 pass, 10 skipped on Windows (POSIX-only symlink and FIFO tests, which run
+  in the Linux CI).
 - Data behind every table and figure: the aggregate CSVs in `paper/kit/data/`. The raw agent
   transcripts and scored projects are not published; `npx tsx paper/kit/make-data.ts --bench <dir>`
   rebuilds the CSVs from a run directory, and `npx tsx paper/kit/make-figures.ts` draws the figures.
