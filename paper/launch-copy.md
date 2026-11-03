@@ -7,7 +7,7 @@ comment, X and LinkedIn posts in English and Spanish, a press blurb and alt text
 ## Social blurb (280 characters max)
 
 ```
-Coding agents pin versions from memory. We tested Claude Code (Sonnet, Haiku, Opus 5.5) on 12 tasks: without tools, 40-42% of the direct deps they pinned had known advisories. pinright checks each pick and serves docs for the version installed. MIT. npx pinright init
+Coding agents pin versions from memory. We tested Claude Code (Sonnet, Haiku, Opus 5.5) on 12 tasks: without tools, 40-42% of the direct deps they pinned had known advisories. pinright checks each pick and serves docs for the version installed. MIT. npx -y pinright init
 ```
 
 <!-- 267 characters; recount after any edit -->

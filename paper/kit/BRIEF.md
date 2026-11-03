@@ -88,8 +88,8 @@ zero baseline, labels in ink colors.
 - Report byline: Juan Pablo Mandelbaum, principal investigator and pinright lead, Hiper AI.
 - Wordmark: **pinright**, always lowercase, also at the start of a sentence and in titles.
 - Product parts keep their names: MCP server, CLI, hook (pre-install hook), GitHub Action.
-- Monospace for commands and package names (`npx pinright init`, `lodash@4.17.20`).
-- The install command to show: `npx pinright init`.
+- Monospace for commands and package names (`npx -y pinright init`, `lodash@4.17.20`).
+- The install command to show: `npx -y pinright init`.
 
 ## What must not be said
 

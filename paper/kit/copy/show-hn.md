@@ -10,7 +10,8 @@ Show HN: pinright, version-accurate docs and dependency checks for coding agents
 
 Hi HN. We build security tooling for teams that use AI at Hiper AI, and we kept seeing the same thing
 in agent-written projects: the code was fine, and the dependency versions were a year or two old with
-known advisories. The model pins what it saw in training.
+known advisories. An agent gets its versions from two places: what the model saw in training, or a
+docs MCP server, which returns documentation and does not check the version against advisories.
 
 We measured it. Claude Code with Sonnet 5.5, Haiku 5.5 and Opus 5.5, 12 tasks we wrote (8 npm, 4
 PyPI), two runs each, every project audited afterwards with `npm audit` or `pip-audit`. Without
@@ -37,7 +38,9 @@ whole-tree alerts from 715 to 766 per model down to 84, 63 and 6 (Sonnet, Haiku,
 agent to current versions. The full server took every model to 6 (all in nuxt dependencies with no
 fixed release) and 0 vulnerable direct pins. The security layer catches what "latest" misses: an
 agent that picks an older version to fit a peer range, a pre-release with advisories, a lookalike or
-nonexistent name, and an agent that never calls the tool (the hook alone left 14).
+nonexistent name, and an agent that never calls the tool (the hook alone left 14). With docs alone,
+agents still pinned a vulnerable next or next-auth in 4 of 72 runs (next@15.5.0 has 32 advisories);
+the intervals overlap, so read that as an observation on these tasks.
 
 Two more results that limit the claim. When the agents had a shell, they ran `npm view` or
 `pip index versions` before pinning, and every arm, with or without pinright, ended at the same 6
@@ -57,5 +60,6 @@ Things we would like feedback on, because we know they are weak:
   mostly on purpose. If it blocks something it should not, please open an issue.
 - Our numbers come from one model vendor, two days of advisory data and tasks we wrote.
 
-MIT licensed, no telemetry, no account. `npx pinright init` in a project sets it up. The technical
+MIT licensed, no telemetry, no account. `npx -y pinright init` in a project sets it up. Site and
+evidence: https://pinright.dev. It is also in the official MCP Registry as `io.github.Hiper-AI/pinright`. The technical
 report, the aggregate CSVs and the benchmark scripts are in the repo; the raw transcripts are not.
