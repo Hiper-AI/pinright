@@ -49,23 +49,25 @@ docs for that version. Real output of `pinright hook claude`, 2026-11-01.
 
 ## Measured
 
-Claude Code with three models wrote 12 projects that ask for pinned versions, 2 runs per cell,
-and we audited each project with `npm audit` or `pip-audit`, which share no code with pinright.
+Claude Code with three models wrote 12 projects that ask for pinned versions, 2 runs per cell, on
+the 1.0.0 code. We audited each project with `npm audit` or `pip-audit`, which share no code with
+pinright.
 
 | | Sonnet 5.5 | Opus 5.5 | Haiku 5.5 |
 |---|---|---|---|
-| Whole-tree alerts per project, no docs → pinright MCP | 33.1 → 0.3 | 29.9 → 0.3 | 29.6 → 0.3 |
-| Direct dependencies pinned with a known advisory | 42% → 0% | 41% → 0% | 40% → 0% |
-| Docs tasks that used the current API, no docs → pinright | 13 of 16 → 16 of 16 | 12 of 16 → 16 of 16 | 10 of 16 → 16 of 16 |
+| Whole-tree alerts per project, no docs → pinright MCP | 31.9 → 0.3 | 30.5 → 0.3 | 29.8 → 0.3 |
+| Direct dependencies pinned with a known advisory | 40% → 0% | 42% → 0% | 40% → 0% |
+| Docs tasks that used the current API, no docs → pinright | 13 of 16 → 16 of 16 | 14 of 16 → 16 of 16 | 9 of 16 → 16 of 16 |
 
 The 0.3 left is nuxt, whose current release pulls packages with no fix published; installing
 with no version at all gets the same 0.3. Docs alone, with the verdict off, already took alerts
-down to 0.3 to 2.0 per project. One vendor's models, tasks we wrote, no shell, one day of advisory
+down to 0.3 to 3.5 per project. One vendor's models, tasks we wrote, no shell, two days of advisory
 data, and small n: intervals overlap between the pinright arms. The hook, replayed over 25,077
-commands from 180 public repositories, blocked or asked on 1.46%.
-[Results and caveats](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v6.md) ·
+commands from 180 public repositories, blocked or asked on 1.46%. Replayed over a month of our
+own agent sessions (154,402 distinct tool calls), it misread 10 of them.
+[Results and caveats](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v7.md) ·
 [technical report](https://github.com/Hiper-AI/pinright/blob/main/paper/kit/pinright-report.md) ·
-[reproduce it](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v6.md#reproduce)
+[reproduce it](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v7.md#reproduce)
 
 ## Ask your agent
 

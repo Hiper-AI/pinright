@@ -28,7 +28,7 @@ pinright sends package names and versions to deps.dev, OSV, the package registri
 ## Pages
 
 - [Install guide](https://pinright.dev/install/): every client, scopes, one-click links
-- [Evidence](https://pinright.dev/evidence/): benchmark v6, method, ablation, caveats
+- [Evidence](https://pinright.dev/evidence/): benchmark v7, method, ablation, caveats
 - [Security](https://pinright.dev/security/): what is sent where, the hook threat model, the reviews
 - [FAQ](https://pinright.dev/faq/)
 - [Technical report (PDF)](https://pinright.dev/report.pdf)

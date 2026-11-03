@@ -97,9 +97,9 @@
       <section class="section" id="evidence" aria-labelledby="evidence-title">
         <div class="wrap">
           <div class="section-head">
-            <p class="eyebrow">Benchmark v6 · 2026-11-01</p>
+            <p class="eyebrow">Benchmark v7 · 2026-11-02</p>
             <h2 id="evidence-title">What we measured</h2>
-            <p>Claude Code with Sonnet 5.5, Opus 5.5 and Haiku 5.5 wrote 12 projects that ask for pinned versions, 2 runs per cell. We audited each one with npm audit or pip-audit, which share no code with pinright.</p>
+            <p>On the 1.0.0 code, Claude Code with Sonnet 5.5, Opus 5.5 and Haiku 5.5 wrote 12 projects that ask for pinned versions, 2 runs per cell. We audited each one with npm audit or pip-audit, which share no code with pinright.</p>
           </div>
           <dl class="stats">
             <div class="stat">
@@ -114,12 +114,12 @@
             </div>
             <div class="stat">
               <dt>16 of 16</dt>
-              <dd>docs runs that wrote the current API, for each model. 10 to 13 of 16 without docs.</dd>
+              <dd>docs runs that wrote the current API, for each model. 9 to 14 of 16 without docs.</dd>
             </div>
             <div class="stat">
               <dt>1.46%</dt>
               <dd>of 25,077 public commands the hook blocked or asked about, most on purpose.</dd>
-              <dd>Denied outright: 0.13%.</dd>
+              <dd>Denied outright: 0.13%. On a month of our own agent sessions, 10 misreads in 154,402 tool calls.</dd>
             </div>
           </dl>
           <ul class="chart-legend" aria-label="Chart key">
@@ -147,18 +147,18 @@
             <summary>Show the numbers as a table</summary>
             <div class="table-wrap">
               <table class="results">
-                <caption class="visually-hidden">Benchmark v6 by model: no docs against the pinright MCP server</caption>
+                <caption class="visually-hidden">Benchmark v7 by model: no docs against the pinright MCP server</caption>
                 <thead><tr><th scope="col"></th><th scope="col">Sonnet 5.5</th><th scope="col">Opus 5.5</th><th scope="col">Haiku 5.5</th></tr></thead>
                 <tbody>
-                  <tr><th scope="row">Whole-tree alerts per project</th><td>33.1 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0.3</td><td>29.9 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0.3</td><td>29.6 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0.3</td></tr>
-                  <tr><th scope="row">Docs only, verdict off</th><td>2.0</td><td>0.3</td><td>0.9</td></tr>
-                  <tr><th scope="row">Direct dependencies pinned with a known advisory</th><td>42% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0%</td><td>41% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0%</td><td>40% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0%</td></tr>
-                  <tr><th scope="row">Docs tasks that used the current API</th><td>13 of 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 16 of 16</td><td>12 of 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 16 of 16</td><td>10 of 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 16 of 16</td></tr>
+                  <tr><th scope="row">Whole-tree alerts per project</th><td>31.9 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0.3</td><td>30.5 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0.3</td><td>29.8 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0.3</td></tr>
+                  <tr><th scope="row">Docs only, verdict off</th><td>3.5</td><td>0.3</td><td>2.6</td></tr>
+                  <tr><th scope="row">Direct dependencies pinned with a known advisory</th><td>40% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0%</td><td>42% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0%</td><td>40% <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 0%</td></tr>
+                  <tr><th scope="row">Docs tasks that used the current API</th><td>13 of 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 16 of 16</td><td>14 of 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 16 of 16</td><td>9 of 16 <span class="to" aria-hidden="true">→</span><span class="visually-hidden"> to </span> 16 of 16</td></tr>
                 </tbody>
               </table>
             </div>
           </details>
-          <p class="qualifier">Claude Code, 12 tasks we wrote, 2 runs per arm, advisory data from one day, agents without a shell, new projects only. Current docs alone remove most alerts; the intervals of the pinright arms overlap each other, and the run predates the release by 28 source files. Every number keeps its qualifier on the evidence page.</p>
+          <p class="qualifier">Claude Code, 12 tasks we wrote, 2 runs per arm, advisory data from two days, agents without a shell, new projects only. Current docs alone remove most alerts; the intervals of the pinright arms overlap each other, and the runs used the 1.0.0 code. Every number keeps its qualifier on the evidence page.</p>
           <div class="ctas">
             <a class="btn btn-primary" href="/evidence/">Method, ablation and caveats</a>
             <a class="btn btn-ghost" href="/report.pdf">Technical report (PDF)</a>
