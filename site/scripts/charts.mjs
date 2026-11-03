@@ -129,7 +129,7 @@ function agentRows(arms, metric) {
         const lo = num(r.alerts_per_project_ci95_lo);
         const hi = num(r.alerts_per_project_ci95_hi);
         rows.push({ group: model, label: ARM[arm].label, value: v, lo, hi, text: r1(v), key: ARM[arm].key,
-          tip: `${model}, ${ARM[arm].label}: ${r1(v)} whole-tree alerts per project (95% interval ${r1(lo)} to ${r1(hi)}, ${r.runs} runs)` });
+          tip: `${model}, ${ARM[arm].label}: ${r1(v)} whole-tree alerts per project (95% interval ${r1(lo)} to ${r1(hi)}, ${r.projects_resolved} projects)` });
       } else {
         const v = num(r.direct_deps_with_advisory_pct);
         const lo = num(r.direct_deps_with_advisory_pct_ci95_lo);
@@ -206,7 +206,7 @@ const allArms = ['no-docs', 'docs-only', 'pinright', 'hook-only', 'pinright+hook
 {
   const rows = docsRows(['no-docs', 'docs-only', 'pinright']);
   files['chart-ev-docs.html'] = perModel(rows, { title: 'Docs runs that wrote the current API', max: 16, ticks: tickSet(16, 4, String),
-    desc: 'Docs benchmark runs out of 16 that wrote the current API, with 95% intervals. Docs only ran for Sonnet. ' + rows.map((r) => r.tip).join('. ') });
+    desc: 'Docs benchmark runs out of 16 that wrote the current API, with 95% intervals. ' + rows.map((r) => r.tip).join('. ') });
 }
 {
   const fp = readCsv('fp_by_source.csv').filter((r) => !r.source.startsWith('All sources'));
