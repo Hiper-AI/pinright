@@ -360,8 +360,8 @@ and the first release has not happened, so these are plans with code behind them
 
 ### 4.4 Two internal security reviews
 
-Reviewers who did not write the code reviewed pinright twice. Every fix came with a test that fails
-without it.
+Two separate AI agent sessions that did not write the code reviewed pinright, and the author checked
+every finding. Every fix came with a test that fails without it.
 
 **Round 1 (2026-10-29)** covered the MCP server, CLI, hook (except the shell parser), Action and
 packaging, traced every `catch` on the verdict path for fail-open behavior, and timed all 759 regex

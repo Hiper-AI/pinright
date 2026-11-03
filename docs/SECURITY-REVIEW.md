@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-29
 **Branch:** `feat/review`, from `integracion` at `dd570aa`
-**Reviewer:** an internal reviewer who did not write the code under review
+**Reviewer:** a separate AI agent session that did not write the code under review, with findings checked by the author
 
 ## Scope
 
@@ -79,7 +79,7 @@ All 551 tests pass (546 pass and 5 are skipped). The skips are symlink tests tha
 
 **Date:** 2026-11-01
 **Branch:** `feat/review2`, from `lanzamiento` at `3d1ec39` (the 1.0.0 release candidate)
-**Reviewer:** an internal reviewer who did not write the code under review
+**Reviewer:** a separate AI agent session that did not write the code under review, with findings checked by the author
 
 ## Scope
 
