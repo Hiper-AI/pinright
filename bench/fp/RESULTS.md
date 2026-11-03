@@ -180,3 +180,132 @@ fine when someone wrote them. They show what the hook does when an agent copies 
   by `Move-Item`) read as unknown writes and ask; in a real checkout the hook reads them.
 - Grouping by intent set means two commands with the same intents share one decision; the message text
   in the per-entry output comes from the first of them.
+
+## Real agent sessions (2026-11-02)
+
+The public corpus above holds CI and README commands. This replay uses what coding agents ran on
+the maintainers' own machine: the Claude Code transcripts of one month of work on pinright, its
+website and the Hiper AI products (2026-10-02 to 2026-11-02). The owner approved the run. The
+transcripts and the corpus built from them stay on that machine. This section gives only counts and
+anonymized shapes.
+
+Run with `bench/fp/sessions.ts` (`extract`, then `replay`) on 2026-11-02 and 2026-11-03, against
+`release` at 8efc4f0 (baseline) and at 54b8d1d (after the fixes below). Default policy; a project's
+own `.pinright.json` applied where one existed. Live deps.dev, OSV and registries.
+
+### Corpus
+
+| | Count |
+|---|---|
+| Transcripts | 7,434 (483 sessions, 6,951 subagent runs); 7,310 with at least one tool call |
+| Tool calls replayed | 156,977 (Bash 117,892, Edit 18,952, PowerShell 11,241, Write 8,896; no MultiEdit or NotebookEdit calls) |
+| Cases after dedup (same tool, input and cwd) | 154,402 |
+| Shell commands | 127,037 cases (129,133 calls) |
+| Writes to a file the hook reads (manifest, lockfile, workflow, hook settings) | 113 cases |
+| Writes to other files (source, docs) | 27,252 cases; a random 400 went through the CLI, all allowed |
+| Cases whose cwd no longer exists (replayed in an empty folder) | 35,055 |
+
+A write to a manifest needs the file as it was before the call. The extractor takes it from the same
+transcript when an earlier call wrote it (39), from the file on disk (6), from the main checkout or its
+git history when the worktree is gone (34), or treats it as a new file (12). For 22 it found nothing
+and the edit replays as a no-op.
+
+Every case the reader marks as something to check (6,079 on the baseline, 6,095 after) went through
+the real CLI, one process per case, so no decision is extrapolated.
+
+### Rates
+
+| | Baseline (8efc4f0) | After (54b8d1d) |
+|---|---|---|
+| Allowed | 153,683 cases (99.53%) | 153,693 cases (99.54%) |
+| Asked | 92 (0.060%) | 80 (0.052%) |
+| Blocked | 627 (0.406%) | 629 (0.407%) |
+| Asked or blocked, over 156,977 calls | 729 (0.46%) | 719 (0.46%) |
+
+### Adjudication
+
+Each asked or blocked case was read and sorted by hand, with a script for the 568 cases that share one
+shape.
+
+| Verdict | Baseline | After |
+|---|---|---|
+| True positive: a version with known advisories or a package flagged as malware | 50 | 52 |
+| False positive: the hook misread the command | 22 | 10 |
+| Asked by design (`docs/HOOK-THREAT-MODEL.md`): a manifest changed by `sed -i`, `cp` or `git checkout` (56), a name, version or path in a variable (17), `git apply` on a manifest (5), a change to the hook settings (1) | 79 | 79 |
+| Replay artifact: the folder changed after the session | 568 | 568 |
+
+Without the artifacts, the hook flagged 141 cases after the fixes: 52 true positives, 79 by-design
+asks and 10 false positives. The false-positive rate is 10 in 154,402 cases (0.006%), down from 22
+(0.014%).
+
+The 568 artifacts are `npx tsc` (and a few `npx jest`, `npx vitest`) denied as "runs the npm package
+tsc, not typescript's compiler". In 523 the command ran in a worktree deleted since; reading the
+same path in the main checkout finds the local bin and the deny goes away. The other 45 point at a
+repository renamed after the session (39), temp folders that no longer exist (5) and one emptied
+worktree. During the sessions those folders had `node_modules`, so these say nothing about the hook.
+
+### False positives
+
+| Shape (anonymized) | Cases | Status |
+|---|---|---|
+| `grep -l <pattern> test/*.jsx \| xargs npx vitest run` asked: "xargs passes npx arguments". The words xargs appends go to vitest, not to npx. | 5 | Fixed, 3f25662. `xargs npx` with no package, an `-I` placeholder in the package, or `xargs npx pnpm add` still ask; a bare `xargs npx` used to pass and now asks |
+| PowerShell `$o=npx vitest run <file>` asked: "program from a variable" | 6 | Fixed, 3f25662 and 54b8d1d |
+| PowerShell `Set-Content package.json '<json>' -Encoding ascii` asked: "would not parse". `ascii` was appended to the content. | 1 | Fixed, 3f25662. The session was probing `undici@7.30.0`, which has 8 advisories, so the hook now blocks it for that reason |
+| `cd` to a folder the hook cannot resolve (`cd "$TMPDIR/x"`, `for d in a b; do cd "$d"`), then `npx <local bin>` blocked as an unknown or unrelated package | 7 | Not fixed, `it.todo`. Treating an unknown folder as having the bin would let `cd $X && npx <anything>` skip the check |
+| `npm install <local tarball> && npx <its bin>` in one command blocked: the hook judges the line before the install runs | 1 | Not fixed, `it.todo` |
+| A PowerShell `@'...'@` here-string holding a bash test script, read as commands | 1 | Not fixed, `it.todo`: needs to know the shell, which the reader does not get |
+| PowerShell `npm init -y *> $null` blocked: `*` read as an initializer (`create-*`) | 1 | Not fixed, `it.todo`, same reason |
+
+`Push-Location` now moves the folder like `cd` (3f25662). No case in this corpus depended on it
+alone.
+
+### A gap found on the way
+
+PowerShell `$out = npm install x` ran the install and the hook read it as an assignment, so nothing
+was checked. 3f25662 reads the right side as a command when it starts with a bare command name. In this
+corpus one case changed from allowed to blocked: `npx --yes pnpm@10.4.1 exec vitest`, a pnpm with 25
+advisories.
+
+### True positives
+
+Advisory data of 2026-11-03. Several of these were the agent testing pinright itself on purpose (a
+demo `package.json` with old axios and lodash, a workflow with a compromised `tj-actions` release);
+they count because the hook answered as it should.
+
+| What the agent ran (anonymized) | Cases | What the hook said |
+|---|---|---|
+| `npx --yes pnpm@10.4.1 install\|check\|test\|dev` in website worktrees (the version the repository pins) | 37 | 25 advisories, HIGH; same-line fix 10.34.9 |
+| `npx pnpm@9.15.0 ...` | 1 | 25 advisories, HIGH |
+| `npx --prefix <dir> true` in a test loop, meant as the shell's `true` | 1 | `true` on npm is flagged as malware (MAL-2026-10667) |
+| `npm i lodash@4.17.20` and a demo `package.json` with `axios@1.7.9` | 4 | 5 and 33 advisories, HIGH |
+| A workflow pinned to `tj-actions/changed-files` v35.9.3 | 1 | GHSA-mrrh-fwg8-r2c3 and one more |
+| `npx -y md-to-pdf@5.2.4` to render a report | 1 | CVE-2025-65108, CRITICAL; fix 5.2.5 |
+| `pip install` of `poetry==2.3.2`, `transformers==4.50.3`, `pypdf==6.21.2`, `python-jose==3.3.0` in scratch venvs and benchmark fixtures | 4 | advisories, HIGH or CRITICAL |
+| `npm install -D gh-pages@~6.1.1` | 1 | pulls `minimatch@3.1.5`; 6.3.0 pulls a fixed one |
+| A new `package.json` with `zod@^3.23.8` | 1 | CVE-2023-54404, HIGH; fix needs zod 4 |
+| `undici@7.30.0` written by `Set-Content` | 1 | 8 advisories, HIGH; fix 7.30.1 |
+
+### Latency
+
+Wall time per call, from spawning `node dist/cli.js hook claude` to its exit, with six calls in
+parallel on a laptop that was also running another benchmark. Each call pays a cold Node start.
+
+| Calls | Baseline p50 / p95 | After p50 / p95 |
+|---|---|---|
+| With something to check (6,079 / 6,095) | 849 / 1,407 ms | 1,466 / 2,385 ms |
+| Commands with nothing to check (random 400) | 396 / 600 ms | 960 / 1,541 ms |
+| Writes to other files (random 400) | 819 / 1,706 ms | 364 / 890 ms |
+
+The two runs differ more from machine load than from the code: the fixes touch only the command
+reader. Read the medians as an upper range for a busy machine.
+
+### How far to trust these numbers
+
+- One user, one month, mostly TypeScript and Rust work driven by long-running agent loops. Another
+  team's sessions will differ in which commands repeat.
+- The replay runs today's files, not the files of the day of the session. Folders deleted or renamed
+  since produce the 568 artifacts above; a `package.json` that changed since can change what
+  `npm run x` follows.
+- 22 manifest edits replay as no-ops because the file before the edit could not be rebuilt, so writes
+  are under-sampled.
+- Advisory data moves: a pin that is clean today can be a true positive next week.
