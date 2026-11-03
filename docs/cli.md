@@ -89,7 +89,7 @@ counted as usual.
 | `PINRIGHT_NO_CACHE` | unset | `1` disables the cache. |
 | `PINRIGHT_CACHE_MAX_MB` | `200` | Size the daily prune brings the cache down to. |
 | `PINRIGHT_TIMEOUT_MS` | `15000` | Per-request timeout, body included. A host that times out or refuses is skipped for 30 s. |
-| `PINRIGHT_BATCH_TIMEOUT_MS` | `45000` | Deadline for `check-packages`; packages still pending come back as "not checked". |
+| `PINRIGHT_BATCH_TIMEOUT_MS` | `45000` | Deadline for `check-packages`; packages still pending come back as "not checked". The check of the ranges the packages set on each other runs within the same deadline and is skipped when it runs out. |
 | `PINRIGHT_PROJECT_DIR` | working directory | Project to read installed versions and `.pinright.json` from, when the client does not announce roots. |
 
 No telemetry. Requests go from your machine to the public APIs listed in [How pinright works](how-it-works.md) and nowhere else. Docs

@@ -55,6 +55,12 @@ vi.mock('../src/verdict.js', () => ({
   }),
 }));
 
+// The ranges the packages in a call set on each other (constraints.test.ts covers them): none here, and offline.
+vi.mock('../src/advisories/depsdev.js', async () => {
+  const actual = await vi.importActual<typeof import('../src/advisories/depsdev.js')>('../src/advisories/depsdev.js');
+  return { ...actual, getDependencies: vi.fn(async () => undefined), getPeerRequirements: vi.fn(async () => new Map()) };
+});
+
 const { checkPackages, formatBatch, versionToUse } = await import('../src/batch.js');
 
 describe('check-packages', () => {

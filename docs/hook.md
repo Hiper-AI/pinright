@@ -92,7 +92,8 @@ accepting the advisories. In the benchmark, `stirrup` 0.2.1 pulls `moviepy` 2.2.
 `pillow<12.0`, and `pillow` 11.3.0's advisories are fixed only in 13.0.0: the hook now says so instead
 of suggesting an override to 13.0.0. The check never lifts a block; it changes the version recommended
 and the explanation. A vulnerable pip or Composer pin that another pin pulls, with no clean release in
-range, still asks a human, as before. When no clean version exists at all, it asks a
+range, still asks a human, as before. The MCP tool `check-packages` applies the same check to the
+packages passed in one call, so the version it says to use already fits the others. When no clean version exists at all, it asks a
 human for high and critical advisories and lets the rest through with a note, so the work does not stop
 on a moderate finding nobody can fix yet. It also blocks two supply-chain patterns (see [Supply-chain signals](how-it-works.md#supply-chain-signals)): a
 package first published less than 14 days ago that runs install scripts, and a release that adds install

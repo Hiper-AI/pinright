@@ -99,6 +99,18 @@ range and say whether a newer release of that package accepts the fix. Graph ran
 a conflict adds a version list, one OSV batch, and one version list and graph lookup for the package
 that sets the range, all cached. Peer ranges are read only when the fix crosses a major, one lookup per
 declared npm package, up to 20. A lockfile without the graph keeps the plain recommendation.
+
+`check-packages` treats the list it is given as a project of its own. With two or more packages of one
+ecosystem in the call, it checks each "use" version against the ranges the others set on it, with the
+same rules: the resolved graphs of the other packages, at the version each will be pinned at, for pip
+and Composer (one cached graph lookup per package, up to 20), and npm peer ranges when the version
+recommended leaves the release line asked for. With `stirrup`, `moviepy` and `pillow` 11.3.0 in one
+call, the pillow row no longer says 13.0.0: it names `moviepy`'s `pillow<12.0` and gives the newest clean
+release in range as the version to use, or "-" and the options in the details when none is clean. A
+version asked for that another package in the call excludes gets a note. These lookups share the call's
+deadline (`PINRIGHT_BATCH_TIMEOUT_MS`); if they fail or run late, the table is the one it was without
+them. A single package, or one call per package, has no such context.
+
 When the recommended version belongs to a major less than a year old, the notice says so and points
 the agent to that version's docs: its configuration may differ from what the model learned.
 

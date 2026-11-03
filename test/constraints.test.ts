@@ -63,6 +63,7 @@ const { decide } = await import('../src/hook/policy.js');
 const { auditTree, formatTreeAudit } = await import('../src/tree/audit.js');
 const { parseFile } = await import('../src/tree/lockfiles.js');
 const { graphConstraints, satisfiesRequirement } = await import('../src/tree/constraints.js');
+const { checkPackages, formatBatch } = await import('../src/batch.js');
 
 const node = (name: string, version: string) => ({ versionKey: { name, version } });
 const adv = (id: string) => ({ id, aliases: [`CVE-${id}`], url: '', severity: 'HIGH' });
@@ -243,6 +244,89 @@ describe('hook: npm peer ranges', () => {
     ]);
     expect(d.problems[0]).toContain('npm install react@18.3.1');
     expect(calls.peers).toBe(0);
+  });
+});
+
+describe('check-packages: the packages in one call set ranges on each other', () => {
+  /** The rows as checkPackages returns them, from the mocked verdicts. */
+  const batch = (items: { name: string; version?: string }[], eco = 'pypi') => checkPackages(items.map((i) => ({ ...i, ecosystem: eco })));
+
+  it('stirrup, moviepy and pillow together: pillow 13.0.0 is not recommended, and the details say why', async () => {
+    stirrup();
+    versions.set('moviepy', ['2.1.2', '2.2.1']);
+    reports.set('moviepy@2.2.1', { verdict: 'ok', requested: { version: '2.2.1', verdict: 'ok', advisories: [] } });
+    graphs.set('moviepy@2.2.1', { nodes: [node('moviepy', '2.2.1'), node('pillow', '11.3.0')], edges: [{ fromNode: 0, toNode: 1, requirement: '<12.0,>=9.2.0' }] });
+    const res = await batch([{ name: 'stirrup', version: '0.2.1' }, { name: 'moviepy', version: '2.2.1' }, { name: 'pillow', version: '11.3.0' }]);
+    const out = formatBatch(res);
+    expect(out).toContain("| pypi pillow | 11.3.0 | VULNERABLE (2, HIGH) | - | 13.0.0 is outside moviepy 2.2.1's pillow<12.0,>=9.2.0 and no clean release fits it; see details |");
+    expect(out).toContain('NOTE (packages in this call): pillow 13.0.0 fixes the advisories of pillow 11.3.0, but moviepy 2.2.1 requires pillow<12.0,>=9.2.0.');
+    expect(out).toContain('No pillow release in that range is free of them');
+    expect(out).toContain('No moviepy release accepts pillow 13.0.0 yet (newest: 2.2.1)');
+    expect(out).toContain('A pillow pin outside that range would make the install fail.');
+    // The other rows are untouched.
+    expect(out).toContain('| pypi stirrup | 0.2.1 | ok | 0.2.1 |');
+  });
+
+  it('a clean release inside the range becomes the version to use', async () => {
+    stirrup();
+    versions.set('pillow', ['10.4.0', '11.0.0', '11.3.0', '11.3.1', '12.0.0', '13.0.0']);
+    const out = formatBatch(await batch([{ name: 'stirrup', version: '0.2.1' }, { name: 'pillow', version: '11.3.0' }]));
+    expect(out).toContain("| pypi pillow | 11.3.0 | VULNERABLE (2, HIGH) | 11.3.1 | 13.0.0 is outside moviepy 2.2.1's pillow<12.0,>=9.2.0 (via stirrup 0.2.1); 11.3.1 is the newest clean release in range |");
+    expect(out).toContain('The newest pillow release in that range with no known advisories is 11.3.1: pip install "pillow==11.3.1"');
+  });
+
+  it('a pin asked for outside a range in the call gets a note; the version stays', async () => {
+    stirrup();
+    reports.set('pillow@13.0.0', { verdict: 'ok', requested: { version: '13.0.0', verdict: 'ok', advisories: [] } });
+    const out = formatBatch(await batch([{ name: 'stirrup', version: '0.2.1' }, { name: 'pillow', version: '13.0.0' }]));
+    expect(out).toContain("| pypi pillow | 13.0.0 | ok | 13.0.0 | outside moviepy 2.2.1's pillow<12.0,>=9.2.0 (via stirrup 0.2.1): the install will likely fail |");
+    expect(out).toContain("NOTE (packages in this call): pillow 13.0.0 is outside moviepy 2.2.1's requirement pillow<12.0,>=9.2.0, and stirrup 0.2.1 pulls moviepy 2.2.1.");
+  });
+
+  it('pillow alone, or with a range that accepts the fix: the table it always was', async () => {
+    stirrup();
+    const alone = formatBatch(await batch([{ name: 'pillow', version: '11.3.0' }]));
+    expect(alone).toContain('| pypi pillow | 11.3.0 | VULNERABLE (2, HIGH) | 13.0.0 | fix needs a new major: breaking changes |');
+    expect(alone).not.toContain('NOTE (packages');
+    stirrup('<14.0,>=9.2.0');
+    const fits = formatBatch(await batch([{ name: 'stirrup', version: '0.2.1' }, { name: 'pillow', version: '11.3.0' }]));
+    expect(fits).toContain('| pypi pillow | 11.3.0 | VULNERABLE (2, HIGH) | 13.0.0 | fix needs a new major: breaking changes |');
+    expect(fits).not.toContain('NOTE (packages');
+  });
+
+  it('npm: a peer range in the call excludes a fix on a new major; a same-line fix reads no peer range', async () => {
+    versions.set('react', ['18.2.0', '18.3.1', '19.1.0']);
+    versions.set('react-dom', ['18.3.1', '19.1.0']);
+    peers.set('react-dom@18.3.1', { react: '^18.3.1' });
+    peers.set('react-dom@19.1.0', { react: '^19.1.0' });
+    vulnerable.set('react@18.2.0', ['GHSA-r1', 'GHSA-r2']);
+    vulnerable.set('react@18.3.1', ['GHSA-r2']);
+    reports.set('react-dom@18.3.1', { verdict: 'ok', requested: { version: '18.3.1', verdict: 'ok', advisories: [] } });
+    reports.set('react@18.2.0', {
+      verdict: 'vulnerable', line: '18.x', crossLineRequired: true, safeVersion: '19.1.0',
+      requested: { version: '18.2.0', verdict: 'vulnerable', advisories: [adv('r1'), adv('r2')] },
+    });
+    const out = formatBatch(await batch([{ name: 'react-dom', version: '18.3.1' }, { name: 'react', version: '18.2.0' }], 'npm'));
+    expect(out).toContain("| npm react | 18.2.0 | VULNERABLE (2, HIGH) | - | 19.1.0 is outside react-dom 18.3.1's peer range react ^18.3.1 and no clean release fits it; see details |");
+    expect(out).toContain('react 19.1.0 fixes the advisories of react 18.2.0, but react-dom 18.3.1 requires react ^18.3.1 as a peer dependency.');
+    expect(out).toContain('npm stops the install with a peer dependency conflict.');
+
+    calls.peers = 0;
+    reports.set('react@18.2.0', {
+      verdict: 'vulnerable', line: '18.x', safeVersionSameLine: '18.3.1', safeVersion: '19.1.0',
+      requested: { version: '18.2.0', verdict: 'vulnerable', advisories: [adv('r1')] },
+    });
+    const same = formatBatch(await batch([{ name: 'react-dom', version: '18.3.1' }, { name: 'react', version: '18.2.0' }], 'npm'));
+    expect(same).toContain('| npm react | 18.2.0 | VULNERABLE (1, HIGH) | 18.3.1 | fix on the same release line |');
+    expect(calls.peers).toBe(0);
+  });
+
+  it('a lookup that fails leaves the table as it was', async () => {
+    stirrup();
+    const { getDependencies } = await import('../src/advisories/depsdev.js');
+    vi.mocked(getDependencies).mockRejectedValueOnce(new Error('HTTP 503')).mockRejectedValueOnce(new Error('HTTP 503'));
+    const out = formatBatch(await batch([{ name: 'stirrup', version: '0.2.1' }, { name: 'pillow', version: '11.3.0' }]));
+    expect(out).toContain('| pypi pillow | 11.3.0 | VULNERABLE (2, HIGH) | 13.0.0 | fix needs a new major: breaking changes |');
   });
 });
 
