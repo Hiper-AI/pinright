@@ -92,7 +92,16 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
 
   const sameLine = report.safeVersionSameLine;
   const cmd = (v: string) => installCommand(report.ecosystem, report.package, v);
-  if (req && report.line && sameLine && sameLine !== req.version) {
+  // A fresh release deps.dev has not indexed: nothing known is wrong with it, so an older version is not a fix.
+  const notIndexed = Boolean(req?.notIndexed && req.verdict === 'unknown');
+  if (notIndexed) {
+    if (report.safeVersion && report.safeVersion !== req?.version) {
+      lines.push(
+        `Newest version with full deps.dev data and no known advisories: ${report.safeVersion}. Switching to it is not a fix, since nothing known is wrong with ${req?.version}; ` +
+          `consider it only if a fully checked version matters more than the new release and the project's other pins allow it.`,
+      );
+    }
+  } else if (req && report.line && sameLine && sameLine !== req.version) {
     lines.push(`Recommended within ${report.line}: ${sameLine} (same release line, no API break expected). Upgrade: ${cmd(sameLine)}`);
     if (report.safeVersion && report.safeVersion !== sameLine) {
       lines.push(
@@ -128,7 +137,8 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
     );
   }
   if (report.sameLineTree) lines.push(`NOTE: ${lineTreeMessage(report.package, report.sameLineTree)}`);
-  if (report.safeVersion && report.safeVersionLicenses?.length && report.verdict !== 'possible-typosquat') lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
+  // The safe version's license, not the requested one's: next to a version deps.dev has no data for, it would read as that one's.
+  if (report.safeVersion && report.safeVersionLicenses?.length && report.verdict !== 'possible-typosquat' && !notIndexed) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
   const le = report.leastExposed;
   if (!report.safeVersion && le && (!req || le.version !== req.version)) {
     lines.push(

@@ -39,7 +39,7 @@ about:
 |---|---|---|
 | `api.deps.dev` | ecosystem, package name, version | every check |
 | `api.osv.dev` | ecosystem, package name, version | every check |
-| Registries: `registry.npmjs.org`, `api.npmjs.org`, `pypi.org`, `pypistats.org`, `crates.io`, `rubygems.org`, `repo.packagist.org`, `packagist.org` | package name, version | checks, risk signals, docs |
+| Registries: `registry.npmjs.org`, `api.npmjs.org`, `pypi.org`, `pypistats.org`, `crates.io`, `rubygems.org`, `repo.packagist.org`, `packagist.org` | package name, version | checks (including confirming a package or version that deps.dev has not indexed yet), risk signals, docs |
 | `cdn.jsdelivr.net`, `data.jsdelivr.com` | package name, version, file path | docs from the published package |
 | `api.github.com`, `raw.githubusercontent.com` | repository, tag, file path | docs from the repo, upgrade guides, GitHub Actions audit |
 | The package's own docs site | a request for `/llms.txt`, `/llms-full.txt` and the pages it lists | docs and upgrade guides, when the package metadata names a site |

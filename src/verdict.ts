@@ -15,6 +15,9 @@ import { checkTyposquat, findLookalike, type TyposquatReport } from './typosquat
 
 const YOUNG_PACKAGE_DAYS = 60;
 
+/** The registries existsInRegistry asks, by the host named in the agent's notice. */
+const REGISTRY_HOST: Partial<Record<Ecosystem, string>> = { npm: 'registry.npmjs.org', pypi: 'pypi.org', cargo: 'crates.io', rubygems: 'rubygems.org' };
+
 export interface Verdict {
   report: PackageReport;
   typo?: TyposquatReport;
@@ -70,6 +73,16 @@ async function checkVerdict(
   if (report.verdict === 'unknown-package' && !report.requested) {
     const typo = await checkTyposquat(eco, name);
     if (typo.lookalikeOf) report.verdict = 'possible-typosquat';
+    else if (typo.existsInRegistry && REGISTRY_HOST[eco]) {
+      // deps.dev indexes new packages hours late: the registry has it, so "no such package" would be false.
+      // Nothing about it could be checked, and a package this new is where most malicious publishes hide.
+      report.verdict = 'unknown';
+      report.notIndexed = REGISTRY_HOST[eco];
+      report.sources = [...report.sources, REGISTRY_HOST[eco]];
+      report.reason =
+        `${name} is published on ${REGISTRY_HOST[eco]}, but deps.dev has no data for it yet (it indexes new packages with a delay of hours); ` +
+        'its versions, advisories, age and install scripts could not be checked';
+    }
     return { report, typo };
   }
 

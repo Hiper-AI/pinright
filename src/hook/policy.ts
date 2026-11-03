@@ -6,7 +6,8 @@
  *          a version with known advisories when a clean one exists, a deprecated
  *          version when a maintained one exists, a brand-new package with install
  *          scripts, a release that adds install scripts from a new publisher (src/risk);
- *   ask  : the newest version itself has advisories and nothing clean exists;
+ *   ask  : the newest version itself has advisories and nothing clean exists; a package
+ *          the registry publishes but deps.dev has not indexed yet (hours old);
  *   allow: everything else. Warnings (cooldown, unknown source) go to the agent
  *          as context without blocking, unless configured otherwise.
  *
@@ -255,6 +256,10 @@ function judge(c: Checked, p: Policy): Outcome {
         ? { action: 'deny', problem: `${label}: version ${version} was never published (or was removed).${fix(r.safeVersion, 'Use')}` }
         : { action: 'deny', problem: `${label}: no such package in the ${i.ecosystem} registry. Check the name; if it is a private package, add it to "allow" in .pinright.json (or PINRIGHT_ALLOW).` };
     case 'unknown':
+      // A package deps.dev has not indexed yet is hours old: nothing about it is known, so a human decides.
+      if (r.notIndexed) return { action: p.onError === 'deny' ? 'deny' : 'ask', problem: `${label}: ${r.reason}. A human should confirm it before it is installed.` };
+      // A fresh version of a known package: published, OSV checked, the rest unknown. The onError policy decides.
+      if (r.requested?.notIndexed) return unreachable(p, i, `${label}: ${r.reason}.`);
       return unreachable(p, i, `${label}: could not be verified (${r.reason}).`);
     default:
       break;

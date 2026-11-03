@@ -11,6 +11,7 @@ import { config } from '../config.js';
 import { packagistAdvisoryInfo } from '../composer/packagist.js';
 import { type Ecosystem, NO_DEPS_DEV } from '../ecosystems.js';
 import { getAdvisory, getPackage, getVersion, type DepsDevVersionSummary } from './depsdev.js';
+import { versionInRegistry } from '../registry.js';
 import { cleanField, cleanText } from '../untrusted/index.js';
 import { fixedVersions, isMalware, queryVersion, severityOf, titleOf } from './osv.js';
 import type { LineTreeNote } from './lineTree.js';
@@ -45,6 +46,12 @@ export interface RequestedVersionReport {
   advisories: AdvisoryInfo[];
   /** Publisher text of this version that reads as instructions to an AI agent ("deprecation message: ..."). */
   agentText?: string[];
+  /**
+   * deps.dev has no record of this version but the registry named here publishes it (deps.dev
+   * indexes new releases with a lag of hours). Advisories come from osv.dev alone; licenses,
+   * deprecation and risk signals are unknown.
+   */
+  notIndexed?: string;
 }
 
 export interface PackageReport {
@@ -88,6 +95,8 @@ export interface PackageReport {
   checkedAt: string;
   /** Sources that did not answer during this check ("osv.dev", "deps.dev"): the verdict is partial or unknown because of them. */
   unavailable?: string[];
+  /** deps.dev has no record of the package, but the registry named here publishes it (set by verdict.ts). */
+  notIndexed?: string;
   sources: string[];
 }
 
@@ -411,19 +420,23 @@ export async function assessPackage(
     const { requested, osvDown: down, error } = await requestedP;
     report.requested = requested;
     osvDown ??= down;
+    if (requested.notIndexed) report.sources = [...report.sources, requested.notIndexed];
     if (error) report.unavailable = [registry];
     // The headline verdict is about what the agent asked for. Malware and a version that does not
     // exist win over anything the package-wide scan said: "vulnerable" (no clean version, as in a
     // package whose every release is malicious) or "unknown" (a source failed while scanning) would
     // let the hook and the MCP answer treat malware as an ordinary advisory or an unverified package.
-    const definite = report.requested.verdict === 'malicious' || report.requested.verdict === 'unknown-package';
+    // A version deps.dev has not indexed yet is news too: the package-wide scan says nothing about it.
+    const definite = report.requested.verdict === 'malicious' || report.requested.verdict === 'unknown-package' || Boolean(report.requested.notIndexed);
     if (report.requested.verdict !== 'ok' && (report.verdict === 'ok' || report.verdict === 'deprecated' || definite)) {
       report.verdict = report.requested.verdict;
-      report.reason = report.requested.verdict === 'unknown'
-        ? `${registry} did not answer for version ${requestedVersion} (${error ?? 'no answer'}); no verdict possible`
-        : report.requested.verdict === 'unknown-package'
-          ? `version ${requestedVersion} of ${name} does not exist in ${eco}`
-          : undefined;
+      report.reason = report.requested.notIndexed && report.requested.verdict === 'unknown'
+        ? notIndexedReason(name, report.requested, osvDown)
+        : report.requested.verdict === 'unknown'
+          ? `${registry} did not answer for version ${requestedVersion} (${error ?? 'no answer'}); no verdict possible`
+          : report.requested.verdict === 'unknown-package'
+            ? `version ${requestedVersion} of ${name} does not exist in ${eco}`
+            : undefined;
     }
   }
   // "No known advisories" needs both sources: deps.dev alone lags OSV by hours, and fresh malware reports land in OSV first.
@@ -434,6 +447,16 @@ export async function assessPackage(
   }
   if (osvDown) report.unavailable = [...new Set([...(report.unavailable ?? []), 'osv.dev'])];
   return report;
+}
+
+/** The reason for a version the registry publishes and deps.dev has no record of yet. */
+function notIndexedReason(name: string, req: RequestedVersionReport, osvDown: string | undefined): string {
+  const when = req.publishedAt ? ` (published ${req.publishedAt.slice(0, 16).replace('T', ' ')} UTC)` : '';
+  const osv = osvDown ? `osv.dev did not answer either (${osvDown}), so its advisories are unknown` : 'osv.dev lists no advisories for it';
+  return (
+    `version ${req.version} of ${name} is published on ${req.notIndexed}${when}, but deps.dev has no data for it yet ` +
+    `(it indexes new releases with a delay of hours); ${osv}, and its licenses, deprecation status and risk signals could not be checked`
+  );
 }
 
 async function assessRequested(
@@ -450,7 +473,14 @@ async function assessRequested(
     return { requested: { version: clean, verdict: 'unknown', advisories: [] }, error: (err as Error).message };
   }
   if (!detail) {
-    return { requested: { version: clean, verdict: 'unknown-package', advisories: [] } };
+    // deps.dev's 404 is not the registry's: it indexes new releases hours late. Ask the registry
+    // before calling the version nonexistent; when it cannot say (no client, no answer), deps.dev's answer stands.
+    const reg = await versionInRegistry(eco, name, clean);
+    if (!reg) return { requested: { version: clean, verdict: 'unknown-package', advisories: [] } };
+    // Published but not indexed. OSV takes reports for any version, so malware and advisories still show.
+    const { advisories, osvDown } = await describeAdvisories(eco, name, clean, []);
+    const verdict: Verdict = advisories.some((a) => isMalware(a.id)) ? 'malicious' : advisories.length > 0 ? 'vulnerable' : 'unknown';
+    return { requested: { version: clean, verdict, publishedAt: reg.publishedAt, advisories, notIndexed: reg.registry }, osvDown };
   }
   const ids = (detail.advisoryKeys ?? []).map((a) => a.id);
   const { advisories, osvDown } = await describeAdvisories(eco, name, clean, ids);

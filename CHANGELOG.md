@@ -6,6 +6,18 @@ All notable changes to pinright are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A version that deps.dev has not indexed yet is no longer reported as "never published". deps.dev
+  indexes new releases with a delay of hours: `jsonpointer==3.8` (PyPI) was still missing there
+  eight hours after its upload, and the hook blocked it and suggested an older version. A deps.dev
+  404 is now confirmed against the registry (npm, PyPI, crates.io, RubyGems) first. A version the
+  registry publishes gets an "unverified" verdict that says deps.dev has no data for it yet, with
+  advisories and malware records from osv.dev alone; the hook follows `onError` for it, as for any
+  check that cannot complete. A whole package the registry publishes but deps.dev has never seen
+  asks a human instead of being denied as nonexistent. When the registry cannot be reached, or for
+  ecosystems without a registry client (Go, Maven, NuGet), deps.dev's answer stands.
+
 ## [1.0.0] - 2026-11-03
 
 First public release. Earlier versions were never published to npm.

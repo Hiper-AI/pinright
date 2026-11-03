@@ -144,7 +144,13 @@ function row(r: BatchResult): string {
       break;
     case 'unknown':
       verdict = 'UNVERIFIED';
-      notes.push(short(rep.reason ?? 'a data source did not answer', 60));
+      if (rep.requested?.notIndexed || rep.notIndexed) {
+        // The long reason would be cut before its point: say it short.
+        notes.push(`published on ${rep.requested?.notIndexed ?? rep.notIndexed}; deps.dev has no data for it yet`);
+        if (rep.requested?.notIndexed) notes.push(rep.unavailable?.includes('osv.dev') ? 'advisories unknown' : 'osv.dev lists no advisories');
+      } else {
+        notes.push(short(rep.reason ?? 'a data source did not answer', 60));
+      }
       break;
     case 'ok':
       if (rep.cooldownOnly) {

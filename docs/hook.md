@@ -131,6 +131,7 @@ names still decide as usual, since they need no network.
 | No network, DNS failure | `unknown`: "deps.dev did not answer (api.deps.dev unreachable (DNS lookup failed))" | allow with the note / deny with the reason |
 | deps.dev 5xx | `unknown`, with the HTTP status | same |
 | OSV down, deps.dev up | deps.dev's advisories still count; otherwise `unknown` ("osv.dev did not answer ...; unverified") | same for the unverified ones |
+| deps.dev has not indexed a fresh release yet (404 there, published on npm, PyPI, crates.io or RubyGems) | `unknown`: "version 3.8 of jsonpointer is published on pypi.org (...), but deps.dev has no data for it yet ..."; advisories and malware from osv.dev alone. A whole package deps.dev has never seen but the registry publishes is `unknown` too | the version: allow with the note / deny with the reason. The package: ask (deny with `onError: deny`), since it is hours old. If the registry also answers 404 it is "never published"; if the registry does not answer, deps.dev's 404 stands |
 | A host that never answers | timeout after `PINRIGHT_TIMEOUT_MS`; later calls to that host fail at once for 30 s | ask by `PINRIGHT_HOOK_TIMEOUT_MS` at the latest |
 | GitHub rate limit | the answer ends with what it is missing and when the limit resets | Actions refs: unverified, `onError` decides |
 | jsDelivr 5xx (docs) | fewer docs, and a closing NOTE naming the hosts that failed | not involved |

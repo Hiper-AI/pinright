@@ -8,7 +8,7 @@ import { getVersion } from './advisories/depsdev.js';
 import { cached } from './cache.js';
 import { config } from './config.js';
 import { type Ecosystem } from './ecosystems.js';
-import { getJson } from './http.js';
+import { getJson, isNotFound } from './http.js';
 
 export interface PackageMeta {
   ecosystem: Ecosystem;
@@ -101,6 +101,69 @@ async function fromRegistry(eco: Ecosystem, name: string, version: string): Prom
       return { repo: githubRepo(`https://${name}`), docsUrl: undefined };
     default:
       return {};
+  }
+}
+
+/** What the registry itself says about one version, for when deps.dev has not indexed it yet. */
+export interface RegistryVersion {
+  /** Host that answered ("pypi.org"), named in the agent's notice. */
+  registry: string;
+  publishedAt?: string;
+}
+
+/** A version that was missing an hour ago may be published now: answers are kept for an hour, not a day. */
+const TTL_REGISTRY_VERSION = 3600_000;
+
+const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined);
+
+/**
+ * Is this version published, according to the registry itself? deps.dev indexes new releases with a
+ * lag of hours (jsonpointer 3.8 on PyPI was still a 404 there eight hours after its upload), so its
+ * 404 alone does not mean "never published". Null: the registry has no such version. Undefined: no
+ * registry client for this ecosystem, or the registry did not answer; the caller keeps deps.dev's answer.
+ */
+export async function versionInRegistry(eco: Ecosystem, name: string, version: string): Promise<RegistryVersion | null | undefined> {
+  let url: string;
+  let registry: string;
+  let published: (j: any) => string | undefined;
+  switch (eco) {
+    case 'npm':
+      // The version document, a few KB; the packument with every version's time can run to tens of MB.
+      url = `https://registry.npmjs.org/${npmPath(name)}/${encodeURIComponent(version)}`;
+      registry = 'registry.npmjs.org';
+      published = () => undefined;
+      break;
+    case 'pypi':
+      url = `https://pypi.org/pypi/${encodeURIComponent(name)}/${encodeURIComponent(version)}/json`;
+      registry = 'pypi.org';
+      published = (j) => str(j?.urls?.[0]?.upload_time_iso_8601);
+      break;
+    case 'cargo':
+      url = `https://crates.io/api/v1/crates/${encodeURIComponent(name)}/${encodeURIComponent(version)}`;
+      registry = 'crates.io';
+      published = (j) => str(j?.version?.created_at);
+      break;
+    case 'rubygems':
+      url = `https://rubygems.org/api/v2/rubygems/${encodeURIComponent(name)}/versions/${encodeURIComponent(version)}.json`;
+      registry = 'rubygems.org';
+      published = (j) => str(j?.version_created_at) ?? str(j?.created_at);
+      break;
+    default:
+      return undefined;
+  }
+  try {
+    return await cached<RegistryVersion | null>(`regver:${eco}:${name}@${version}`, TTL_REGISTRY_VERSION, async () => {
+      try {
+        const j = await getJson<any>(url, { headers: { accept: 'application/json' } });
+        const at = published(j);
+        return at ? { registry, publishedAt: at } : { registry };
+      } catch (err) {
+        if (isNotFound(err)) return null;
+        throw err;
+      }
+    });
+  } catch {
+    return undefined;
   }
 }
 
