@@ -2103,3 +2103,9 @@ thead .vs-key {
 .split > * {
   min-width: 0;
 }
+
+@media (min-width: 1000px) {
+  .cards.cards-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

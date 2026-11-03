@@ -55,6 +55,34 @@
         </div>
       </section>
 
+      <section class="section" id="problem" aria-labelledby="problem-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">The problem</p>
+            <h2 id="problem-title">Agents get versions from memory, or from docs tools that do not check them</h2>
+            <p>When an agent writes a manifest, the version comes from its training data, which is often years behind the registry, or from a docs MCP server, which returns documentation and does not check the version against advisories. Neither one looks at the version the agent pins.</p>
+          </div>
+          <ul class="cards cards-3">
+            <li class="card">
+              <span class="n">From memory</span>
+              <h3>40% to 42% of pins had an advisory</h3>
+              <p>Three Claude models with no tools, 12 tasks: about 30 whole-tree alerts per project, with pins like <code>axios@1.7.9</code> (33 advisories) and <code>pillow@11.0.0</code> (86).</p>
+            </li>
+            <li class="card">
+              <span class="n">From a docs MCP server</span>
+              <h3>Current docs, and still vulnerable pins</h3>
+              <p>Docs for the current release cut alerts to 0.3 to 3.5 per project. In 4 of 72 runs the agent still pinned a vulnerable next or next-auth, such as <code>next@15.5.0</code> with 32 advisories.</p>
+            </li>
+            <li class="card">
+              <span class="n">With pinright</span>
+              <h3>0% of pins had an advisory</h3>
+              <p>Every dependency gets a verdict before the agent pins it, with a fix on the same release line, and the hook checks the install itself. The 0.3 alerts left per project come from nuxt, which has no fix published.</p>
+            </li>
+          </ul>
+          <p class="qualifier">We measured the docs MCP server case with pinright's own server, security layer off; it is not another product. Given a shell, the agents looked versions up themselves and every arm ended at the same 6 alerts. Method and caveats are on the <a href="/evidence/">evidence page</a>.</p>
+        </div>
+      </section>
+
       <section class="story" id="story" aria-labelledby="story-title" data-story>
         <div class="story-stage">
           <div class="wrap story-in">

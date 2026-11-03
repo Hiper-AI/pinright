@@ -5,10 +5,12 @@
 
 # pinright
 
-**Version-accurate docs and a dependency check for coding agents.** Your agent pins library
-versions from memory, and about 40% of those pins carry a known advisory. pinright gives it the
-docs for the exact version it installs and a verdict on every dependency it adds, before the
-install runs. MCP server, pre-install hook, CLI and GitHub Action, all local.
+**Version-accurate docs and a dependency check for coding agents.** Your agent gets library
+versions from one of two places: its memory, where about 40% of the pins it wrote in our benchmark
+carried a known advisory, or a docs MCP server, which returns documentation and does not check the
+version against advisories. pinright gives it the docs for the exact version it installs and a
+verdict on every dependency it adds, before the install runs. MCP server, pre-install hook, CLI and
+GitHub Action, all local.
 
 [![npm](https://img.shields.io/npm/v/pinright?label=npm)](https://www.npmjs.com/package/pinright)
 [![CI](https://github.com/Hiper-AI/pinright/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Hiper-AI/pinright/actions/workflows/ci.yml)

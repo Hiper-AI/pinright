@@ -31,6 +31,15 @@ vendor's models, two days of advisory data, tasks we wrote, and two repetitions.
 
 ## 1. Problem
 
+A coding agent that adds a dependency today gets its version from one of two sources. The first is
+its own memory: the model's training data, which stops at a cutoff. The second is a docs tool, such as
+an MCP server that returns library documentation. Neither source checks the version against
+advisories. Memory gives old versions, many with advisories published since (Section 1.1). A docs
+tool moves the agent toward current releases, which removes most of that exposure, but it does not
+tell the agent whether the version it pins is vulnerable, and agents still pin vulnerable versions
+with one (Section 1.2). pinright adds that check at the moment the agent chooses the version and again
+when the install runs.
+
 ### 1.1 Agents pin from memory
 
 When a coding agent writes `package.json` or `requirements.txt`, it has to pick a version for each
@@ -50,7 +59,7 @@ The package choices were fine. The same packages installed without a version (th
 reference arm) produced 3 alerts over 12 projects, all in the dependencies of the current `nuxt`
 release, which have no fixed version yet.
 
-### 1.2 What changes the version
+### 1.2 Docs tools move the version but do not check it
 
 If the versions are the problem, any tool that moves the agent to current releases should help, and
 our ablation (Section 5.2) shows that it does. pinright with its security layer switched off
@@ -60,8 +69,10 @@ no-docs arm.
 
 That leaves cases a docs tool does not handle. An agent has reasons to pin an older version: a peer
 range (`next-auth` 4 wants `next` 15), an existing lockfile, a pre-release it read about. Without a
-verdict it cannot tell a vulnerable old release from a clean one, and in our runs Sonnet pinned
-`next@15.5.0` (32 advisories) and Haiku `next-auth` betas with advisories. A docs tool also says
+verdict it cannot tell a vulnerable old release from a clean one, and in 4 of the 72 docs-only runs
+it pinned a vulnerable `next` or `next-auth`: Sonnet `next@15.5.0` (32 advisories) in both next-auth
+runs, and Haiku `next-auth` betas with advisories in both of its own. The docs-only and pinright
+intervals overlap (Section 5.2), so this is an observation on these tasks, not a measured rate. A docs tool also says
 nothing about lookalike names, packages that do not exist, or malware, and it helps only when the
 agent calls it. pinright adds those pieces: a verdict on the version being pinned, a fix on the same
 release line, refusal of malicious, lookalike and nonexistent names, and a hook that runs whether or
