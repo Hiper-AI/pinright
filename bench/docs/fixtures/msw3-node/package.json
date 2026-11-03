@@ -1,0 +1,14 @@
+{
+  "name": "msw3-node",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "graphql": "17.0.2",
+    "msw": "3.0.3",
+    "typescript": "7.0.2"
+  }
+}

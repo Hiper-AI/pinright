@@ -50,6 +50,20 @@ export function bootstrap<T>(clusters: T[][], stat: (xs: T[]) => number, iters =
   return [out[Math.floor(0.025 * out.length)], out[Math.min(out.length - 1, Math.floor(0.975 * out.length))]];
 }
 
+/**
+ * 95% Wilson score interval of a proportion k / n. Unlike the task bootstrap it does
+ * not collapse to [1, 1] when every run passes (16 of 16 gives [0.81, 1]), but it
+ * treats runs as independent, which repetitions of one task are not.
+ */
+export function wilson(k: number, n: number, z = 1.96): [number, number] {
+  if (!n) return [NaN, NaN];
+  const p = k / n;
+  const den = 1 + (z * z) / n;
+  const mid = (p + (z * z) / (2 * n)) / den;
+  const half = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / den;
+  return [Math.max(0, mid - half), Math.min(1, mid + half)];
+}
+
 /** "12.3 [8.1, 17.0]" */
 export const withCi = (x: number, ci: [number, number], fmt = f1) => `${fmt(x)} [${fmt(ci[0])}, ${fmt(ci[1])}]`;
 

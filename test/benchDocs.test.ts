@@ -1,9 +1,11 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { callArgs, npmMajor, projectFromFiles, pypiMajor, runChecks, stripJsComments, stripPyComments } from '../bench/docs/checks.js';
+import { callArgs, npmMajor, npmVersion, projectFromFiles, pypiMajor, pypiVersion, runChecks, stripJsComments, stripPyComments, versionAtLeast } from '../bench/docs/checks.js';
+import { ALL_TASKS, taskSet } from '../bench/docs/sets.js';
 import { tailwindCssTests } from '../bench/docs/smoke.js';
 import { TASKS } from '../bench/docs/tasks.js';
+import { wilson } from '../bench/stats.js';
 
 const FIXTURES = join(import.meta.dirname, '..', 'bench', 'docs', 'fixtures');
 
@@ -21,7 +23,7 @@ function fixture(task: string): Record<string, string> {
   return out;
 }
 
-const task = (id: string) => TASKS.find((t) => t.id === id)!;
+const task = (id: string) => ALL_TASKS.find((t) => t.id === id)!;
 /** The ids of the checks a project fails. */
 function failing(id: string, files: Record<string, string>): string[] {
   return runChecks(projectFromFiles(files), task(id).checks).filter((c) => !c.pass).map((c) => c.id).sort();
@@ -68,10 +70,48 @@ describe('docs benchmark: helpers', () => {
     expect(pypiMajor(p, 'langchain')).toBe(1);
     expect(pypiMajor(p, 'requests')).toBeUndefined();
   });
+
+  it('reads full pinned versions and compares them with a minimum', () => {
+    const p = projectFromFiles({ 'package.json': '{"dependencies":{"hono":"4.13.16","zod":"4.5.0-canary.20260817T190646"}}', 'requirements.txt': 'langchain[mcp]==1.4.8\npandas==3.1.0rc0\n' });
+    expect(npmVersion(p, 'hono')).toBe('4.13.16');
+    expect(pypiVersion(p, 'langchain')).toBe('1.4.8');
+    expect(versionAtLeast('4.13.16', '4.13.13')).toBe(true);
+    expect(versionAtLeast('4.13.12', '4.13.13')).toBe(false);
+    expect(versionAtLeast('0.162.0', '0.142.0')).toBe(true);
+    expect(versionAtLeast('1.4', '1.4.0')).toBe(true);
+    expect(versionAtLeast(npmVersion(p, 'zod'), '4.5.0')).toBe(false);
+    expect(versionAtLeast(pypiVersion(p, 'pandas'), '3.1.0')).toBe(false);
+    expect(versionAtLeast(undefined, '1.0.0')).toBe(false);
+  });
+
+  it('computes Wilson intervals', () => {
+    const [lo, hi] = wilson(16, 16);
+    expect(lo).toBeCloseTo(0.806, 3);
+    expect(hi).toBe(1);
+    const [lo0, hi0] = wilson(0, 16);
+    expect(lo0).toBe(0);
+    expect(hi0).toBeCloseTo(0.194, 3);
+  });
+});
+
+describe('docs benchmark: task sets', () => {
+  it('keeps the v6 set as it was and adds eight post-cutoff tasks with unique ids', () => {
+    expect(taskSet('v6')).toBe(TASKS);
+    expect(taskSet('post-cutoff')).toHaveLength(8);
+    expect(new Set(ALL_TASKS.map((t) => t.id)).size).toBe(ALL_TASKS.length);
+  });
+
+  it('every post-cutoff API first shipped on or after 2026-08-01', () => {
+    for (const t of taskSet('post-cutoff')) {
+      expect(t.evidence, t.id).toBeDefined();
+      expect(t.evidence!.published >= '2026-08-01', t.id).toBe(true);
+      expect(t.majors.every((m) => m.min), t.id).toBe(true);
+    }
+  });
 });
 
 describe('docs benchmark: every reference solution passes every check', () => {
-  for (const t of TASKS) {
+  for (const t of ALL_TASKS) {
     it(t.id, () => expect(failing(t.id, fixture(t.id))).toEqual([]));
   }
 });
@@ -190,6 +230,73 @@ describe('docs benchmark: old APIs are caught, current ones are not', () => {
     expect(failing('langchain1-agent', f)).toEqual(['classic', 'create-agent', 'legacy-agents', 'prebuilt-react', 'system-prompt']);
     const prompt = fixture('langchain1-agent')['agent.py'].replace('system_prompt="You', 'prompt="You');
     expect(failing('langchain1-agent', variant('langchain1-agent', { 'agent.py': prompt }))).toEqual(['prompt-kwarg', 'system-prompt']);
+  });
+});
+
+describe('docs benchmark, post-cutoff set: the pre-release way is caught', () => {
+  it('msw3: graphql from msw and onUnhandledRequest', () => {
+    const f = variant('msw3-node', {
+      'src/mocks/handlers.ts': "import { graphql, http, HttpResponse } from 'msw';\nexport const handlers = [graphql.query('RepoStars', () => HttpResponse.json({}))];\n",
+      'src/mocks/server.ts': "import { setupServer } from 'msw/node';\nexport const server = setupServer();\nexport const startMocks = () => server.listen({ onUnhandledRequest: 'error' });\n",
+    });
+    expect(failing('msw3-node', f)).toEqual(['graphql-bare-query', 'graphql-root', 'graphql-subpath', 'on-unhandled-frame', 'on-unhandled-request']);
+  });
+
+  it('hono: app.mount instead of the mount middleware', () => {
+    const f = variant('hono-mount', { 'src/app.ts': "import { Hono } from 'hono';\nconst app = new Hono();\napp.mount('/legacy', legacyHandler);\nexport default app;\n" });
+    expect(failing('hono-mount', f)).toEqual(['app-mount', 'mount-middleware']);
+  });
+
+  it('dotenv18: preload arguments, dotenv in the app, another loader', () => {
+    const pkg = (start: string) => JSON.stringify({ scripts: { start }, dependencies: { dotenv: '18.0.9' } });
+    expect(failing('dotenv18-run', variant('dotenv18-run', { 'package.json': pkg('node -r dotenv/config server.js dotenv_config_path=.env.local') }))).toEqual(['dotenv-run', 'preload-args']);
+    expect(failing('dotenv18-run', variant('dotenv18-run', { 'package.json': pkg('node --env-file=.env.local server.js') }))).toEqual(['dotenv-run']);
+    expect(failing('dotenv18-run', variant('dotenv18-run', { 'package.json': pkg('dotenv run --file=.env.local -- node server.js') }))).toEqual([]);
+    const imported = "import 'dotenv/config';\n" + fixture('dotenv18-run')['server.js'];
+    expect(failing('dotenv18-run', variant('dotenv18-run', { 'server.js': imported }))).toEqual(['no-import']);
+  });
+
+  it('zod: no compilation; named import of compile counts', () => {
+    const src = fixture('zod-compile')['src/events.ts'];
+    expect(failing('zod-compile', variant('zod-compile', { 'src/events.ts': src.replace('z.compile(EventSchema)', 'EventSchema').replace('z.uuid()', 'z.string().uuid()') }))).toEqual(['string-format', 'z-compile']);
+    const named = "import { compile, z } from 'zod';\n" + src.replace("import * as z from 'zod';\n", '').replace('z.compile(', 'compile(');
+    expect(failing('zod-compile', variant('zod-compile', { 'src/events.ts': named }))).toEqual([]);
+  });
+
+  it('polars2: cut/qcut, with_row_count, join_nulls, left-closed bins', () => {
+    const f = variant('polars2-bins', {
+      'report.py': 'import polars as pl\n\ndef age_report(people, cities):\n    return people.with_columns(pl.col("age").cut([12, 19], labels=["a", "b", "c"]), pl.col("income").qcut(4)).join(cities, on="city_id", join_nulls=True).with_row_count("row", offset=1)\n',
+    });
+    expect(failing('polars2-bins', f)).toEqual(['bin-intervals', 'bin-quantiles', 'cut-qcut', 'join-nulls', 'with-row-count']);
+    const left = fixture('polars2-bins')['report.py'].replace(', right_closed=True', '');
+    expect(failing('polars2-bins', variant('polars2-bins', { 'report.py': left }))).toEqual(['bin-intervals']);
+  });
+
+  it('fastapi: the instrumentation package instead of telemetry=', () => {
+    const f = variant('fastapi-telemetry', {
+      'main.py': 'from fastapi import FastAPI\nfrom opentelemetry.instrumentation.fastapi import FastAPIInstrumentor\napp = FastAPI(title="x", response_model_exclude_none=True)\nFastAPIInstrumentor.instrument_app(app, excluded_urls="health")\n',
+    });
+    expect(failing('fastapi-telemetry', f)).toEqual(['instrumentor', 'telemetry-exclude', 'telemetry-metrics-off', 'telemetry-param']);
+  });
+
+  it('pandas31: boolean indexing, assign and inplace', () => {
+    const f = variant('pandas31-select', {
+      'clean.py': 'import pandas as pd\n\ndef adults(df):\n    out = df[df["age"] >= 18].copy()\n    out.sort_values("age", inplace=True)\n    return out.assign(age_months=out["age"] * 12)[["name", "age_months"]]\n',
+    });
+    expect(failing('pandas31-select', f)).toEqual(['df-select', 'filter-cond', 'inplace']);
+    const lambdaForm = fixture('pandas31-select')['clean.py'].replace('df.filter(cond=pd.col("age") >= 18)', 'df.filter(lambda d: d["age"] >= 18)');
+    expect(failing('pandas31-select', variant('pandas31-select', { 'clean.py': lambdaForm }))).toEqual([]);
+  });
+
+  it('langchain14: the separate adapters package and a str target', () => {
+    const f = variant('langchain14-mcp', {
+      'agent.py': 'from langchain.agents import create_agent\nfrom langchain_mcp_adapters.client import MultiServerMCPClient\n\nasync def ask(q):\n    client = MultiServerMCPClient({"weather": {"command": "python", "args": ["weather_server.py"], "transport": "stdio"}})\n',
+    });
+    expect(failing('langchain14-mcp', f)).toEqual(['adapters-package', 'langchain-mcp']);
+    const str = fixture('langchain14-mcp')['agent.py'].replace('MCPAdapter(SERVER)', 'MCPAdapter("weather_server.py")');
+    expect(failing('langchain14-mcp', variant('langchain14-mcp', { 'agent.py': str }))).toEqual(['str-target']);
+    const url = fixture('langchain14-mcp')['agent.py'].replace('MCPAdapter(SERVER)', 'MCPAdapter("https://example.com/mcp")');
+    expect(failing('langchain14-mcp', variant('langchain14-mcp', { 'agent.py': url }))).toEqual([]);
   });
 });
 

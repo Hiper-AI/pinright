@@ -2,19 +2,26 @@
  * Turns one or more runs/<stamp>/scores.json (one per model) into the generated part
  * of bench/DOCS.md (between the "generated" markers; the hand-written diagnosis around it is kept).
  *
- *   npx tsx bench/docs/report.ts <stamp> [<stamp> ...]
+ *   npx tsx bench/docs/report.ts <stamp> [<stamp> ...] [--set v6|post-cutoff] [--file path.md]
+ *
+ * The task set comes from --set or from the first run's config.json (default v6). The
+ * v6 set writes into bench/DOCS.md; any other set into bench/RESULTS-<set>.md, unless
+ * --file says otherwise. Sets other than v6 also get a cross-model table with Wilson
+ * intervals at the top.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { modelName } from '../agents/metrics.js';
 import { canonicalScores } from '../legacy.js';
-import { f1, f2, f3, pct } from '../stats.js';
+import { f1, f2, f3, pct, wilson } from '../stats.js';
 import { docsArmMetrics } from './metrics.js';
 import { ARMS, type DocsRunScore } from './score.js';
-import { TASKS } from './tasks.js';
+import { DEFAULT_SET, setFromArgs, taskSet } from './sets.js';
 
-const stamps = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-if (!stamps.length) throw new Error('usage: report.ts <stamp> [<stamp> ...]');
+const argv = process.argv.slice(2);
+const VALUED = new Set(['--set', '--file']);
+const stamps = argv.filter((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
+if (!stamps.length) throw new Error('usage: report.ts <stamp> [<stamp> ...] [--set name] [--file path]');
 const root = resolve(import.meta.dirname, '..', '..');
 
 const LABEL: Record<string, string> = { 'no-docs': 'No docs', 'docs-only': 'docs-only (pinright with the security layer off)', pinright: 'pinright' };
@@ -34,16 +41,41 @@ const runs = stamps.map((stamp) => {
   return { stamp, scores, config, model: scores.find((s) => s.model)?.model ?? config.model };
 });
 
+const set = setFromArgs(argv, runs[0].config.set ?? DEFAULT_SET);
+for (const r of runs) if ((r.config.set ?? DEFAULT_SET) !== set) throw new Error(`${r.stamp} ran the ${r.config.set ?? DEFAULT_SET} set, not ${set}`);
+const TASKS = taskSet(set);
+const smokeTasks = TASKS.filter((t) => t.smoke).length;
+const wilsonTxt = (k: number, n: number) => {
+  const [lo, hi] = wilson(k, n);
+  return `${pct(k, n)} [${pct(lo, 1)}, ${pct(hi, 1)}]`;
+};
+const armsOf = (scores: DocsRunScore[]) => [...ARMS.filter((a) => scores.some((s) => s.arm === a)), ...[...new Set(scores.map((s) => s.arm))].filter((a) => !ARMS.includes(a)).sort()];
+
 L.push(
   `Runs: ${runs.map((r) => `\`${r.stamp}\` (${modelName(r.model)}, ${r.config.reps} repetition(s), ${r.scores.length} runs scored)`).join(', ')}. ` +
-    `${TASKS.length} tasks per arm. Brackets: 95% cluster-bootstrap interval of the rate, resampling tasks; with 8 tasks it is wide.`,
+    `${TASKS.length} tasks per arm (set \`${set}\`). Brackets: 95% cluster-bootstrap interval of the rate, resampling tasks; with ${TASKS.length} tasks it is wide.` +
+    (set === DEFAULT_SET ? '' : ' The Wilson column treats every run as independent, which repetitions of one task are not, so it is narrower than it should be.'),
   '',
 );
+
+if (set !== DEFAULT_SET) {
+  head(['Model', 'Arm', 'Current API, runs', '95% Wilson', '95% task bootstrap', 'Works (install + build)', 'Pinned a version with the API', 'Required checks all present', 'Runs using a removed API', 'Runs using a deprecated API', 'API-equivalent cost / run (USD, list price)', 'Docs calls / run']);
+  for (const run of runs) {
+    for (const a of armsOf(run.scores)) {
+      const m = docsArmMetrics(run.scores.filter((s) => s.arm === a));
+      row([
+        modelName(run.model), label(a), `**${m.current} / ${m.runs}**`, wilsonTxt(m.current, m.runs), `[${pct(m.currentCi[0], 1)}, ${pct(m.currentCi[1], 1)}]`,
+        `${m.works} / ${m.runs}`, `${m.versionOk} / ${m.runs}`, `${m.requiredOk} / ${m.runs}`, String(m.removed), String(m.deprecated), f3(m.costMean), f1(m.docsCallsMean),
+      ]);
+    }
+  }
+  L.push('');
+}
 
 for (const run of runs) {
   const { scores } = run;
   const name = modelName(run.model);
-  const arms = [...ARMS.filter((a) => scores.some((s) => s.arm === a)), ...[...new Set(scores.map((s) => s.arm))].filter((a) => !ARMS.includes(a)).sort()];
+  const arms = armsOf(scores);
   const by = (a: string) => scores.filter((s) => s.arm === a);
   const M = Object.fromEntries(arms.map((a) => [a, docsArmMetrics(by(a))]));
   type Mx = (typeof M)[string];
@@ -54,8 +86,8 @@ for (const run of runs) {
   metric('Works (installs, builds, smoke test passes)', (m) => `${m.works} / ${m.runs}`);
   metric('Installs', (m) => `${m.installed} / ${m.runs}`);
   metric('Builds / type-checks / imports', (m) => `${m.built} / ${m.runs}`);
-  metric('Smoke test passes (6 tasks with one)', (m) => `${m.smokePass} / ${m.smokeRuns}`);
-  metric('Pinned the asked major', (m) => `${m.versionOk} / ${m.runs}`);
+  if (smokeTasks) metric(`Smoke test passes (${smokeTasks} tasks with one)`, (m) => `${m.smokePass} / ${m.smokeRuns}`);
+  metric(TASKS.some((t) => t.majors.some((x) => x.min)) ? 'Pinned the asked major, at or above the first release with the API' : 'Pinned the asked major', (m) => `${m.versionOk} / ${m.runs}`);
   metric('All required new-API checks present', (m) => `${m.requiredOk} / ${m.runs}`);
   metric('Runs using a removed API', (m) => String(m.removed));
   metric('Runs using a deprecated API', (m) => String(m.deprecated));
@@ -82,7 +114,7 @@ for (const run of runs) {
           fails.set(k, (fails.get(k) ?? 0) + 1);
         }
         if (!r.versionOk) {
-          const k = `v:${Object.entries(r.pinned).map(([n, v]) => `${n}@${v ?? '?'}`).join(',')}`;
+          const k = `v:${Object.entries(r.pinnedVersion ?? r.pinned).map(([n, v]) => `${n}@${v ?? '?'}`).join(',')}`;
           fails.set(k, (fails.get(k) ?? 0) + 1);
         }
       }
@@ -126,7 +158,8 @@ for (const run of runs) {
 
 const START = '<!-- generated:start -->';
 const END = '<!-- generated:end -->';
-const file = join(root, 'bench', 'DOCS.md');
+const fileArg = argv.includes('--file') ? argv[argv.indexOf('--file') + 1] : undefined;
+const file = fileArg ? (isAbsolute(fileArg) ? fileArg : resolve(fileArg)) : join(root, 'bench', set === DEFAULT_SET ? 'DOCS.md' : `RESULTS-${set}.md`);
 const prev = existsSync(file) ? readFileSync(file, 'utf8') : `# Docs benchmark\n\n${START}\n${END}\n`;
 const i = prev.indexOf(START);
 const j = prev.indexOf(END);

@@ -7,13 +7,17 @@
  * (a Claude Code MCP config); none is shipped here.
  * Uses the worktree's dist/cli.js: build first, and do not rebuild while runs are in flight.
  *
- *   npx tsx bench/docs/run.ts [--model sonnet] [--reps 2] [--concurrency 2] [--only id1,id2]
+ *   npx tsx bench/docs/run.ts [--set v6|post-cutoff] [--model sonnet] [--reps 2] [--concurrency 2] [--only id1,id2]
  *     [--arms a,b] [--mcp-arm name=mcp.json] [--stamp s] [--resume]
+ *
+ * --set picks the task set (sets.ts; default v6). It is saved in config.json, and a
+ * --resume without --set reuses the saved one.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { extraArms, planJobs, runJobs } from '../agents/harness.js';
-import { DOCS_HINT, TASKS } from './tasks.js';
+import { DEFAULT_SET, setFromArgs, taskSet } from './sets.js';
+import { DOCS_HINT } from './tasks.js';
 
 const args = process.argv.slice(2);
 const opt = (name: string, def: string) => {
@@ -39,10 +43,14 @@ const stamp = opt('stamp', `docs-${new Date().toISOString().replace(/[:.]/g, '-'
 const resume = args.includes('--resume');
 const runDir = join(root, 'bench', 'docs', 'runs', stamp);
 
-const tasks = TASKS.filter((t) => !only.length || only.includes(t.id));
+const configFile = join(runDir, 'config.json');
+const saved = resume && existsSync(configFile) ? JSON.parse(readFileSync(configFile, 'utf8')) : undefined;
+const set = setFromArgs(args, saved?.set ?? DEFAULT_SET);
+if (saved && (saved.set ?? DEFAULT_SET) !== set) throw new Error(`${stamp} was started with --set ${saved.set ?? DEFAULT_SET}, not ${set}`);
+const tasks = taskSet(set).filter((t) => !only.length || only.includes(t.id));
 const jobs = planJobs(tasks, arms, reps, { runDir, resume, suffix: DOCS_HINT });
 mkdirSync(runDir, { recursive: true });
-if (!resume) writeFileSync(join(runDir, 'config.json'), JSON.stringify({ model, reps, arms, tasks: tasks.map((t) => t.id), startedAt: new Date().toISOString() }, null, 2));
+if (!resume) writeFileSync(configFile, JSON.stringify({ model, reps, arms, set, tasks: tasks.map((t) => t.id), startedAt: new Date().toISOString() }, null, 2));
 await runJobs(jobs, {
   runDir,
   model,

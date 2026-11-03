@@ -12,19 +12,34 @@ export interface DocsTask {
   library: string;
   ecosystem: 'npm' | 'pypi';
   prompt: string;
-  /** Packages whose pinned major must match. */
-  majors: { name: string; major: number }[];
+  /** Packages whose pinned major must match; with `min`, the pinned version must also be at least that one (the first release with the API). */
+  majors: { name: string; major: number; min?: string }[];
   /** Official pages the checks were written from. */
   sources: string[];
   checks: ApiCheck[];
   /** Runtime smoke test id in smoke.ts. */
   smoke?: string;
+  /** Post-cutoff set: where the API first shipped, from the registry's publish time. */
+  evidence?: TaskEvidence;
 }
 
-const NPM_RULES =
+export interface TaskEvidence {
+  package: string;
+  /** First release (stable or prerelease) that ships the API. */
+  firstVersion: string;
+  /** Its publish time on the registry (npm `time`, PyPI upload time), UTC. */
+  published: string;
+  /** First stable release with the API, when firstVersion is a prerelease. */
+  firstStable?: { version: string; published: string };
+  /** Newest release before it, checked not to have the API, and how. */
+  lastWithout: string;
+  changelog: string;
+}
+
+export const NPM_RULES =
   'Write a package.json with EXACT pinned versions (no ^ or ~) for every dependency, plus the source file(s). ' +
   'Do not run any command.';
-const PY_RULES =
+export const PY_RULES =
   'Write a requirements.txt with EXACT pinned versions (name==version) for every dependency, plus the source file(s). ' +
   'Do not run any command.';
 
@@ -38,7 +53,7 @@ function routePaths(src: string): string[] {
   return out;
 }
 
-const someCall = (fn: string, pred: (args: string[]) => boolean, path: RegExp = SRC_JS) => (p: Parameters<ApiCheck['test']>[0]) =>
+export const someCall = (fn: string, pred: (args: string[]) => boolean, path: RegExp = SRC_JS) => (p: Parameters<ApiCheck['test']>[0]) =>
   filesMatching(p, path).some(([, c]) => callArgs(c, fn).some(pred));
 
 export const TASKS: DocsTask[] = [

@@ -4,7 +4,7 @@
  */
 import { bootstrap, mean, sum } from '../stats.js';
 import type { DocsRunScore } from './score.js';
-import { TASKS } from './tasks.js';
+import { ALL_TASKS } from './sets.js';
 
 export const docsCalls = (s: DocsRunScore) => s.calls.filter((c) => /(get|query)-docs|upgrade-guide/.test(c.tool));
 
@@ -37,7 +37,7 @@ export function docsArmMetrics(rs: DocsRunScore[]): DocsArmMetrics {
   const fin = (xs: (number | undefined)[]) => xs.filter((x): x is number => Number.isFinite(x));
   const byTask = new Map<string, number[]>();
   for (const r of rs) byTask.set(r.task, [...(byTask.get(r.task) ?? []), r.current ? 1 : 0]);
-  const withSmoke = rs.filter((r) => TASKS.find((t) => t.id === r.task)?.smoke);
+  const withSmoke = rs.filter((r) => ALL_TASKS.find((t) => t.id === r.task)?.smoke);
   const checks = rs.flatMap((r) => r.checks);
   return {
     runs: rs.length,

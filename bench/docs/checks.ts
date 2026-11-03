@@ -219,6 +219,34 @@ export function pypiMajor(p: Project, name: string): number | undefined {
   return m ? Number(m[1]) : undefined;
 }
 
+/** The version pinned for an npm package, without range operators; undefined when absent. */
+export function npmVersion(p: Project, name: string): string | undefined {
+  const spec = p.pkg?.dependencies?.[name] ?? p.pkg?.devDependencies?.[name];
+  return spec?.match(/\d+(?:\.\d+)*(?:-[\w.]+)?/)?.[0];
+}
+
+/** The version of a PyPI requirement pinned with ==, >=, ~= or ===; undefined when unpinned or absent. */
+export function pypiVersion(p: Project, name: string): string | undefined {
+  const spec = p.reqs?.get(name.toLowerCase().replace(/[-_.]+/g, '-'));
+  return spec?.match(/(?:==|>=|~=|===)\s*(\d+(?:\.\d+)*(?:[a-z]+\d*)?)/)?.[1];
+}
+
+/**
+ * True when `version` is at least `min`, comparing the numeric release parts.
+ * A prerelease of `min` itself (3.1.0rc0, 4.5.0-canary.x) counts as below it.
+ */
+export function versionAtLeast(version: string | undefined, min: string): boolean {
+  if (!version) return false;
+  const nums = (v: string) => (v.match(/^\d+(?:\.\d+)*/)?.[0] ?? '0').split('.').map(Number);
+  const a = nums(version);
+  const b = nums(min);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d) return d > 0;
+  }
+  return !/^\d+(?:\.\d+)*[-a-z]/i.test(version);
+}
+
 export function runChecks(p: Project, checks: ApiCheck[]): CheckResult[] {
   return checks.map((c) => {
     const hit = c.test(p);

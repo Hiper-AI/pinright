@@ -4,13 +4,13 @@
  * each "old" variant (the same project written with the previous major's API)
  * must lose exactly what it should. Slow: installs and builds every project.
  *
- *   npx tsx bench/docs/selftest.ts [--only t1,t2]
+ *   npx tsx bench/docs/selftest.ts [--set v6|post-cutoff] [--only t1,t2]
  */
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { scoreRun } from './score.js';
-import { TASKS } from './tasks.js';
+import { setFromArgs, taskSet } from './sets.js';
 
 const HERE = resolve(import.meta.dirname);
 function readFixture(task: string, file: string): string {
@@ -121,12 +121,81 @@ const VARIANTS: Record<string, Variant[]> = {
     },
     expect: { works: false, current: false },
   }],
+  // Post-cutoff set: each variant is the same project written the way an agent would without the new release.
+  'msw3-node': [{
+    name: 'msw 2 imports and listen option on msw 3',
+    edit: {
+      'src/mocks/handlers.ts': [
+        ["import { graphql } from 'msw/graphql';\nimport { http, HttpResponse } from 'msw/http';", "import { graphql, http, HttpResponse } from 'msw';"],
+        ["const api = graphql.link('https://api.example.com/graphql');\n", ''],
+        ['api.query(', 'graphql.query('],
+      ],
+      'src/mocks/server.ts': [['onUnhandledFrame', 'onUnhandledRequest']],
+    },
+    expect: { works: false, current: false },
+  }],
+  'hono-mount': [{
+    name: 'app.mount()',
+    edit: { 'src/app.ts': [["import { mount } from 'hono/mount';\n", ''], ["app.all('/legacy/*', mount(legacyHandler));", "app.mount('/legacy', legacyHandler);"]] },
+    expect: { works: true, current: false },
+  }],
+  'dotenv18-run': [{
+    name: 'preload with dotenv_config_path',
+    edit: { 'package.json': [['"dotenv run -f .env.local -- node server.js"', '"node -r dotenv/config server.js dotenv_config_path=.env.local"']] },
+    expect: { works: true, current: false },
+  }],
+  'zod-compile': [{
+    name: 'no compilation, v3 string formats',
+    edit: {
+      'src/events.ts': [
+        ['z.uuid()', 'z.string().uuid()'],
+        ['const CompiledEvent = z.compile(EventSchema);\n', ''],
+        ['CompiledEvent.parse', 'EventSchema.parse'],
+      ],
+    },
+    expect: { works: true, current: false },
+  }],
+  'polars2-bins': [{
+    name: 'cut/qcut on polars 2',
+    edit: {
+      'report.py': [
+        ['.bin_intervals([12, 19], labels=["child", "teen", "adult"], right_closed=True)', '.cut([12, 19], labels=["child", "teen", "adult"])'],
+        ['.bin_quantiles(4, labels=False)', '.qcut(4, labels=["0", "1", "2", "3"])'],
+      ],
+    },
+    expect: { works: true, current: false },
+  }],
+  'fastapi-telemetry': [{
+    name: 'instrumentation package, FastAPI pinned before 0.142',
+    edit: {
+      'main.py': [
+        ['from fastapi import FastAPI\n', 'from fastapi import FastAPI\nfrom opentelemetry import trace\nfrom opentelemetry.instrumentation.fastapi import FastAPIInstrumentor\n'],
+        [/app = FastAPI\([\s\S]*?\n\)\n/, 'trace.set_tracer_provider(tracer_provider)\napp = FastAPI()\nFastAPIInstrumentor.instrument_app(app, excluded_urls="health")\n'],
+      ],
+      'requirements.txt': 'fastapi==0.141.1\nopentelemetry-sdk==1.45.2\nopentelemetry-instrumentation-fastapi==0.66b2\n',
+    },
+    expect: { works: true, current: false },
+  }],
+  'pandas31-select': [{
+    name: 'pandas 3.0 idioms',
+    edit: {
+      'clean.py': 'import pandas as pd\n\n\ndef adults(df: pd.DataFrame) -> pd.DataFrame:\n    kept = df[df["age"] >= 18].copy()\n    kept.sort_values("age", inplace=True)\n    kept.reset_index(drop=True, inplace=True)\n    return kept.assign(age_months=kept["age"] * 12)[["name", "age_months"]]\n',
+      'requirements.txt': 'pandas==3.0.5\n',
+    },
+    expect: { works: true, current: false },
+  }],
+  'langchain14-mcp': [{
+    name: 'str target for a local script',
+    edit: { 'agent.py': [['MCPAdapter(SERVER)', 'MCPAdapter("weather_server.py")']] },
+    expect: { works: true, current: false },
+  }],
 };
 
 const args = process.argv.slice(2);
 const only = args.includes('--only') ? (args[args.indexOf('--only') + 1] ?? '').split(',') : [];
+const set = setFromArgs(args);
 let bad = 0;
-for (const task of TASKS.filter((t) => !only.length || only.includes(t.id))) {
+for (const task of taskSet(set).filter((t) => !only.length || only.includes(t.id))) {
   const cases: (Variant | undefined)[] = [undefined, ...(VARIANTS[task.id] ?? [])];
   for (const v of cases) {
     const dir = mkdtempSync(join(tmpdir(), 'sctx-selftest-'));

@@ -1,0 +1,11 @@
+{
+  "name": "dotenv18-run",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "dotenv run -f .env.local -- node server.js"
+  },
+  "dependencies": {
+    "dotenv": "18.0.9"
+  }
+}

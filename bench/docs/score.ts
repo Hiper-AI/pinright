@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- transcripts are untyped JSON */
 /**
  * Scores a docs-benchmark run. Per run:
- *   - version: the pinned major of the task's library;
+ *   - version: the pinned major of the task's library (and, when the task sets one, at least its minimum version);
  *   - API checks (checks.ts): current API present, removed/deprecated API absent;
  *   - install + build (bench/agents/buildcheck.ts) and the runtime smoke test (smoke.ts);
  *   - agent cost, turns, and every docs tool call with its arguments.
@@ -13,10 +13,11 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { type BuildScore, npmBuild, pypiBuild } from '../agents/buildcheck.js';
-import { type CheckResult, loadProject, npmMajor, pypiMajor, runChecks } from './checks.js';
+import { type CheckResult, loadProject, npmMajor, npmVersion, pypiMajor, pypiVersion, runChecks, versionAtLeast } from './checks.js';
 import { runSmoke, type SmokeResult } from './smoke.js';
 import { canonicalArm, canonicalScores, canonicalTool } from '../legacy.js';
-import { type DocsTask, TASKS } from './tasks.js';
+import { ALL_TASKS } from './sets.js';
+import type { DocsTask } from './tasks.js';
 
 /** Report order for the built-in arms; extra arms (--mcp-arm) follow in name order. */
 export const ARMS = ['no-docs', 'docs-only', 'pinright'];
@@ -27,6 +28,8 @@ export interface DocsRunScore {
   ok: boolean; costUsd?: number; turns?: number; durationMs?: number; model?: string;
   calls: DocsCall[];
   pinned: Record<string, number | undefined>;
+  /** Full pinned versions, recorded for tasks with a minimum version (majors[].min). */
+  pinnedVersion?: Record<string, string | undefined>;
   versionOk: boolean;
   checks: CheckResult[];
   build?: BuildScore;
@@ -70,7 +73,11 @@ export function verdict(task: DocsTask, s: Pick<DocsRunScore, 'build' | 'smoke' 
 export async function scoreRun(task: DocsTask, work: string, doBuild = true): Promise<Omit<DocsRunScore, 'arm' | 'task' | 'rep' | 'ok' | 'calls'>> {
   const project = loadProject(work);
   const pinned = Object.fromEntries(task.majors.map((m) => [m.name, task.ecosystem === 'npm' ? npmMajor(project, m.name) : pypiMajor(project, m.name)]));
-  const versionOk = task.majors.every((m) => pinned[m.name] === m.major);
+  const withMin = task.majors.filter((m) => m.min);
+  const pinnedVersion = withMin.length
+    ? Object.fromEntries(withMin.map((m) => [m.name, task.ecosystem === 'npm' ? npmVersion(project, m.name) : pypiVersion(project, m.name)]))
+    : undefined;
+  const versionOk = task.majors.every((m) => pinned[m.name] === m.major && (!m.min || versionAtLeast(pinnedVersion?.[m.name], m.min)));
   const checks = runChecks(project, task.checks);
   let smoke: SmokeResult | undefined;
   const after = task.smoke ? async (dir: string, b: BuildScore) => { smoke = await runSmoke(task.smoke!, dir, b); } : undefined;
@@ -80,7 +87,7 @@ export async function scoreRun(task: DocsTask, work: string, doBuild = true): Pr
     : { installed: false, step: 'manifest', error: 'no manifest' };
   if (task.smoke && build && !smoke) smoke = { ran: false, pass: false, tests: [], error: 'not installed' };
   const v = verdict(task, { build, smoke, checks, versionOk });
-  return { pinned, versionOk, checks, build, smoke, ...v };
+  return { pinned, ...(pinnedVersion ? { pinnedVersion } : {}), versionOk, checks, build, smoke, ...v };
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename);
@@ -103,7 +110,7 @@ if (isMain) {
     if (onlyArms.length && !onlyArms.includes(arm)) continue;
     for (const name of readdirSync(armDir).sort()) {
       const m = name.match(/^(.*)-r(\d+)$/);
-      const task = m && TASKS.find((t) => t.id === m[1]);
+      const task = m && ALL_TASKS.find((t) => t.id === m[1]);
       if (!m || !task || (onlyTasks.length && !onlyTasks.includes(task.id))) continue;
       jobs.push({ arm, task, rep: Number(m[2]), dir: join(armDir, name) });
     }
@@ -121,7 +128,7 @@ if (isMain) {
       const failed = s.checks.filter((c) => !c.pass).map((c) => `${c.kind[0]}:${c.id}`);
       const smokeTxt = s.smoke ? (s.smoke.pass ? 'ok' : `FAIL ${s.smoke.error ?? s.smoke.tests.filter((x) => !x.pass).map((x) => x.name).join(',')}`) : '-';
       const buildTxt = s.build?.built === false || !s.build?.installed ? `FAIL ${s.build?.step}: ${s.build?.error ?? ''}`.slice(0, 120) : 'ok';
-      console.log(`${arm.padEnd(11)} ${task.id}-r${rep} v=${JSON.stringify(s.pinned)} build=${buildTxt} smoke=${smokeTxt} checks=${failed.join(' ') || 'all'} => works=${s.works} current=${s.current}`);
+      console.log(`${arm.padEnd(11)} ${task.id}-r${rep} v=${JSON.stringify(s.pinnedVersion ?? s.pinned)} build=${buildTxt} smoke=${smokeTxt} checks=${failed.join(' ') || 'all'} => works=${s.works} current=${s.current}`);
     }
   }));
   const file = join(runDir, 'scores.json');
