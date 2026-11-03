@@ -11,3 +11,7 @@ bench/docs/runs/
 bench/fp/sessions-corpus/
 build/
 paper/kit/pinright-paper-kit.zip
+
+# Python bytecode
+__pycache__/
+*.pyc
