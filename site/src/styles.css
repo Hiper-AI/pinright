@@ -2265,3 +2265,20 @@ thead .vs-key {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* On phones the copy button keeps only its icon, so it does not cover the end of the command.
+   Its aria-label still says what it does. */
+@media (max-width: 439px) {
+  .copy {
+    padding: 6px 8px;
+  }
+
+  .copy .copy-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
