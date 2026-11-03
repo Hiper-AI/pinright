@@ -71,7 +71,7 @@ current versions do most of the work.
 | `visuals/cli/pinright-doctor` | Install and setup step |
 | `visuals/cli/pinright-check-lodash` | CLI for people, same verdict the agent gets |
 | `visuals/cli/pinright-audit-sarif`, `pinright-sarif-summary` | CI and code-scanning story |
-| `visuals/landing/*` | Current landing (desktop and mobile, EN and ES), for reference; its numbers are the older v5 ones, see `claims.md` section 2 |
+| `visuals/landing/*` | The pinright.dev home page (desktop light and dark, phone full length and one screen per section), with the v7 numbers |
 
 Every figure comes as SVG and 2x PNG, light (`<id>`) and dark (`<id>-dark`), with a caption in
 `figures/<id>.caption.md` and alt text in `copy/alt-text.md`. The charts are generated from the CSVs

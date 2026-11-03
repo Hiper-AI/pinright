@@ -69,8 +69,12 @@ fingerprint.
 
 ## Landing screenshots (visuals/landing)
 
-**desktop-en / desktop-es.** The pinright page on hiperai.com, desktop width, English and Spanish:
-hero, the benchmark numbers, the three pieces, install, privacy and the open-source section. Taken
-before the v6 update; the numbers shown are the v5 ones.
+**desktop-en / desktop-en-dark.** The pinright.dev home page at desktop width, light and dark
+theme: hero with the install commands, the problem (pins from memory or from docs tools that do not
+check them), the install story with the hook's answer, the comparison with a docs-only server, the
+benchmark v7 numbers, what the agent sees, how it works, privacy and the footer.
 
-**mobile-en-N / mobile-es-N.** The same page at phone width, one section per image.
+**mobile-en / mobile-en-dark.** The same page at phone width, full length.
+
+**mobile-en-1 to mobile-en-6.** Phone width, one screen each: hero, the problem, the install story,
+the comparison, the benchmark numbers, the footer.
