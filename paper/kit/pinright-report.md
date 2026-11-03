@@ -1,6 +1,7 @@
 # pinright: version-accurate library docs and a supply-chain verdict for coding agents
 
-**Hiper AI** (opensource@hiperai.com)
+**Juan Pablo Mandelbaum**, principal investigator and pinright lead, Hiper AI
+(opensource@hiperai.com)
 
 Technical report, version 1.0.0, 2026-11-03. Code: <https://github.com/Hiper-AI/pinright> (MIT). Site:
 <https://pinright.dev>. This report has not been peer reviewed. It describes pinright 1.0.0. The
