@@ -2,6 +2,8 @@
  * get-docs end to end with fixture registries: what the answer gathers and how it says it.
  * Upstreams are keyed by URL, as in injection.test.ts.
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.PINRIGHT_NO_CACHE = '1';
@@ -87,5 +89,68 @@ describe('get-docs answer', () => {
     const r = await getDocs({ ecosystem: 'npm', name: 'lib', version: '2.0.0', query: 'streamText with a system prompt' });
     expect(r.text).toMatch(/<untrusted-data id="[0-9a-f]+" source="dist\/index\.d\.ts, lib@2\.0\.0">\nRenamed or deprecated in lib@2\.0\.0, per the package's own files: `system` -> `instructions` \(dist\/index\.d\.ts\)\./);
     expect(r.text).toContain('instructions?: string;');
+  });
+});
+
+/**
+ * msw 3 keeps only `graphql.link(url)`: `graphql.query()` is gone. The question spells the old call;
+ * the declaration of `graphql` (lib/graphql/index.d.ts, the real file of msw@3.0.3) ranked ninth
+ * behind fragments that mention "query", and nothing said the member was gone.
+ */
+describe('get-docs on a member this version no longer declares', () => {
+  const MSW3 = readFileSync(join(import.meta.dirname, 'fixtures', 'msw', 'graphql-3.0.3.d.ts.txt'), 'utf8');
+  const README = [
+    '# mocker',
+    '',
+    '## Node.js',
+    '',
+    '### Usage example',
+    '',
+    '```js',
+    "import { http, HttpResponse } from 'mocker/http'",
+    "import { setupServer } from 'mocker/node'",
+    '',
+    "const server = setupServer(http.get('https://api.example.com/user', () => HttpResponse.json({ name: 'Ada' })))",
+    'server.listen()',
+    '```',
+    '',
+  ].join('\n');
+
+  function seedMocker(version: string, graphqlDts: string) {
+    fixtures.set(`registry.npmjs.org/mocker/${version}`, { name: 'mocker', description: 'API mocking', types: 'lib/core/index.d.ts' });
+    fixtures.set(`data.jsdelivr.com/v1/packages/npm/mocker@${version}`, {
+      files: [
+        { name: '/README.md', size: README.length },
+        { name: '/lib/core/index.d.ts', size: 200 },
+        { name: '/lib/graphql/index.d.ts', size: graphqlDts.length },
+      ],
+    });
+    fixtures.set(`cdn.jsdelivr.net/npm/mocker@${version}/README.md`, README);
+    fixtures.set(`cdn.jsdelivr.net/npm/mocker@${version}/lib/core/index.d.ts`, 'export declare const http: {\n  get(path: string, resolver: Function): unknown;\n};\n');
+    fixtures.set(`cdn.jsdelivr.net/npm/mocker@${version}/lib/graphql/index.d.ts`, graphqlDts);
+  }
+
+  const QUERY = 'mocker/graphql graphql.query resolver return HttpResponse.json data; peerDependencies graphql version range; package.json engines';
+
+  it('says the member is gone, names what the object declares, and shows that declaration first', async () => {
+    seedMocker('3.0.3', MSW3);
+    const r = await getDocs({ ecosystem: 'npm', name: 'mocker', version: '3.0.3', query: QUERY });
+    expect(r.text).toMatch(/<untrusted-data id="[0-9a-f]+" source="lib\/graphql\/index\.d\.ts, mocker@3\.0\.3">\n`graphql\.query` is not declared in mocker@3\.0\.3: `graphql` \(lib\/graphql\/index\.d\.ts\) has only `link`\./);
+    const sections = [...r.text.matchAll(/^### (.*)$/gm)].map((m) => m[1]);
+    expect(sections[0]).toBe('const graphql [lib/graphql/index.d.ts]');
+    expect(r.text).toContain('link(url: Path): GraphQLLink;');
+  });
+
+  it('stays quiet when the object still has the member', async () => {
+    const v2 = 'export declare const graphql: {\n  link: (url: string) => unknown;\n  query: GraphQLRequestHandler;\n  mutation: GraphQLRequestHandler;\n};\n';
+    seedMocker('2.12.0', v2);
+    const r = await getDocs({ ecosystem: 'npm', name: 'mocker', version: '2.12.0', query: QUERY });
+    expect(r.text).not.toContain('is not declared in');
+  });
+
+  it('says nothing about an object whose type is not spelled out', async () => {
+    seedMocker('3.0.3', 'export declare const graphql: GraphQLNamespace & Extra;\n');
+    const r = await getDocs({ ecosystem: 'npm', name: 'mocker', version: '3.0.3', query: QUERY });
+    expect(r.text).not.toContain('is not declared in');
   });
 });

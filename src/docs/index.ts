@@ -11,7 +11,9 @@ import { UntrustedOutput } from '../untrusted/index.js';
 import { apiDocFiles, packageNotes, pythonApi, type PythonApi } from './python.js';
 import { discoverSiteRepo, packageSite, readmeDocsLink } from './discover.js';
 import { expandIncludes } from './includes.js';
-import { applicableRenames, currentGuides, expandQuery, packageRenames, renamesNote, type Rename } from './renames.js';
+import {
+  applicableRenames, currentGuides, expandQuery, missingMembers, missingNote, packageRenames, renamesNote, type MissingMember, type Rename,
+} from './renames.js';
 import {
   asksSignature, chunkFile, coverPaths, GENERATED_BOOST, isGenerated, notUserDocs, olderMajorPath, rank, rankPaths, select, topics, topicsFirst, type Chunk, type DocFile,
 } from './retrieve.js';
@@ -140,6 +142,27 @@ function dedupe(chunks: Chunk[]): Chunk[] {
     seen.add(key);
     return true;
   });
+}
+
+/**
+ * The declaration of each object whose member the question asks for and this version lacks (see
+ * missingMembers), ahead of everything else: it is the one section that shows what to call instead. In a
+ * question with several topics, it also leads the topics that spell the name.
+ */
+function declarationsFirst(ranked: Chunk[], missing: MissingMember[], topicList: string[]): Chunk[] {
+  const pins = missing.flatMap((m) => {
+    const c = ranked.find((x) => x.file.kind === 'types' && x.title === `const ${m.root}`);
+    return c ? [{ c, name: m.name }] : [];
+  });
+  if (!pins.length) return ranked;
+  const top = ranked[0]?.score ?? 0;
+  pins.forEach(({ c, name }, i) => {
+    c.score = top + pins.length - i;
+    if (c.topicScores) {
+      c.topicScores = c.topicScores.map((s, t) => (topicList[t]?.includes(name) ? Math.max(...ranked.map((x) => x.topicScores?.[t] ?? 0)) + pins.length - i : s));
+    }
+  });
+  return [...ranked].sort((a, b) => b.score - a.score);
 }
 
 /** Where a chunk comes from, for its untrusted-data fence. */
@@ -292,7 +315,8 @@ export async function collectDocs(opts: DocsOptions): Promise<{
 async function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, docFiles: DocFile[], pyApi: PythonApi | undefined, out: UntrustedOutput, renames: Rename[] = [], code: { path: string; url: string }[] = []): Promise<DocsResult> {
   // Sections the injection scanner flags stay apart, so dropping one never takes clean neighbors with it.
   const chunks = docFiles.flatMap((d) => chunkFile(d, (t) => out.scan(t).level === 'none'));
-  const ranked = dedupe(rank(chunks, opts.query, topics(opts.query)));
+  const missing = missingMembers(opts.query, docFiles);
+  const ranked = declarationsFirst(dedupe(rank(chunks, opts.query, topics(opts.query))), missing, topics(opts.query));
   const best = ranked[0]?.score ?? 0;
   const sources = docFiles.map((d) => ({ label: d.label, url: d.url, versionAccurate: d.versionAccurate }));
   // PyPI: import name and sibling packages to install, checked against the query and the returned text.
@@ -338,6 +362,10 @@ async function assemble(opts: DocsOptions, budget: number, meta: PackageMeta, do
   // Names read from the package's files: fenced like the docs they come from.
   const renamed = renamesNote(meta.name, meta.version, renames);
   if (renamed) header.push(out.block(renamed, `${[...new Set(renames.map((r) => r.source))].join(', ')}, ${meta.name}@${meta.version}`));
+  for (const m of missing) {
+    const first = picked.slice(0, missing.length).some((c) => c.file.kind === 'types' && c.title === `const ${m.root}`);
+    header.push(out.block(missingNote(meta.name, meta.version, m, first), `${m.source}, ${meta.name}@${meta.version}`));
+  }
   return { meta, via: 'local', sources, text: format(meta, picked, header, out) };
 }
 

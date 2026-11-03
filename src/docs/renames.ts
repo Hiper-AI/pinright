@@ -9,7 +9,8 @@
 import { type Ecosystem } from '../ecosystems.js';
 import { type PackageMeta } from '../registry.js';
 import { type PythonApi } from './python.js';
-import { tokenize } from './retrieve.js';
+import { parseDts } from '../upgrade/dts.js';
+import { identifiers, tokenize, type DocFile } from './retrieve.js';
 import { fetchFile, type RemoteFile } from './sources.js';
 
 export interface Rename {
@@ -223,6 +224,53 @@ export async function packageRenames(eco: Ecosystem, meta: PackageMeta, files: R
     if (texts[i]) out.push(...renamesFromGuide(texts[i]!, g.path.split('/').pop() ?? g.path));
   });
   return out;
+}
+
+export interface MissingMember {
+  /** As the question spells it: "graphql.query". */
+  name: string;
+  /** The object: "graphql". */
+  root: string;
+  /** What the object declares in this version. */
+  members: string[];
+  /** The type definitions that declare it. */
+  source: string;
+}
+
+/**
+ * `a.b` names the question spells whose object this version declares with every member spelled out, none
+ * of them `b`: msw 3's `graphql` is `{ link(url: Path): GraphQLLink }`, so "graphql.query" asks for a call
+ * the major removed. An agent that does not hear it writes the call it remembers. Read from the type
+ * definitions gathered for the answer; an object whose type is named, intersected or indexed says nothing.
+ */
+export function missingMembers(query: string, files: DocFile[]): MissingMember[] {
+  const asked = identifiers(query).filter((id) => /^[A-Za-z_$][\w$]*\.[A-Za-z_$][\w$]*$/.test(id));
+  if (!asked.length) return [];
+  const decls = files
+    .filter((f) => f.kind === 'types' && f.lang !== 'python')
+    .map((f) => ({ label: f.label, decls: parseDts(f.content).decls }));
+  const out: MissingMember[] = [];
+  for (const name of asked) {
+    const [root, member] = name.split('.');
+    const found = decls.flatMap((d) => {
+      const decl = d.decls.get(root);
+      return decl?.kind === 'const' && decl.members ? [{ label: d.label, members: decl.members }] : [];
+    });
+    // A second declaration of the same name elsewhere may have it: only when none does.
+    if (!found.length || found.some((f) => f.members.includes(member)) || out.some((m) => m.name === name)) continue;
+    // Names from a file listing and a declaration, shown to the agent: identifier characters only.
+    const members = found[0].members.filter((m) => /^[A-Za-z_$][\w$]*$/.test(m));
+    if (members.length) out.push({ name, root, members, source: found[0].label.replace(/[^\w./@-]/g, '').slice(0, 80) });
+  }
+  return out.slice(0, 4);
+}
+
+/** The line that tells the agent a call it asked about is not in this version, and what the object has instead. */
+export function missingNote(name: string, version: string, missing: MissingMember, shownFirst: boolean): string {
+  const shown = missing.members.slice(0, 12).map((m) => `\`${m}\``);
+  const list = shown.length === 1 ? `only ${shown[0]}` : `${shown.join(', ')}${missing.members.length > 12 ? ', ...' : ''}`;
+  return `\`${missing.name}\` is not declared in ${name}@${version}: \`${missing.root}\` (${missing.source}) has ${list}.` +
+    `${shownFirst ? ' Its declaration is shown first.' : ''} Write the call this version declares, not the one from an earlier version.`;
 }
 
 /** The line that tells the agent which names it asked about changed (identifiers only). */
