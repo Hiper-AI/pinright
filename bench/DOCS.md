@@ -5,22 +5,24 @@ tasks that only come out right with the API of a library's current major, run by
 headless mode with and without pinright. We install, build and smoke-test each project at runtime, and
 check it for the current API, for APIs the major removed and for deprecated ones.
 
-Short version (run v6, 2026-11-01, three models): with pinright the agent wrote the current API in 16
-of 16 runs with each of Sonnet 5.5, Haiku 5.5 and Opus 5.5; without docs, in 13, 10 and 12 of 16.
-Two libraries explain most of the gap. AI SDK 7 (released 2026-06-25) reads as newer than what the
-models saw (no cutoff dates are published), and without docs every model wrote AI SDK 5/6 code. LangChain 1 broke on version pins: agents pinned an
-early 1.0.x `langchain` that does not import against the `langgraph` the resolver installs. The models
-already know Next 16, Tailwind 4, Zod 4, Express 5 and Pydantic 2, so on those tasks the agent runs
-cannot tell good docs from bad ones. The [retrieval probe](#retrieval-probe-pinrights-docs-without-the-agent)
+Short version (run v7, 2026-11-02 and 2026-11-03, three models, code of the 1.0.0 release): with
+pinright the agent wrote the current API in 16 of 16 runs with each of Sonnet 5.5, Haiku 5.5 and Opus
+5.5; without docs, in 13, 9 and 14 of 16. AI SDK 7 (released 2026-06-25) explains most of the gap: it
+reads as newer than what the models saw (no cutoff dates are published), and without docs every model
+wrote AI SDK 5/6 code. LangChain 1 broke on version pins for Sonnet once and Haiku twice: an early
+1.x `langchain` that does not import against the `langgraph` the resolver installs. Haiku also lost
+both ESLint 10 runs and one Pydantic run. The models already know Next 16, Tailwind 4, Zod 4 and
+Express 5, so on those tasks the agent runs cannot tell good docs from bad ones. The [retrieval probe](#retrieval-probe-pinrights-docs-without-the-agent)
 takes the model out of the loop: on the release candidate pinright's answers show the current API for
 24 of 25 typical questions and for 133 of 154 held-out questions over 56 other libraries (sets A, B and
 C below: 75 of 81, 25 of 28, 33 of 45). We reran every probe on 2026-11-01 and got the scores of the
 end of the third round.
 
-Sonnet also ran a docs-only ablation: the same server with its security layer off
-(`PINRIGHT_ABLATION=docs-only`, see [AGENTS.md](AGENTS.md)). It wrote the current API in 15 of 16
-runs, at a higher cost per run: without `check-packages` to settle versions, the agent asked `get-docs`
-for each package's latest version one call at a time.
+All three models also ran a docs-only ablation: the same server with its security layer off
+(`PINRIGHT_ABLATION=docs-only`, see [AGENTS.md](AGENTS.md)). It wrote the current API in 16, 15 and 16
+of 16 runs (Sonnet, Haiku, Opus), at a higher cost per run than the full server: without
+`check-packages` to settle versions, the agent asked `get-docs` for each package's latest version one
+call at a time. In v6 only Sonnet ran this arm (15 of 16).
 
 ## Setup
 
@@ -29,8 +31,8 @@ for each package's latest version one call at a time.
 - Built-in tools limited to Write and Read: no shell, no web. Every arm gets the same prompt. It names
   the major ("use the newest Zod 4 release") but never the new API, and asks the agent to check the
   current API with its documentation tools when it has any.
-- Arms: `no-docs` (nothing attached), `pinright` (this repo's `dist/cli.js`, local docs only) and, for
-  Sonnet, `docs-only` (pinright with the security layer off). The harness takes any other MCP server as
+- Arms: `no-docs` (nothing attached), `pinright` (this repo's `dist/cli.js`, local docs only) and
+  `docs-only` (pinright with the security layer off). The harness takes any other MCP server as
   an extra arm with `--mcp-arm name=mcp.json`; this repo ships no config for third-party servers.
 - Cost is the API-equivalent at list price that Claude Code reports per transcript. The runs used a
   Claude subscription, so nobody paid that amount.
@@ -57,29 +59,29 @@ for each package's latest version one call at a time.
 ## Results
 
 <!-- generated:start -->
-Runs: `docs-v6-sonnet-2026-11-01` (Sonnet 5.5, 2 repetition(s), 48 runs scored), `docs-v6-haiku-2026-11-01` (Haiku 5.5, 2 repetition(s), 32 runs scored), `docs-v6-opus-2026-11-01` (Opus 5.5, 2 repetition(s), 32 runs scored). 8 tasks per arm. Brackets: 95% cluster-bootstrap interval of the rate, resampling tasks; with 8 tasks it is wide.
+Runs: `docs-v7-sonnet-2026-11-02` (Sonnet 5.5, 2 repetition(s), 48 runs scored), `docs-v7-haiku-2026-11-02` (Haiku 5.5, 2 repetition(s), 48 runs scored), `docs-v7-opus-2026-11-02` (Opus 5.5, 2 repetition(s), 48 runs scored). 8 tasks per arm (set `v6`). Brackets: 95% cluster-bootstrap interval of the rate, resampling tasks; with 8 tasks it is wide.
 
-### Sonnet 5.5 (`claude-sonnet-5-5`, run `docs-v6-sonnet-2026-11-01`)
+### Sonnet 5.5 (`claude-sonnet-5-5`, run `docs-v7-sonnet-2026-11-02`)
 
 | Metric | No docs | docs-only (pinright with the security layer off) | pinright |
 |---|---|---|---|
-| **Current API** (works, right major, every check passes) | **13 / 16** (81% [56%, 100%]) | **15 / 16** (94% [81%, 100%]) | **16 / 16** (100% [100%, 100%]) |
-| Works (installs, builds, smoke test passes) | 15 / 16 | 16 / 16 | 16 / 16 |
-| Installs | 16 / 16 | 16 / 16 | 16 / 16 |
-| Builds / type-checks / imports | 15 / 16 | 16 / 16 | 16 / 16 |
-| Smoke test passes (6 tasks with one) | 13 / 14 | 14 / 14 | 14 / 14 |
+| **Current API** (works, right major, every check passes) | **13 / 16** (81% [56%, 100%]) | **16 / 16** (100% [100%, 100%]) | **16 / 16** (100% [100%, 100%]) |
+| Works (installs, builds, smoke test passes) | 13 / 16 | 16 / 16 | 16 / 16 |
+| Installs | 14 / 16 | 16 / 16 | 16 / 16 |
+| Builds / type-checks / imports | 13 / 16 | 16 / 16 | 16 / 16 |
+| Smoke test passes (7 tasks with one) | 13 / 14 | 14 / 14 | 14 / 14 |
 | Pinned the asked major | 16 / 16 | 16 / 16 | 16 / 16 |
-| All required new-API checks present | 14 / 16 | 15 / 16 | 16 / 16 |
+| All required new-API checks present | 14 / 16 | 16 / 16 | 16 / 16 |
 | Runs using a removed API | 0 | 0 | 0 |
 | Runs using a deprecated API | 2 | 0 | 0 |
-| API checks passed (all kinds) | 92% | 99% | 100% |
-| API-equivalent cost per run (USD, list price, mean) | 0.044 | 0.117 | 0.081 |
-| API-equivalent cost, all runs of the arm (USD, list price) | 0.71 | 1.87 | 1.30 |
-| Turns per run (mean) | 5.3 | 11.4 | 8.2 |
-| Duration per run (s, mean) | 17.5 | 39.8 | 24.8 |
-| MCP calls per run (mean) | 0.0 | 6.1 | 2.9 |
-| Docs calls per run (mean) | 0.0 | 4.1 | 1.7 |
-| Docs returned per run (k chars, mean) | 0.0 | 32.4 | 18.8 |
+| API checks passed (all kinds) | 92% | 100% | 100% |
+| API-equivalent cost per run (USD, list price, mean) | 0.044 | 0.120 | 0.084 |
+| API-equivalent cost, all runs of the arm (USD, list price) | 0.71 | 1.93 | 1.34 |
+| Turns per run (mean) | 5.3 | 11.7 | 8.1 |
+| Duration per run (s, mean) | 18.4 | 38.4 | 29.4 |
+| MCP calls per run (mean) | 0.0 | 6.4 | 2.9 |
+| Docs calls per run (mean) | 0.0 | 5.4 | 1.7 |
+| Docs returned per run (k chars, mean) | 0.0 | 34.4 | 19.5 |
 
 #### Per task, Sonnet 5.5
 
@@ -90,7 +92,7 @@ Each cell: runs with the current API / runs that work (build + smoke test) / run
 | next16-proxy (Next.js 16) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
 | tailwind4-vite (Tailwind CSS 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
 | zod4-schema (Zod 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| ai-sdk7-chat (AI SDK 7) | **0** / 2 / 2 of 2<br>r:instructions x2, r:is-step-count x2, d:step-count-is x2, r:ui-stream-response x2, d:result-response-helper x2 | **1** / 2 / 2 of 2<br>r:instructions | **2** / 2 / 2 of 2 |
+| ai-sdk7-chat (AI SDK 7) | **0** / 0 / 0 of 2<br>r:instructions x2, r:is-step-count x2, d:step-count-is x2, r:ui-stream-response x2, d:result-response-helper x2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
 | express5-api (Express 5) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
 | eslint10-flat (ESLint 10) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
 | pydantic2-models (Pydantic 2) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
@@ -100,7 +102,9 @@ Each cell: runs with the current API / runs that work (build + smoke test) / run
 
 **No docs**: 
 
-- langchain1-agent r2: `import check failed: from langchain.agents import create_agent -> TypeError: Reviver.__init__() got an unexpected keyword argument 'allowed_objects'`
+- ai-sdk7-chat r1: `install failed: npm warn deprecated next@16.0.0: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.`
+- ai-sdk7-chat r2: `install failed: npm warn deprecated next@16.0.1: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.`
+- langchain1-agent r2: `import check failed: from langchain.agents import create_agent -> ImportError: cannot import name 'ExecutionInfo' from 'langgraph.runtime'`
 
 **docs-only (pinright with the security layer off)**: none
 
@@ -112,54 +116,61 @@ Each cell: runs with the current API / runs that work (build + smoke test) / run
 
 | Arm | Calls by tool (total over all runs) | get-docs answers with no matching docs |
 |---|---|---|
-| docs-only (pinright with the security layer off) | pinright__get-docs 66, pinright__find-library 31 | 2 |
-| pinright | pinright__check-packages 20, pinright__get-docs 27 | 0 |
+| docs-only (pinright with the security layer off) | pinright__get-docs 86, pinright__find-library 17 | 4 |
+| pinright | pinright__check-packages 19, pinright__get-docs 25, pinright__upgrade-guide 2 | 0 |
 
-### Haiku 5.5 (`claude-haiku-5-5`, run `docs-v6-haiku-2026-11-01`)
+### Haiku 5.5 (`claude-haiku-5-5`, run `docs-v7-haiku-2026-11-02`)
 
-| Metric | No docs | pinright |
-|---|---|---|
-| **Current API** (works, right major, every check passes) | **10 / 16** (63% [25%, 88%]) | **16 / 16** (100% [100%, 100%]) |
-| Works (installs, builds, smoke test passes) | 12 / 16 | 16 / 16 |
-| Installs | 15 / 16 | 16 / 16 |
-| Builds / type-checks / imports | 13 / 16 | 16 / 16 |
-| Smoke test passes (6 tasks with one) | 11 / 14 | 14 / 14 |
-| Pinned the asked major | 16 / 16 | 16 / 16 |
-| All required new-API checks present | 14 / 16 | 16 / 16 |
-| Runs using a removed API | 0 | 0 |
-| Runs using a deprecated API | 4 | 0 |
-| API checks passed (all kinds) | 90% | 100% |
-| API-equivalent cost per run (USD, list price, mean) | 0.004 | 0.008 |
-| API-equivalent cost, all runs of the arm (USD, list price) | 0.06 | 0.12 |
-| Turns per run (mean) | 5.3 | 9.4 |
-| Duration per run (s, mean) | 19.9 | 31.5 |
-| MCP calls per run (mean) | 0.0 | 4.2 |
-| Docs calls per run (mean) | 0.0 | 2.4 |
-| Docs returned per run (k chars, mean) | 0.0 | 28.2 |
+| Metric | No docs | docs-only (pinright with the security layer off) | pinright |
+|---|---|---|---|
+| **Current API** (works, right major, every check passes) | **9 / 16** (56% [25%, 88%]) | **15 / 16** (94% [81%, 100%]) | **16 / 16** (100% [100%, 100%]) |
+| Works (installs, builds, smoke test passes) | 9 / 16 | 15 / 16 | 16 / 16 |
+| Installs | 14 / 16 | 16 / 16 | 16 / 16 |
+| Builds / type-checks / imports | 11 / 16 | 15 / 16 | 16 / 16 |
+| Smoke test passes (7 tasks with one) | 9 / 14 | 14 / 14 | 14 / 14 |
+| Pinned the asked major | 16 / 16 | 16 / 16 | 16 / 16 |
+| All required new-API checks present | 14 / 16 | 16 / 16 | 16 / 16 |
+| Runs using a removed API | 0 | 0 | 0 |
+| Runs using a deprecated API | 3 | 0 | 0 |
+| API checks passed (all kinds) | 91% | 100% | 100% |
+| API-equivalent cost per run (USD, list price, mean) | 0.004 | 0.010 | 0.007 |
+| API-equivalent cost, all runs of the arm (USD, list price) | 0.06 | 0.16 | 0.12 |
+| Turns per run (mean) | 5.6 | 13.4 | 9.1 |
+| Duration per run (s, mean) | 20.2 | 37.2 | 30.5 |
+| MCP calls per run (mean) | 0.0 | 8.2 | 4.0 |
+| Docs calls per run (mean) | 0.0 | 4.5 | 2.1 |
+| Docs returned per run (k chars, mean) | 0.0 | 45.4 | 24.8 |
 
 #### Per task, Haiku 5.5
 
 Each cell: runs with the current API / runs that work (build + smoke test) / runs that build, out of the repetitions. Failed checks follow, with how many runs failed each (r = required missing, x = removed API used, d = deprecated API used, v = wrong major pinned).
 
-| Task | No docs | pinright |
-|---|---|---|
-| next16-proxy (Next.js 16) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| tailwind4-vite (Tailwind CSS 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| zod4-schema (Zod 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| ai-sdk7-chat (AI SDK 7) | **0** / 1 / 1 of 2<br>r:instructions x2, r:is-step-count x2, d:step-count-is x2, r:ui-stream-response x2, d:result-response-helper x2 | **2** / 2 / 2 of 2 |
-| express5-api (Express 5) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| eslint10-flat (ESLint 10) | **0** / 1 / 2 of 2<br>d:tseslint-config x2 | **2** / 2 / 2 of 2 |
-| pydantic2-models (Pydantic 2) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| langchain1-agent (LangChain 1) | **0** / 0 / 0 of 2 | **2** / 2 / 2 of 2 |
+| Task | No docs | docs-only (pinright with the security layer off) | pinright |
+|---|---|---|---|
+| next16-proxy (Next.js 16) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| tailwind4-vite (Tailwind CSS 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| zod4-schema (Zod 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| ai-sdk7-chat (AI SDK 7) | **0** / 0 / 0 of 2<br>r:instructions x2, r:is-step-count x2, d:step-count-is x2, r:ui-stream-response x2, d:result-response-helper x2 | **1** / 1 / 1 of 2 | **2** / 2 / 2 of 2 |
+| express5-api (Express 5) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| eslint10-flat (ESLint 10) | **0** / 0 / 2 of 2<br>d:tseslint-config | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| pydantic2-models (Pydantic 2) | **1** / 1 / 1 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| langchain1-agent (LangChain 1) | **0** / 0 / 0 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
 
 #### Runs that do not work, Haiku 5.5
 
 **No docs**: 
 
+- ai-sdk7-chat r1: `npm run build failed: Failed to compile.`
 - ai-sdk7-chat r2: `install failed: npm error code ETARGET`
 - eslint10-flat r1: `smoke: config-loads (exit 2: Oops! Something went wrong! :( ESLint: 10.0.0 TypeError: Class extends value undefined is not a constructor or null at Object.<anonymous>; parses-ts ([]); no-console-warns-in-src ([]); no-con`
-- langchain1-agent r1: `import check failed: from langchain.agents import create_agent -> TypeError: Reviver.__init__() got an unexpected keyword argument 'allowed_objects'`
-- langchain1-agent r2: `import check failed: from langchain.agents import create_agent -> ImportError: cannot import name 'ExecutionInfo' from 'langgraph.runtime'`
+- eslint10-flat r2: `smoke: config-loads (exit 2: Oops! Something went wrong! :( ESLint: 10.0.0 TypeError: Class extends value undefined is not a constructor or null at Object.<anonymous>; parses-ts ([]); no-console-warns-in-src ([]); no-con`
+- langchain1-agent r1: `import check failed: from langchain.agents import create_agent -> ImportError: cannot import name 'ExecutionInfo' from 'langgraph.runtime'`
+- langchain1-agent r2: `import check failed: from langchain.agents import create_agent -> TypeError: Reviver.__init__() got an unexpected keyword argument 'allowed_objects'`
+- pydantic2-models r1: `install failed: × No solution found when resolving dependencies:`
+
+**docs-only (pinright with the security layer off)**: 
+
+- ai-sdk7-chat r2: `npm run build failed: > Build error occurred`
 
 **pinright**: none
 
@@ -168,51 +179,53 @@ Each cell: runs with the current API / runs that work (build + smoke test) / run
 
 | Arm | Calls by tool (total over all runs) | get-docs answers with no matching docs |
 |---|---|---|
-| pinright | pinright__check-packages 19, pinright__get-docs 38, pinright__find-library 2, pinright__check-package 8 | 0 |
+| docs-only (pinright with the security layer off) | pinright__find-library 59, pinright__get-docs 72 | 1 |
+| pinright | pinright__check-packages 19, pinright__get-docs 32, pinright__check-package 9, pinright__check-manifest 3, pinright__upgrade-guide 1 | 0 |
 
-### Opus 5.5 (`claude-opus-5-5`, run `docs-v6-opus-2026-11-01`)
+### Opus 5.5 (`claude-opus-5-5`, run `docs-v7-opus-2026-11-02`)
 
-| Metric | No docs | pinright |
-|---|---|---|
-| **Current API** (works, right major, every check passes) | **12 / 16** (75% [50%, 100%]) | **16 / 16** (100% [100%, 100%]) |
-| Works (installs, builds, smoke test passes) | 14 / 16 | 16 / 16 |
-| Installs | 16 / 16 | 16 / 16 |
-| Builds / type-checks / imports | 14 / 16 | 16 / 16 |
-| Smoke test passes (6 tasks with one) | 12 / 14 | 14 / 14 |
-| Pinned the asked major | 16 / 16 | 16 / 16 |
-| All required new-API checks present | 14 / 16 | 16 / 16 |
-| Runs using a removed API | 0 | 0 |
-| Runs using a deprecated API | 2 | 0 |
-| API checks passed (all kinds) | 92% | 100% |
-| API-equivalent cost per run (USD, list price, mean) | 0.103 | 0.203 |
-| API-equivalent cost, all runs of the arm (USD, list price) | 1.64 | 3.24 |
-| Turns per run (mean) | 5.4 | 9.4 |
-| Duration per run (s, mean) | 29.1 | 37.4 |
-| MCP calls per run (mean) | 0.0 | 3.9 |
-| Docs calls per run (mean) | 0.0 | 2.1 |
-| Docs returned per run (k chars, mean) | 0.0 | 22.4 |
+| Metric | No docs | docs-only (pinright with the security layer off) | pinright |
+|---|---|---|---|
+| **Current API** (works, right major, every check passes) | **14 / 16** (88% [63%, 100%]) | **16 / 16** (100% [100%, 100%]) | **16 / 16** (100% [100%, 100%]) |
+| Works (installs, builds, smoke test passes) | 16 / 16 | 16 / 16 | 16 / 16 |
+| Installs | 16 / 16 | 16 / 16 | 16 / 16 |
+| Builds / type-checks / imports | 16 / 16 | 16 / 16 | 16 / 16 |
+| Smoke test passes (7 tasks with one) | 14 / 14 | 14 / 14 | 14 / 14 |
+| Pinned the asked major | 16 / 16 | 16 / 16 | 16 / 16 |
+| All required new-API checks present | 14 / 16 | 16 / 16 | 16 / 16 |
+| Runs using a removed API | 0 | 0 | 0 |
+| Runs using a deprecated API | 2 | 0 | 0 |
+| API checks passed (all kinds) | 92% | 100% | 100% |
+| API-equivalent cost per run (USD, list price, mean) | 0.099 | 0.263 | 0.195 |
+| API-equivalent cost, all runs of the arm (USD, list price) | 1.58 | 4.20 | 3.13 |
+| Turns per run (mean) | 5.4 | 12.4 | 9.3 |
+| Duration per run (s, mean) | 30.7 | 47.4 | 41.5 |
+| MCP calls per run (mean) | 0.0 | 7.2 | 3.8 |
+| Docs calls per run (mean) | 0.0 | 6.4 | 1.9 |
+| Docs returned per run (k chars, mean) | 0.0 | 38.1 | 22.6 |
 
 #### Per task, Opus 5.5
 
 Each cell: runs with the current API / runs that work (build + smoke test) / runs that build, out of the repetitions. Failed checks follow, with how many runs failed each (r = required missing, x = removed API used, d = deprecated API used, v = wrong major pinned).
 
-| Task | No docs | pinright |
-|---|---|---|
-| next16-proxy (Next.js 16) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| tailwind4-vite (Tailwind CSS 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| zod4-schema (Zod 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| ai-sdk7-chat (AI SDK 7) | **0** / 2 / 2 of 2<br>r:instructions x2, r:is-step-count x2, d:step-count-is x2, r:ui-stream-response x2, d:result-response-helper x2 | **2** / 2 / 2 of 2 |
-| express5-api (Express 5) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| eslint10-flat (ESLint 10) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| pydantic2-models (Pydantic 2) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
-| langchain1-agent (LangChain 1) | **0** / 0 / 0 of 2 | **2** / 2 / 2 of 2 |
+| Task | No docs | docs-only (pinright with the security layer off) | pinright |
+|---|---|---|---|
+| next16-proxy (Next.js 16) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| tailwind4-vite (Tailwind CSS 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| zod4-schema (Zod 4) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| ai-sdk7-chat (AI SDK 7) | **0** / 2 / 2 of 2<br>r:instructions x2, r:is-step-count x2, d:step-count-is x2, r:ui-stream-response x2, d:result-response-helper x2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| express5-api (Express 5) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| eslint10-flat (ESLint 10) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| pydantic2-models (Pydantic 2) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
+| langchain1-agent (LangChain 1) | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 | **2** / 2 / 2 of 2 |
 
 #### Runs that do not work, Opus 5.5
 
-**No docs**: 
+**No docs**: none
 
-- langchain1-agent r1: `import check failed: from langchain.agents import create_agent -> ImportError: cannot import name 'ExecutionInfo' from 'langgraph.runtime'`
-- langchain1-agent r2: `import check failed: from langchain.agents import create_agent -> TypeError: Reviver.__init__() got an unexpected keyword argument 'allowed_objects'`
+
+**docs-only (pinright with the security layer off)**: none
+
 
 **pinright**: none
 
@@ -221,34 +234,43 @@ Each cell: runs with the current API / runs that work (build + smoke test) / run
 
 | Arm | Calls by tool (total over all runs) | get-docs answers with no matching docs |
 |---|---|---|
-| pinright | pinright__check-packages 18, pinright__get-docs 32, pinright__upgrade-guide 2, pinright__check-package 6, pinright__check-manifest 4 | 0 |
+| docs-only (pinright with the security layer off) | pinright__get-docs 102, pinright__find-library 13 | 2 |
+| pinright | pinright__check-packages 18, pinright__get-docs 30, pinright__upgrade-guide 1, pinright__check-package 7, pinright__check-manifest 4 | 0 |
 
 <!-- generated:end -->
 
-## Where the runs fail (v6)
+## Where the runs fail (v7)
 
 **No docs, all three models.**
-- **AI SDK 7**: AI SDK 5/6 code in all 6 runs. `system:` instead of `instructions:`,
-  `stepCountIs` instead of `isStepCount`, `result.toUIMessageStreamResponse()`. All three still compile
-  in 7 as deprecated aliases, so the runs work but are not current. Haiku r2 also pinned
-  `@ai-sdk/react` 7.0.0, a version that does not exist (the package is at 4.x), and `npm install`
-  failed with `ETARGET`.
-- **LangChain 1**: 5 of 6 runs fail the import check. The agents pinned an early 1.0.x or 1.2.0
-  `langchain` without pinning `langgraph`; the resolver installs the newest `langgraph`, and
+- **AI SDK 7**: AI SDK 5/6 code in all 6 runs: `system:` instead of `instructions:`, `stepCountIs`
+  instead of `isStepCount`, `result.toUIMessageStreamResponse()`. All three still compile in 7 as
+  deprecated aliases, so Opus's two runs work but are not current. Sonnet's two runs fail
+  `npm install` (Next 16.0.0 and 16.0.1 with `@ai-sdk/react` 4.0.0). Haiku r1 fails `next build`, and
+  Haiku r2 pinned `@ai-sdk/openai` and `@ai-sdk/react` 7.0.0, versions that do not exist, so
+  `npm install` fails with `ETARGET`.
+- **LangChain 1**: 3 of 6 runs fail the import check. Sonnet r2 pinned `langchain` 1.2.0 and Haiku
+  pinned 1.0.3 twice, none with a `langgraph` pin; the resolver installs the newest `langgraph`, and
   `from langchain.agents import create_agent` dies with `ImportError: cannot import name
   'ExecutionInfo'` or `TypeError: Reviver.__init__() got an unexpected keyword argument
-  'allowed_objects'`. pinright pinned 1.4.7 in every run.
-- **ESLint 10, Haiku**: both runs used `tseslint.config()`, deprecated in favor of `defineConfig`. In r1
-  the agent pinned `typescript-eslint` 8.46.0 next to ESLint 10.0.0; its utils extend a class ESLint 10
-  removed, and ESLint crashes loading the config.
+  'allowed_objects'`. The runs that pinned `langchain` 1.0.0 imported. pinright pinned 1.4.7 in every
+  run.
+- **ESLint 10, Haiku**: both runs used `tseslint.config()`, deprecated in favor of `defineConfig`, and
+  pinned `typescript-eslint` 8.46.0 next to ESLint 10.0.0; its utils extend a class ESLint 10 removed,
+  and ESLint crashes loading the config.
+- **Pydantic 2, Haiku r1**: the agent pinned `pydantic` 2.12.0 and four of its dependencies by hand,
+  and `uv pip install` found no solution for the set. The code itself passed every API check.
 
-**docs-only (Sonnet).** One AI SDK run kept `system:` although the answer to its first `get-docs`
-call opened with the rename hint (`system` -> `instructions`). The other 15 runs were current.
+**docs-only.** Haiku's AI SDK r2 run fails `next build`. The other 47 runs across the three models were
+current.
 
 **pinright.** No run failed with any model.
 
-The v5 diagnosis of the Next.js 16.0.0 pin (proxy never ran under `next start`) did not recur: in v6
-every no-docs Next.js run pinned 16.0.7 or 16.1.0, and pinright pinned 16.4.3.
+The v5 diagnosis of the Next.js 16.0.0 pin (proxy never ran under `next start`) did not recur: in v7
+the no-docs next16-proxy runs pinned 16.0.1 to 16.1.1 and all passed the smoke test, and pinright
+pinned 16.4.3.
+
+In v6 (2026-11-01, pre-release commit `b2fcfe2`) the same set scored 13, 10 and 12 of 16 without docs,
+16 of 16 with pinright on every model, and 15 of 16 for Sonnet's docs-only arm.
 
 ## Retrieval probe: pinright's docs without the agent
 
@@ -538,11 +560,11 @@ evidence for each API, failures and caveats: [RESULTS-post-cutoff.md](RESULTS-po
 ```bash
 npm ci && npm run build
 npx tsx bench/docs/selftest.ts                      # scorer against reference and old-API projects
-GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v6-sonnet-2026-11-01
-GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v6-sonnet-2026-11-01 --arms docs-only --resume
-# same for claude-haiku-5-5 and claude-opus-5-5 (stamps docs-v6-haiku-2026-11-01, docs-v6-opus-2026-11-01)
+GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v7-sonnet-2026-11-02
+GITHUB_TOKEN=... npx tsx bench/docs/run.ts --model claude-sonnet-5-5 --reps 2 --concurrency 3 --stamp docs-v7-sonnet-2026-11-02 --arms docs-only --resume
+# same for claude-haiku-5-5 and claude-opus-5-5 (stamps docs-v7-haiku-2026-11-02, docs-v7-opus-2026-11-02)
 npx tsx bench/docs/score.ts <stamp> --concurrency 2
-npx tsx bench/docs/report.ts docs-v6-sonnet-2026-11-01 docs-v6-haiku-2026-11-01 docs-v6-opus-2026-11-01
+npx tsx bench/docs/report.ts docs-v7-sonnet-2026-11-02 docs-v7-haiku-2026-11-02 docs-v7-opus-2026-11-02
 GITHUB_TOKEN=... npx tsx bench/docs/retrieval.ts
 GITHUB_TOKEN=... npx tsx bench/docs/probe-heldout.ts --set a   # or b, c, all; --show for the sections of each miss
 GITHUB_TOKEN=... npx tsx bench/docs/replay.ts <stamp>
