@@ -105,6 +105,39 @@ list of hosts in the privacy table (network diagram in `docs/how-it-works.md`).
 | Probes 24/25; 133/154 (A 75/81, B 25/28, C 33/45), run on `b2fcfe2`, not rerun for v7 | | `probes.csv` (from `probes-v6/heldout-all.json`, `retrieval.log`) |
 | Probe "before" values 16, 53, 22, 28 | | `bench/DOCS.md` (rounds 1 to 3); `probes.csv` `before` |
 
+## 4b. Efficiency against the docs-only server (README "Why pinright"; site home `#why` and evidence `#efficiency`; docs/benchmark.md "Efficiency"; bench/RESULTS-v7.md "Efficiency"; llms.txt)
+
+`tokens_by_model_arm.csv` is written by `make-data.ts` from the transcripts through `bench/tokens.ts`
+(the `modelUsage` block of each run's `result` line, summed over the models of the session). The
+docs-only arm is pinright's own server with its security layer off; no copy names or measures
+another product.
+
+| Claim | Value | Source |
+|---|---|---|
+| "Docs MCP servers return documentation for a library; they do not check the version the agent pins, and they do not see the install" | category definition only, no claim about any named product | the brief; the docs-only arm (`src/mcp.ts` `buildDocsOnlyServer`) is the measured stand-in |
+| Docs-only serves docs for the version asked, no verdict | registers only `find-library` and `get-docs`; without a version, the installed or latest release | `src/mcp.ts` `docsOnlyAblation`, `buildDocsOnlyServer` |
+| Tokens per run, agent benchmark, no docs / docs-only / pinright | Sonnet 15.3 / 55.6 [47.2, 63.5] / 42.2 [37.4, 46.8]k; Haiku 20.8 / 93.8 [73.5, 114.8] / 74.2 [61.8, 87.8]k; Opus 16.4 / 73.3 [58.8, 88.5] / 54.6 [45.2, 65.0]k ("15k to 21k", "56k to 94k", "42k to 74k") | `ktokens_total_per_run`, `_ci95_*`, `benchmark` = agents |
+| Tokens per run, docs benchmark | Sonnet 17.2 / 94.0 [63.8, 125.1] / 62.9 [52.4, 76.7]k; Haiku 23.5 / 135.1 [95.7, 179.9] / 95.0 [77.2, 113.3]k; Opus 19.0 / 113.2 [78.8, 152.6] / 83.9 [67.1, 98.9]k ("17k to 23k", "94k to 135k", "63k to 95k") | same, `benchmark` = docs |
+| "21% to 26% fewer" (agent), "26% to 33% fewer" (docs), "21% to 33%" | agent 24% [14, 34], 21% [6, 33], 26% [11, 37]; docs 33% [13, 45], 30% [4, 46], 26% [2, 43] (Sonnet, Haiku, Opus); "lowest bound is 2%" | `tokens_saved_vs_docs_only_pct`, `_ci95_*` (paired by task) |
+| Per-arm token intervals overlap in five of six pairs | only agent Sonnet separates (47.2 > 46.8) | `ktokens_total_per_run_ci95_*` |
+| No docs uses fewer tokens and costs less than either docs arm in every cell | rows above; cost in `agents_by_model_arm.csv` and `docs_by_model_arm.csv` | both CSVs |
+| Fresh input about halved, agent benchmark | 16.3 to 8.0k, 26.7 to 14.5k, 19.2 to 9.8k | `ktokens_fresh_input_per_run` |
+| Output, fresh input and cache-read columns in docs/benchmark.md | | `ktokens_output_per_run`, `ktokens_fresh_input_per_run`, `ktokens_cache_read_per_run` |
+| MCP tool text per run, docs-only to pinright | agent 24.8 to 5.3, 45.3 to 17.2, 32.9 to 10.4k characters ("25k to 45k", "5k to 17k"); docs 35.0 to 20.2, 46.9 to 26.1, 38.6 to 23.7 | `mcp_result_kchars_per_run` |
+| `get-docs` calls per run, docs-only to pinright | agent 5.2 to 0.7, 5.7 to 1.7, 5.7 to 1.3; docs 5.4 to 1.6, 4.5 to 2.0, 6.4 to 1.9 ("5.2 to 5.7", "0.7 to 1.7", "0.7 to 2.0", "4.5 to 6.4") | `get_docs_calls_per_run` |
+| Docs-only agent runs: 345 of 398 `get-docs` calls named no version ("87%"); 299 put "version" or "latest" in the query ("75%") | 117+102+126 of 125+136+137; 101+99+99 | `get_docs_calls`, `get_docs_calls_without_version`, `get_docs_calls_query_names_version` |
+| pinright agent runs: a version in 86 of 87 `get-docs` calls | 17+40+30 calls, 0+1+0 without a version | same columns, rows `pinright` |
+| All 72 pinright agent runs opened with `check-packages`; 47 of 48 docs runs | 24+24+24; 16+15+16 | `runs_first_call_check_packages` |
+| Every docs-only agent run opened with `get-docs` or `find-library`, and no docs-only agent run called `get-docs` after its first file write | `runs_first_call_get_docs` 24, 18, 24 (Haiku's other 6 opened with `find-library`); the order was counted from the transcripts on 2026-11-03 | `tokens_by_model_arm.csv`; transcripts (not committed) |
+| `check-packages` 1.0 to 1.3 calls per run, 0.5k to 0.7k characters per call; docs-only `get-docs` 4.8k to 8.0k characters per call | counted from the transcripts | `agents_by_task.csv` `mcp_result_chars` with the per-tool split read from the transcripts (not committed) |
+| "One Sonnet run opens with: I'll check the libraries' current versions in the docs first." | `v7-sonnet-2026-11-02/docs-only/express-jwt-api-r1` | transcript (not committed) |
+| Turns, docs-only to pinright: "3.1 to 4.3 fewer" ("3 to 4" in llms.txt) | agent 9.25 to 5.88, 11.13 to 7.5, 9.88 to 6.75; docs 11.69 to 8.13, 13.44 to 9.13, 12.38 to 9.25 | `turns_per_run` in both `*_by_model_arm.csv` |
+| Cost, docs-only to pinright (evidence table) | agent 0.088 to 0.050, 0.008 to 0.005, 0.212 to 0.126; docs 0.120 to 0.084, 0.010 to 0.007, 0.263 to 0.195 | `cost_per_run_usd_list_price` |
+| Server instructions: `check-packages` once, then `get-docs` for APIs the agent is unsure of; docs-only has no `check-packages` | | `src/mcp.ts` (server instructions, `buildDocsOnlyServer`) |
+| Every prompt asks the agent to check the libraries before choosing versions | `DOCS_HINT` | `bench/agents/tasks.ts` |
+| Comparison table capability rows (verdict, install-time hook in 6 clients, `check-manifest` with SARIF and the Action) | | `docs/how-it-works.md` "Tools" and verdicts; `docs/hook.md`; `docs/install.md`; section 7 above |
+| "15 or 16 of 16" (docs-only current API) | 16, 15, 16 | `docs_by_model_arm.csv` `current_api_runs` |
+
 ## 5. Hook false positives (report 5.5; blog; social)
 
 | Claim | Value | Source |

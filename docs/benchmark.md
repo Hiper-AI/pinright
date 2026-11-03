@@ -1,8 +1,8 @@
 # Benchmark
 
-Three measurements, all from run v7 of 2026-11-02 and 2026-11-03 on the 1.0.0 code: what versions an
-agent pins, whether it writes the current API of a library, and how often the hook gets in the way of
-ordinary commands. The data, per-task tables and failure diagnoses are in [bench/](../bench/); the
+Four measurements, all from run v7 of 2026-11-02 and 2026-11-03 on the 1.0.0 code: what versions an
+agent pins, whether it writes the current API of a library, how many tokens and turns it spends
+against a docs-only server, and how often the hook gets in the way of ordinary commands. The data, per-task tables and failure diagnoses are in [bench/](../bench/); the
 technical report ([PDF](https://pinright.dev/report.pdf), [Markdown](../paper/kit/pinright-report.md))
 covers method and limits in full.
 
@@ -62,6 +62,72 @@ separates the arms more: 2 of 48 runs without docs, 46 of 48 with pinright
 ([bench/RESULTS-post-cutoff.md](../bench/RESULTS-post-cutoff.md)). Without an agent, pinright's docs
 answer 24 of 25 questions on the first set's tasks and 133 of 154 held-out questions over 56 other
 libraries with the current API.
+
+## Efficiency: tokens, turns and cost against a docs-only server
+
+Docs MCP servers return documentation for a library; they do not check the version the agent pins,
+and they do not see the install. The docs-only arm stands in for that kind of server: it is pinright's
+own server with its security layer off (`PINRIGHT_ABLATION=docs-only`), serving docs for the version
+asked and no verdict. It is not another product, and other docs servers may behave differently.
+
+Tokens are everything the model processed in a run (uncached input, cache reads and writes, output),
+from the usage record Claude Code prices each run from; `bench/tokens.ts` reads them from the
+transcripts. Fresh input is uncached input plus cache writes. "Less than docs-only" pairs the two arms
+task by task, and its interval resamples tasks. Data: `paper/kit/data/tokens_by_model_arm.csv`.
+
+Agent benchmark (12 tasks, 24 runs per arm and model):
+
+| Model | Arm | Tokens per run, thousands [95% CI] | Less than docs-only, paired [95% CI] | Fresh input (k) | Output (k) | MCP text (k chars) | get-docs calls | Turns | Cost / run (USD) |
+|---|---|---|---|---|---|---|---|---|---|
+| Sonnet 5.5 | No docs | 15.3 [14.6, 16.1] | - | 4.9 | 1.8 | 0.0 | 0.0 | 4.1 | 0.033 |
+| Sonnet 5.5 | Docs-only server | 55.6 [47.2, 63.5] | - | 16.3 | 2.4 | 24.8 | 5.2 | 9.3 | 0.088 |
+| Sonnet 5.5 | pinright MCP | 42.2 [37.4, 46.8] | 24% [14, 34] | 8.0 | 2.0 | 5.3 | 0.7 | 5.9 | 0.050 |
+| Haiku 5.5 | No docs | 20.8 [19.8, 22.0] | - | 6.2 | 3.8 | 0.0 | 0.0 | 4.3 | 0.003 |
+| Haiku 5.5 | Docs-only server | 93.8 [73.5, 114.8] | - | 26.7 | 5.1 | 45.3 | 5.7 | 11.1 | 0.008 |
+| Haiku 5.5 | pinright MCP | 74.2 [61.8, 87.8] | 21% [6, 33] | 14.5 | 4.5 | 17.2 | 1.7 | 7.5 | 0.005 |
+| Opus 5.5 | No docs | 16.4 [15.3, 18.0] | - | 4.6 | 2.3 | 0.0 | 0.0 | 4.0 | 0.074 |
+| Opus 5.5 | Docs-only server | 73.3 [58.8, 88.5] | - | 19.2 | 3.0 | 32.9 | 5.7 | 9.9 | 0.212 |
+| Opus 5.5 | pinright MCP | 54.6 [45.2, 65.0] | 26% [11, 37] | 9.8 | 2.5 | 10.4 | 1.3 | 6.8 | 0.126 |
+
+Docs benchmark (8 tasks, 16 runs per arm and model):
+
+| Model | Arm | Tokens per run, thousands [95% CI] | Less than docs-only, paired [95% CI] | Fresh input (k) | Output (k) | MCP text (k chars) | get-docs calls | Turns | Cost / run (USD) |
+|---|---|---|---|---|---|---|---|---|---|
+| Sonnet 5.5 | No docs | 17.2 [16.3, 18.2] | - | 5.9 | 2.6 | 0.0 | 0.0 | 5.3 | 0.044 |
+| Sonnet 5.5 | Docs-only server | 94.0 [63.8, 125.1] | - | 21.5 | 3.4 | 35.0 | 5.4 | 11.7 | 0.120 |
+| Sonnet 5.5 | pinright MCP | 62.9 [52.4, 76.7] | 33% [13, 45] | 14.8 | 2.6 | 20.2 | 1.6 | 8.1 | 0.084 |
+| Haiku 5.5 | No docs | 23.5 [21.2, 26.2] | - | 7.3 | 4.4 | 0.0 | 0.0 | 5.6 | 0.004 |
+| Haiku 5.5 | Docs-only server | 135.1 [95.7, 179.9] | - | 29.2 | 6.7 | 46.9 | 4.5 | 13.4 | 0.010 |
+| Haiku 5.5 | pinright MCP | 95.0 [77.2, 113.3] | 30% [4, 46] | 20.1 | 5.6 | 26.1 | 2.0 | 9.1 | 0.007 |
+| Opus 5.5 | No docs | 19.0 [17.3, 21.0] | - | 5.7 | 3.2 | 0.0 | 0.0 | 5.4 | 0.099 |
+| Opus 5.5 | Docs-only server | 113.2 [78.8, 152.6] | - | 22.8 | 3.8 | 38.6 | 6.4 | 12.4 | 0.263 |
+| Opus 5.5 | pinright MCP | 83.9 [67.1, 98.9] | 26% [2, 43] | 16.1 | 3.3 | 23.7 | 1.9 | 9.3 | 0.195 |
+
+Against the docs-only server, pinright used 21% to 33% fewer tokens per run, 3.1 to 4.3 fewer turns and
+0.7 to 2.0 `get-docs` calls per run instead of 4.5 to 6.4. The per-arm intervals of tokens overlap for
+five of the six model and benchmark pairs; the paired intervals, which compare the same tasks, all stay
+above zero. No tools at all used the fewest tokens and cost the least in every cell: the claim is against a
+docs server, not against nothing.
+
+**Why pinright reads less.** The transcripts show two different ways to find a version.
+
+- With docs only, the agent used `get-docs` as its version lookup. In the agent benchmark it called it
+  once per package, 5.2 to 5.7 times per run, every call before its first file write. 345 of the 398
+  calls (87%) named no version, so they returned the latest release's docs, and 299 (75%) put "version"
+  or "latest" in the query. One Sonnet run opens with "I'll check the libraries' current versions in
+  the docs first." Each call returned 4.8k to 8.0k characters on average.
+- With pinright, all 72 agent runs opened with `check-packages` for the whole dependency list (1.0 to
+  1.3 calls per run on average, 0.5k to 0.7k characters each), which returns the version to pin. The
+  agent then called `get-docs` 0.7 to 1.7 times per run, with a version in 86 of 87 calls; in some runs
+  it wrote the code without reading any docs.
+
+The server instructions differ the same way. The full server says to call `check-packages` once with
+every dependency, then `get-docs` only for APIs the agent is unsure of. The docs-only server has no
+`check-packages`, and every prompt asks the agent to check the libraries before choosing versions
+(`DOCS_HINT` in `bench/agents/tasks.ts`), so the agent checked them by reading docs. Fresh input shows
+the effect: it about halved in the agent benchmark (16.3k to 8.0k for Sonnet, 26.7k to 14.5k for Haiku,
+19.2k to 9.8k for Opus). In the docs benchmark, 47 of 48 pinright runs opened with `check-packages`,
+and the docs-only agent made 4.5 to 6.4 `get-docs` calls against 1.6 to 2.0.
 
 ## Hook: how often does it get in the way?
 

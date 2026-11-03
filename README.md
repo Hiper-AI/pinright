@@ -47,27 +47,50 @@ The agent retries with `4.18.1`, on the same release line. When it asks first, `
 and `get-docs` give it the same verdict with the full advisory list, the version to pin, and the
 docs for that version. Real output of `pinright hook claude`, 2026-11-01.
 
-## Measured
+## Why pinright
 
-Claude Code with three models wrote 12 projects that ask for pinned versions, 2 runs per cell, on
-the 1.0.0 code. We audited each project with `npm audit` or `pip-audit`, which share no code with
-pinright.
+Docs MCP servers return documentation for a library. They do not check the version the agent pins,
+and they do not see the install. To measure that kind of server we ran pinright's own server with its
+security layer off (`PINRIGHT_ABLATION=docs-only`): docs for the version asked, no verdict. It is not
+another product. Claude Code with Sonnet 5.5, Haiku 5.5 and Opus 5.5, 2 runs per cell, on the 1.0.0
+code; each cell gives the range over the three models.
 
-| | Sonnet 5.5 | Opus 5.5 | Haiku 5.5 |
+| | No docs | Docs-only context server | pinright |
 |---|---|---|---|
-| Whole-tree alerts per project, no docs → pinright MCP | 31.9 → 0.3 | 30.5 → 0.3 | 29.8 → 0.3 |
-| Direct dependencies pinned with a known advisory | 40% → 0% | 42% → 0% | 40% → 0% |
-| Docs tasks that used the current API, no docs → pinright | 13 of 16 → 16 of 16 | 14 of 16 → 16 of 16 | 9 of 16 → 16 of 16 |
+| Direct dependencies pinned with a known advisory | 40% to 42% | 0% to 2% | 0% |
+| Whole-tree alerts per project (`npm audit`, `pip-audit`) | 29.8 to 31.9 | 0.3 to 3.5 | 0.3 |
+| Docs tasks that used the current API | 9 to 14 of 16 | 15 or 16 of 16 | 16 of 16 |
+| Tokens per agent task | 15k to 21k | 56k to 94k | 42k to 74k |
+| Tokens per docs task | 17k to 23k | 94k to 135k | 63k to 95k |
+| Agent turns per agent task | 4.0 to 4.3 | 9.3 to 11.1 | 5.9 to 7.5 |
+| MCP tool text read per agent task | none | 25k to 45k characters | 5k to 17k characters |
+| Verdict on the version the agent pins | no | no | advisories, malware, lookalikes, versions that do not exist |
+| Check when the install runs | no | no | pre-install hook in 6 clients |
+| Whole-tree lockfile audit | no | no | `check-manifest`, SARIF, GitHub Action |
 
-The 0.3 left is nuxt, whose current release pulls packages with no fix published; installing
-with no version at all gets the same 0.3. Docs alone, with the verdict off, already took alerts
-down to 0.3 to 3.5 per project. One vendor's models, tasks we wrote, no shell, two days of advisory
-data, and small n: intervals overlap between the pinright arms. In a second run with a shell, the
-agents looked versions up with `npm view` or `pip index` before pinning, and every arm, with or
-without pinright, ended at the same 6 alerts per model. The hook, replayed over 25,077
-commands from 180 public repositories, blocked or asked on 1.46%. Replayed over a month of our
-own agent sessions (154,402 distinct tool calls), it misread 10 of them.
-[Results and caveats](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v7.md) ·
+Current docs alone removed most alerts; the verdict removed the rest. Per model, pinright used 21% to
+26% fewer tokens than the docs-only server on the 12 agent tasks and 26% to 33% fewer on the 8 docs
+tasks. Every paired interval stays above zero; the lowest bound is 2%. Tokens count everything the
+model processed, cache reads included. No tools at all costs less than either.
+
+**Why fewer tokens.** With docs only, the agent looked versions up through the docs: it called
+`get-docs` once per package, 5.2 to 5.7 times per agent task, before writing a file. 87% of those calls
+named no version, so they returned the docs of the latest release, and 75% asked for "version" or
+"latest" in the query. With pinright, every agent-task run opened with `check-packages` for the whole
+list, about 600 characters of verdicts and versions to pin, then called `get-docs` 0.7 to 1.7 times per
+task, with a version in 86 of 87 calls.
+
+**Limits.** The 0.3 left is nuxt, whose current release pulls packages with no fix published;
+installing with no version gets the same 0.3, and the docs-only and pinright alert intervals overlap.
+One vendor's models, tasks we wrote, no shell, two days of advisory data, small n. In a second run
+with a shell, the agents looked versions up with `npm view` or `pip index` before pinning, and every
+arm ended at the same 6 alerts per model: there pinright made no measurable difference to the pins.
+On APIs released after August 2026, 2 of 48 runs got the current API without docs, 45 of 48 with docs
+only and 46 of 48 with pinright. On 12 tasks taken from public GitHub issues, 26% to 29% of direct
+pins carried an advisory without docs and none with pinright. The hook blocked or asked on 1.46% of 25,077 public commands and
+misread 10 of 154,402 tool calls from a month of our own agent sessions.
+[Per-model tables](https://github.com/Hiper-AI/pinright/blob/main/docs/benchmark.md#efficiency-tokens-turns-and-cost-against-a-docs-only-server) ·
+[results and caveats](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v7.md) ·
 [technical report](https://github.com/Hiper-AI/pinright/blob/main/paper/kit/pinright-report.md) ·
 [reproduce it](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v7.md#reproduce)
 

@@ -2,7 +2,9 @@
 
 > Version-accurate docs and a dependency check for coding agents. An MCP server, a pre-install hook, a CLI and a GitHub Action, all local, MIT licensed, by Hiper AI.
 
-Coding agents pin library versions from memory, and about 40% of those pins carry a known advisory (our benchmark, three Claude models, 12 tasks, 2026-11-01). pinright gives the agent docs for the exact version it installs, taken from the published package, its repository at the release tag and the project's own llms.txt, and a verdict on every dependency it adds: known advisories (OSV, deps.dev), malware records, lookalike names, packages or versions that do not exist, deprecation, and the newest version without advisories on the release line already in use. The hook blocks a bad change before the install runs, even when the agent never asked.
+Coding agents pin library versions from memory, and about 40% of those pins carry a known advisory (our benchmark v7, three Claude models, 12 tasks, 2026-11-02). pinright gives the agent docs for the exact version it installs, taken from the published package, its repository at the release tag and the project's own llms.txt, and a verdict on every dependency it adds: known advisories (OSV, deps.dev), malware records, lookalike names, packages or versions that do not exist, deprecation, and the newest version without advisories on the release line already in use. The hook blocks a bad change before the install runs, even when the agent never asked.
+
+Against a docs-only server (pinright's own server with its security layer off, which serves docs and no verdict), the full server used 21% to 33% fewer tokens per run and 3 to 4 fewer turns in the same benchmark: the agent asked `check-packages` for every version up front instead of reading each package's docs to find it. No tools at all used fewer tokens than either. With a shell, every arm ended at the same 6 alerts; pinright made no measurable difference to the pins there.
 
 ## Install
 

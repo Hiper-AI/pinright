@@ -18,7 +18,9 @@ agent runs the agent still pinned a vulnerable `next` or `next-auth` (Sonnet twi
 which the verdict arms never did. With two repetitions the intervals of docs-only and MCP overlap for
 every model, so this is an observation, not a measured difference. The no-pin reference (the same
 packages installed with no version) also lands at 0.25 alerts per project: on a new project, pinright
-matters because agents pin, and it keeps the pin on a clean version.
+matters because agents pin, and it keeps the pin on a clean version. Against the docs-only arm, the
+full server used 21% to 33% fewer tokens per run and 3.1 to 4.3 fewer turns, because the agent asked
+`check-packages` for versions instead of reading the docs of every package (see "Efficiency").
 
 ## Headline tables
 
@@ -130,6 +132,38 @@ it swings from run to run. Sonnet pinned `next` 15.5.0 in both next-auth runs (3
 Haiku pinned `next-auth` betas with advisories in both (one with `next` 15.5.4, 50 alerts). The docs
 benchmark now runs docs-only on all three models (v6: Sonnet only): 16, 15 and 16 of 16.
 
+## Efficiency against the docs-only server
+
+The docs-only arm is what a docs MCP server does: docs for the version asked, no version check, no
+view of the install. It is pinright's own server with the security layer off, not another product.
+Tokens are everything the model processed in a run (uncached input, cache reads and writes, output),
+read by `bench/tokens.ts` from the usage block Claude Code prices each run from
+(`paper/kit/data/tokens_by_model_arm.csv`). "Less than docs-only" pairs the arms task by task; its
+interval resamples tasks.
+
+| Benchmark | Model | Tokens per run, docs-only to pinright (thousands) [95% CI] | Less than docs-only, paired [95% CI] | MCP text (k chars) | get-docs calls | Turns |
+|---|---|---|---|---|---|---|
+| Agent | Sonnet 5.5 | 55.6 [47.2, 63.5] to 42.2 [37.4, 46.8] | 24% [14, 34] | 24.8 to 5.3 | 5.2 to 0.7 | 9.3 to 5.9 |
+| Agent | Haiku 5.5 | 93.8 [73.5, 114.8] to 74.2 [61.8, 87.8] | 21% [6, 33] | 45.3 to 17.2 | 5.7 to 1.7 | 11.1 to 7.5 |
+| Agent | Opus 5.5 | 73.3 [58.8, 88.5] to 54.6 [45.2, 65.0] | 26% [11, 37] | 32.9 to 10.4 | 5.7 to 1.3 | 9.9 to 6.8 |
+| Docs | Sonnet 5.5 | 94.0 [63.8, 125.1] to 62.9 [52.4, 76.7] | 33% [13, 45] | 35.0 to 20.2 | 5.4 to 1.6 | 11.7 to 8.1 |
+| Docs | Haiku 5.5 | 135.1 [95.7, 179.9] to 95.0 [77.2, 113.3] | 30% [4, 46] | 46.9 to 26.1 | 4.5 to 2.0 | 13.4 to 9.1 |
+| Docs | Opus 5.5 | 113.2 [78.8, 152.6] to 83.9 [67.1, 98.9] | 26% [2, 43] | 38.6 to 23.7 | 6.4 to 1.9 | 12.4 to 9.3 |
+
+No docs used 15.3k to 20.8k tokens per agent run and 17.2k to 23.5k per docs run, fewer than either
+docs arm: pinright costs more than no tools at all. The per-arm token intervals overlap in five of the
+six rows; the paired intervals stay above zero in all six.
+
+**Mechanism, from the transcripts.** With docs only, the agent used `get-docs` as its version lookup:
+in the agent benchmark it called it once per package before writing any file, 345 of 398 calls named
+no version (so they returned the latest release's docs), and 299 put "version" or "latest" in the
+query. With pinright, all 72 agent runs opened with `check-packages` on the whole dependency list
+(0.5k to 0.7k characters per call), which returns the version to pin; the agent then called `get-docs`
+0.7 to 1.7 times per run, with a version in 86 of 87 calls. The full server's instructions say exactly
+that order; the docs-only server has no `check-packages`, and every prompt asks the agent to check the
+libraries before choosing versions. Fresh input (uncached plus cache writes) about halved in the agent
+benchmark: 16.3k to 8.0k (Sonnet), 26.7k to 14.5k (Haiku), 19.2k to 9.8k (Opus).
+
 ## Other result sets
 
 - **Post-cutoff docs set** ([RESULTS-post-cutoff.md](RESULTS-post-cutoff.md)). Eight APIs first
@@ -191,6 +225,8 @@ benchmark now runs docs-only on all three models (v6: Sonnet only): 16, 15 and 1
   Next 16, Tailwind 4, Zod 4 and Express 5; the docs benchmark separates arms mainly on AI SDK 7,
   LangChain 1 and, for Haiku, ESLint 10 and Pydantic 2. The post-cutoff set addresses this.
 - **Cost is not money.** The runs used a subscription; the cost columns are list-price equivalents.
+- **Tokens include cache reads.** Most of a run's input is read from the prompt cache, which is cheaper
+  than fresh input, so tokens and cost do not move in proportion. Both are reported.
 - **The ablation is ours.** docs-only is pinright with its security layer off, not any other product.
   It shows what version-accurate docs do alone; other docs sources may behave differently.
 - **Build checks are partial.** "Builds" means install plus build, type-check or import check. Only the
