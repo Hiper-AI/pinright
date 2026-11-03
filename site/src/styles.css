@@ -289,6 +289,82 @@ pre {
   backdrop-filter: saturate(1.4) blur(14px);
 }
 
+/* A 1px marker at the very top of the page; header.js watches it to know whether you scrolled. */
+.header-sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 8px;
+  pointer-events: none;
+}
+
+/* With JavaScript the header starts flat and turns to glass once you scroll. Its height never
+   changes, so the page below does not move; only paint and the logo's transform animate. */
+.site-header[data-header] {
+  transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease,
+    -webkit-backdrop-filter 0.35s ease, backdrop-filter 0.35s ease;
+}
+
+.site-header[data-header]:not(.is-scrolled) {
+  border-bottom-color: transparent;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.site-header.is-scrolled {
+  box-shadow: 0 1px 12px -6px color-mix(in srgb, var(--ink) 18%, transparent);
+}
+
+.site-header[data-header] .lockup {
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.site-header[data-header]:not(.is-scrolled) .lockup {
+  transform: scale(1.12);
+}
+
+/* The check draws itself and the dot lands when the page opens; on hover the dot nods. */
+@media (prefers-reduced-motion: no-preference) {
+  .brand .lockup-check {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+    animation: lockup-draw 0.7s cubic-bezier(0.65, 0, 0.35, 1) 0.15s backwards;
+  }
+
+  .brand .lockup-dot {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: lockup-land 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.75s backwards;
+  }
+
+  .brand:hover .lockup-dot,
+  .brand:focus-visible .lockup-dot {
+    animation: lockup-nod 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+
+@keyframes lockup-draw {
+  from { stroke-dashoffset: 1; }
+}
+
+@keyframes lockup-land {
+  from { transform: scale(0); }
+}
+
+@keyframes lockup-nod {
+  40% { transform: translateY(-18%) scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header[data-header],
+  .site-header[data-header] .lockup {
+    transition: none;
+  }
+}
+
 .header-in {
   display: flex;
   align-items: center;

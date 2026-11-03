@@ -64,7 +64,8 @@ for (const file of html) {
   for (const m of text.matchAll(/\s(?:href|src)="([^"]+)"/g)) {
     const url = m[1];
     if (/^(https?:|mailto:|data:)/.test(url)) continue;
-    const [urlPath, fragment] = url.split('#');
+    const [withQuery, fragment] = url.split('#');
+    const urlPath = withQuery.split('?')[0];
     const target = urlPath ? resolveTarget(urlPath.startsWith('/') ? urlPath : `/${path.posix.join(path.posix.dirname(rel), urlPath)}`) : file;
     if (!target) {
       problems.push(`${rel}: broken link ${url}`);
