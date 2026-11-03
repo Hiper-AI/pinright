@@ -144,7 +144,9 @@ export async function resolveManifest(tree: ParsedTree, notes: string[]): Promis
       }
       continue;
     }
-    out.set(`${name}@${version}`, { name, version, direct: true, dev: d.dev, path: [name] });
+    // Declared after a package that pulls it: keep the ranges that graph put on it (stirrup > moviepy > pillow<12.0).
+    const prev = out.get(`${name}@${version}`)?.requiredBy;
+    out.set(`${name}@${version}`, { name, version, direct: true, dev: d.dev, path: [name], ...(prev ? { requiredBy: prev } : {}) });
     if (!GRAPH_ECOSYSTEMS.includes(eco)) continue;
     const graph = await getDependencies(eco, name, version).catch(() => undefined);
     if (!graph?.nodes?.length) {

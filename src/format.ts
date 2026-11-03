@@ -28,7 +28,16 @@ function splitFamilyLine(report: PackageReport): string | undefined {
   );
 }
 
-export function securityNotice(report: PackageReport, typo?: TyposquatReport, risk?: RiskReport): string {
+/**
+ * `rangeConflict`: the version this notice would recommend is outside a range the rest of the project sets
+ * on the package (constraints.ts), and a NOTE next to it says so. The notice then recommends `use`, the
+ * clean release inside the ranges, or no version at all, instead of an upgrade that would not install.
+ */
+export interface NoticeOptions {
+  rangeConflict?: { use?: string };
+}
+
+export function securityNotice(report: PackageReport, typo?: TyposquatReport, risk?: RiskReport, opts: NoticeOptions = {}): string {
   const lines: string[] = [];
   const pkg = `${report.package} (${report.ecosystem})`;
   const req = report.requested;
@@ -94,7 +103,11 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
   const cmd = (v: string) => installCommand(report.ecosystem, report.package, v);
   // A fresh release deps.dev has not indexed: nothing known is wrong with it, so an older version is not a fix.
   const notIndexed = Boolean(req?.notIndexed && req.verdict === 'unknown');
-  if (notIndexed) {
+  const conflict = opts.rangeConflict;
+  if (conflict) {
+    // The usual recommendation is the version the other packages forbid: only the release that fits them, if any.
+    if (conflict.use) lines.push(`Recommended within the ranges of the other packages: ${conflict.use}. Upgrade: ${cmd(conflict.use)}`);
+  } else if (notIndexed) {
     if (report.safeVersion && report.safeVersion !== req?.version) {
       lines.push(
         `Newest version with full deps.dev data and no known advisories: ${report.safeVersion}. Switching to it is not a fix, since nothing known is wrong with ${req?.version}; ` +
@@ -138,16 +151,16 @@ export function securityNotice(report: PackageReport, typo?: TyposquatReport, ri
   }
   if (report.sameLineTree) lines.push(`NOTE: ${lineTreeMessage(report.package, report.sameLineTree)}`);
   // The safe version's license, not the requested one's: next to a version deps.dev has no data for, it would read as that one's.
-  if (report.safeVersion && report.safeVersionLicenses?.length && report.verdict !== 'possible-typosquat' && !notIndexed) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
+  if (report.safeVersion && report.safeVersionLicenses?.length && report.verdict !== 'possible-typosquat' && !notIndexed && !conflict) lines.push(`License: ${report.safeVersionLicenses.join(' / ')}`);
   const le = report.leastExposed;
-  if (!report.safeVersion && le && (!req || le.version !== req.version)) {
+  if (!report.safeVersion && le && !conflict && (!req || le.version !== req.version)) {
     lines.push(
       `No version is free of known advisories. Least exposed: ${le.version} (${le.advisories} advisor${le.advisories === 1 ? 'y' : 'ies'}, worst ${le.maxSeverity ?? 'unrated'}). ` +
         `Install: ${cmd(le.version)}`,
     );
   }
   const recommended = sameLine && req && sameLine !== req.version ? sameLine : (req && report.safeVersionNearestLine) || report.safeVersion;
-  if (report.recentMajor && recommended && releaseLine(recommended) === report.recentMajor.line) {
+  if (report.recentMajor && recommended && !conflict && releaseLine(recommended) === report.recentMajor.line) {
     lines.push(
       `Heads-up: ${report.package} ${report.recentMajor.line} is a recent major (first release ${report.recentMajor.since}). ` +
         `Its APIs and configuration may differ from what you know; read get-docs for ${recommended} before writing code or config for it.`,

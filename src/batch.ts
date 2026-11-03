@@ -338,7 +338,9 @@ export function formatBatch(results: BatchResult[]): string {
     lines.push('', 'Details for the packages that need attention:');
     for (const r of details) {
       // The header already carries the sources and the date.
-      const notice = securityNotice(r.verdict!.report, r.verdict!.typo, r.verdict!.risk).split('\n').filter((l) => !l.startsWith('Verified against '));
+      // A conflict: the notice recommends only the release inside the ranges, never the upgrade the NOTE says would not install.
+      const rangeConflict = r.ranges?.conflict ? { use: r.ranges.use && r.ranges.use !== '-' ? r.ranges.use : undefined } : undefined;
+      const notice = securityNotice(r.verdict!.report, r.verdict!.typo, r.verdict!.risk, { rangeConflict }).split('\n').filter((l) => !l.startsWith('Verified against '));
       // A range another package in the call sets: right under the headline, before the upgrade the notice suggests on its own.
       if (r.ranges) notice.splice(1, 0, `NOTE (packages in this call): ${r.ranges.text}`);
       lines.push('', ...notice);

@@ -263,6 +263,9 @@ describe('check-packages: the packages in one call set ranges on each other', ()
     expect(out).toContain('No pillow release in that range is free of them');
     expect(out).toContain('No moviepy release accepts pillow 13.0.0 yet (newest: 2.2.1)');
     expect(out).toContain('A pillow pin outside that range would make the install fail.');
+    // The notice under the NOTE does not recommend the upgrade the NOTE says would not install.
+    expect(out).not.toContain('pillow==13.0.0');
+    expect(out).not.toMatch(/Upgrade: pip install "pillow|upgrade-guide from 11\.3\.0 to 13\.0\.0/);
     // The other rows are untouched.
     expect(out).toContain('| pypi stirrup | 0.2.1 | ok | 0.2.1 |');
   });
@@ -273,6 +276,15 @@ describe('check-packages: the packages in one call set ranges on each other', ()
     const out = formatBatch(await batch([{ name: 'stirrup', version: '0.2.1' }, { name: 'pillow', version: '11.3.0' }]));
     expect(out).toContain("| pypi pillow | 11.3.0 | VULNERABLE (2, HIGH) | 11.3.1 | 13.0.0 is outside moviepy 2.2.1's pillow<12.0,>=9.2.0 (via stirrup 0.2.1); 11.3.1 is the newest clean release in range |");
     expect(out).toContain('The newest pillow release in that range with no known advisories is 11.3.1: pip install "pillow==11.3.1"');
+    // The notice's own Upgrade line points at the release in range, not at 13.0.0.
+    expect(out).toContain('Recommended within the ranges of the other packages: 11.3.1. Upgrade: pip install "pillow==11.3.1"');
+    expect(out).not.toContain('pillow==13.0.0');
+  });
+
+  it('without a conflict the notice keeps its own Upgrade line', async () => {
+    stirrup('<14.0,>=9.2.0');
+    const out = formatBatch(await batch([{ name: 'stirrup', version: '0.2.1' }, { name: 'pillow', version: '11.3.0' }]));
+    expect(out).toContain('Upgrade: pip install "pillow==13.0.0"');
   });
 
   it('a pin asked for outside a range in the call gets a note; the version stays', async () => {
@@ -310,6 +322,7 @@ describe('check-packages: the packages in one call set ranges on each other', ()
     expect(out).toContain("| npm react | 18.2.0 | VULNERABLE (2, HIGH) | - | 19.1.0 is outside react-dom 18.3.1's peer range react ^18.3.1 and no clean release fits it; see details |");
     expect(out).toContain('react 19.1.0 fixes the advisories of react 18.2.0, but react-dom 18.3.1 requires react ^18.3.1 as a peer dependency.');
     expect(out).toContain('npm stops the install with a peer dependency conflict.');
+    expect(out).not.toContain('npm install react@19.1.0');
 
     calls.peers = 0;
     reports.set('react@18.2.0', {
@@ -338,6 +351,18 @@ describe('check-manifest: the override of a transitive package', () => {
     const text = formatTreeAudit(a);
     expect(text).toContain('Note: pillow 13.0.0 fixes the advisories of pillow 11.3.0, but moviepy 2.2.1 (via stirrup 0.2.1) requires pillow<12.0,>=9.2.0.');
     expect(text).not.toContain('pillow>=13.0.0');
+  });
+
+  it('a direct pin whose fix is out of range: no upgrade to 13.0.0 in the fixes, nor in the hook', async () => {
+    stirrup();
+    const text = formatTreeAudit(await auditTree(parseFile('requirements.txt', 'stirrup>=0.2\npillow==11.3.0\n')));
+    expect(text).toContain('Note: pillow 13.0.0 fixes the advisories of pillow 11.3.0, but moviepy 2.2.1 (via stirrup 0.2.1) requires pillow<12.0,>=9.2.0.');
+    expect(text).not.toMatch(/pillow==13\.0\.0|pillow>=13\.0\.0/);
+    const d = await decide([
+      { ecosystem: 'pypi', name: 'stirrup', spec: '==0.2.1', source: 'requirements.txt' },
+      { ecosystem: 'pypi', name: 'pillow', spec: '==11.3.0', source: 'requirements.txt' },
+    ]);
+    expect([...d.problems, ...d.warnings].join('\n')).not.toMatch(/pillow==13\.0\.0|Upgrade:/);
   });
 
   it('no conflict: the override stays', async () => {
