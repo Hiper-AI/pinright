@@ -49,7 +49,7 @@ node paper/build-pdf.mjs --css paper/kit/pdf.css paper/kit/pinright-report.md
 ## Copy rules
 
 Every number on the site comes from `paper/kit/claims.md`. Keep the qualifier next to each number
-(three models of one vendor, 12 tasks we wrote, advisory data from 2026-11-01), show the docs-only
+(three models of one vendor, 12 tasks we wrote, advisory data from 2026-11-02 and 2026-11-03, benchmark v7 on the 1.0.0 code), show the docs-only
 ablation next to the headline, and write "pinright" in lowercase everywhere. `check-dist.mjs`
 rejects em dashes and absolute words ("secure", "guarantee", "eliminate", "100%", compliance terms).
 
