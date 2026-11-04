@@ -143,6 +143,8 @@ function runOne(job: Job, o: HarnessOptions): Promise<number> {
     if (above.length) throw new Error(`dependency files above the job folder ${work}: ${above.join(', ')}; point TMPDIR (TEMP on Windows) at a folder with none above it`);
   }
   mkdirSync(work, { recursive: true });
+  // Without the sandbox the work folder lives in the temp dir, so the job folder needs its own mkdir.
+  mkdirSync(dir, { recursive: true });
   // Paths the agent's CLI sees: the job directory itself, or its mount point in the container.
   const seen = (file: string) => (o.sandbox ? `/job/${file}` : join(dir, file));
   writeFileSync(join(dir, 'mcp.json'), JSON.stringify(o.mcp[job.arm], null, 2));
