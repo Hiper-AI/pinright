@@ -96,6 +96,34 @@ misread 10 of 154,402 tool calls from a month of our own agent sessions.
 [technical report](https://github.com/Hiper-AI/pinright/blob/main/paper/kit/pinright-report.md) ·
 [reproduce it](https://github.com/Hiper-AI/pinright/blob/main/bench/RESULTS-v7.md#reproduce)
 
+### Against a widely used docs MCP server
+
+People ask how pinright compares with the docs MCP servers they already use. We added one, a widely
+used local server with a free API key, as an arm of the same benchmarks: run v8, 2026-11-04, every arm
+on the same day and the same advisory data. Range over Sonnet 5.5, Haiku 5.5 and Opus 5.5, 2 runs per
+cell.
+
+| | No tools | Docs MCP server | pinright | Both installed |
+|---|---|---|---|---|
+| Direct deps pinned with a known advisory, our 12 tasks | 40% to 41% | 28% to 35% | **0%** | **0%** |
+| Same, 12 tasks taken from GitHub issues | 27% to 32% | 15% to 21% | **0%** | **0%** |
+| Whole-tree alerts per project, our 12 tasks | 29.4 to 33.0 | 14.7 to 18.6 | **0.3** | **0.3** |
+| Docs tasks that used the current API (of 16) | 10 to 12 | 12 to 16 | **14 to 16** | n/a |
+| Same, APIs released after the training cutoff (of 16) | 0 or 1 | 11 or 13 ¹ | **16** | n/a |
+| Tokens per agent task | 15k to 21k | **47k to 61k** | 43k to 80k | 53k to 84k |
+| Tokens per docs task | 17k to 22k | **53k to 77k** | 70k to 105k | n/a |
+| Checks the version the agent pins | no | no | yes | yes |
+| Stops the install of a vulnerable version | no | no | pre-install hook | pre-install hook |
+
+¹ Sonnet and Haiku; the free key hit its monthly quota during the Opus runs.
+
+The docs MCP server moved agents to newer versions and halved the alerts, but it does not check the
+version the agent picks: its most common vulnerable pin was `next@16.2.9` (20 advisories, 11 runs), the
+Next.js version it served docs for. It used fewer tokens than pinright in most cells, because its
+answers are shorter. With both installed, the agent took its versions from pinright and called the docs
+server 6 times in 144 runs. One docs server, one release, tasks we wrote or picked, no shell.
+[Per-model tables](https://github.com/Hiper-AI/pinright/blob/main/docs/benchmark.md#against-a-docs-mcp-server)
+
 ## Ask your agent
 
 - "Add zod and pin a version with no known advisories."
