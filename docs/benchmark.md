@@ -2,7 +2,8 @@
 
 Four measurements, all from run v7 of 2026-11-02 and 2026-11-03 on the 1.0.0 code: what versions an
 agent pins, whether it writes the current API of a library, how many tokens and turns it spends
-against a docs-only server, and how often the hook gets in the way of ordinary commands. The data, per-task tables and failure diagnoses are in [bench/](../bench/); the
+against a docs-only server, and how often the hook gets in the way of ordinary commands. Run v8 of
+2026-11-04 adds a [comparison with a docs MCP server](#against-a-docs-mcp-server). The data, per-task tables and failure diagnoses are in [bench/](../bench/); the
 technical report ([PDF](https://pinright.dev/report.pdf), [Markdown](../paper/kit/pinright-report.md))
 covers method and limits in full.
 
@@ -128,6 +129,67 @@ every dependency, then `get-docs` only for APIs the agent is unsure of. The docs
 the effect: it about halved in the agent benchmark (16.3k to 8.0k for Sonnet, 26.7k to 14.5k for Haiku,
 19.2k to 9.8k for Opus). In the docs benchmark, 47 of 48 pinright runs opened with `check-packages`,
 and the docs-only agent made 4.5 to 6.4 `get-docs` calls against 1.6 to 2.0.
+
+## Against a docs MCP server
+
+Run v8, 2026-11-04 (UTC-3), at the 1.0.0 code with Claude Code 2.1.308: the agent and docs benchmarks
+above, rerun with a widely used docs MCP server as an extra arm (`--mcp-arm`). It ran locally over stdio,
+pinned to one release, with a free API key. We do not ship its config; any server can be run the same
+way. Every arm of v8 ran and was scored on the same day, so all of them see the same advisory data.
+Two runs per task, arm and model.
+
+Direct dependencies with an advisory, and whole-tree alerts per project (24 projects per cell):
+
+| Task set, model | No tools | Docs MCP server | pinright | Both installed |
+|---|---|---|---|---|
+| Our 12 tasks, Sonnet 5.5 | 41%, 33.0 | 28%, 16.6 | 0%, 0.3 | 0%, 0.3 |
+| Our 12 tasks, Haiku 5.5 | 40%, 29.4 | 31%, 14.7 | 0%, 0.3 | 0%, 0.3 |
+| Our 12 tasks, Opus 5.5 | 41%, 32.2 | 35%, 18.6 | 0%, 0.3 | 0%, 0.3 |
+| GitHub issues, Sonnet 5.5 | 27%, 24.4 | 15%, 14.7 | 0%, 4.7 | 0%, 4.7 |
+| GitHub issues, Haiku 5.5 | 32%, 23.3 | 18%, 11.7 | 0%, 4.7 | 0%, 4.7 |
+| GitHub issues, Opus 5.5 | 27%, 27.2 | 21%, 19.0 | 0%, 4.8 | 0%, 4.8 |
+
+Runs that wrote the current API, out of 16:
+
+| Task set, model | No tools | Docs MCP server | pinright |
+|---|---|---|---|
+| Changed APIs, Sonnet 5.5 | 12 | 13 | 14 |
+| Changed APIs, Haiku 5.5 | 10 | 12 | 15 |
+| Changed APIs, Opus 5.5 | 12 | 16 | 16 |
+| After the training cutoff, Sonnet 5.5 | 0 | 11 | 16 |
+| After the training cutoff, Haiku 5.5 | 1 | 13 | 16 |
+| After the training cutoff, Opus 5.5 | 0 | n/a | 16 |
+
+Mean tokens per run (everything the model processed, cache reads included):
+
+| Task set, model | No tools | Docs MCP server | pinright | Both installed |
+|---|---|---|---|---|
+| Our 12 tasks, Sonnet / Haiku / Opus | 15k / 21k / 15k | 53k / 61k / 47k | 43k / 80k / 54k | 53k / 84k / 67k |
+| GitHub issues, Sonnet / Haiku / Opus | 16k / 25k / 22k | 50k / 118k / 67k | 71k / 161k / 160k | 75k / 160k / 155k |
+| Changed APIs, Sonnet / Haiku / Opus | 17k / 22k / 17k | 53k / 77k / 62k | 70k / 90k / 105k | n/a |
+| After the cutoff, Sonnet / Haiku / Opus | 14k / 21k / 15k | 60k / 99k / n/a | 76k / 116k / 133k | n/a |
+
+What the comparison shows, and where it stops:
+
+- The docs MCP server moved agents to newer versions and cut whole-tree alerts by about half. It does
+  not check the version the agent pins. Its most common vulnerable pin was `next@16.2.9`
+  (20 advisories, 11 runs), the Next.js version it served docs for; `axios@1.13.2` (35 advisories)
+  followed in 6 runs.
+- With both servers installed, the agent took versions from pinright in nearly every run (6 calls to the
+  docs server in 144 runs), and no direct pin carried an advisory.
+- pinright matched or beat the docs server on the current API in every cell. With 16 runs per cell the
+  intervals overlap, so this is a trend, not a measured difference.
+- The docs server used fewer tokens than pinright in most cells: its answers ran 9k to 24k characters
+  of tool text per task, pinright's 6k to 41k. pinright used fewer only on our 12 tasks with Sonnet.
+- Without a key the server answered most calls with a rate-limit error; we discarded those runs and
+  reran the arm with a free key. That key reached its monthly quota during the Opus post-cutoff runs,
+  so that cell is missing. In the combined arm the server ran without a key; the agent called it
+  6 times in 144 runs.
+- `kittentts` installs from a GitHub release wheel, not from PyPI. The docs server's runs pinned it
+  that way, correctly; the scorer counts it as a version that does not exist, and the numbers above
+  do not count it against any arm.
+- One docs server and one release of it, one model vendor, one day of advisory data, tasks we wrote
+  or picked, no shell.
 
 ## Hook: how often does it get in the way?
 
